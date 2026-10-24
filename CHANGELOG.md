@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-24 (v1.11.0, lane board)
+
+Carried over from the previous core repository, where it was opened 2026-10-23 as item D-004 of a
+consumer report.
+
+- `LaneBoard`: lanes as columns with cards, a drop indicator, an empty-lane state and an `onMove({ cardId, from, to, index })`
+  callback. Cards drag with the pointer, or by keyboard: Space or Enter picks up, left and right choose the lane, up and
+  down the position, Space or Enter drops, Escape cancels; every step is announced in a polite live region. The board holds
+  no data rules and never reorders itself.
+- Tests in `kit/tests/lane-board.test.tsx`, gallery specimen `lane-board`, docs in `kit/README.md`.
 ## 2026-10-24 (v1.10.0, ops center design)
 
 Carried over from the previous core repository (opened 2026-10-23), where the owner made the decisions
