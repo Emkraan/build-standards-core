@@ -243,6 +243,17 @@ function ThemeControls({ accent, onAccent }: { accent: AppAccent; onAccent: (a: 
   );
 }
 
+function SearchRoutingSpecimen() {
+  const [routed, setRouted] = useState(0);
+  return (
+    <div className="gallery-row">
+      <span className="gallery-note">SearchTrigger onSearch: routes to the app's own search instead of the kit palette.</span>
+      <SearchTrigger label="Search the app" onSearch={() => setRouted((n) => n + 1)} />
+      <span className="gallery-note" aria-live="polite">{routed ? `Routed to the app's search ${routed} time(s)` : 'Not routed yet'}</span>
+    </div>
+  );
+}
+
 function ButtonsSpecimen() {
   const [loading, setLoading] = useState(false);
   return (
@@ -2225,7 +2236,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'palette-rank', 'tile-edge', 'freshness', 'month-grid'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'search-routing', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'palette-rank', 'tile-edge', 'freshness', 'month-grid'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2440,6 +2451,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
               { id: 'h2', host: 'node-b', role: 'Worker', cpu: 64 },
             ]}
           />
+        </Specimen>
+        <Specimen id="search-routing" title="Search routed to an app's own palette">
+          <SearchRoutingSpecimen />
         </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">

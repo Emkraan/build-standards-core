@@ -163,7 +163,7 @@ export { Menu, Popover } from './overlays/Popover';
 export type { MenuItemDef, MenuProps, Placement, PopoverProps } from './overlays/Popover';
 
 // Required chrome
-export { CommandPalette, SearchTrigger, filterPaletteItems, groupPaletteItems, highlight, isSlashOpen, openCommandPalette, openScopedPalette, paletteOwnsKey, paletteScope, scorePaletteItem } from './chrome/CommandPalette';
+export { CommandPalette, PALETTE_OPEN_EVENT, SearchTrigger, filterPaletteItems, groupPaletteItems, highlight, isSlashOpen, onPaletteOpen, openCommandPalette, openScopedPalette, paletteOwnsKey, paletteScope, scorePaletteItem } from './chrome/CommandPalette';
 export type { CommandPaletteProps, PaletteFilter, PaletteItem, SearchTriggerProps } from './chrome/CommandPalette';
 export { BuildCard, ReleaseNotesDialog, RollingText, safeReleaseLink, versionLabel } from './chrome/BuildCard';
 export type { BuildCardProps, ReleaseItem, ReleaseItemType, ReleaseNote, ReleaseNotesDialogProps, ReleaseNotesLink } from './chrome/BuildCard';
