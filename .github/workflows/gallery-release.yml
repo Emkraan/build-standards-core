@@ -1,7 +1,6 @@
 name: gallery-release
 # Publishes the built kit gallery with every release, so other accounts can see the reference
-# without the source. The repo is private, so it ships as a release asset (and a run artifact),
-# never on public Pages.
+# without building it. It ships as a release asset (and a run artifact).
 on:
   release:
     types: [published]
