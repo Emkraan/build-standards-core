@@ -99,3 +99,33 @@ describe('Table density', () => {
     expect(screen.getAllByRole('row')).toHaveLength(rows.length + 1);
   });
 });
+
+describe('Table phone cards, sticky head and wrapper class (D-002)', () => {
+  it('leaves the defaults unchanged: no data-mobile, no data-label, sticky head on', () => {
+    const { container } = render(<Table columns={columns} rows={rows} rowKey={(r) => r.id} caption="Items" />);
+    const wrap = container.querySelector('.table-wrap') as HTMLElement;
+    expect(wrap.hasAttribute('data-mobile')).toBe(false);
+    expect(wrap.hasAttribute('data-sticky-head')).toBe(false);
+    expect(container.querySelector('td[data-label]')).toBeNull();
+  });
+
+  it('mobile="cards" labels every cell with its column header, never a hidden header', () => {
+    const { container } = render(<Table columns={columns} rows={rows} rowKey={(r) => r.id} caption="Items" mobile="cards" />);
+    expect((container.querySelector('.table-wrap') as HTMLElement).getAttribute('data-mobile')).toBe('cards');
+    const first = container.querySelector('tbody tr') as HTMLElement;
+    const labels = Array.from(first.querySelectorAll('td')).map((td) => td.getAttribute('data-label'));
+    expect(labels).toEqual(['Name', 'Count', null]);
+    // The table keeps its semantics: headers stay in the accessibility tree.
+    expect(screen.getAllByRole('columnheader').length).toBe(3);
+  });
+
+  it('stickyHead={false} and wrapClassName land on the wrapper', () => {
+    const { container } = render(
+      <Table columns={columns} rows={rows} rowKey={(r) => r.id} caption="Items" stickyHead={false} wrapClassName="card-table" className="extra" />,
+    );
+    const wrap = container.querySelector('.table-wrap') as HTMLElement;
+    expect(wrap.getAttribute('data-sticky-head')).toBe('false');
+    expect(wrap.classList.contains('card-table')).toBe(true);
+    expect(wrap.classList.contains('extra')).toBe(true);
+  });
+});

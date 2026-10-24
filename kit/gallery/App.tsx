@@ -2225,7 +2225,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'empty', 'overlays', 'chrome', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'palette-rank', 'tile-edge', 'freshness', 'month-grid'];
+  const sections = ['theme', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'table-cards', 'empty', 'overlays', 'chrome', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'palette-rank', 'tile-edge', 'freshness', 'month-grid'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2315,6 +2315,24 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="table" title="Table and toolbar">
           <TableSpecimen />
+        </Specimen>
+        <Specimen id="table-cards" title="Table on a phone, short table in a card">
+          <span className="gallery-note">Table mobile="cards" stickyHead={'{false}'}: below 640px each row is a card labelled by its column headers:</span>
+          <Table
+            caption="Hosts"
+            mobile="cards"
+            stickyHead={false}
+            rowKey={(r: { id: string; host: string; role: string; cpu: number }) => r.id}
+            columns={[
+              { key: 'host', header: 'Host' },
+              { key: 'role', header: 'Role' },
+              { key: 'cpu', header: 'CPU %', numeric: true },
+            ]}
+            rows={[
+              { id: 'h1', host: 'node-a', role: 'Gateway', cpu: 12 },
+              { id: 'h2', host: 'node-b', role: 'Worker', cpu: 64 },
+            ]}
+          />
         </Specimen>
         <Specimen id="empty" title="Empty states and loading">
           <EmptySpecimen />
