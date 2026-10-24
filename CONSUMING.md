@@ -84,8 +84,9 @@ accordingly (README "Direction").
   pull request from merging. Add the required checks, or register the repo as `ops-center` (the
   local gate). `--allow-no-required-checks` registers it anyway and prints a warning; choose it only
   knowingly, since `core-update.yml` then is the only thing that waits for CI.
-- This needs the `CORE_TOKEN` secret in the repo. A `workflow` repo without it: register it with
-  its `PATH`, and the job syncs from the local clone and opens the pull request itself.
+- This needs the `CORE_TOKEN` secret in the repo, a token that can open pull requests on THIS repo
+  (reading the public core needs nothing). A `workflow` repo without it: register it with its `PATH`,
+  and the job syncs from the local clone and opens the pull request itself.
 
 ### `ops-center`: the machine's ops center and other local tools without CI
 

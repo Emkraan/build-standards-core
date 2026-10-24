@@ -5,6 +5,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 
@@ -174,16 +175,45 @@ def content_hash(root=ROOT):
     return h.hexdigest()
 
 
+def git_url(repo):
+    """Anonymous HTTPS URL of the core. CORE_GIT_BASE overrides the host (tests point it at a local dir)."""
+    base = os.environ.get("CORE_GIT_BASE", "https://github.com/")
+    return f"{base.rstrip('/')}/{repo}.git"
+
+
+def _semver(tag):
+    m = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", tag)
+    return tuple(int(x) for x in m.groups()) if m else None
+
+
 def latest_tag(repo):
-    """Newest release tag of the core, via gh. Exits with one plain message on failure."""
+    """Newest release tag of the core: gh when it is installed and signed in, else the newest vX.Y.Z tag
+    read with plain git over anonymous HTTPS (the core is public, so neither needs an account). Exits
+    with one plain message on failure."""
+    try:
+        r = subprocess.run(
+            ["gh", "release", "view", "-R", repo, "--json", "tagName", "--jq", ".tagName"],
+            capture_output=True,
+            text=True,
+        )
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout.strip()
+        gh_said = r.stderr.strip()
+    except FileNotFoundError:
+        gh_said = "gh is not installed"
     r = subprocess.run(
-        ["gh", "release", "view", "-R", repo, "--json", "tagName", "--jq", ".tagName"],
+        ["git", "ls-remote", "--tags", "--refs", git_url(repo), "v*"],
         capture_output=True,
         text=True,
     )
-    if r.returncode != 0 or not r.stdout.strip():
-        sys.exit(f"Could not read the latest release of {repo}: {r.stderr.strip() or 'no release'}")
-    return r.stdout.strip()
+    tags = [ln.rsplit("refs/tags/", 1)[-1] for ln in r.stdout.splitlines() if "refs/tags/" in ln]
+    tags = [t for t in tags if _semver(t)]
+    if r.returncode == 0 and tags:
+        return max(tags, key=_semver)
+    sys.exit(
+        f"Could not read the latest release of {repo}: {gh_said or 'no release'}; "
+        f"git said: {r.stderr.strip() or 'no vX.Y.Z tag'}"
+    )
 
 
 def read_targets():
@@ -203,11 +233,12 @@ def read_targets():
 
 
 def clone(repo, dest, ref=None):
-    """gh repo clone with one plain message on failure instead of a stack trace.
+    """Clone the core at ref, with one plain message on failure instead of a stack trace.
 
-    CORE_CHECKOUT=<path of an existing clone of the core> clones from that checkout instead, with no gh
-    and no network: CI that fetched the core with a read-only deploy key, or an offline restore. The
-    checkout must hold the ref (fetch tags, for example actions/checkout with fetch-depth 0)."""
+    Tries gh first (a signed-in account), then plain git over anonymous HTTPS (the core is public, so no
+    account, token or key is needed). CORE_CHECKOUT=<path of an existing clone of the core> clones from
+    that checkout instead, with no network: an offline restore or CI that already checked the core out.
+    The checkout must hold the ref (fetch tags, for example actions/checkout with fetch-depth 0)."""
     local = os.environ.get("CORE_CHECKOUT")
     if local:
         args = ["git", "clone", "--quiet", str(pathlib.Path(local).resolve()), str(dest)] + (
@@ -219,23 +250,29 @@ def clone(repo, dest, ref=None):
                 f"Could not clone {ref or 'the default branch'} from CORE_CHECKOUT={local}: {r.stderr.strip()}"
             )
         return
-    args = ["gh", "repo", "clone", repo, str(dest), "--", "--quiet"]
-    if ref:
-        args += ["--branch", ref]
+    gh_said = ""
+    args = ["gh", "repo", "clone", repo, str(dest), "--", "--quiet"] + (
+        ["--branch", ref] if ref else []
+    )
     try:
         r = subprocess.run(args, capture_output=True, text=True)
+        if r.returncode == 0:
+            return
+        gh_said = r.stderr.strip().splitlines()[-1] if r.stderr.strip() else "no output"
+        shutil.rmtree(dest, ignore_errors=True)
     except FileNotFoundError:
-        sys.exit("The gh CLI is not installed. Install it, run `gh auth login`, then retry.")
+        gh_said = "gh is not installed"
+    args = ["git", "clone", "--quiet", git_url(repo), str(dest)] + (
+        ["--branch", ref] if ref else []
+    )
+    r = subprocess.run(args, capture_output=True, text=True)
     if r.returncode == 0:
         return
-    who = subprocess.run(
-        ["gh", "api", "user", "--jq", ".login"], capture_output=True, text=True
-    ).stdout.strip()
     sys.exit(
-        f"Could not read {repo} (gh signed in as: {who or 'nobody'}).\n"
-        "The core is private. Check that: (1) you accepted the collaborator invitation, "
-        "(2) `gh auth status` shows the account that was invited, (3) the ref exists.\n"
-        f"gh said: {r.stderr.strip().splitlines()[-1] if r.stderr.strip() else 'no output'}"
+        f"Could not read {repo} at {ref or 'the default branch'}.\n"
+        "Check that the ref exists and that this machine reaches github.com. The core is public: no\n"
+        "invitation, token or key is needed.\n"
+        f"gh said: {gh_said or 'not tried'}; git said: {r.stderr.strip().splitlines()[-1] if r.stderr.strip() else 'no output'}"
     )
 
 

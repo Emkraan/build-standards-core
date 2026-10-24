@@ -205,9 +205,10 @@ repo. Nothing flows sideways, and no overlay can change another overlay.
 
 For an account that owns its own repos (a different GitHub owner than the core). Do these in order.
 
-1. **Get access.** Accept the collaborator invitation to this repo (an email and a banner at https://github.com/OWNER/build-standards-core). Check it: `gh repo view OWNER/build-standards-core`
-   must print the repo, not "not found".
-2. **Sign in.** `gh auth login`, then `gh auth status` shows your account. The sync script uses `gh`.
+1. **No access to request.** The core is public: anyone can read it, with no invitation, token or key.
+   Check it: `git ls-remote --tags https://github.com/OWNER/build-standards-core.git` lists the releases.
+2. **Optional: sign in to `gh`.** The scripts use `gh` when it is installed and signed in, and plain
+   `git` over HTTPS otherwise, so a machine or CI job without an account works the same.
 3. **Create your overlay.** In your own repo, copy `templates/overlay/` as described in step 1 of
    "Consuming the core", set `standards-local/parameters.md`, and run `python3 scripts/sync-core.py <tag>`.
 4. **Keep the offline check.** The template `core-drift.yml` needs no secret and no access to the core,
@@ -218,11 +219,9 @@ For an account that owns its own repos (a different GitHub owner than the core).
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `Could not resolve to a Repository` | invitation not accepted, or `gh` signed in as another account | accept it, `gh auth status` |
-| `sync-core.py` exits with a clone error | no read access | step 1 |
+| `Could not read OWNER/build-standards-core at <ref>` | the ref does not exist, or no route to github.com | check the tag, step 1 |
 | drift check says `DRIFT` | someone edited `standards-core/` by hand | rerun `sync-core.py` |
 | `DRIFT: content hash ... does not match the lock` | the synced copies were edited, or the lock is stale | rerun `sync-core.py` and commit both |
-| `Could not read ... (gh signed in as: X)` | wrong account, invitation not accepted, or bad ref | `gh auth status`, step 1 |
 
 ## Consuming the core
 
@@ -236,7 +235,7 @@ Do this once per business, in that business's own repo.
 ### 1. Copy the template
 
 ```bash
-gh repo clone OWNER/build-standards-core ~/scratch/core    # needs read access
+git clone https://github.com/OWNER/build-standards-core.git ~/scratch/core    # public, no account needed
 cp -R ~/scratch/core/templates/overlay/. <your-overlay-repo>/
 ```
 
@@ -309,58 +308,39 @@ with the core itself and is meant for a developer machine.
 
 An older `standards.lock` without `content_sha256` still passes with a notice; run `sync-core.py` once.
 
-#### CI that builds the app (the core is private)
+#### CI that builds the app
 
 The drift check above needs nothing. A CI job that also **builds** the app needs the synced copies,
 and a consumer that keeps them out of its own repo (a mirror, a backup, a monorepo that ignores them)
-has to restore them in CI. The core is private, so CI needs read access to it. Use a deploy key, one per
-consumer repo: it reaches only the core and only reads it. Do not use a personal token. A fine-grained
-token cannot reach a repo owned by another account, and a classic token can write to every repo its
-owner reaches.
+restores them in CI. The core is public, so the job checks it out with no key, token or secret. The
+pinned ref comes from `standards.lock`, and `fetch-depth: 0` keeps the tags the pin names:
 
-1. **Make the key pair** on a developer machine, outside any repo, with no passphrase:
-   `ssh-keygen -t ed25519 -N "" -C "<consumer repo>-ci read-only" -f <scratch>/core_ci`
-2. **Store the private half as a secret** on the consumer repo and remove it from disk:
-   `gh secret set CORE_DEPLOY_KEY -R <owner>/<consumer> < <scratch>/core_ci`, then delete `core_ci`.
-   Never commit it, paste it into chat or echo it.
-3. **Ask a core admin to add the public half** (`core_ci.pub`, safe to share): core repo Settings >
-   Deploy keys > Add deploy key, title `<consumer repo>-ci`, and leave **Allow write access**
-   unchecked. Only admins of the core can add deploy keys. Push access is not enough.
-4. **Restore in the workflow** before the build. The pinned ref comes from `standards.lock`, and
-   `fetch-depth: 0` keeps the tags the pin names:
+```yaml
+- uses: actions/checkout@v5
+- name: Pinned core ref
+  id: core
+  run: echo "ref=$(sed -n 's/^ref=//p' standards.lock)" >> "$GITHUB_OUTPUT"
+- uses: actions/checkout@v5
+  with:
+    repository: OWNER/build-standards-core
+    ref: ${{ steps.core.outputs.ref }}
+    fetch-depth: 0
+    path: .core
+- name: Restore the core copies from the pin
+  run: |
+    mkdir -p scripts
+    cp "$GITHUB_WORKSPACE"/.core/templates/overlay/scripts/*.py scripts/
+    CORE_CHECKOUT="$GITHUB_WORKSPACE/.core" python3 scripts/sync-core.py "${{ steps.core.outputs.ref }}"
+    python3 scripts/check-core-sync.py
+```
 
-   ```yaml
-   - uses: actions/checkout@v5
-   - name: Pinned core ref
-     id: core
-     run: echo "ref=$(sed -n 's/^ref=//p' standards.lock)" >> "$GITHUB_OUTPUT"
-   - uses: actions/checkout@v5
-     with:
-       repository: <core owner>/build-standards-core
-       ssh-key: ${{ secrets.CORE_DEPLOY_KEY }}
-       ref: ${{ steps.core.outputs.ref }}
-       fetch-depth: 0
-       path: .core
-   - name: Restore the core copies from the pin
-     run: |
-       mkdir -p scripts
-       cp "$GITHUB_WORKSPACE"/.core/templates/overlay/scripts/*.py scripts/
-       CORE_CHECKOUT="$GITHUB_WORKSPACE/.core" python3 scripts/sync-core.py "${{ steps.core.outputs.ref }}"
-       python3 scripts/check-core-sync.py
-   ```
-
-   Run it from the overlay folder (`working-directory`) when the app is not at the repo root, and
-   ignore `.core/` in `.gitignore`.
-5. **Verify** by re-running the job. `Permission denied (publickey)` on the core checkout means the
-   public half is missing on the core or the secret name does not match. `core sync: clean` means the
-   copies match the pin's content hash.
-6. **Rotate or revoke** by deleting the deploy key on the core (access stops at once), then repeat
-   steps 1 to 3. One key per consumer repo, so revoking one never breaks another.
+Run it from the overlay folder (`working-directory`) when the app is not at the repo root, and ignore
+`.core/` in `.gitignore`. `core sync: clean` means the copies match the pin's content hash.
 
 ### 6. Keep it current
 
 Run `python3 scripts/check-core-sync.py --latest` on a developer machine. It prints
-`pinned vX, latest vY, run sync-core.py vY` (exit 3) when you are behind, and needs `gh` but no CI secret.
+`pinned vX, latest vY, run sync-core.py vY` (exit 3) when you are behind, and needs no account or secret.
 
 **Upgrading.** `python3 scripts/sync-core.py latest` (or an explicit tag) on a branch, then commit
 `standards.lock`, the synced copies (`standards-core/`, `tokens-core/`, `lint-core/`, `kit-core/`) and
@@ -404,8 +384,8 @@ Never edit `standards-core/`, `tokens-core/` or any file listed in `targets.map`
      build skip its typecheck.
    - Apply to the real tree only when its gate passes before and after the sync, roll back by syncing
      the old pin otherwise, and commit the pin, the copies and the overlay scripts by name.
-   - CI without `gh`: restore the core through a read-only deploy key and `CORE_CHECKOUT`, step by step
-     in "CI that builds the app" under step 5.
+   - CI without `gh`: check the core out over HTTPS and pass it as `CORE_CHECKOUT`, step by step in
+     "CI that builds the app" under step 5.
    - Raise one work item per distinct set of problems, keyed on that set, so a dismissed item stays
      dismissed until something changes, and close it on the first clean run. Treat an unreachable
      GitHub as a problem only after several runs in a row.
@@ -748,9 +728,8 @@ is looser, either meet the core or open a pull request here to change it.
 
 **Can I put something here that only my business needs?** No. Keep it in your overlay.
 
-**CI fails with `Permission denied (publickey)` on the core checkout.** The consumer's deploy key is
-not on the core, or the secret name in the workflow does not match. Follow "CI that builds the app"
-under step 5. Only a core admin can add the key.
+**CI cannot check out the core.** The core is public, so a checkout needs no key or token. Check the
+`repository:` name and that the pinned ref exists as a tag (`git ls-remote --tags`).
 
 ## Licence and provenance
 
