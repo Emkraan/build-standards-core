@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-24 (v1.5.0, ThemeToggle system option, D-001)
+
+Approved consumer item D-001 (consumer report on the intake).
+
+- `ThemeToggle` takes `withSystem`: a compact three-way Light, System, Dark control (icon segments
+  built on `Segmented`, the labels as accessible names) instead of the flip button, so a user can go
+  back to following the OS after picking a theme. `system` is stored as its own value and follows
+  `prefers-color-scheme` while it is set; the reveal grows from the pressed segment. New props
+  `groupLabel`, `lightLabel`, `systemLabel`, `darkLabel`. Without `withSystem` the toggle is unchanged.
+- New icon `IconMonitor`.
+- Tests: the default button unchanged, the three-way choice and its storage, custom labels. Gallery
+  specimen `theme-system`, docs in `kit/README.md` and `standards/web-ui.md` section 6.
+
 ## 2026-10-24 (v1.4.0, month calendar grid)
 
 Carried over from the previous core repository (item D-011 of a consumer report, approved).

@@ -2225,7 +2225,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'empty', 'overlays', 'chrome', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'palette-rank', 'tile-edge', 'freshness', 'month-grid'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'empty', 'overlays', 'chrome', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'palette-rank', 'tile-edge', 'freshness', 'month-grid'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2275,6 +2275,10 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         <PageHeader wash eyebrow="Build standards" title="Kit gallery" subtitle="The shared React kit rendered on one page." status={<Badge tone="success" dot>Tokens loaded</Badge>} />
         <Specimen id="theme" title="Theme and accent">
           <ThemeControls accent={accent} onAccent={setAccent} />
+        </Specimen>
+        <Specimen id="theme-system" title="Theme toggle with System">
+          <span className="gallery-note">ThemeToggle withSystem: Light, System and Dark, so a user can go back to following the OS:</span>
+          <ThemeToggle withSystem />
         </Specimen>
         <Specimen id="type" title="Type roles">
           <TypeRolesSpecimen />
