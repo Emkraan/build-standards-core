@@ -2236,7 +2236,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'empty', 'overlays', 'chrome', 'search-routing', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'palette-rank', 'tile-edge', 'freshness', 'month-grid'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'search-routing', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'palette-rank', 'tile-edge', 'freshness', 'month-grid'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2429,6 +2429,28 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="list-split" title="List table, paging and split layout">
           <ListSplitSpecimen />
+        </Specimen>
+        <Specimen id="theme-system" title="Theme toggle with System">
+          <span className="gallery-note">ThemeToggle withSystem: Light, System and Dark, so a user can go back to following the OS:</span>
+          <ThemeToggle withSystem />
+        </Specimen>
+        <Specimen id="phone-cards" title="Rows as cards on a phone">
+          <span className="gallery-note">Table mobile="cards" stickyHead={'{false}'}: below 640px each row is a card labelled by its column headers:</span>
+          <Table
+            caption="Hosts"
+            mobile="cards"
+            stickyHead={false}
+            rowKey={(r: { id: string; host: string; role: string; cpu: number }) => r.id}
+            columns={[
+              { key: 'host', header: 'Host' },
+              { key: 'role', header: 'Role' },
+              { key: 'cpu', header: 'CPU %', numeric: true },
+            ]}
+            rows={[
+              { id: 'h1', host: 'node-a', role: 'Gateway', cpu: 12 },
+              { id: 'h2', host: 'node-b', role: 'Worker', cpu: 64 },
+            ]}
+          />
         </Specimen>
         <Specimen id="search-routing" title="Search routed to an app's own palette">
           <SearchRoutingSpecimen />

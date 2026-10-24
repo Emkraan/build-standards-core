@@ -339,7 +339,9 @@ A bar of height `--topbar-h`. Left to right:
    [section 13](#13-global-search-palette).
 4. The **home button** (`.hub-btn`): the only route home (rule 9).
 5. Copy-link and the theme toggle (`ThemeToggle`). The theme switch is revealed as a circle growing
-   from the click (View Transitions API, instant where unsupported or under reduced motion).
+   from the click (View Transitions API, instant where unsupported or under reduced motion). Where
+   the header has no account menu offering System, use `ThemeToggle withSystem` (Light, System,
+   Dark), so a user who picked a theme can return to following the OS.
 
 ### Home: a dashboard of current data
 
