@@ -284,7 +284,7 @@ entry too (#117 G-031). Its counts reach the report through `core-status.py --ve
 registered consumer its class, pin, latest, behind count, open sync pull request with CI state,
 core-status counts, UI verdict and adoption suggestions, this account's report items waiting for a
 decision or approved with no core pull request yet, and a `peers` block read from every open
-`consumer-report` issue on the core. Every ops center renders its Core consumption panel from it
+`consumer-report` issue in the private intake (`report_repo`). Every ops center renders its Core consumption panel from it
 (standards/local-ops-app.md section 19, which holds the schema). The feed is read-only on every
 remote and never writes to another account's issue.
 
@@ -326,9 +326,12 @@ longer exists.
 ## 7. The upward path
 
 You do not open a pull request on this repo from a build, and the nightly never opens one either.
-What a build learns goes into one place: this account's single open `consumer-report` issue on the
-core, created from the template at
-`.github/ISSUE_TEMPLATE/consumer-report.md` on the first report run.
+What a build learns goes into one place: this account's single open `consumer-report` issue in the
+owner's PRIVATE intake repository, named on this machine as `report_repo` in `consumer.json` (set it
+with `hermes/setup.py --report-repo OWNER/REPO`), created from the intake's `consumer-report`
+template on the first report run. The core is public, so a report is never filed on it: with no
+`report_repo`, a `report_repo` equal to the core, or one that is not private, the nightly files nothing
+and says why.
 
 The nightly (`hermes/report.py`) keeps its own section current between the issue's two markers
 `<!-- nightly:candidates:start -->` and `<!-- nightly:candidates:end -->`: local parts that
@@ -396,5 +399,5 @@ links the issue.
 | Token efficiency policy for an agent home | `hermes/token-efficiency.md` |
 | Per-tool decisions the nightly job installs | `hermes/tools.json` |
 | How a UI repo consumes the core | README "Consuming the core", `templates/overlay/` |
-| How a build reports to the core | `.github/ISSUE_TEMPLATE/consumer-report.md`, `CONTRIBUTING.md` |
+| How a build reports to the core | the private intake's `consumer-report` template (`report_repo`), `CONTRIBUTING.md` |
 | How to contribute | `CONTRIBUTING.md`, `hermes/README.md` section 4 |

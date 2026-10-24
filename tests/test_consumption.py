@@ -283,6 +283,7 @@ class Feed(Work):
             self.gh,
             previous or {},
             lambda c: self.pins.get(c["repo"], ""),
+            "owner/core",
         )
 
     def test_schema_and_rows(self):
@@ -318,12 +319,28 @@ class Feed(Work):
     def test_update_writes_atomically_and_check_writes_nothing(self):
         state = self.dir / "state"
         info, problems = consumption.update(
-            self.cfg, self.core, "owner/core", "v0.60.0", self.gh, state, True, lambda c: ""
+            self.cfg,
+            self.core,
+            "owner/core",
+            "v0.60.0",
+            self.gh,
+            state,
+            True,
+            lambda c: "",
+            "owner/core",
         )
         self.assertFalse((state / "consumption.json").exists())
         self.assertEqual(problems, [])
         consumption.update(
-            self.cfg, self.core, "owner/core", "v0.60.0", self.gh, state, False, lambda c: ""
+            self.cfg,
+            self.core,
+            "owner/core",
+            "v0.60.0",
+            self.gh,
+            state,
+            False,
+            lambda c: "",
+            "owner/core",
         )
         data = json.loads((state / "consumption.json").read_text())
         self.assertEqual(data["format"], consumption.FORMAT)
@@ -341,6 +358,7 @@ class Feed(Work):
             state,
             False,
             lambda c: "",
+            "owner/core",
         )
         self.assertTrue(any("D-005" in i for i in info), info)
 
@@ -349,10 +367,35 @@ class Feed(Work):
             return (1, "network down")
 
         data = consumption.build(
-            self.cfg, self.core, "owner/core", "v0.60.0", broken, {}, lambda c: ""
+            self.cfg, self.core, "owner/core", "v0.60.0", broken, {}, lambda c: "", "owner/core"
         )
         self.assertTrue(any(n.startswith("peers:") for n in data["not_collected"]))
         self.assertEqual(len(data["consumers"]), 3)
+
+    def test_reports_are_read_from_the_intake_only(self):
+        # No private intake configured: no report issue is read from anywhere, the core included.
+        self.gh.calls.clear()
+        data = consumption.build(
+            self.cfg, self.core, "owner/core", "v0.60.0", self.gh, {}, lambda c: ""
+        )
+        self.assertIn(
+            "peers and account: no private intake configured (report_repo)", data["not_collected"]
+        )
+        self.assertFalse([c for c in self.gh.calls if c[:3] == ["gh", "issue", "list"]])
+        # With an intake, issues come from it and pull requests still come from the core.
+        self.gh.calls.clear()
+        consumption.build(
+            self.cfg, self.core, "org/core", "v0.60.0", self.gh, {}, lambda c: "", "owner/intake"
+        )
+        issue_repos = {
+            c[c.index("-R") + 1] for c in self.gh.calls if c[:3] == ["gh", "issue", "list"]
+        }
+        pr_repos = {c[c.index("-R") + 1] for c in self.gh.calls if c[:3] == ["gh", "pr", "list"]}
+        self.assertEqual(issue_repos, {"owner/intake"})
+        self.assertIn(
+            "org/core", pr_repos
+        )  # core pull requests (consumer repos list their sync PRs too)
+        self.assertNotIn("owner/intake", pr_repos)
 
 
 class FeedWithCi(Feed):

@@ -255,6 +255,11 @@ def main() -> int:
         help="the --ui repos given are applied by a local job of this machine: register them for the "
         'report sections only ("apply": false on the entry)',
     )
+    ap.add_argument(
+        "--report-repo",
+        help="OWNER/REPO of the PRIVATE intake that receives this account's consumer report "
+        "(report_repo); never the core",
+    )
     ap.add_argument("--no-run", action="store_true")
     ap.add_argument("--check", action="store_true")
     a = ap.parse_args()
@@ -280,6 +285,8 @@ def main() -> int:
     )
     if slug.count("/") == 1:
         cfg["core_repo"] = slug
+    if a.report_repo:
+        cfg["report_repo"] = a.report_repo
     nightly.migrate(cfg)
     if a.no_binaries:
         cfg["apply"]["binaries"] = False

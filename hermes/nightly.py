@@ -400,7 +400,11 @@ class Run:
         if not (self.cfg["apply"].get("report", True) and self.cfg["apply"].get("ui", True)):
             return
         core_repo = os.environ.get("CORE_REPO", "")
-        if not core_repo:
+        target, why = report.report_target(
+            self.cfg.get("report_repo") or os.environ.get("CORE_REPORT_REPO", ""), core_repo, sh
+        )
+        if not target:
+            self.info.append(f"report: {why}")
             return
         clones = [
             self.report_entry(c)
@@ -409,15 +413,13 @@ class Run:
         ]  # a pin line has no kit to scan
         run: dict = {}  # one report issue per run: the section that creates it records the number here
         try:
-            i, p = report.update(self.core, core_repo, clones, sh, STATE_DIR, self.check, run)
+            i, p = report.update(self.core, target, clones, sh, STATE_DIR, self.check, run)
             self.info += i
             self.problems += p
         except Exception as exc:
             self.problems.append(f"report candidates: {exc}")
         try:
-            i, p = report.update_changes(
-                self.core, core_repo, clones, sh, STATE_DIR, self.check, run
-            )
+            i, p = report.update_changes(self.core, target, clones, sh, STATE_DIR, self.check, run)
             self.info += i
             self.problems += p
         except Exception as exc:
@@ -438,6 +440,7 @@ class Run:
                 STATE_DIR,
                 self.check,
                 self.pinned_of,
+                self.cfg.get("report_repo") or os.environ.get("CORE_REPORT_REPO", ""),
             )
             self.info += i
             self.problems += p
