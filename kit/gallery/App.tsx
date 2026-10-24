@@ -76,6 +76,7 @@ import {
   ShortcutLayer,
   Skeleton,
   MonthGrid,
+  LaneBoard,
   StatTile,
   FreshnessGrid,
   StatusDot,
@@ -467,6 +468,24 @@ function MonthGridSpecimen() {
     { id: '6', date: '2026-10-23', label: 'Release window', tone: 'danger' as const },
   ];
   return <MonthGrid year={2026} month={9} label="Example calendar" today="2026-10-23" events={events} selected={picked} onSelectDay={setPicked} />;
+}
+
+function LaneBoardSpecimen() {
+  const [lanes, setLanes] = useState([
+    { id: 'todo', label: 'To do', cards: [{ id: 'a', label: 'Review access list' }, { id: 'b', label: 'Update runbook' }] },
+    { id: 'doing', label: 'In progress', cards: [{ id: 'c', label: 'Patch window plan' }] },
+    { id: 'done', label: 'Done', cards: [] as { id: string; label: string }[] },
+  ]);
+  const move = (m: { cardId: string; to: string; index: number }) =>
+    setLanes((ls) => {
+      const card = ls.flatMap((l) => l.cards).find((c) => c.id === m.cardId)!;
+      return ls.map((l) => {
+        const rest = l.cards.filter((c) => c.id !== m.cardId);
+        if (l.id === m.to) rest.splice(m.index, 0, card);
+        return { ...l, cards: rest };
+      });
+    });
+  return <LaneBoard lanes={lanes} onMove={move} label="Example board" />;
 }
 
 function StatSpecimen() {
@@ -2300,7 +2319,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'palette-rank', 'tile-edge', 'freshness', 'month-grid'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2524,6 +2543,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="confirm-action" title="Confirm that runs its action">
           <ConfirmActionSpecimen />
+        </Specimen>
+        <Specimen id="lane-board" title="Lane board">
+          <LaneBoardSpecimen />
         </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">

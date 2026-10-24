@@ -1864,3 +1864,18 @@ button.month-grid-chip { cursor: pointer; }
 .month-grid-event[data-tone="danger"] .month-grid-chip { border-color: var(--danger); }
 .month-grid-event[data-tone="info"] .month-grid-chip { border-color: var(--info); }
 .month-grid-more { font-size: var(--fs-micro); color: var(--text-secondary); }
+
+/* LaneBoard */
+.lane-board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(220px, 1fr); gap: var(--space-3); overflow-x: auto; min-width: 0; }
+.lane-board-lane { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; padding: var(--space-2); background: var(--surface-inset); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
+.lane-board-lane[data-over] { border-color: var(--border-accent-strong); background: var(--accent-soft); }
+.lane-board-head { display: flex; justify-content: space-between; align-items: center; margin: 0; padding: 0 var(--space-1); font-size: var(--fs-label); font-weight: var(--fw-semibold); color: var(--text-secondary); }
+.lane-board-count { color: var(--text-muted); font-weight: var(--fw-medium); }
+.lane-board-cards { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; min-height: 48px; }
+.lane-board-card { padding: var(--space-2) var(--space-3); background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-md); color: var(--text-primary); cursor: grab; }
+.lane-board-card:hover { background: var(--surface-2); }
+.lane-board-card:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.lane-board-card[data-dragging] { opacity: 0.5; }
+.lane-board-drop { height: 3px; margin-bottom: var(--space-2); border-radius: var(--radius-pill); background: var(--accent-fill); }
+.lane-board-empty { padding: var(--space-3); text-align: center; font-size: var(--fs-caption); color: var(--text-muted); border: 1px dashed var(--border-default); border-radius: var(--radius-md); }
+.lane-board-slot[data-picked] .lane-board-card { opacity: 0.5; border-style: dashed; }
