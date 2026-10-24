@@ -1,13 +1,11 @@
 # Changelog
 
-<<<<<<< HEAD
-## 2026-10-24 (v1.11.1, undici security fix)
+## 2026-10-24 (v1.10.1, undici security fix)
 
 - `undici` (dev only, through jsdom) raised from 8.11.2 to 8.12.3, and an `overrides` entry lifts the copy
   pinned by `@scalar/json-magic` from 7.29.1 to 7.30.1. Both close the content-encoding denial of service
   advisory. No kit API or behaviour change.
 
-=======
 ## 2026-10-24 (v1.10.0, ops center design)
 
 Carried over from the previous core repository (opened 2026-10-23), where the owner made the decisions
@@ -21,7 +19,6 @@ recommended.
   kit shell, the slot interfaces with reference adapters for the code host, work tracker and docs home,
   every parameter including the declared exceptions, the deploy contract, automerge, `adopt`, the build
   plan (P1 to P3, then R1 to R9) and each consumer's migration path.
->>>>>>> 59871ca233779a347020426e2708d3cb58be0e6e
 ## 2026-10-24 (v1.9.0, confirm runs its action, D-005)
 
 Approved consumer item D-005 (consumer report on the intake).
