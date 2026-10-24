@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-24 (v1.1.1, public repository automerge)
+
+- `.github/workflows/automerge.yml`: the repository is public, so it merges through the owning org's
+  reusable automerge workflow (pinned to a commit) on hosted runners, with a twice daily safety-net sweep.
+- `checks/check-sanitised.py`: `.github/workflows/automerge.yml` joins `LICENSE` and `renovate.json` as
+  the only identity files exempt from the term lists (it names the org whose workflow it calls). Test
+  extended.
+
 ## 2026-10-24 (v1.1.0, the public core needs no account to read)
 
 - `templates/overlay/scripts/corehash.py`: `clone()` and `latest_tag()` try `gh` first, then plain `git`

@@ -1,0 +1,39 @@
+name: automerge
+
+# Repo auto-merge for this public repository: a thin caller of the owning organisation's reusable
+# workflow, which enqueues or merges a pull request once branch protection is satisfied and merges as
+# the deploy bot App. Pinned to a commit (Renovate keeps it current) so the core's own workflow lint
+# holds. The workflow_run list names every workflow here that runs on pull_request; the schedule is
+# the twice daily safety net for a pull request that falls out of the merge queue.
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, closed]
+  pull_request_review:
+    types: [submitted]
+  workflow_run:
+    workflows: ["checks", "kit", "visual"]
+    types: [completed]
+  schedule:
+    - cron: "7 6,18 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  checks: read
+  statuses: read
+  actions: read
+
+concurrency:
+  group: automerge-${{ github.event.pull_request.number || github.event.workflow_run.id }}
+  cancel-in-progress: false
+
+jobs:
+  automerge:
+    uses: Emkraan/.github/.github/workflows/reusable-automerge.yml@29667da5b18e403df304de18455a8cb091e10b53 # 2026-10-24 main
+    with:
+      runs-on: '"ubuntu-latest"'
+      app-client-id: ${{ vars.DEPLOY_APP_ID }}
+    secrets:
+      app-private-key: ${{ secrets.DEPLOY_APP_PRIVATE_KEY }}
