@@ -2339,9 +2339,6 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         <Specimen id="chrome" title="Required chrome">
           <ChromeSpecimen releases={releases} version={version} />
         </Specimen>
-        <Specimen id="search-routing" title="Search routed to an app's own palette">
-          <SearchRoutingSpecimen />
-        </Specimen>
         <Specimen id="charts" title="Chart colours">
           <ChartsSpecimen />
         </Specimen>
@@ -2432,6 +2429,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="list-split" title="List table, paging and split layout">
           <ListSplitSpecimen />
+        </Specimen>
+        <Specimen id="search-routing" title="Search routed to an app's own palette">
+          <SearchRoutingSpecimen />
         </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">
