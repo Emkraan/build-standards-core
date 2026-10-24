@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: ci
+    runs-on: [self-hosted, forge]
+    steps:
+      # Full commit history (gitleaks scans base..head, the Alloy step diffs against
+      # the PR base) but blobs on demand: blob:none skips downloading every historic
+      # file version, which is what made this checkout stall for minutes.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          filter: blob:none
+
+      - name: Gitleaks secret scan (PR diff)
+        if: github.event_name == 'pull_request'
+        env:
+          GL_VER: "8.30.1"
+          GL_BASE: ${{ github.event.pull_request.base.sha }}
+          GL_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          GL_BIN="$(command -v gitleaks || true)"
+          if [ -z "$GL_BIN" ]; then
+            GL_BIN="/tmp/gitleaks-cache/${GL_VER}/gitleaks"
+            if [ ! -x "$GL_BIN" ]; then
+              mkdir -p "/tmp/gitleaks-cache/${GL_VER}"
+              curl -fsSL --connect-timeout 20 --max-time 180 --retry 5 --retry-delay 5 --retry-all-errors -o /tmp/gl.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${GL_VER}/gitleaks_${GL_VER}_linux_x64.tar.gz"
+              tar -xzf /tmp/gl.tgz -C "/tmp/gitleaks-cache/${GL_VER}" gitleaks
+            fi
+          fi
+          echo "W2V4dGVuZF0KdXNlRGVmYXVsdCA9IHRydWUKCltbYWxsb3dsaXN0c11dCmRlc2NyaXB0aW9uID0gImV4YW1wbGUgYW5kIHRlc3QgZmlsZXMgYXJlIG5vdCByZWFsIHNlY3JldHMiCnBhdGhzID0gWycnJy4qXC5lbnZcLmV4YW1wbGUkJycnLCAnJycuKlwuZXhhbXBsZSQnJycsICcnJy4qXC50ZXN0XC4odHN8anN8dHN4fGpzeHxweXxwczEpJCcnJywgJycnLiovX190ZXN0c19fLy4qJycnLCAnJycuKi90ZXN0cz8vLionJyddCgpbW2FsbG93bGlzdHNdXQpkZXNjcmlwdGlvbiA9ICJPQXV0aCBjbGllbnRfaWQgaXMgYSBwdWJsaWMgaWRlbnRpZmllciwgbm90IGEgc2VjcmV0IgpyZWdleFRhcmdldCA9ICJsaW5lIgpyZWdleGVzID0gWycnJyg/aSljbGllbnRbXy1dP2lkJycnXQo=" | base64 -d > /tmp/gitleaks.toml
+          git fetch --no-tags origin "$GL_BASE" "$GL_HEAD" >/dev/null 2>&1 || true
+          "$GL_BIN" git . --config /tmp/gitleaks.toml --redact --no-banner --exit-code 1 --log-opts="$GL_BASE..$GL_HEAD"
+          echo "gitleaks: no new secrets in PR diff"
+
+      # The forge self-hosted runner image (myoung34/github-runner) is a plain
+      # Ubuntu noble, NOT the GitHub-hosted image. Two things this job used to get
+      # for free are absent there:
+      #   - pipx, and a pip that will install anything: noble's system Python is
+      #     PEP 668 externally-managed, so `pip install` refuses outright.
+      #   - a preinstalled PyYAML, which the Windmill-metadata step below imports.
+      # setup-python provides a self-contained interpreter from the tool cache that
+      # is not externally managed and whose bin dir is on PATH, so a plain
+      # `pip install` works and the installed console scripts resolve. Both
+      # dependencies are pinned/installed in one step below rather than relying on
+      # whatever the runner image happens to ship.
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+
+      - name: Install Python tooling (ruff, PyYAML, jsonschema)
+        run: pip install --quiet ruff==0.16.6 pyyaml jsonschema
+
+      # Ruff lint + format for the first-party Python in this repo (the Eir
+      # reconcilers, exporters, notify-engine, deploy and scripts helpers).
+      # Config is [tool.ruff] in pyproject.toml, matching the rest of the fleet.
+      #
+      # BOTH commands, deliberately. `ruff format --check` only catches layout;
+      # it says nothing about unused imports, import order, or the bugbear rules.
+      # Running format alone locally and assuming CI agrees is how this has been
+      # missed before (see feedback in emkraan-studio's deployment lessons).
+      - name: Ruff (lint + format check)
+        run: |
+          ruff --version
+          ruff check .
+          ruff format --check .
+
+      - name: No em dashes
+        run: |
+          python3 - << 'PYEOF'
+          import sys, pathlib
+          DASHES = '–—―'
+          SKIP = {'.git', '.github', 'node_modules', '__pycache__', 'dist', 'build', '.venv', 'vendor', 'target'}
+          found = False
+          for path in sorted(pathlib.Path('.').rglob('*.md')):
+              if any(p in SKIP for p in path.parts):
+                  continue
+              try:
+                  lines = path.read_text(encoding='utf-8', errors='replace').splitlines()
+              except Exception as e:
+                  print(f'::warning::Could not read {path}: {e}')
+                  continue
+              for lineno, line in enumerate(lines, 1):
+                  if any(ch in line for ch in DASHES):
+                      print(f'::error file={path},line={lineno}::Em/en dash found. Use a hyphen, comma, or colon.')
+                      found = True
+          if found:
+              sys.exit(1)
+          PYEOF
