@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-24 (v1.7.0, search routing, D-003)
+
+Approved consumer item D-003 (consumer report on the intake).
+
+- `PALETTE_OPEN_EVENT` (the document event that opens the palette) is exported, with
+  `onPaletteOpen(listener)`, which hears every open request (a trigger, the feed strip,
+  `openCommandPalette`, `openScopedPalette`) with its scope and returns the unsubscribe.
+- `SearchTrigger` and `FeedStrip` take `onSearch`: called instead of opening the kit palette, for an
+  app that still mounts its own during a migration. Unset, both behave as before.
+- Tests for the event export and listener, the unchanged default and the routed trigger through the
+  feed strip; gallery specimen `search-routing`; docs in `kit/README.md`.
+
 ## 2026-10-24 (v1.4.0, month calendar grid)
 
 Carried over from the previous core repository (item D-011 of a consumer report, approved).

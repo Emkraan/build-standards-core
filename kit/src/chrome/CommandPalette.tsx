@@ -41,7 +41,10 @@ export interface PaletteItem {
   onSelect: () => void;
 }
 
-const OPEN_EVENT = 'kit:open-palette';
+/** The document event that opens the mounted palette. Exported so an app that still mounts its own
+    palette during a migration can listen for it (or use onPaletteOpen) instead of hard-coding it. */
+export const PALETTE_OPEN_EVENT = 'kit:open-palette';
+const OPEN_EVENT = PALETTE_OPEN_EVENT;
 const SCOPE_ATTR = 'data-palette-scope';
 
 /** Scopes of the mounted scoped palettes, with a count so two mounts of one scope stay correct. */
@@ -62,6 +65,15 @@ export function isSlashOpen(event: Pick<globalThis.KeyboardEvent, 'key' | 'ctrlK
 /** Opens the mounted CommandPalette from anywhere (a search button, the feed strip). */
 export function openCommandPalette(): void {
   if (isBrowser) document.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: {} }));
+}
+
+/** Calls `listener` whenever something asks the palette to open (a SearchTrigger, the feed strip,
+    openCommandPalette or openScopedPalette), with the requested scope if any. Returns the unsubscribe. */
+export function onPaletteOpen(listener: (detail: { scope?: string | undefined }) => void): () => void {
+  if (!isBrowser) return () => undefined;
+  const handler = (event: Event) => listener((event as CustomEvent<{ scope?: string } | null>).detail ?? {});
+  document.addEventListener(OPEN_EVENT, handler);
+  return () => document.removeEventListener(OPEN_EVENT, handler);
 }
 
 /** Opens the scoped CommandPalette that owns `scope`, from a button outside its region. */
@@ -549,17 +561,20 @@ export interface SearchTriggerProps {
       Default false (label and keys at every width). The accessible name keeps the shortcut. */
   compact?: boolean | 'auto' | undefined;
   className?: string | undefined;
+  /** Called instead of opening the kit palette, for an app that routes search to its own palette.
+      Unset (the default), the button dispatches PALETTE_OPEN_EVENT as before. */
+  onSearch?: (() => void) | undefined;
 }
 
 /** The header or feed strip button that opens the palette, showing its shortcut. */
-export function SearchTrigger({ label = 'Search', compact = false, className }: SearchTriggerProps) {
+export function SearchTrigger({ label = 'Search', compact = false, className, onSearch }: SearchTriggerProps) {
   const mod = isMacLike() ? 'Cmd' : 'Ctrl';
   const mode = compact === 'auto' ? 'auto' : compact ? 'on' : undefined;
   return (
     <button
       type="button"
       className={cx('search-btn', className)}
-      onClick={openCommandPalette}
+      onClick={onSearch ?? openCommandPalette}
       aria-keyshortcuts={isMacLike() ? 'Meta+K' : 'Control+K'}
       aria-label={mode ? `${label} (${mod}+K)` : undefined}
       data-compact={mode}
