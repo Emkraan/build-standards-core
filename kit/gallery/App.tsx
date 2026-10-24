@@ -2359,9 +2359,6 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         <Specimen id="chrome" title="Required chrome">
           <ChromeSpecimen releases={releases} version={version} />
         </Specimen>
-        <Specimen id="account-actions" title="Account menu actions">
-          <AccountActionsSpecimen />
-        </Specimen>
         <Specimen id="charts" title="Chart colours">
           <ChartsSpecimen />
         </Specimen>
@@ -2452,6 +2449,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="list-split" title="List table, paging and split layout">
           <ListSplitSpecimen />
+        </Specimen>
+        <Specimen id="account-actions" title="Account menu actions">
+          <AccountActionsSpecimen />
         </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">
