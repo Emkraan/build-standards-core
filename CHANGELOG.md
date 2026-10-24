@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-24 (v1.11.1, undici security fix)
+
+- `undici` (dev only, through jsdom) raised from 8.11.2 to 8.12.3, and an `overrides` entry lifts the copy
+  pinned by `@scalar/json-magic` from 7.29.1 to 7.30.1. Both close the content-encoding denial of service
+  advisory. No kit API or behaviour change.
+
 ## 2026-10-24 (v1.11.0, lane board)
 
 Carried over from the previous core repository, where it was opened 2026-10-23 as item D-004 of a
