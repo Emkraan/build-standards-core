@@ -1,0 +1,7 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "WPF design-token resource keys match generic-api-key; they are colour names, not secrets"
+targetRules = ["generic-api-key"]
+paths = ['''tokens/wpf/Tokens\.(Light|Dark)\.xaml$''']
