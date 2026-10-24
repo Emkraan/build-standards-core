@@ -7,6 +7,47 @@ afterEach(() => {
   Reflect.deleteProperty(document, 'startViewTransition');
 });
 
+describe('ThemeToggle withSystem (D-001)', () => {
+  it('without withSystem stays the single flip button', () => {
+    render(
+      <ThemeProvider>
+        <ThemeToggle />
+      </ThemeProvider>,
+    );
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+    expect(screen.queryByRole('group', { name: 'Theme' })).toBeNull();
+  });
+
+  it('offers Light, System and Dark, and returns to following the OS', () => {
+    render(
+      <ThemeProvider>
+        <ThemeToggle withSystem />
+      </ThemeProvider>,
+    );
+    expect(screen.getByRole('group', { name: 'Theme' })).toBeTruthy();
+    const system = screen.getByRole('button', { name: 'System' });
+    expect(system.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Dark' }));
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+    expect(window.localStorage.getItem(STORAGE_KEYS.theme)).toBe('dark');
+    expect(screen.getByRole('button', { name: 'Dark' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'System' }));
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
+    expect(window.localStorage.getItem(STORAGE_KEYS.theme)).toBe('system');
+    expect(screen.getByRole('button', { name: 'System' }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('takes its own labels', () => {
+    render(
+      <ThemeProvider>
+        <ThemeToggle withSystem groupLabel="Appearance" lightLabel="Day" systemLabel="Auto" darkLabel="Night" />
+      </ThemeProvider>,
+    );
+    expect(screen.getByRole('group', { name: 'Appearance' })).toBeTruthy();
+    for (const name of ['Day', 'Auto', 'Night']) expect(screen.getByRole('button', { name })).toBeTruthy();
+  });
+});
+
 describe('ThemeToggle', () => {
   it('sets data-theme on html and persists the choice', () => {
     render(

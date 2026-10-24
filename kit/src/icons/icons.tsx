@@ -52,6 +52,14 @@ export const IconSun = makeIcon(
   </>,
 );
 export const IconMoon = makeIcon('moon', <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />);
+/** A screen on a stand: the theme follows the operating system. */
+export const IconMonitor = makeIcon(
+  'monitor',
+  <>
+    <rect x="3" y="4" width="18" height="12" rx="2" />
+    <path d="M8 20h8M12 16v4" />
+  </>,
+);
 export const IconPin = makeIcon(
   'pin',
   <>
