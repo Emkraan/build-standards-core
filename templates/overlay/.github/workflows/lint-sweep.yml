@@ -1,0 +1,77 @@
+name: lint-sweep
+# Weekly full-tree lint (ci-cd-release.md 4.6). Pull requests lint what they change, so a linter
+# upgrade or a new rule can leave older files failing unnoticed; this sweep lints the whole tree once
+# a week and keeps one issue (label lint-sweep) open while it fails: it opens the issue the first
+# time, updates that same issue on every later failure and never opens a second one, and closes it
+# with a comment on the first green sweep.
+#
+# What it runs: the overlay's UI lint and script lint over the paths in standards-local, then the
+# repo's own full-tree lint from the parameters row "Lint sweep command" (for example
+# `npm run lint -- --max-warnings 0`), when that row is set. Configure: OVERLAY is the overlay folder
+# relative to the repo root ("." when it is the root). CORE_CI_RUNNER, when set, is a JSON runs-on
+# value as in core-ci.yml; unset, the job runs on ubuntu-latest.
+on:
+  schedule:
+    - cron: "41 5 * * 1"  # core-sync: keep
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: lint-sweep
+  cancel-in-progress: false
+env:
+  OVERLAY: .
+jobs:
+  sweep:
+    runs-on: ${{ fromJSON(vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: p
+        run: python3 "$OVERLAY/scripts/core-ci.py" params --github-output
+      - id: lint
+        env:
+          SWEEP_CMD: ${{ steps.p.outputs.lint_sweep }}
+        run: |
+          out="$RUNNER_TEMP/lint-sweep.txt"
+          : > "$out"
+          rc=0
+          python3 "$OVERLAY/lint-core/ui_lint.py" >> "$out" 2>&1 || rc=1
+          python3 "$OVERLAY/lint-core/script_lint.py" >> "$out" 2>&1 || rc=1
+          if [ -n "$SWEEP_CMD" ]; then
+            bash -c "$SWEEP_CMD" >> "$out" 2>&1 || rc=1
+          fi
+          cat "$out"
+          echo "failed=$rc" >> "$GITHUB_OUTPUT"
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          FAILED: ${{ steps.lint.outputs.failed }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          open=$(gh issue list --label lint-sweep --state open --json number --jq '.[0].number // empty')
+          if [ "$FAILED" != "1" ]; then
+            if [ -n "$open" ]; then
+              gh issue close "$open" --comment "The weekly lint sweep passes again: $RUN_URL"
+            fi
+            exit 0
+          fi
+          body="$RUNNER_TEMP/lint-sweep-body.md"
+          {
+            echo "The weekly full-tree lint sweep failed: $RUN_URL"
+            echo
+            echo '```'
+            tail -c 60000 "$RUNNER_TEMP/lint-sweep.txt"
+            echo '```'
+          } > "$body"
+          gh label create lint-sweep --color B60205 --description "Weekly full-tree lint sweep" --force
+          if [ -n "$open" ]; then
+            gh issue edit "$open" --body-file "$body"
+            gh issue comment "$open" --body "Still failing: $RUN_URL"
+          else
+            gh issue create --title "Weekly lint sweep fails" --label lint-sweep --body-file "$body"
+          fi
+          exit 1

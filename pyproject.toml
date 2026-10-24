@@ -1,0 +1,10 @@
+[tool.ruff]
+line-length = 100
+# The floor is the macOS system python (README, "Consuming the core"); core CI runs every script on 3.9.
+target-version = "py39"
+# lint/fixtures, lint/script-fixtures and kit/tests/fixtures hold deliberately non-conforming inputs for the self-tests.
+extend-exclude = ["lint/fixtures", "lint/script-fixtures", "kit/tests/fixtures", "kit/node_modules"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = ["E501"]           # the formatter owns wrapping; what survives is unwrappable

@@ -1,0 +1,15 @@
+<style>
+  .field::before { content: attr(data-placeholder); }
+  .step::after { content: counter(step); }
+</style>
+<main id="app">
+  <h1 class="title">Quarterly Totals Overview</h1>
+  <p id="count">Total: 1,234 items on 2026-10-21</p>
+  <input id="name" value="Jane Doe 42" placeholder="Search customers">
+  <textarea id="note" placeholder="Notes for case 7">Call back 555 0100</textarea>
+  <div class="field" data-placeholder="Secret Hint"></div>
+  <img id="photo" alt="Portrait of Jane" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">
+  <canvas id="chart" width="40" height="20"></canvas>
+  <iframe id="frame" title="Embedded Report"></iframe>
+  <button aria-label="Delete record 9">Del</button>
+</main>

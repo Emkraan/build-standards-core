@@ -1,0 +1,12 @@
+node_modules/
+dist/
+dist-gallery/
+coverage/
+*.tsbuildinfo
+.vite/
+gallery/generated/
+visual/results/
+visual/report/
+# Only the linux baselines are committed. CI compares against them inside the pinned image.
+visual/baselines/*
+!visual/baselines/linux/

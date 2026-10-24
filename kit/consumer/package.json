@@ -1,0 +1,45 @@
+{
+  "name": "kit-core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The core kit as synced into a consumer. Written by the core sync: never edit by hand.",
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./theme-init": "./theme/theme-init.ts",
+    "./kit.css": "./styles/kit.css",
+    "./styles/kit.css": "./styles/kit.css",
+    "./charts": "./charts/index.ts",
+    "./api-reference": "./api-reference/index.ts",
+    "./api-reference.css": "./api-reference/api-reference.css",
+    "./graph": "./graph/index.ts",
+    "./graph.css": "./graph/graph.css"
+  },
+  "peerDependencies": {
+    "react": ">=18 <20",
+    "react-dom": ">=18 <20",
+    "@scalar/api-reference-react": "^0.9.81",
+    "@xyflow/react": "^12.12.0",
+    "recharts": "^3.10.1"
+  },
+  "peerDependenciesMeta": {
+    "@scalar/api-reference-react": {
+      "optional": true
+    },
+    "@xyflow/react": {
+      "optional": true
+    },
+    "recharts": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/react": ">=18 <20",
+    "@types/react-dom": ">=18 <20"
+  }
+}

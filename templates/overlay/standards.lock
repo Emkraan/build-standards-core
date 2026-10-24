@@ -1,0 +1,3 @@
+# Pin of the shared core that this overlay tracks. The source is never recorded here.
+ref=main
+commit=

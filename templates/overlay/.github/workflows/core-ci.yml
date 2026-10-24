@@ -1,0 +1,212 @@
+name: core-ci
+# The CI half of the core standard: each job proves one or more overlay-ci rules in
+# standards-core/rules.json (check.workflow is this file, check.jobs names the jobs). Every check is
+# a subcommand of scripts/core-ci.py (standard library Python); the only third-party code is the
+# pinned actions below and the scanner, analyzer and ruff, each pinned by version and checksum in
+# that script. Values come from standards-local/parameters.md (the setup job reads them), so this
+# file names no consumer.
+#
+# Configure: OVERLAY is the overlay folder relative to the repo root ("." when it is the root).
+# scripts/sync-core.py refreshes this file on every sync and keeps the repo's OVERLAY value.
+# The repository variable CORE_CI_RUNNER, when set, is a JSON runs-on value (for example
+# '["self-hosted", "linux", "arm64"]'); unset, jobs run on ubuntu-latest. Every job id and check
+# name starts with core- (name equals the id), so no job here shares a check name with a job of the
+# repo's own workflows; a merge gate keyed on check names reads them apart. List every job below
+# except core-setup in the merge gate's required checks: `python3 "$OVERLAY/scripts/core-ci.py"
+# required-checks` reports the jobs nothing requires (branch protection, a ruleset, or a
+# REQUIRED_CHECKS list in a merge gate workflow), `--fix` prints the command that adds them, and
+# `core-status.py --ci` lists them as a problem. A job a declared stack does not need is skipped (a
+# skipped required check counts as passed), and core-status reports its rules as unverified.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: core-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+env:
+  OVERLAY: .
+  BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+  HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+jobs:
+  core-setup:
+    name: core-setup
+    runs-on: ${{ fromJSON(vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
+    outputs:
+      python: ${{ steps.p.outputs.python }}
+      powershell: ${{ steps.p.outputs.powershell }}
+      web: ${{ steps.p.outputs.web }}
+      kit: ${{ steps.p.outputs.kit }}
+      python_floor: ${{ steps.p.outputs.python_floor }}
+      python_test: ${{ steps.p.outputs.python_test }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.HEAD }}
+          persist-credentials: false
+      - id: p
+        run: python3 "$OVERLAY/scripts/core-ci.py" params --github-output
+
+  core-secret-scan:
+    name: core-secret-scan
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ${{ fromJSON(vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.HEAD }}
+          fetch-depth: 0
+          persist-credentials: false
+      - run: python3 "$OVERLAY/scripts/core-ci.py" install-gitleaks "$RUNNER_TEMP/bin"
+      - run: python3 "$OVERLAY/scripts/core-ci.py" secret-scan "$BASE" "$HEAD" --gitleaks "$RUNNER_TEMP/bin/gitleaks"
+
+  core-workflow-lint:
+    name: core-workflow-lint
+    runs-on: ${{ fromJSON(vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.HEAD }}
+          persist-credentials: false
+      - run: python3 "$OVERLAY/scripts/core-ci.py" workflow-lint
+
+  core-ascii:
+    name: core-ascii
+    runs-on: ${{ fromJSON(vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.HEAD }}
+          persist-credentials: false
+      - run: python3 "$OVERLAY/scripts/core-ci.py" ascii
+
+  core-pr-title:
+    name: core-pr-title
+    if: github.event_name == 'pull_request'
+    runs-on: ${{ fromJSON(vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.HEAD }}
+          persist-credentials: false
+      - env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: python3 "$OVERLAY/scripts/core-ci.py" pr-title
+
+  core-commitlint:
+    name: core-commitlint
+    if: github.event_name == 'pull_request'
+    runs-on: ${{ fromJSON(vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.HEAD }}
+          fetch-depth: 0
+          persist-credentials: false
+      - run: python3 "$OVERLAY/scripts/core-ci.py" commitlint "$BASE" "$HEAD"
+
+  core-attribution:
+    name: core-attribution
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
+    runs-on: ${{ fromJSON(vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.HEAD }}
+          fetch-depth: 0
+          persist-credentials: false
+      - env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: python3 "$OVERLAY/scripts/core-ci.py" attribution "$BASE" "$HEAD"
+
+  core-identity:
+    name: core-identity
+    if: github.event_name == 'pull_request'
+    runs-on: ${{ fromJSON(vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.HEAD }}
+          fetch-depth: 0
+          persist-credentials: false
+      - run: python3 "$OVERLAY/scripts/core-ci.py" identity "$BASE" "$HEAD"
+
+  core-changelog:
+    name: core-changelog
+    if: github.event_name == 'pull_request'
+    runs-on: ${{ fromJSON(vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.HEAD }}
+          fetch-depth: 0
+          persist-credentials: false
+      - run: python3 "$OVERLAY/scripts/core-ci.py" changelog "$BASE" "$HEAD"
+      # One entry per pull request, append-only, when the parameters row "Changelog entries" is per-pr.
+      - run: python3 "$OVERLAY/scripts/core-ci.py" changelog-entries "$BASE" "$HEAD"
+
+  core-python:
+    name: core-python
+    needs: core-setup
+    if: needs.core-setup.outputs.python == 'true'
+    runs-on: ${{ fromJSON(vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.HEAD }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ needs.core-setup.outputs.python_floor }}
+      - run: python "$OVERLAY/scripts/core-ci.py" python-config
+      - run: |
+          python "$OVERLAY/scripts/core-ci.py" ruff-requirements > "$RUNNER_TEMP/ruff.txt"
+          python -m pip install --disable-pip-version-check --require-hashes --only-binary :all: -r "$RUNNER_TEMP/ruff.txt"
+      - run: python -m ruff check .
+      - run: python -m ruff format --check .
+      - env:
+          TEST_CMD: ${{ needs.core-setup.outputs.python_test }}
+        run: bash -c "$TEST_CMD"
+
+  core-powershell:
+    name: core-powershell
+    needs: core-setup
+    if: needs.core-setup.outputs.powershell == 'true'
+    runs-on: ${{ fromJSON(vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.HEAD }}
+          persist-credentials: false
+      - run: python3 "$OVERLAY/scripts/core-ci.py" install-psscriptanalyzer "$RUNNER_TEMP/psmodules"
+      - run: python3 "$OVERLAY/scripts/core-ci.py" powershell --analyzer "$RUNNER_TEMP/psmodules"
+
+  core-node-pin:
+    name: core-node-pin
+    needs: core-setup
+    if: needs.core-setup.outputs.web == 'true'
+    runs-on: ${{ fromJSON(vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.HEAD }}
+          persist-credentials: false
+      - run: python3 "$OVERLAY/scripts/core-ci.py" node-pin
+
+  core-kit-peers:
+    name: core-kit-peers
+    needs: core-setup
+    if: needs.core-setup.outputs.kit == 'true'
+    runs-on: ${{ fromJSON(vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.HEAD }}
+          persist-credentials: false
+      # Static checks always; tsc runs too when the repo has installed it (add an install step before
+      # this one to typecheck the copy with the optional peers blocked).
+      - run: python3 "$OVERLAY/scripts/core-ci.py" kit-peers

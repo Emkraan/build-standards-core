@@ -1,0 +1,36 @@
+name: kit
+on:
+  pull_request:
+    paths:
+      - 'kit/**'
+      - 'tokens/**'
+      - '.github/workflows/kit.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'kit/**'
+      - 'tokens/**'
+      - '.github/workflows/kit.yml'
+permissions:
+  contents: read
+jobs:
+  kit:
+    runs-on: ${{ fromJSON(vars.CORE_RUNNER || '"ubuntu-latest"') }}
+    defaults:
+      run:
+        working-directory: kit
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The gallery build generates its release notes from git history, so it needs all of it.
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: kit/package-lock.json
+      - run: npm ci
+      # An app that excludes the optional entries (charts, graph, api-reference) and never installs
+      # their peers still typechecks the kit: the peers resolve to an empty stub here.
+      - run: npm run typecheck:nopeers
+      - run: npm run check

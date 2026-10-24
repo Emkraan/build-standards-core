@@ -1,0 +1,2 @@
+/* A parallel theme: redefines core tokens instead of using them. Counts live in expected.json. */
+:root { --surface-1: var(--surface-2); --radius-md: 4px; }

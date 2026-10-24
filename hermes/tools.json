@@ -1,0 +1,122 @@
+{
+  "version": 2,
+  "note": "Decision registry for the Hermes setup of every consumer. One entry per tool with an adopt, adapt or reject decision (ingest rule) and the reason, plus how the nightly job installs it. hermes/apply_setup.py reads this file; configurations.md sections 11 and 12 are the prose. Describe only; never put a path, account or secret here.",
+  "tools": [
+    {
+      "id": "rtk",
+      "kind": "plugin",
+      "decision": "adapt",
+      "required": true,
+      "plugin": "rtk-rewrite",
+      "binary": {
+        "name": "rtk",
+        "verify": [
+          "rtk",
+          "gain"
+        ],
+        "install": {
+          "brew": [
+            "brew",
+            "install",
+            "rtk"
+          ],
+          "cargo": [
+            "cargo",
+            "install",
+            "--locked",
+            "rtk"
+          ]
+        }
+      },
+      "install": [
+        "rtk",
+        "init",
+        "-g",
+        "--agent",
+        "hermes"
+      ],
+      "install_hint": "Install the rtk binary (brew install rtk), then run: rtk init -g --agent hermes. Restart Hermes afterwards.",
+      "reason": "Cuts shell output by a large share (its own ledger shows the saving per consumer) but filters lines, so it is adapted with a never-rewrite list. See configurations.md section 11."
+    },
+    {
+      "id": "caveman",
+      "kind": "skill",
+      "decision": "adapt",
+      "required": true,
+      "skill": "caveman",
+      "install": [
+        "hermes",
+        "skills",
+        "install",
+        "JuliusBrussee/caveman/skills/caveman",
+        "--yes"
+      ],
+      "install_hint": "hermes skills install JuliusBrussee/caveman/skills/caveman --yes. Switch the voice on per session, never globally.",
+      "reason": "Terse answers save output tokens but the skill costs input tokens every turn and must not touch human-facing drafts. Adapted to interactive scope. See configurations.md section 11."
+    },
+    {
+      "id": "caveman-compress",
+      "kind": "skill",
+      "decision": "adapt",
+      "required": false,
+      "skill": "caveman-compress",
+      "install_hint": "Not installed by the nightly job. Hermes' skills guard rates it DANGEROUS (it shells out to an agent CLI and reads the environment), and --force does not override that. Install by hand only after reading its scripts, and only where the operator accepts the finding.",
+      "reason": "The input-side saving is real, but the packaged skill fails the Hermes security scan, so it is optional and manual. See configurations.md section 11.3."
+    },
+    {
+      "id": "usage-ledger",
+      "kind": "plugin",
+      "decision": "adapt",
+      "required": false,
+      "plugin": "provider-usage",
+      "alt_plugins": [
+        "turn-usage"
+      ],
+      "install_hint": "Any plugin that writes one line per model call (ids and token counts only) satisfies this, provided it rotates by size or age, is kept private (mode 0600) and never records text or keys. It is how a consumer measures every saving in section 11.",
+      "reason": "Savings claims are only real against the consumer's own ledger. See configurations.md section 4."
+    },
+    {
+      "id": "disk-cleanup",
+      "kind": "plugin",
+      "decision": "adopt",
+      "required": false,
+      "plugin": "disk-cleanup",
+      "install_hint": "Bundled with Hermes; enable it with hermes plugins enable.",
+      "reason": "Bundled housekeeping plugin with no token effect and no data leaving the machine. Optional; recorded so the audit does not flag it as undecided."
+    },
+    {
+      "id": "security-guidance",
+      "kind": "plugin",
+      "decision": "adopt",
+      "required": false,
+      "plugin": "security-guidance",
+      "install_hint": "Bundled with Hermes; enable it with hermes plugins enable.",
+      "reason": "Bundled guidance plugin with no token cost worth tracking. Optional; recorded so the audit does not flag it as undecided."
+    },
+    {
+      "id": "turn-usage",
+      "kind": "plugin",
+      "decision": "adopt",
+      "required": false,
+      "plugin": "turn-usage",
+      "install_hint": "Bundled with Hermes; shows per-turn usage in the reply footer.",
+      "reason": "Shows per-turn token cost, which section 11 uses for its measurements."
+    },
+    {
+      "id": "quota",
+      "kind": "plugin",
+      "decision": "adopt",
+      "required": false,
+      "plugin": "quota",
+      "install_hint": "Bundled with Hermes; enable it with hermes plugins enable quota. Leave the optional providers off unless you use them.",
+      "reason": "Shows per-provider quota and rate-limit status from a local cache, so a consumer sees spend pressure before a limit hits. It makes no model calls and each provider check is opt-in. Optional; recorded so the audit does not flag it as undecided."
+    }
+  ],
+  "settings": [
+    {
+      "key": "compression.enabled",
+      "value": "true",
+      "reason": "Context past the window fails or degrades; compression is the supported way through. configurations.md section 12."
+    }
+  ]
+}

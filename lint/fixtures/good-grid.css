@@ -1,0 +1,3 @@
+/* A narrow first track with no stretched painted cell in this file is spacing, not a bar. */
+.cols { display: grid; grid-template-columns: 4px 1fr auto; }
+.cols .cell { background: var(--surface-2); }

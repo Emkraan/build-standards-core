@@ -1,0 +1,107 @@
+/* The node graph sheet (graph/Graph.tsx). Import once, after kit.css, in an app that renders a Graph:
+   it loads the React Flow base sheet into core.vendor, a layer nested in core (inside a layer, the
+   rules outside any nested layer beat the nested ones, so the core rules below win without a
+   specificity fight and kit.css needs no order statement) and maps React Flow's --xy-* variables onto
+   the kit tokens. The tokens already carry both themes, so nothing here branches on theme. React
+   Flow reads the non-default --xy-* names first and falls back to its own -default values. */
+
+@import url('@xyflow/react/dist/style.css') layer(core.vendor);
+
+@layer core {
+
+.kit-flow {
+  --xy-background-color: transparent;
+  --xy-background-pattern-color: var(--border-default);
+  --xy-node-background-color: var(--surface-2);
+  --xy-node-border: 1px solid var(--border-default);
+  --xy-node-color: var(--text-primary);
+  --xy-node-border-radius: var(--radius-md);
+  --xy-node-boxshadow-hover: var(--elev-2);
+  --xy-node-boxshadow-selected: 0 0 0 2px var(--border-accent-strong);
+  --xy-node-group-background-color: rgb(var(--surface-2-rgb) / 0.4);
+  --xy-edge-stroke: var(--border-strong);
+  --xy-edge-stroke-width: 1.75;
+  --xy-edge-stroke-selected: var(--accent-bright);
+  --xy-edge-label-color: var(--text-secondary);
+  --xy-edge-label-background-color: var(--surface-1);
+  --xy-connectionline-stroke: var(--accent-bright);
+  --xy-connectionline-stroke-width: 1.75;
+  --xy-handle-background-color: var(--border-strong);
+  --xy-handle-border-color: var(--surface-2);
+  --xy-selection-background-color: rgb(var(--accent-rgb) / 0.08);
+  --xy-selection-border: 1px dotted var(--accent-bright);
+  --xy-resize-background-color: var(--accent-bright);
+  --xy-controls-box-shadow: var(--elev-2);
+  --xy-controls-button-background-color: var(--surface-2);
+  --xy-controls-button-background-color-hover: var(--surface-3);
+  --xy-controls-button-color: var(--text-secondary);
+  --xy-controls-button-color-hover: var(--text-primary);
+  --xy-controls-button-border-color: var(--border-subtle);
+  --xy-minimap-background-color: var(--surface-1);
+  --xy-minimap-mask-background-color: rgb(var(--canvas-rgb) / 0.6);
+  --xy-minimap-mask-stroke-color: var(--border-strong);
+  --xy-minimap-node-background-color: var(--surface-4);
+  --xy-attribution-background-color: rgb(var(--surface-2-rgb) / 0.72);
+  position: relative; inline-size: 100%; min-width: 0; overflow: hidden;
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-1);
+  color: var(--text-primary); font-family: var(--font-sans);
+}
+
+/* The controls cluster and the minimap read as one raised card each. */
+.kit-flow .react-flow__controls,
+.kit-flow .react-flow__minimap { overflow: hidden; border: 1px solid var(--border-default); border-radius: var(--radius-sm); }
+.kit-flow .react-flow__minimap { box-shadow: var(--elev-2); }
+.kit-flow .react-flow__controls-button svg { fill: currentColor; }
+.kit-flow .react-flow__handle { inline-size: 8px; block-size: 8px; border-width: 2px; }
+.kit-flow .react-flow__edge-text { font-size: var(--fs-micro); font-weight: var(--fw-semibold); }
+.kit-flow .react-flow__attribution { font-size: var(--fs-micro); }
+.kit-flow .react-flow__attribution a { color: var(--text-tertiary); }
+.kit-flow .react-flow__node:focus-visible { outline: none; }
+.kit-flow .react-flow__node:focus-visible .flow-node { box-shadow: var(--focus-ring); }
+
+/* The node card: fixed width, the title wraps so the card grows in height and never clips. A hue
+   tints the face, the border and the icon tile. */
+.flow-node {
+  position: relative; box-sizing: border-box; inline-size: 184px; padding: var(--space-2) 10px;
+  border: 2px solid var(--border-default); border-radius: var(--radius-lg); background: var(--surface-2);
+  color: var(--text-primary); font-size: var(--fs-label); text-align: start; box-shadow: var(--elev-1);
+  transition: box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.flow-node:hover { box-shadow: var(--elev-2); transform: translateY(-2px); }
+.flow-node[data-hue] {
+  border-color: rgb(var(--hue) / 0.6);
+  background: linear-gradient(180deg, rgb(var(--hue) / 0.25) 0%, rgb(var(--hue) / 0.08) 55%, rgb(var(--hue) / 0.02) 100%), var(--surface-2);
+  box-shadow: 0 0 10px rgb(var(--hue) / 0.19), var(--elev-1);
+}
+.flow-node[data-dashed] { border-style: dashed; }
+.flow-node[data-selected] { box-shadow: 0 0 0 2px var(--border-accent-strong), var(--elev-2); }
+.flow-node[data-hue][data-selected] { box-shadow: 0 0 0 2px var(--border-accent-strong), 0 0 14px rgb(var(--hue) / 0.5); }
+.flow-node-head { display: flex; align-items: flex-start; gap: var(--space-2); }
+.flow-node-icon {
+  display: inline-flex; flex: none; align-items: center; justify-content: center; inline-size: 28px; block-size: 28px;
+  border-radius: var(--radius-sm); background: var(--surface-3); color: var(--text-secondary);
+}
+.flow-node[data-hue] .flow-node-icon { background: rgb(var(--hue) / 0.18); color: rgb(var(--hue)); box-shadow: 0 0 14px rgb(var(--hue) / 0.44); }
+.flow-node-icon svg { inline-size: 16px; block-size: 16px; }
+.flow-node-titles { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
+.flow-node-kind { font-size: var(--fs-micro); font-weight: var(--fw-bold); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-tertiary); }
+.flow-node[data-hue] .flow-node-kind { color: rgb(var(--hue)); }
+.flow-node-label { font-size: var(--fs-body); font-weight: var(--fw-bold); line-height: var(--lh-tight); overflow-wrap: anywhere; }
+.flow-node-meta { display: flex; gap: var(--space-1); margin: var(--space-2) 0 0; padding: 0; overflow: hidden; list-style: none; }
+.flow-node-meta li {
+  flex: none; padding: 1px var(--space-1); border: 1px solid var(--border-default); border-radius: var(--radius-xs); background: var(--surface-inset);
+  color: var(--text-secondary); font-family: var(--font-mono); font-size: var(--fs-mono-caption); white-space: nowrap;
+}
+.flow-node-detail {
+  display: block; margin-top: var(--space-1); overflow: hidden; color: var(--text-secondary); font-family: var(--font-mono);
+  font-size: var(--fs-micro); text-overflow: ellipsis; white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-node { transition: none; }
+  .flow-node:hover { transform: none; }
+  .kit-flow .react-flow__edge.animated path,
+  .kit-flow .react-flow__connection.animated path { animation: none; }
+}
+
+} /* end @layer core */

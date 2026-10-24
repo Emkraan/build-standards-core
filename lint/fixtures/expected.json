@@ -1,0 +1,19 @@
+{
+  "bad.css::UI001": 7,
+  "bad.css::UI003": 4,
+  "bad.css::UI004": 1,
+  "bad.css::UI005": 2,
+  "bad.css::UI007": 1,
+  "bad.css::UI008": 2,
+  "bad.tsx::UI001": 1,
+  "bad.tsx::UI002": 3,
+  "bad.tsx::UI003": 2,
+  "bad.tsx::UI004": 1,
+  "bad.tsx::UI005": 1,
+  "bad.tsx::UI007": 1,
+  "dialogs-bad.tsx::UI002": 2,
+  "expired.tsx::UI002": 1,
+  "restyle-bad.tsx::UI009": 3,
+  "theme-bad.css::UI010": 2,
+  "typo.tsx::UI006": 4
+}

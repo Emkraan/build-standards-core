@@ -1,0 +1,86 @@
+name: visual
+# A required job next to ci: it passed three consecutive runs on the same commit and a CI
+# regenerated set matched the committed baselines byte for byte. It runs on every pull request
+# (no path filter) so a required check never waits on a run that was skipped.
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - 'kit/**'
+      - 'tokens/**'
+      - '.github/workflows/visual.yml'
+  workflow_dispatch:
+    inputs:
+      update-baselines:
+        description: Regenerate the linux baselines and upload them as the visual-baselines artifact
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: visual-${{ github.ref }}-${{ inputs.update-baselines || false }}
+  cancel-in-progress: true
+jobs:
+  visual:
+    runs-on: ${{ fromJSON(vars.CORE_RUNNER || '"ubuntu-latest"') }}
+    timeout-minutes: 20
+    # The pinned Playwright image fixes the browser build and the system fonts, so screenshots are
+    # the same on every run. Keep the tag equal to the @playwright/test version in kit/package.json
+    # (Playwright refuses to start when they differ). The baselines are made in this image only.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+      options: --ipc=host
+    defaults:
+      run:
+        working-directory: kit
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The gallery build generates its release notes from git history, so it needs all of it.
+          fetch-depth: 0
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      # The image ships node, setup-node adds the npm cache so a registry hiccup does not fail the gate.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: kit/package-lock.json
+      - run: npm ci --prefer-offline
+        env:
+          npm_config_fetch_retries: '5'
+      - run: npm run gallery:build
+      - name: Screenshots and axe in both themes
+        id: compare
+        if: ${{ !inputs.update-baselines }}
+        run: npx playwright test
+      - name: Regenerate the baselines
+        id: update
+        if: ${{ inputs.update-baselines }}
+        run: npx playwright test --update-snapshots
+      # On a failed compare this also carries any baseline the run had to write because it was
+      # missing (a new specimen), so a first set can be committed from a pull request.
+      - name: Upload the baselines
+        if: ${{ always() && (steps.update.outcome == 'success' || steps.compare.outcome == 'failure') }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: visual-baselines
+          path: kit/visual/baselines/linux
+          if-no-files-found: error
+      - name: Upload the report and diffs
+        if: ${{ always() && steps.compare.outcome == 'failure' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: visual-report
+          path: |
+            kit/visual/report
+            kit/visual/results
+          if-no-files-found: ignore
+      # The built gallery, so a reviewer can open the reference without building it.
+      - name: Upload the gallery
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: kit-gallery
+          path: kit/dist-gallery
+          if-no-files-found: error

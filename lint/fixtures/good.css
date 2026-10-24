@@ -1,0 +1,15 @@
+/* Nothing here may be flagged. */
+.row { border-bottom: 1px solid var(--border-default); }
+.card { color: var(--text-primary); background: var(--surface-2); box-shadow: var(--shadow-inset-top), var(--elev-2); }
+.pop { z-index: var(--z-popover); }
+.under { z-index: -1; }
+.base { z-index: 0; }
+.fade { transition: opacity var(--dur-fast) var(--ease-out), transform 0s; }
+.today-line::before { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--danger); } /* edge-ok: chart today marker is data */
+.legacy { border-left: 3px solid var(--accent); } /* core-exception: EXC-001 */
+.tone { background: radial-gradient(140% 120% at 0% 0%, rgb(var(--hue) / 0.13), transparent 75%); }
+.dot { width: 6px; height: 6px; border-radius: 999px; background: var(--success); }
+.gutter-grid { display: grid; grid-template-columns: 1fr 4px 1fr; }
+.spark { width: 2px; background: var(--danger); } /* edge-ok: chart today line is data */
+.spacer { width: 4px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; }

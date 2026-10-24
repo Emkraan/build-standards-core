@@ -1,0 +1,79 @@
+name: core-update
+# Opens a pull request when the core has a newer release than standards.lock. Needs a repository
+# variable CORE_REPO (OWNER/NAME of the core; a variable so no file in the repo names it) and a repository
+# secret, CORE_TOKEN: a fine-grained token (or a classic token with repo scope) from an account that can
+# read the core, with contents and pull-requests write on THIS repo. A token is required because pull
+# requests opened with the default GITHUB_TOKEN do not start CI. The sync also refreshes the repo's core
+# template workflows, so the token needs workflows write too (classic: the workflow scope). Adjust
+# OVERLAY if the overlay is in a subfolder; a sync keeps the repo's OVERLAY value and every line marked
+# core-sync: keep. When core-ci.yml's job names change, the pull request body lists the old -> new
+# required-check names for the merge gate.
+#
+# Merging. An app other than an ops center never changes without the owner's approval (core README,
+# "Direction"), so by default (repository variable CORE_UPDATE_MERGE unset or "approve") the job only
+# opens the sync pull request as a draft, so no merge gate that merges green pull requests picks it up,
+# and leaves it for the owner. The owner's approval is one action from the ops center's Core
+# consumption panel or on GitHub: mark it ready (gh pr ready), and the repo's merge gate
+# merges it once its checks pass. GitHub's
+# auto-merge (gh pr merge --auto) is never used: on a repo with no required status checks it merges at
+# once, before CI has even registered. Two values are the owner's standing approval for this repo,
+# set by the owner only: "wait" waits for every check on the pull request's head commit to complete
+# green (core-ci.py wait-checks: at least one check, every core-ci.yml job present, nothing failed,
+# the same set green on two reads in a row) and then squash merges that exact commit with a noreply
+# author email (merge-pr.py --match-head-commit); a failed check or the timeout
+# (CORE_UPDATE_WAIT_MINUTES, default 60) leaves the pull request open. "gate" leaves the merge to the
+# repo's own merge gate (a ruleset with required checks, or a merge gate workflow).
+on:
+  schedule:
+    - cron: "23 5 * * *"  # core-sync: keep
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+env:
+  OVERLAY: .
+  GH_TOKEN: ${{ secrets.CORE_TOKEN }}
+  CORE_REPO: ${{ vars.CORE_REPO }}
+jobs:
+  update:
+    # CORE_CI_RUNNER (a JSON runs-on value, as in core-ci.yml) picks a self-hosted runner, for
+    # example where hosted minutes are not available; unset, the job runs on ubuntu-latest.
+    runs-on: ${{ fromJSON(vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          token: ${{ secrets.CORE_TOKEN }}
+      - id: sync
+        env:
+          CORE_SYNC_NOTES: ${{ runner.temp }}/core-sync-notes.txt
+        run: echo "tag=$(python3 $OVERLAY/scripts/update-core.py)" >> "$GITHUB_OUTPUT"
+      - if: steps.sync.outputs.tag != ''
+        env:
+          TAG: ${{ steps.sync.outputs.tag }}
+          MERGE: ${{ vars.CORE_UPDATE_MERGE || 'approve' }}
+          WAIT_MINUTES: ${{ vars.CORE_UPDATE_WAIT_MINUTES || '60' }}
+        run: |
+          git config user.name "core-update"
+          git config user.email "core-update@users.noreply.github.com"
+          git switch -c "chore/core-$TAG"
+          git add -A
+          git commit -m "chore(standards): sync core $TAG"
+          git push --force-with-lease origin "chore/core-$TAG"
+          DRAFT=""
+          if [ "$MERGE" = approve ]; then DRAFT="--draft"; fi
+          BODY="$RUNNER_TEMP/core-sync-body.md"
+          echo "Automated sync to core release $TAG. See the core CHANGELOG. Waits for the owner's approval unless the owner set CORE_UPDATE_MERGE for this repo." > "$BODY"
+          if [ -s "$RUNNER_TEMP/core-sync-notes.txt" ]; then
+            { echo; echo '```'; cat "$RUNNER_TEMP/core-sync-notes.txt"; echo '```'; } >> "$BODY"
+          fi
+          gh pr create $DRAFT --title "chore(standards): sync core $TAG" --body-file "$BODY" || true
+          case "$MERGE" in
+            approve) echo "core-update: pull request left for the owner's approval"; exit 0 ;;
+            gate) echo "core-update: merge left to the repo's merge gate"; exit 0 ;;
+            wait) ;;
+            *) echo "::error::core-update: CORE_UPDATE_MERGE must be approve, wait or gate, not $MERGE"; exit 1 ;;
+          esac
+          SHA=$(git rev-parse HEAD)
+          NUMBER=$(gh pr view "chore/core-$TAG" --json number --jq .number)
+          python3 "$OVERLAY/scripts/core-ci.py" wait-checks "$SHA" --timeout "$WAIT_MINUTES"
+          python3 "$OVERLAY/scripts/merge-pr.py" "$NUMBER" --match-head-commit "$SHA"

@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "recharts": ["./tests/no-peer.ts"],
+      "@xyflow/react": ["./tests/no-peer.ts"],
+      "@scalar/api-reference-react": ["./tests/no-peer.ts"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["src/charts", "src/graph", "src/api-reference"]
+}
