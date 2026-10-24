@@ -1,15 +1,12 @@
 name: visual
 # A required job next to ci: it passed three consecutive runs on the same commit and a CI
-# regenerated set matched the committed baselines byte for byte. It runs on every pull request
-# (no path filter) so a required check never waits on a run that was skipped.
+# regenerated set matched the committed baselines byte for byte. Every pull request and merge queue
+# entry gets a visual result, so a required check never waits on a run that never started; the
+# Playwright job itself runs only when the kit, the tokens or this workflow changed (a small changes
+# job decides), and a skipped job counts as passed. No push run: the pull request proved the tree.
 on:
   pull_request:
-  push:
-    branches: [main]
-    paths:
-      - 'kit/**'
-      - 'tokens/**'
-      - '.github/workflows/visual.yml'
+  merge_group:
   workflow_dispatch:
     inputs:
       update-baselines:
@@ -22,11 +19,35 @@ concurrency:
   group: visual-${{ github.ref }}-${{ inputs.update-baselines || false }}
   cancel-in-progress: true
 jobs:
+  changes:
+    runs-on: ${{ fromJSON(vars.CORE_RUNNER || '"ubuntu-latest"') }}
+    outputs:
+      ui: ${{ steps.diff.outputs.ui }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+        run: |
+          # A dispatch, or a range that cannot be read, always runs the visual gate.
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "ui=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if git diff --name-only "$BASE" "$HEAD" -- kit tokens .github/workflows/visual.yml | grep -q .; then
+            echo "ui=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ui=false" >> "$GITHUB_OUTPUT"
+          fi
+
   visual:
+    needs: changes
     # Hosted runners only: the job runs in the Playwright container and its baselines are renders from
     # that image. The self-hosted pool cannot start job containers, so while CORE_RUNNER points CI at it
     # (the private phase) this job is skipped instead of failing.
-    if: ${{ vars.CORE_RUNNER == '' }}
+    if: ${{ vars.CORE_RUNNER == '' && needs.changes.outputs.ui == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # The pinned Playwright image fixes the browser build and the system fonts, so screenshots are

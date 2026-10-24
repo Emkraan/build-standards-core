@@ -1,6 +1,10 @@
 name: checks
+# ci runs every check on a pull request and a merge queue entry. A push to main runs only
+# secret-scan-main, the one check that covers a commit landing without a pull request: the merge
+# gate requires an up to date head, so re-running the rest after the merge re-tests a proven tree.
 on:
   pull_request:
+  merge_group:
   push:
     branches: [main]
 permissions:
@@ -8,7 +12,21 @@ permissions:
   issues: read
   pull-requests: read
 jobs:
+  secret-scan-main:
+    if: github.event_name == 'push'
+    runs-on: ${{ fromJSON(vars.CORE_RUNNER || '"ubuntu-latest"') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - run: python3 templates/overlay/scripts/core-ci.py install-gitleaks "$RUNNER_TEMP/bin"
+      - env:
+          BASE: ${{ github.event.before }}
+          HEAD: ${{ github.sha }}
+        run: python3 templates/overlay/scripts/core-ci.py secret-scan "$BASE" "$HEAD" --gitleaks "$RUNNER_TEMP/bin/gitleaks"
+
   ci:
+    if: github.event_name != 'push'
     runs-on: ${{ fromJSON(vars.CORE_RUNNER || '"ubuntu-latest"') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -45,8 +63,8 @@ jobs:
       # Secret scan of the change, with the base commit's scanner config (never the config under scan).
       - name: Secret scan
         env:
-          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         run: python3 templates/overlay/scripts/core-ci.py secret-scan "$BASE" "$HEAD" --gitleaks "$RUNNER_TEMP/bin/gitleaks"
       # Ruff, pinned, both commands, against [tool.ruff] in pyproject.toml.
       - run: python3 -m pip install --quiet ruff==0.16.6
