@@ -184,6 +184,32 @@ def sanitise(core: Path, body: str, sh: Sh) -> str:
     return ""
 
 
+def report_target(report_repo: str, core_repo: str, sh: Sh) -> tuple[str, str]:
+    """(repo, "") when the upward report may be filed in report_repo, else ("", reason).
+
+    A report carries one account's design inventory and evidence, so it is filed only in a PRIVATE
+    intake repository named in the machine config (report_repo), never in the core itself, which may
+    be public. No intake configured, the intake equal to the core, an intake that is not private or
+    whose visibility cannot be read: nothing is filed."""
+    target = (report_repo or "").strip()
+    if not target:
+        return "", "no report_repo configured (a private intake repository); nothing filed"
+    if core_repo and target.lower() == core_repo.strip().lower():
+        return (
+            "",
+            f"report_repo {target} is the core repository; reports go to a private intake only",
+        )
+    rc, out = sh(["gh", "repo", "view", target, "--json", "visibility", "--jq", ".visibility"])
+    if rc != 0:
+        return "", f"cannot confirm {target} is private ({out.strip()[-120:]}); nothing filed"
+    if out.strip().upper() != "PRIVATE":
+        return (
+            "",
+            f"report_repo {target} is {out.strip() or 'not private'}; reports go to a private repository only",
+        )
+    return target, ""
+
+
 def find_issue(core_repo: str, sh: Sh) -> dict | None:
     rc, out = sh(
         [

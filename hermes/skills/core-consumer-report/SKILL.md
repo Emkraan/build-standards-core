@@ -23,7 +23,8 @@ are in the core's `CONTRIBUTING.md` ("Reporting from a consumer") and the templa
   in as they are.
 - **Plain ASCII.** No em or en dashes, curly quotes, NBSP or arrows.
 - **One issue per account.** Update the open `consumer-report` issue this account authored; create
-  it only when none is open. Never open a pull request on the core.
+  it only when none is open, in the private intake. Never file it on the core, and never open a pull
+  request on the core.
 - **The nightly owns its markers.** Keep `<!-- nightly:changes:start -->` to
   `<!-- nightly:changes:end -->` and `<!-- nightly:candidates:start -->` to
   `<!-- nightly:candidates:end -->` byte for byte as they are in the current issue body.
@@ -49,12 +50,15 @@ are in the core's `CONTRIBUTING.md` ("Reporting from a consumer") and the templa
 
 1. Core clone: the one the nightly pulls (the `core` key in
    `~/.config/build-standards-core/consumer.json`, else `~/GitHub/build-standards-core`). Read it,
-   never edit it. The core repo slug is in `$CORE_REPO`; if unset, read it from the clone's
-   `git remote get-url origin`.
+   never edit it.
+   The report goes to this account's PRIVATE intake, never the core: `report_repo` in
+   `~/.config/build-standards-core/consumer.json` (or `$CORE_REPORT_REPO`). Call it `$INTAKE`. Stop
+   and say so when it is unset, equals the core, or `gh repo view "$INTAKE" --json visibility --jq .visibility`
+   is not `PRIVATE`: a report holds this account's design inventory and must never be public.
 2. Scratch directory outside every repo, for example `mktemp -d` under the user's cache. The draft
    (`report.md`) and the screenshots go there.
 3. Current issue:
-   `gh issue list -R "$CORE_REPO" --label consumer-report --author @me --state open --json number,body,url -L 5`.
+   `gh issue list -R "$INTAKE" --label consumer-report --author @me --state open --json number,body,url -L 5`.
    Save the body; you will update it in place.
 
 ## 1. Section a: machine and ways in
@@ -206,8 +210,8 @@ For each UI repo, read the code (do not guess from names):
    eye. A gist from an earlier report run that is no longer linked is deleted with
    `gh gist delete <id> --yes`.
 3. File:
-   - issue open: `gh issue edit <n> -R "$CORE_REPO" --body-file <scratch>/report.md`;
-   - none open: `gh issue create -R "$CORE_REPO" --label consumer-report --title "consumer report: <role summary>" --body-file <scratch>/report.md`.
-4. Verify: `gh issue view <n> -R "$CORE_REPO" --json body` and confirm both marker pairs are
+   - issue open: `gh issue edit <n> -R "$INTAKE" --body-file <scratch>/report.md`;
+   - none open: `gh issue create -R "$INTAKE" --label consumer-report --title "consumer report: <role summary>" --body-file <scratch>/report.md`.
+4. Verify: `gh issue view <n> -R "$INTAKE" --json body` and confirm both marker pairs are
    present and section a has one row per registered repo.
 5. Answer with the issue URL, the item ids added or changed, and every `not collected` line.

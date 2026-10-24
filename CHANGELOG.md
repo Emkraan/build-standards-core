@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-10-24 (v0.102.0, consumer reports go to a private intake only)
+
+The core is moving to a public repository, so a consumer report (one account's design inventory and
+evidence) must never be filed on it.
+
+- `hermes/report.py`: new `report_target()`. The nightly files the upward report only in `report_repo`
+  (machine config, or `CORE_REPORT_REPO`), and only when that repository is not the core and reads as
+  `PRIVATE`. Unset, equal to the core, not private or unreadable: nothing is filed and the run says why.
+- `hermes/consumption.py`: report issues (peers and the account's own) are read from `report_repo`;
+  core pull requests are still read from the core. Approvals are matched against the intake owner, a
+  user, so they keep working when the core belongs to an organisation.
+- `hermes/setup.py --report-repo OWNER/REPO` records the intake. The `core-consumer-report` skill files to
+  the intake and stops when it is unset, the core, or not private.
+- Docs: CONSUMING.md, hermes/README.md and README.md say where reports go.
+- Tests: the target guard (no intake, the core, public or internal, unreadable visibility) and the feed
+  reading reports from the intake only.
+
 ## 2026-10-23 (v0.101.0, palette grouping, ranking and shortcuts)
 
 - `CommandPalette`: `PaletteItem` takes `group` (rows gather under a header, groups in the order they first

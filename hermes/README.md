@@ -166,8 +166,9 @@ Consumption feed (`hermes/consumption.py`): every run writes `~/.config/build-st
 atomically, the one file every ops center's Core consumption panel renders (`standards/local-ops-app.md`
 section 19 holds the schema). Read-only on every remote, never posted, never writes to another account's issue.
 
-Upward report (`hermes/report.py`, needs `CORE_REPO=OWNER/NAME`): each account has one open issue labelled
-`consumer-report`. The text between `<!-- nightly:candidates:start -->` and `...:end -->` lists local parts
+Upward report (`hermes/report.py`, needs `report_repo`, a PRIVATE intake, in `consumer.json` or
+`CORE_REPORT_REPO`; never the core, which is public): each account has one open issue labelled
+`consumer-report` in that intake. The text between `<!-- nightly:candidates:start -->` and `...:end -->` lists local parts
 that duplicate or extend a kit role, local tokens or classes the UI lint flags, and new local additions.
 The issue is edited only when that section changed. The body passes `check-sanitised.py --file` and
 `check-consumer-neutral.py --file` first; a hit holds the update and is reported locally. It never opens a

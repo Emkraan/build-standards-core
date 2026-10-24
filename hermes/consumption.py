@@ -484,8 +484,13 @@ def build(
     sh: Sh,
     previous: dict,
     pinned_remote: Callable[[dict], str],
+    report_repo: str = "",
 ) -> dict:
-    """The whole feed. Every read failure lands in not_collected; nothing here writes remotely."""
+    """The whole feed. Every read failure lands in not_collected; nothing here writes remotely.
+
+    Report issues (peers and this account's own) are read from report_repo, the private intake; core
+    pull requests are read from core_repo. Approvals are comments by report_repo's owner, the account
+    that owns the intake, which is a user even when the core belongs to an organisation."""
     data = {
         "format": FORMAT,
         "generated_at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -501,7 +506,7 @@ def build(
     issues: list = []
     own: list | None = None
     me, open_prs, changelog = "", [], ""
-    if core_repo:
+    if report_repo:
         try:
             issues = _json(
                 sh,
@@ -510,7 +515,7 @@ def build(
                     "issue",
                     "list",
                     "-R",
-                    core_repo,
+                    report_repo,
                     "--label",
                     report.LABEL,
                     "--state",
@@ -540,7 +545,7 @@ def build(
                     "issue",
                     "list",
                     "-R",
-                    core_repo,
+                    report_repo,
                     "--label",
                     report.LABEL,
                     "--author",
@@ -556,6 +561,11 @@ def build(
             )
         except Exception as exc:
             data["not_collected"].append(f"account report issues: {exc}")
+    else:
+        data["not_collected"].append(
+            "peers and account: no private intake configured (report_repo)"
+        )
+    if core_repo:
         try:
             open_prs = _json(
                 sh,
@@ -577,12 +587,12 @@ def build(
         except Exception as exc:
             data["not_collected"].append(f"core pull requests: {exc}")
     else:
-        data["not_collected"].append("peers and account: core repo unknown (CORE_REPO)")
+        data["not_collected"].append("core pull requests: core repo unknown (CORE_REPO)")
     try:
         changelog = (core / "CHANGELOG.md").read_text(encoding="utf8")
     except OSError:
         data["not_collected"].append("shipped items: no CHANGELOG.md in the core clone")
-    owner = core_repo.split("/", 1)[0] if core_repo else ""
+    owner = report_repo.split("/", 1)[0] if report_repo else ""
     mine = next(
         (
             i
@@ -611,6 +621,7 @@ def update(
     state_dir: Path,
     check: bool,
     pinned_remote: Callable[[dict], str],
+    report_repo: str = "",
 ) -> tuple[list[str], list[str]]:
     """Build the feed and write it atomically. Returns (info lines, problem lines)."""
     path = state_dir / FILE
@@ -618,7 +629,7 @@ def update(
         previous = json.loads(path.read_text(encoding="utf8"))
     except (OSError, ValueError):
         previous = {}
-    data = build(cfg, core, core_repo, latest, sh, previous, pinned_remote)
+    data = build(cfg, core, core_repo, latest, sh, previous, pinned_remote, report_repo)
     if check:
         return [f"consumption: would write {path}"], []
     write_atomic(path, data)

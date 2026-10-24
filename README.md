@@ -95,7 +95,8 @@ standards live there. Anything else a consumer writes for itself lives in the re
 tree, outside the synced directories, so no sync ever overwrites it.
 
 The upward path. A build's agent does not open a pull request here. Each account keeps one
-open issue labeled `consumer-report` carrying its report and the nightly's candidate
+open issue labeled `consumer-report`, in the owner's private intake repository and never in this
+public one, carrying its report and the nightly's candidate
 findings; the owner approves items there, and the account that owns the change opens the core
 pull request for the approved items
 ([CONTRIBUTING.md](CONTRIBUTING.md#reporting-from-a-consumer)).

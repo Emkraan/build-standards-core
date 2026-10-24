@@ -216,3 +216,38 @@ class OneIssuePerRun(Work):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReportTarget(unittest.TestCase):
+    def sh(self, vis, rc=0):
+        calls = []
+
+        def run(cmd, cwd=None, timeout=600):
+            calls.append(cmd)
+            return rc, vis
+
+        return run, calls
+
+    def test_no_intake_files_nothing(self):
+        run, calls = self.sh("PRIVATE")
+        self.assertEqual(report.report_target("", "o/core", run)[0], "")
+        self.assertEqual(calls, [])
+
+    def test_the_core_is_never_the_target(self):
+        run, _ = self.sh("PRIVATE")
+        repo, why = report.report_target("O/Core", "o/core", run)
+        self.assertEqual(repo, "")
+        self.assertIn("core repository", why)
+
+    def test_only_a_private_intake(self):
+        for vis in ("PUBLIC", "INTERNAL", ""):
+            run, _ = self.sh(vis)
+            self.assertEqual(report.report_target("o/intake", "o/core", run)[0], "", vis)
+        run, _ = self.sh("PRIVATE\n")
+        self.assertEqual(report.report_target("o/intake", "o/core", run), ("o/intake", ""))
+
+    def test_unreadable_visibility_files_nothing(self):
+        run, _ = self.sh("not found", rc=1)
+        repo, why = report.report_target("o/intake", "o/core", run)
+        self.assertEqual(repo, "")
+        self.assertIn("cannot confirm", why)
