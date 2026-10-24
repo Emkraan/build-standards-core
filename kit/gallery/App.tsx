@@ -243,6 +243,39 @@ function ThemeControls({ accent, onAccent }: { accent: AppAccent; onAccent: (a: 
   );
 }
 
+function ConfirmActionSpecimen() {
+  const { confirm, dialog } = useConfirm();
+  const [result, setResult] = useState('Not run yet');
+  const tries = useRef(0);
+  return (
+    <div className="gallery-row">
+      <span className="gallery-note">useConfirm with action: the first try fails inline, the retry succeeds.</span>
+      <Button
+        variant="danger"
+        onClick={async () => {
+          tries.current = 0;
+          const ok = await confirm({
+            title: 'Delete the schedule?',
+            body: 'Everyone on it stops getting reminders.',
+            confirmLabel: 'Delete',
+            danger: true,
+            action: () =>
+              new Promise<void>((resolve, reject) => {
+                tries.current += 1;
+                window.setTimeout(() => (tries.current === 1 ? reject(new Error('The server refused the delete. Try again.')) : resolve()), 500);
+              }),
+          });
+          setResult(ok ? 'Deleted' : 'Kept');
+        }}
+      >
+        Delete with retry
+      </Button>
+      <span className="gallery-note" aria-live="polite">{result}</span>
+      {dialog}
+    </div>
+  );
+}
+
 function ButtonsSpecimen() {
   const [loading, setLoading] = useState(false);
   return (
@@ -2225,7 +2258,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'empty', 'overlays', 'chrome', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'palette-rank', 'tile-edge', 'freshness', 'month-grid'];
+  const sections = ['theme', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'empty', 'overlays', 'chrome', 'confirm-action', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'palette-rank', 'tile-edge', 'freshness', 'month-grid'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2327,6 +2360,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="chrome" title="Required chrome">
           <ChromeSpecimen releases={releases} version={version} />
+        </Specimen>
+        <Specimen id="confirm-action" title="Confirm that runs its action">
+          <ConfirmActionSpecimen />
         </Specimen>
         <Specimen id="charts" title="Chart colours">
           <ChartsSpecimen />
