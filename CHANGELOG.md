@@ -12,6 +12,18 @@ Approved consumer item D-002 (consumer report on the intake).
 - Defaults unchanged. Tests for the defaults, the labels and the wrapper attributes; a real-browser
   check in `kit/visual/interactions.visual.ts` that the rows become labelled cards at 390px and a table
   again at 1280px; gallery specimen `phone-cards`; docs in `kit/README.md`.
+## 2026-10-24 (v1.5.0, ThemeToggle system option, D-001)
+
+Approved consumer item D-001 (consumer report on the intake).
+
+- `ThemeToggle` takes `withSystem`: a compact three-way Light, System, Dark control (icon segments
+  built on `Segmented`, the labels as accessible names) instead of the flip button, so a user can go
+  back to following the OS after picking a theme. `system` is stored as its own value and follows
+  `prefers-color-scheme` while it is set; the reveal grows from the pressed segment. New props
+  `groupLabel`, `lightLabel`, `systemLabel`, `darkLabel`. Without `withSystem` the toggle is unchanged.
+- New icon `IconMonitor`.
+- Tests: the default button unchanged, the three-way choice and its storage, custom labels. Gallery
+  specimen `theme-system`, docs in `kit/README.md` and `standards/web-ui.md` section 6.
 
 ## 2026-10-24 (v1.4.0, month calendar grid)
 

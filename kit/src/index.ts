@@ -262,6 +262,7 @@ export {
   IconLogOut,
   IconMail,
   IconMenu,
+  IconMonitor,
   IconMoon,
   IconMore,
   IconPause,

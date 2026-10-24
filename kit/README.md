@@ -177,7 +177,7 @@ a nightly cron job or a manual run: nothing in the app library is ever overwritt
 Theme and accent
 
 - `ThemeProvider`, `useTheme`: light, dark or follow the OS, persisted per browser, set as `data-theme` on `<html>`.
-- `ThemeToggle`: flips the theme with a circle reveal from the button (View Transitions API), instant under reduced motion.
+- `ThemeToggle`: flips the theme with a circle reveal from the button (View Transitions API), instant under reduced motion. `withSystem` makes it a compact three-way Light, System, Dark control (icon segments, labels as accessible names), so a user can return to following the OS; `system` is stored as its own value.
 - `AccentProvider`, `setAppAccent(name)`: sets `data-app-accent` once on the root. Cobalt is the default and sets nothing.
 
 Shell
