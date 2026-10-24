@@ -10,6 +10,28 @@
   key); CONSUMING.md and the `core-update.yml` comment (`CORE_TOKEN` only opens the PR on the
   consumer's own repo).
 - Tests: the git fallback (highest semver tag, clone at a ref, one plain message for a missing ref).
+## 2026-10-24 (v1.0.0, core-ci is one job)
+
+BREAKING for every consumer's merge gate. The workflow file changed: copy `core-ci.yml` again, then in
+the merge gate require `core-checks` and remove the old per-check names in the same change
+(`python3 scripts/core-ci.py required-checks --fix` prints both).
+
+- `templates/overlay/.github/workflows/core-ci.yml`: one job, `core-checks`, with every check as a named
+  step (`core-secret-scan`, `core-ascii`, `core-python` and the rest). A failed step does not stop the
+  others. A pull request runs every step; a title or body edit runs only `core-pr-title` and
+  `core-attribution`; a merge queue entry (new `merge_group` trigger) runs every step that does not
+  read the pull request; a push to the default branch runs only `core-secret-scan`. A busy consumer
+  ran 12 jobs per pull request run and 7 per push; it now runs 1.
+- `core-status.py`: a rule's `check.jobs` may name a job or a `core-` step; `--ci` reads step results,
+  and fills the steps a push run skipped from the run on the head of the last merged pull request
+  with the same tree.
+- `core-ci.py required-checks`: the gate needs `core-checks`; old per-check names a gate still requires
+  are reported as obsolete, and `--fix` prints the commands that remove them.
+- `checks/check-rules.py`: overlay-ci bindings are checked against the template's jobs and steps.
+- Docs: `standards/ci-cd-release.md` section 2 (required checks and the migration), the overlay README
+  "CI workflow", CONSUMING.md.
+- Tests: the one-job template contract (one core job, unique core- steps, every check step runs after
+  a failure, push runs only the secret scan), obsolete gate names, step results and the push-run fill.
 
 ## 2026-10-24 (v0.102.0, consumer reports go to a private intake only)
 

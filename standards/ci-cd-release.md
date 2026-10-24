@@ -52,35 +52,45 @@ Related: [First-Party Build Standard](web-build.md) (stack and commands),
 The merge gate (a ruleset, branch protection, or the auto-merge workflow's `REQUIRED_CHECKS` list)
 treats each required check-run name as required: a missing check counts as not passed. Which checks
 a repo requires depends on its shape; the table below says which. The core's template
-`core-ci.yml` supplies the shared jobs, and every job id and check name there starts with `core-`
-(`core-python`, `core-identity`), so no core-ci check shares a name with a job of the repo's own
-workflows: a gate keyed on check names would read two jobs called `python` as one, and one green
-run would stand in for the other. A repo lists the core-ci names as they are, next to its own.
+`core-ci.yml` supplies the shared checks as ONE job, `core-checks`, whose named steps each prove a
+rule (`core-secret-scan`, `core-python` and the rest). The merge gate requires the one check name
+`core-checks`; `core-status.py --ci` reads each step's result. Every name there starts with `core-`,
+so no core-ci check shares a name with a job of the repo's own workflows: a gate keyed on check
+names would read two jobs called `python` as one. A repo lists `core-checks` next to its own checks.
 
-**Migrating to the `core-` names (v0.77.0).** Copy `core-ci.yml` from the template again, then
-replace each old core-ci name in the merge gate (`python` -> `core-python`, and so on) with
-`python3 scripts/core-ci.py required-checks --fix`, which prints the new names and the old ones to
-replace. Keep a repo job's own entry when the repo has a job of the same old name.
+Why one job: each core check is a short script, so a job's cost is mostly runner start and checkout.
+One job per pull request run, a push to the default branch that runs only the secret scan, and a
+title or body edit that runs only the two text checks keep the shared runner pool free (twelve jobs
+per run used to be most of a busy consumer's queue).
+
+**Migrating to one job (v1.0.0).** Copy `core-ci.yml` from the template again (keep `OVERLAY`), then
+in the merge gate require `core-checks` and remove the per-check names (`core-ascii`, `core-python`
+and the others): `python3 scripts/core-ci.py required-checks --fix` prints both changes. Do it in the
+same change as the copy, or the gate waits for checks that no longer report.
+
+**Migrating to the `core-` names (v0.77.0).** Older gates used bare names (`python`); a repo still on
+them goes straight to `core-checks` with the step above.
 
 ### Required checks by repo shape
 
-`req` means required in the merge gate, `stack` means required when the repo declares that stack in
-its Stacks parameter (the `core-ci.yml` job is skipped otherwise, and a skipped required check
-counts as passed), and `-` means not applicable. A local ops center has no hosted merge gate: the
+`req` means required in the merge gate (for the `core-ci.yml` rows: the step must run and pass inside
+the required `core-checks` check), `stack` means required when the repo declares that stack in its
+Stacks parameter (the step is skipped otherwise, and a skipped step never passes a rule), and `-`
+means not applicable. A local ops center has no hosted merge gate: the
 nightly's local gate (`hermes/ops_center.py`) runs its column before and after every sync and is the
 gate.
 
 | Check | Single hub app | Monorepo with IaC | Docs-only repo | Local ops center |
 |---|---|---|---|---|
-| `core-ci.yml` `core-secret-scan` | req | req | req | - (no hosted CI) |
-| `core-ci.yml` `core-workflow-lint` | req | req | req | - |
-| `core-ci.yml` `core-ascii` | req | req | req | - |
-| `core-ci.yml` `core-pr-title`, `core-commitlint` | req | req | req | - |
-| `core-ci.yml` `core-attribution`, `core-identity` | req | req | req | - |
-| `core-ci.yml` `core-changelog` | req | req | req | - |
-| `core-ci.yml` `core-python`, `core-powershell` | stack | stack | - | - |
-| `core-ci.yml` `core-node-pin` | req | stack | - | - |
-| `core-ci.yml` `core-kit-peers` | req (with `kit-core`) | req (with `kit-core`) | - | - |
+| `core-ci.yml` step `core-secret-scan` | req | req | req | - (no hosted CI) |
+| `core-ci.yml` step `core-workflow-lint` | req | req | req | - |
+| `core-ci.yml` step `core-ascii` | req | req | req | - |
+| `core-ci.yml` step `core-pr-title`, `core-commitlint` | req | req | req | - |
+| `core-ci.yml` step `core-attribution`, `core-identity` | req | req | req | - |
+| `core-ci.yml` step `core-changelog` | req | req | req | - |
+| `core-ci.yml` step `core-python`, `core-powershell` | stack | stack | - | - |
+| `core-ci.yml` step `core-node-pin` | req | stack | - | - |
+| `core-ci.yml` step `core-kit-peers` | req (with `kit-core`) | req (with `kit-core`) | - | - |
 | Build, typecheck, lint and tests (`lint-and-build` or the repo's own name) | req | req, per changed app | - | local gate: typecheck, build, verify |
 | Dependency audit and OSV scan (`audit`, `osv`) | req | req | - | - |
 | Static analysis (`semgrep`) | req | req | - | - |
@@ -90,8 +100,9 @@ gate.
 | Review bot result (`pr-review-and-merge.md` section 3) | req | req | req | - |
 | Overlay checks (core sync, exceptions, UI and script lint) | `core-drift.yml` | `core-drift.yml` | `core-drift.yml` | local gate |
 
-Every repo of every shape requires at least the shared `core-ci.yml` jobs that apply to it:
-`python3 scripts/core-ci.py required-checks` lists the ones its merge gate does not require yet. A
+Every repo of every shape requires the `core-checks` check of `core-ci.yml`, whose steps cover the rows
+above that apply to it: `python3 scripts/core-ci.py required-checks` reports a gate that does not
+require it or still requires the old per-check names. A
 repo whose shape is not in the table takes the nearest column and records the difference as an
 explicit exception.
 
