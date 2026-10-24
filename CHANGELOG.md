@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-24 (v1.1.0, the public core needs no account to read)
+
+- `templates/overlay/scripts/corehash.py`: `clone()` and `latest_tag()` try `gh` first, then plain `git`
+  over anonymous HTTPS (`git_url()`, overridable with `CORE_GIT_BASE`). A machine or CI job without
+  `gh`, an account or a token can sync, check the pin and find the newest release.
+- Docs: README "Day one" (no invitation or sign-in), "CI that builds the app" (a plain checkout, no deploy
+  key), the FAQ and the troubleshooting table; hermes/README.md managed hosts (read over HTTPS, no host
+  key); CONSUMING.md and the `core-update.yml` comment (`CORE_TOKEN` only opens the PR on the
+  consumer's own repo).
+- Tests: the git fallback (highest semver tag, clone at a ref, one plain message for a missing ref).
+
 ## 2026-10-24 (v0.102.0, consumer reports go to a private intake only)
 
 The core is moving to a public repository, so a consumer report (one account's design inventory and

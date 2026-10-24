@@ -67,25 +67,17 @@ per tool (adopt, adapt or reject, with the reason and the install command) and
 Some consumers are servers whose whole setup is applied from another git repo by a convergence
 script, with no person signed in to `gh`. Running `hermes/setup.py` or the nightly job there would
 be drift the convergence script does not know about. Such a host consumes the core this way
-instead, which is the same deploy-key process CI consumers use (README, "CI that builds the app"):
+instead (the core is public, so no key or token is involved):
 
 1. **Pin a release.** The host's own repo records the core tag it consumes in one file (for example
    `CORE_VERSION`). Moving to a new release is a pull request on that file, never a pull on the host.
-2. **One read-only deploy key for the host.** Make an ed25519 key pair on the host as the service
-   user that runs Hermes, with no passphrase, mode 0600, comment `<host>-<user> read-only`. Back the
-   private half up to the secret store straight from the host (never through chat or a terminal
-   echo), and ask a core admin to add the public half under Settings > Deploy keys, title
-   `<host>-<user>`, with **Allow write access** unchecked.
-3. **Verify read, not write.** `git ls-remote --tags` over that key lists the tags; the deploy-key
-   list on the core shows it read-only.
-4. **Sync from the convergence script.** Check out the pinned tag with
-   `GIT_SSH_COMMAND='ssh -i <keyfile> -o IdentitiesOnly=yes'` and run
+2. **Read the pin over HTTPS.** `git ls-remote --tags https://github.com/OWNER/build-standards-core.git`
+   lists the releases, and a shallow clone of the pinned tag needs no credential.
+3. **Sync from the convergence script.** Check out the pinned tag and run
    `python3 hermes/sync_skills.py --dest <profile home>/skills/core` for every profile, as the
    service user.
-5. **Apply only what fits.** Settings from `tools.json` that need a shell (for example `rtk`) do
+4. **Apply only what fits.** Settings from `tools.json` that need a shell (for example `rtk`) do
    nothing for a profile without the terminal toolset. Record that as a reasoned skip, not a gap.
-6. **Rotate or revoke** by deleting the deploy key on the core, then repeat step 2. A rebuilt host
-   restores the key from the secret store.
 
 ## 4. Contributing
 

@@ -1,9 +1,9 @@
 name: core-update
 # Opens a pull request when the core has a newer release than standards.lock. Needs a repository
 # variable CORE_REPO (OWNER/NAME of the core; a variable so no file in the repo names it) and a repository
-# secret, CORE_TOKEN: a fine-grained token (or a classic token with repo scope) from an account that can
-# read the core, with contents and pull-requests write on THIS repo. A token is required because pull
-# requests opened with the default GITHUB_TOKEN do not start CI. The sync also refreshes the repo's core
+# secret, CORE_TOKEN: a fine-grained token (or an App token) with contents and pull-requests write on THIS
+# repo; the core is public, so reading it needs no permission. A token is required because pull requests
+# opened with the default GITHUB_TOKEN do not start CI. The sync also refreshes the repo's core
 # template workflows, so the token needs workflows write too (classic: the workflow scope). Adjust
 # OVERLAY if the overlay is in a subfolder; a sync keeps the repo's OVERLAY value and every line marked
 # core-sync: keep. When core-ci.yml's job names change, the pull request body lists the old -> new
