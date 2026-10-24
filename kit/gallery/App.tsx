@@ -2316,24 +2316,6 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         <Specimen id="table" title="Table and toolbar">
           <TableSpecimen />
         </Specimen>
-        <Specimen id="phone-cards" title="Rows as cards on a phone">
-          <span className="gallery-note">Table mobile="cards" stickyHead={'{false}'}: below 640px each row is a card labelled by its column headers:</span>
-          <Table
-            caption="Hosts"
-            mobile="cards"
-            stickyHead={false}
-            rowKey={(r: { id: string; host: string; role: string; cpu: number }) => r.id}
-            columns={[
-              { key: 'host', header: 'Host' },
-              { key: 'role', header: 'Role' },
-              { key: 'cpu', header: 'CPU %', numeric: true },
-            ]}
-            rows={[
-              { id: 'h1', host: 'node-a', role: 'Gateway', cpu: 12 },
-              { id: 'h2', host: 'node-b', role: 'Worker', cpu: 64 },
-            ]}
-          />
-        </Specimen>
         <Specimen id="empty" title="Empty states and loading">
           <EmptySpecimen />
         </Specimen>
@@ -2436,6 +2418,24 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="list-split" title="List table, paging and split layout">
           <ListSplitSpecimen />
+        </Specimen>
+        <Specimen id="phone-cards" title="Rows as cards on a phone">
+          <span className="gallery-note">Table mobile="cards" stickyHead={'{false}'}: below 640px each row is a card labelled by its column headers:</span>
+          <Table
+            caption="Hosts"
+            mobile="cards"
+            stickyHead={false}
+            rowKey={(r: { id: string; host: string; role: string; cpu: number }) => r.id}
+            columns={[
+              { key: 'host', header: 'Host' },
+              { key: 'role', header: 'Role' },
+              { key: 'cpu', header: 'CPU %', numeric: true },
+            ]}
+            rows={[
+              { id: 'h1', host: 'node-a', role: 'Gateway', cpu: 12 },
+              { id: 'h2', host: 'node-b', role: 'Worker', cpu: 64 },
+            ]}
+          />
         </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">
