@@ -1,11 +1,21 @@
 # Changelog
 
-## 2026-10-24 (v1.10.1, undici security fix)
+## 2026-10-24 (v1.11.1, undici security fix)
 
 - `undici` (dev only, through jsdom) raised from 8.11.2 to 8.12.3, and an `overrides` entry lifts the copy
   pinned by `@scalar/json-magic` from 7.29.1 to 7.30.1. Both close the content-encoding denial of service
   advisory. No kit API or behaviour change.
 
+## 2026-10-24 (v1.11.0, lane board)
+
+Carried over from the previous core repository, where it was opened 2026-10-23 as item D-004 of a
+consumer report.
+
+- `LaneBoard`: lanes as columns with cards, a drop indicator, an empty-lane state and an `onMove({ cardId, from, to, index })`
+  callback. Cards drag with the pointer, or by keyboard: Space or Enter picks up, left and right choose the lane, up and
+  down the position, Space or Enter drops, Escape cancels; every step is announced in a polite live region. The board holds
+  no data rules and never reorders itself.
+- Tests in `kit/tests/lane-board.test.tsx`, gallery specimen `lane-board`, docs in `kit/README.md`.
 ## 2026-10-24 (v1.10.0, ops center design)
 
 Carried over from the previous core repository (opened 2026-10-23), where the owner made the decisions
