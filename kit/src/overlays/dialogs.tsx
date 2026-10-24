@@ -26,6 +26,15 @@ export interface ConfirmOptions {
   requireText?: string | undefined;
   /** Label over the typed-confirmation field. Default "Type <requireText> to confirm". */
   requireTextLabel?: string | undefined;
+  /** Runs the confirmed action inside the dialog: while it runs the confirm button shows busy and the
+      dialog stays open; a rejection shows its message inline and keeps the dialog open for a retry;
+      confirm() resolves true only after the action succeeds. Unset, confirm() resolves true at once. */
+  action?: (() => Promise<unknown> | void) | undefined;
+  /** Checked on confirm, before `action`: an error string keeps the dialog open with the message
+      inline, null lets it continue. */
+  validate?: (() => string | null) | undefined;
+  /** Shown when `action` rejects without a message. Default "That did not work. Try again." */
+  errorText?: string | undefined;
 }
 
 export interface ConfirmApi {
@@ -46,6 +55,8 @@ export function useConfirm(): ConfirmApi {
   const cancelRef = useRef<HTMLButtonElement | null>(null);
   const confirmRef = useRef<HTMLButtonElement | null>(null);
   const [typed, setTyped] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   if (pending) lastOptions.current = pending.options;
 
   const settle = useCallback((value: boolean) => {
@@ -59,6 +70,8 @@ export function useConfirm(): ConfirmApi {
   const confirm = useCallback((options: ConfirmOptions) => {
     pendingRef.current?.resolve(false);
     setTyped('');
+    setBusy(false);
+    setError(null);
     return new Promise<boolean>((resolve) => {
       const next = { options, resolve };
       pendingRef.current = next;
@@ -68,10 +81,39 @@ export function useConfirm(): ConfirmApi {
 
   const o = pending?.options ?? lastOptions.current;
   const typedOk = o?.requireText === undefined || typed === o.requireText;
+
+  const onConfirm = async () => {
+    const current = pendingRef.current;
+    if (!current || !typedOk || busy) return;
+    const opts = current.options;
+    const problem = opts.validate ? opts.validate() : null;
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    if (!opts.action) {
+      settle(true);
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await opts.action();
+      setBusy(false);
+      if (pendingRef.current === current) settle(true);
+    } catch (err) {
+      setBusy(false);
+      if (pendingRef.current !== current) return;
+      setError(err instanceof Error && err.message ? err.message : (opts.errorText ?? 'That did not work. Try again.'));
+    }
+  };
   const dialog = (
     <Modal
       open={pending !== null}
-      onClose={() => settle(false)}
+      onClose={() => {
+        // A running action finishes or fails in the dialog; it cannot be dismissed half done.
+        if (!busy) settle(false);
+      }}
       role="alertdialog"
       size="sm"
       title={o?.title ?? ''}
@@ -81,23 +123,21 @@ export function useConfirm(): ConfirmApi {
       footer={
         <div className="modal-foot">
           <div className="modal-foot-start" />
-          <Button ref={cancelRef} variant="secondary" onClick={() => settle(false)}>
+          <Button ref={cancelRef} variant="secondary" disabled={busy} onClick={() => settle(false)}>
             {o?.cancelLabel ?? 'Cancel'}
           </Button>
-          <Button
-            ref={confirmRef}
-            variant={o?.danger ? 'danger' : 'primary'}
-            disabled={!typedOk}
-            onClick={() => {
-              if (typedOk) settle(true);
-            }}
-          >
+          <Button ref={confirmRef} variant={o?.danger ? 'danger' : 'primary'} disabled={!typedOk} loading={busy} onClick={() => void onConfirm()}>
             {o?.confirmLabel ?? 'Confirm'}
           </Button>
         </div>
       }
     >
       {o?.body ? <div className="modal-text">{o.body}</div> : null}
+      {error ? (
+        <p className="field-error confirm-error" role="alert">
+          {error}
+        </p>
+      ) : null}
       {o?.requireText !== undefined ? (
         <Field label={o.requireTextLabel ?? `Type ${o.requireText} to confirm`}>
           <Input

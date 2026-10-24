@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-24 (v1.9.0, confirm runs its action, D-005)
+
+Approved consumer item D-005 (consumer report on the intake).
+
+- `useConfirm` options take `action`: it runs inside the dialog. While it runs the confirm button shows
+  busy and Cancel and Escape are held, so the dialog cannot close half done; a rejection shows its
+  message inline (or `errorText`, default "That did not work. Try again.") and keeps the dialog open for
+  a retry; `confirm()` resolves true only after the action succeeds.
+- `validate` returns an error string to keep the dialog open with the message inline, or null to go on;
+  it runs before `action`.
+- Without `action` or `validate` the dialog behaves as before. Tests for the busy run, the failed run and
+  retry, validation, and the unchanged default; gallery specimen `confirm-action`; docs in
+  `kit/README.md`.
 ## 2026-10-24 (v1.8.0, AccountMenu actions, D-004)
 
 Approved consumer item D-004 (consumer report on the intake).
