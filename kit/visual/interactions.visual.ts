@@ -57,3 +57,26 @@ test('a Table with mobile="cards" reflows to labelled cards on a phone and back 
   await expect(firstRow).toHaveCSS('display', 'table-row');
   await expect(specimen.locator('thead th').first()).toHaveCSS('position', 'static');
 });
+
+test('a LaneBoard card moves to another lane by pointer drag and by keyboard', async ({ page }) => {
+  const specimen = page.locator('#specimen-lane-board');
+  const todo = specimen.getByRole('region', { name: /^To do,/ });
+  const doing = specimen.getByRole('region', { name: /^In progress,/ });
+  const done = specimen.getByRole('region', { name: /^Done,/ });
+  await specimen.scrollIntoViewIfNeeded();
+  await expect(done).toHaveAccessibleName('Done, 0 cards');
+
+  await specimen.locator('[data-card-id="a"]').dragTo(done);
+  await expect(done).toHaveAccessibleName('Done, 1 card');
+  await expect(todo).toHaveAccessibleName('To do, 1 card');
+  await expect(done.locator('[data-card-id="a"]')).toHaveCount(1);
+
+  const card = specimen.locator('[data-card-id="b"]');
+  await card.focus();
+  await page.keyboard.press('Space');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Space');
+  await expect(doing).toHaveAccessibleName('In progress, 2 cards');
+  await expect(todo).toHaveAccessibleName('To do, 0 cards');
+  await expect(specimen.getByRole('status')).not.toHaveText('');
+});
