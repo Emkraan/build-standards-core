@@ -41,3 +41,19 @@ test('palette filter tabs cycle with Tab and Shift+Tab and narrow the rows', asy
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
 });
+
+test('a Table with mobile="cards" reflows to labelled cards on a phone and back on a desktop', async ({ page }) => {
+  const specimen = page.locator('#specimen-phone-cards');
+  const firstRow = specimen.locator('tbody tr').first();
+  const firstCell = firstRow.locator('td').first();
+  await page.setViewportSize({ width: 390, height: 900 });
+  await specimen.scrollIntoViewIfNeeded();
+  await expect(firstRow).toHaveCSS('display', 'block');
+  await expect(firstCell).toHaveCSS('display', 'grid');
+  const label = await firstCell.evaluate((el) => getComputedStyle(el, '::before').content);
+  expect(label).toBe('"Host"');
+  await expect(specimen.getByRole('columnheader', { name: 'Host' })).toHaveCount(1);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect(firstRow).toHaveCSS('display', 'table-row');
+  await expect(specimen.locator('thead th').first()).toHaveCSS('position', 'static');
+});

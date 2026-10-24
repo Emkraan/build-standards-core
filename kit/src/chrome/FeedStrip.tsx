@@ -56,11 +56,13 @@ export interface FeedStripProps {
   greeting?: ReactNode;
   /** Show the search trigger (default true). */
   search?: boolean | undefined;
+  /** Passed to the search trigger: called instead of opening the kit palette. */
+  onSearch?: (() => void) | undefined;
   label?: string | undefined;
   interval?: number | undefined;
 }
 
-export function FeedStrip({ health, items = [], greeting, search = true, label = 'Live feed', interval = FEED_INTERVAL }: FeedStripProps) {
+export function FeedStrip({ health, items = [], greeting, search = true, onSearch, label = 'Live feed', interval = FEED_INTERVAL }: FeedStripProps) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -174,7 +176,7 @@ export function FeedStrip({ health, items = [], greeting, search = true, label =
             </button>
           </div>
         ) : null}
-        {search ? <SearchTrigger /> : null}
+        {search ? <SearchTrigger onSearch={onSearch} /> : null}
       </section>
     </div>
   );

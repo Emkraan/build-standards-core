@@ -75,6 +75,7 @@ import {
   Switch,
   ShortcutLayer,
   Skeleton,
+  MonthGrid,
   StatTile,
   FreshnessGrid,
   StatusDot,
@@ -242,6 +243,81 @@ function ThemeControls({ accent, onAccent }: { accent: AppAccent; onAccent: (a: 
   );
 }
 
+function SearchRoutingSpecimen() {
+  const [routed, setRouted] = useState(0);
+  return (
+    <div className="gallery-row">
+      <span className="gallery-note">SearchTrigger onSearch: routes to the app's own search instead of the kit palette.</span>
+      <SearchTrigger label="Search the app" onSearch={() => setRouted((n) => n + 1)} />
+      <span className="gallery-note" aria-live="polite">{routed ? `Routed to the app's search ${routed} time(s)` : 'Not routed yet'}</span>
+    </div>
+  );
+}
+
+function AccountActionsSpecimen() {
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState('');
+  return (
+    <div className="gallery-row">
+      <span className="gallery-note">AccountMenu actions and status: open it for Refresh permissions above Sign out.</span>
+      <AccountMenu
+        identity={{ name: 'Ada Example', email: 'ada@example.com', role: 'Operator' }}
+        placement="bottom-start"
+        status={status}
+        actions={[
+          {
+            key: 'refresh',
+            label: 'Refresh permissions',
+            busy,
+            onSelect: () => {
+              setBusy(true);
+              setStatus('');
+              window.setTimeout(() => {
+                setBusy(false);
+                setStatus('Permissions refreshed');
+              }, 600);
+            },
+          },
+        ]}
+        onSignOut={() => undefined}
+      />
+    </div>
+  );
+}
+
+function ConfirmActionSpecimen() {
+  const { confirm, dialog } = useConfirm();
+  const [result, setResult] = useState('Not run yet');
+  const tries = useRef(0);
+  return (
+    <div className="gallery-row">
+      <span className="gallery-note">useConfirm with action: the first try fails inline, the retry succeeds.</span>
+      <Button
+        variant="danger"
+        onClick={async () => {
+          tries.current = 0;
+          const ok = await confirm({
+            title: 'Delete the schedule?',
+            body: 'Everyone on it stops getting reminders.',
+            confirmLabel: 'Delete',
+            danger: true,
+            action: () =>
+              new Promise<void>((resolve, reject) => {
+                tries.current += 1;
+                window.setTimeout(() => (tries.current === 1 ? reject(new Error('The server refused the delete. Try again.')) : resolve()), 500);
+              }),
+          });
+          setResult(ok ? 'Deleted' : 'Kept');
+        }}
+      >
+        Delete with retry
+      </Button>
+      <span className="gallery-note" aria-live="polite">{result}</span>
+      {dialog}
+    </div>
+  );
+}
+
 function ButtonsSpecimen() {
   const [loading, setLoading] = useState(false);
   return (
@@ -378,6 +454,19 @@ function WorkingSpecimen() {
       </div>
     </div>
   );
+}
+
+function MonthGridSpecimen() {
+  const [picked, setPicked] = useState<string | undefined>('2026-10-14');
+  const events = [
+    { id: '1', date: '2026-10-05', label: 'Primary shift', tone: 'accent' as const },
+    { id: '2', date: '2026-10-14', label: 'Out of office', tone: 'warning' as const },
+    { id: '3', date: '2026-10-14', label: 'Backup shift' },
+    { id: '4', date: '2026-10-14', label: 'Review', tone: 'info' as const },
+    { id: '5', date: '2026-10-14', label: 'Handover', tone: 'success' as const },
+    { id: '6', date: '2026-10-23', label: 'Release window', tone: 'danger' as const },
+  ];
+  return <MonthGrid year={2026} month={9} label="Example calendar" today="2026-10-23" events={events} selected={picked} onSelectDay={setPicked} />;
 }
 
 function StatSpecimen() {
@@ -2211,7 +2300,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'empty', 'overlays', 'chrome', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'palette-rank', 'tile-edge', 'freshness'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'palette-rank', 'tile-edge', 'freshness', 'month-grid'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2399,8 +2488,42 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         <Specimen id="filter-bulk" title="Filter panel and bulk run">
           <FilterBulkSpecimen />
         </Specimen>
+        <Specimen id="month-grid" title="Month grid">
+          <MonthGridSpecimen />
+        </Specimen>
         <Specimen id="list-split" title="List table, paging and split layout">
           <ListSplitSpecimen />
+        </Specimen>
+        <Specimen id="theme-system" title="Theme toggle with System">
+          <span className="gallery-note">ThemeToggle withSystem: Light, System and Dark, so a user can go back to following the OS:</span>
+          <ThemeToggle withSystem />
+        </Specimen>
+        <Specimen id="phone-cards" title="Rows as cards on a phone">
+          <span className="gallery-note">Table mobile="cards" stickyHead={'{false}'}: below 640px each row is a card labelled by its column headers:</span>
+          <Table
+            caption="Hosts"
+            mobile="cards"
+            stickyHead={false}
+            rowKey={(r: { id: string; host: string; role: string; cpu: number }) => r.id}
+            columns={[
+              { key: 'host', header: 'Host' },
+              { key: 'role', header: 'Role' },
+              { key: 'cpu', header: 'CPU %', numeric: true },
+            ]}
+            rows={[
+              { id: 'h1', host: 'node-a', role: 'Gateway', cpu: 12 },
+              { id: 'h2', host: 'node-b', role: 'Worker', cpu: 64 },
+            ]}
+          />
+        </Specimen>
+        <Specimen id="search-routing" title="Search routed to an app's own palette">
+          <SearchRoutingSpecimen />
+        </Specimen>
+        <Specimen id="account-actions" title="Account menu actions">
+          <AccountActionsSpecimen />
+        </Specimen>
+        <Specimen id="confirm-action" title="Confirm that runs its action">
+          <ConfirmActionSpecimen />
         </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">

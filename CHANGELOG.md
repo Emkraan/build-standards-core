@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-24 (v1.3.0, ops center design)
+## 2026-10-24 (v1.10.0, ops center design)
 
 Carried over from the previous core repository (opened 2026-10-23), where the owner made the decisions
 it records on two consumer reports: Table B rows B-01 to B-31 and the 20 assessment decisions, all as
@@ -13,6 +13,87 @@ recommended.
   kit shell, the slot interfaces with reference adapters for the code host, work tracker and docs home,
   every parameter including the declared exceptions, the deploy contract, automerge, `adopt`, the build
   plan (P1 to P3, then R1 to R9) and each consumer's migration path.
+## 2026-10-24 (v1.9.0, confirm runs its action, D-005)
+
+Approved consumer item D-005 (consumer report on the intake).
+
+- `useConfirm` options take `action`: it runs inside the dialog. While it runs the confirm button shows
+  busy and Cancel and Escape are held, so the dialog cannot close half done; a rejection shows its
+  message inline (or `errorText`, default "That did not work. Try again.") and keeps the dialog open for
+  a retry; `confirm()` resolves true only after the action succeeds.
+- `validate` returns an error string to keep the dialog open with the message inline, or null to go on;
+  it runs before `action`.
+- Without `action` or `validate` the dialog behaves as before. Tests for the busy run, the failed run and
+  retry, validation, and the unchanged default; gallery specimen `confirm-action`; docs in
+  `kit/README.md`.
+## 2026-10-24 (v1.8.0, AccountMenu actions, D-004)
+
+Approved consumer item D-004 (consumer report on the intake).
+
+- `AccountMenu` takes `actions`, buttons shown above Sign out (`{ key, label, onSelect, busy?, tone?,
+  icon? }`; `tone: 'danger'` uses the subtle danger button, `busy` shows it working and blocks a
+  second click). An action runs without closing the panel.
+- `status`, a polite live line for the actions' result (for example "Permissions refreshed"); pass it
+  whenever the panel has actions so the live region exists before its text changes.
+- New type `AccountAction`. Defaults unchanged. Tests for the unchanged default, an action with its
+  status in an open panel, and a busy action; gallery specimen `account-actions`; docs in
+  `kit/README.md`.
+## 2026-10-24 (v1.7.0, search routing, D-003)
+
+Approved consumer item D-003 (consumer report on the intake).
+
+- `PALETTE_OPEN_EVENT` (the document event that opens the palette) is exported, with
+  `onPaletteOpen(listener)`, which hears every open request (a trigger, the feed strip,
+  `openCommandPalette`, `openScopedPalette`) with its scope and returns the unsubscribe.
+- `SearchTrigger` and `FeedStrip` take `onSearch`: called instead of opening the kit palette, for an
+  app that still mounts its own during a migration. Unset, both behave as before.
+- Tests for the event export and listener, the unchanged default and the routed trigger through the
+  feed strip; gallery specimen `search-routing`; docs in `kit/README.md`.
+## 2026-10-24 (v1.6.0, Table phone cards and sticky-head opt-out, D-002)
+
+Approved consumer item D-002 (consumer report on the intake).
+
+- `Table` takes `mobile: 'scroll' | 'cards'` (default `scroll`): with `cards`, at 640px and below each row
+  becomes a card of label and value pairs, the label being the column header (`data-label`; a
+  `hideHeader` column gets none). The head stays in the accessibility tree, visually hidden.
+- `stickyHead={false}` keeps the head in place for a short table inside a card (default true).
+- `wrapClassName` adds a class on the scroll wrapper, next to `className`.
+- Defaults unchanged. Tests for the defaults, the labels and the wrapper attributes; a real-browser
+  check in `kit/visual/interactions.visual.ts` that the rows become labelled cards at 390px and a table
+  again at 1280px; gallery specimen `phone-cards`; docs in `kit/README.md`.
+## 2026-10-24 (v1.5.0, ThemeToggle system option, D-001)
+
+Approved consumer item D-001 (consumer report on the intake).
+
+- `ThemeToggle` takes `withSystem`: a compact three-way Light, System, Dark control (icon segments
+  built on `Segmented`, the labels as accessible names) instead of the flip button, so a user can go
+  back to following the OS after picking a theme. `system` is stored as its own value and follows
+  `prefers-color-scheme` while it is set; the reveal grows from the pressed segment. New props
+  `groupLabel`, `lightLabel`, `systemLabel`, `darkLabel`. Without `withSystem` the toggle is unchanged.
+- New icon `IconMonitor`.
+- Tests: the default button unchanged, the three-way choice and its storage, custom labels. Gallery
+  specimen `theme-system`, docs in `kit/README.md` and `standards/web-ui.md` section 6.
+
+## 2026-10-24 (v1.4.0, month calendar grid)
+
+Carried over from the previous core repository (item D-011 of a consumer report, approved).
+
+- New `MonthGrid` primitive: weeks of day cells, weekday headers, event chips with a "+N more"
+  line, a today marker (`aria-current="date"`, a filled number) and roving keyboard navigation (arrows,
+  Home, End, PageUp, PageDown, Enter and Space to pick a day). Dates are ISO day strings, so no time zone
+  moves a cell. Events arrive as a list; `renderEvent`, `renderDay` and `dayHint` are the slots, and what an
+  event means (coverage, shifts, leave) stays in the app. `onMonthChange` fires when keys leave the month.
+  Exports `monthWeeks`, `isoDay` and `addDays`.
+- Tests in `kit/tests/month-grid.test.tsx`, a gallery specimen `month-grid` and a README line.
+- Known limit, noted in `kit/README.md`: an event covers one day; multi-day spans are not supported.
+
+## 2026-10-24 (v1.1.1, public repository automerge)
+
+- `.github/workflows/automerge.yml`: the repository is public, so it merges through the owning org's
+  reusable automerge workflow (pinned to a commit) on hosted runners, with a twice daily safety-net sweep.
+- `checks/check-sanitised.py`: `.github/workflows/automerge.yml` joins `LICENSE` and `renovate.json` as
+  the only identity files exempt from the term lists (it names the org whose workflow it calls). Test
+  extended.
 
 ## 2026-10-24 (v1.1.0, the public core needs no account to read)
 

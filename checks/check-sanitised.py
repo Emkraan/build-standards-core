@@ -95,7 +95,7 @@ def mask_gist_logins(text):
     return GIST_RAW.sub(r"\1login\2", text)
 
 
-IDENTITY_FILES = ("LICENSE", "renovate.json")
+IDENTITY_FILES = ("LICENSE", "renovate.json", ".github/workflows/automerge.yml")
 
 
 def main():
@@ -120,7 +120,8 @@ def main():
         if not f or f.startswith("checks/denylist") or not pathlib.Path(f).is_file():
             continue
         # Repo identity files name their owner by necessity, not as business content: the licence names its
-        # copyright holder and renovate.json extends the owning org's shared config. They are the only files
+        # copyright holder, renovate.json extends the owning org's shared config, and automerge.yml calls the
+        # org's reusable merge workflow. They are the only files
         # exempt from the term lists (owner decisions 2026-10-24).
         if not file_mode and f in IDENTITY_FILES:
             continue
