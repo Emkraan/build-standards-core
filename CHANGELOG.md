@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-24 (v1.8.0, AccountMenu actions, D-004)
+
+Approved consumer item D-004 (consumer report on the intake).
+
+- `AccountMenu` takes `actions`, buttons shown above Sign out (`{ key, label, onSelect, busy?, tone?,
+  icon? }`; `tone: 'danger'` uses the subtle danger button, `busy` shows it working and blocks a
+  second click). An action runs without closing the panel.
+- `status`, a polite live line for the actions' result (for example "Permissions refreshed"); pass it
+  whenever the panel has actions so the live region exists before its text changes.
+- New type `AccountAction`. Defaults unchanged. Tests for the unchanged default, an action with its
+  status in an open panel, and a busy action; gallery specimen `account-actions`; docs in
+  `kit/README.md`.
+
 ## 2026-10-24 (v1.4.0, month calendar grid)
 
 Carried over from the previous core repository (item D-011 of a consumer report, approved).

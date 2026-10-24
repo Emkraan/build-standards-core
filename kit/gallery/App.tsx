@@ -243,6 +243,37 @@ function ThemeControls({ accent, onAccent }: { accent: AppAccent; onAccent: (a: 
   );
 }
 
+function AccountActionsSpecimen() {
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState('');
+  return (
+    <div className="gallery-row">
+      <span className="gallery-note">AccountMenu actions and status: open it for Refresh permissions above Sign out.</span>
+      <AccountMenu
+        identity={{ name: 'Ada Example', email: 'ada@example.com', role: 'Operator' }}
+        placement="bottom-start"
+        status={status}
+        actions={[
+          {
+            key: 'refresh',
+            label: 'Refresh permissions',
+            busy,
+            onSelect: () => {
+              setBusy(true);
+              setStatus('');
+              window.setTimeout(() => {
+                setBusy(false);
+                setStatus('Permissions refreshed');
+              }, 600);
+            },
+          },
+        ]}
+        onSignOut={() => undefined}
+      />
+    </div>
+  );
+}
+
 function ButtonsSpecimen() {
   const [loading, setLoading] = useState(false);
   return (
@@ -2225,7 +2256,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'empty', 'overlays', 'chrome', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'palette-rank', 'tile-edge', 'freshness', 'month-grid'];
+  const sections = ['theme', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'empty', 'overlays', 'chrome', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'palette-rank', 'tile-edge', 'freshness', 'month-grid'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2327,6 +2358,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="chrome" title="Required chrome">
           <ChromeSpecimen releases={releases} version={version} />
+        </Specimen>
+        <Specimen id="account-actions" title="Account menu actions">
+          <AccountActionsSpecimen />
         </Specimen>
         <Specimen id="charts" title="Chart colours">
           <ChartsSpecimen />
