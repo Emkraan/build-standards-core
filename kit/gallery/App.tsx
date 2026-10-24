@@ -2276,10 +2276,6 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         <Specimen id="theme" title="Theme and accent">
           <ThemeControls accent={accent} onAccent={setAccent} />
         </Specimen>
-        <Specimen id="theme-system" title="Theme toggle with System">
-          <span className="gallery-note">ThemeToggle withSystem: Light, System and Dark, so a user can go back to following the OS:</span>
-          <ThemeToggle withSystem />
-        </Specimen>
         <Specimen id="type" title="Type roles">
           <TypeRolesSpecimen />
         </Specimen>
@@ -2422,6 +2418,10 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="list-split" title="List table, paging and split layout">
           <ListSplitSpecimen />
+        </Specimen>
+        <Specimen id="theme-system" title="Theme toggle with System">
+          <span className="gallery-note">ThemeToggle withSystem: Light, System and Dark, so a user can go back to following the OS:</span>
+          <ThemeToggle withSystem />
         </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">
