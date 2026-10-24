@@ -55,9 +55,13 @@ which every sync refreshes, so a fix to a check reaches the repo with the next r
 release changes the workflow file itself, its changelog entry says so; copy it again.
 
 Every `uses:` is pinned to a full commit sha with its version in a comment, and the scanner
-(gitleaks), PSScriptAnalyzer and ruff are pinned by version and sha256 in `core-ci.py`. Jobs:
+(gitleaks), PSScriptAnalyzer and ruff are pinned by version and sha256 in `core-ci.py`. The workflow
+is ONE job, `core-checks` (the one check name the merge gate requires); each check is a named step
+of it, and a failed step does not stop the others. A pull request runs every step, a title or body
+edit runs only `core-pr-title` and `core-attribution`, a merge queue entry runs every step that does
+not read the pull request, and a push to the default branch runs only `core-secret-scan`. Steps:
 
-| Job | Proves | Runs |
+| Step | Proves | Runs |
 |---|---|---|
 | `core-secret-scan` | secrets-and-credentials.md 1.8 | PRs and the default branch; the base commit's scanner config (or the default rules plus a path allowlist for `tokens-core/wpf/`), ignore files and `gitleaks:allow` comments off |
 | `core-workflow-lint` | ci-cd-release.md 1 | every workflow: sha pins with a version comment, image digests, a top-level `permissions:` block, frozen installs |
@@ -72,14 +76,15 @@ Every `uses:` is pinned to a full commit sha with its version in a comment, and 
 
 Values come from `standards-local/parameters.md`: Stacks, Python floor and test command, commit
 emails, changelog file, version files, ASCII patterns, Node major. The repository variable
-`CORE_CI_RUNNER` sets `runs-on` as JSON; unset, jobs run on `ubuntu-latest`. Add every job to the
-merge gate's required checks (section "Required checks"). Exclude the vendored copies (`standards-core/`, `lint-core/`,
+`CORE_CI_RUNNER` sets `runs-on` as JSON; unset, the job runs on `ubuntu-latest`. Require `core-checks`
+in the merge gate (section "Required checks"). Exclude the vendored copies (`standards-core/`, `lint-core/`,
 `tokens-core/`, `kit-core/`) in the ruff config, as for any formatter.
 
 `core-status.py --ci` reads the latest default-branch run of `core-ci.yml` and turns each
 `overlay-ci` rule into pass or fail; without it an installed workflow leaves the rule unverified,
-and a missing workflow or job fails it. A skipped job (a stack the repo does not declare) never
-passes a rule.
+and a missing workflow or step fails it. A skipped step (a stack the repo does not declare) never
+passes a rule. A push run skips the pull request steps, so their results are read from the run on
+the head of the last merged pull request with the same tree.
 
 The workflow file gained the `kit-peers` job and the setup output `kit` in v0.57.0: copy it again.
 
@@ -107,7 +112,7 @@ in the merge gate's required checks. A skipped job (a stack the repo does not de
 success, so requiring it costs nothing.
 
 ```
-python3 scripts/core-ci.py required-checks         # which core-ci jobs nothing requires (needs gh)
+python3 scripts/core-ci.py required-checks         # is core-checks required, any old names left (needs gh)
 python3 scripts/core-ci.py required-checks --fix   # also print the command that adds them
 ```
 

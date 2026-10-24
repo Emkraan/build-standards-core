@@ -39,7 +39,8 @@ TEMPLATES = ROOT / "templates" / "overlay" / ".github" / "workflows"
 
 
 def template_jobs(name):
-    """Job ids of a template workflow, or None when the file does not exist."""
+    """Check names a rule may bind to in a template workflow: job ids and core- step names. None when
+    the file does not exist."""
     f = TEMPLATES / name
     if not f.is_file():
         return None
@@ -51,6 +52,9 @@ def template_jobs(name):
         if inside and re.match(r"^\S", line):
             inside = False
         m = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line) if inside else None
+        if m:
+            jobs.add(m.group(1))
+        m = re.match(r"^\s+-\s+name:\s*(core-[A-Za-z0-9_-]+)\s*$", line) if inside else None
         if m:
             jobs.add(m.group(1))
     return jobs
@@ -174,7 +178,7 @@ def main():
                 )
             elif not isinstance(jobs, list) or not jobs or any(j not in have for j in jobs):
                 bad.append(
-                    f"{where}: check.jobs must list jobs of {wf} (it has {', '.join(sorted(have))})"
+                    f"{where}: check.jobs must list jobs or core- steps of {wf} (it has {', '.join(sorted(have))})"
                 )
             elif wf not in r["acceptance"] or not all(j in r["acceptance"] for j in jobs):
                 bad.append(f"{where}: the acceptance line must name {wf} and each job")

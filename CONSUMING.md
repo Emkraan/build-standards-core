@@ -75,8 +75,8 @@ accordingly (README "Direction").
   merges at once, before CI runs. An open sync pull request is reported as awaiting approval; one
   with failing checks is a problem.
 - The repo carries the template `core-ci.yml` beside `core-drift.yml` (templates/overlay/README.md
-  "CI workflow"): it proves the `overlay-ci` rules, and its jobs belong in the merge gate.
-  `python3 scripts/core-ci.py required-checks` lists the jobs the gate does not require yet, and
+  "CI workflow"): it proves the `overlay-ci` rules, and its one check, `core-checks`, belongs in the merge gate.
+  `python3 scripts/core-ci.py required-checks` reports when the gate does not require it, and
   `--fix` prints the command that adds them (it never runs it).
 - The repo's default branch must require status checks: branch protection, an active ruleset, or a
   `REQUIRED_CHECKS` list in its merge gate workflow. `hermes/setup.py --ui OWNER/REPO` reads them
