@@ -23,7 +23,11 @@ concurrency:
   cancel-in-progress: true
 jobs:
   visual:
-    runs-on: ${{ fromJSON(vars.CORE_RUNNER || '"ubuntu-latest"') }}
+    # Hosted runners only: the job runs in the Playwright container and its baselines are renders from
+    # that image. The self-hosted pool cannot start job containers, so while CORE_RUNNER points CI at it
+    # (the private phase) this job is skipped instead of failing.
+    if: ${{ vars.CORE_RUNNER == '' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     # The pinned Playwright image fixes the browser build and the system fonts, so screenshots are
     # the same on every run. Keep the tag equal to the @playwright/test version in kit/package.json
