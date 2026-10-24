@@ -217,6 +217,15 @@ export interface TableProps<T> {
   isRowSelectable?: ((row: T) => boolean) | undefined;
   /** Max height of the scroll area, for a sticky head inside a card. */
   maxHeight?: string | undefined;
+  /** Phone layout (640px and below). `scroll` keeps the table and scrolls it sideways; `cards` turns
+      each row into a stacked card of label and value pairs, the label being the column header.
+      Default `scroll`. */
+  mobile?: 'scroll' | 'cards' | undefined;
+  /** False keeps the head in place instead of sticking to the top of the scroll area, for a short
+      table inside a card. Default true. */
+  stickyHead?: boolean | undefined;
+  /** Class on the scroll wrapper, applied with `className` (both land on the wrapper element). */
+  wrapClassName?: string | undefined;
   className?: string | undefined;
 }
 
@@ -249,6 +258,9 @@ export function Table<T>({
   selectAllLabel = 'Select all visible rows',
   isRowSelectable,
   maxHeight,
+  mobile = 'scroll',
+  stickyHead = true,
+  wrapClassName,
   className,
 }: TableProps<T>) {
   const firstSortable = columns.find((c) => c.sortable !== false);
@@ -325,7 +337,13 @@ export function Table<T>({
   };
 
   return (
-    <div className={cx('table-wrap', className)} data-density={density === 'compact' ? 'compact' : undefined} style={maxHeight ? { maxHeight } : undefined}>
+    <div
+      className={cx('table-wrap', wrapClassName, className)}
+      data-density={density === 'compact' ? 'compact' : undefined}
+      data-mobile={mobile === 'cards' ? 'cards' : undefined}
+      data-sticky-head={stickyHead ? undefined : 'false'}
+      style={maxHeight ? { maxHeight } : undefined}
+    >
       <table className="table">
         <caption className={showCaption ? 'table-caption' : 'kit-sr-only'}>{caption}</caption>
         <thead>
@@ -434,7 +452,7 @@ export function Table<T>({
                     </td>
                   ) : null}
                   {columns.map((col) => (
-                    <td key={col.key} className={col.numeric ? 'cell-num' : undefined}>
+                    <td key={col.key} className={col.numeric ? 'cell-num' : undefined} data-label={mobile === 'cards' && !col.hideHeader ? col.header : undefined}>
                       {col.render ? col.render(row) : String(valueOf(row, col.key) ?? '')}
                     </td>
                   ))}

@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-24 (v1.6.0, Table phone cards and sticky-head opt-out, D-002)
+
+Approved consumer item D-002 (consumer report on the intake).
+
+- `Table` takes `mobile: 'scroll' | 'cards'` (default `scroll`): with `cards`, at 640px and below each row
+  becomes a card of label and value pairs, the label being the column header (`data-label`; a
+  `hideHeader` column gets none). The head stays in the accessibility tree, visually hidden.
+- `stickyHead={false}` keeps the head in place for a short table inside a card (default true).
+- `wrapClassName` adds a class on the scroll wrapper, next to `className`.
+- Defaults unchanged. Tests for the defaults, the labels and the wrapper attributes; a real-browser
+  check in `kit/visual/interactions.visual.ts` that the rows become labelled cards at 390px and a table
+  again at 1280px; gallery specimen `phone-cards`; docs in `kit/README.md`.
 ## 2026-10-24 (v1.5.0, ThemeToggle system option, D-001)
 
 Approved consumer item D-001 (consumer report on the intake).
