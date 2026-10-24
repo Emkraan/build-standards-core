@@ -206,7 +206,8 @@ def repo_root() -> pathlib.Path:
 
 
 def workflow_jobs(name: str) -> set | None:
-    """Job ids of .github/workflows/<name> at the repo root, or None when the file is not installed."""
+    """The check names a rule may bind to in .github/workflows/<name> at the repo root: its job ids and the
+    names of its core- steps (core-ci.yml runs every check as a step of one job). None when not installed."""
     f = repo_root() / ".github" / "workflows" / name
     if not f.is_file():
         return None
@@ -218,6 +219,9 @@ def workflow_jobs(name: str) -> set | None:
         if inside and re.match(r"^\S", line):
             inside = False
         m = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line) if inside else None
+        if m:
+            jobs.add(m.group(1))
+        m = re.match(r"^\s+-\s+name:\s*(core-[A-Za-z0-9_-]+)\s*$", line) if inside else None
         if m:
             jobs.add(m.group(1))
     return jobs
@@ -338,14 +342,59 @@ def read_ci_runs(names: list, branch: str, run) -> tuple[dict, list[str]]:
                     + (" or on the head of the last merged pull request" if head else "")
                 )
                 continue
-        rc, text = run(
-            ["run", "view", rid, "--json", "jobs", "--jq", ".jobs[] | [.name, .conclusion] | @tsv"]
-        )
-        if rc != 0:
+        got = run_results(rid, run)
+        if got is None:
             problems.append(f"--ci: cannot read run {rid} of {name}")
             continue
-        out[name] = dict(ln.split("\t", 1) for ln in text.splitlines() if "\t" in ln)
+        # A push run of core-ci.yml runs only the secret scan, so its other steps read skipped. Their
+        # result is the run on the head of the last merged pull request with the same tree.
+        if any(c == "skipped" for k, c in got.items() if k.startswith("core-")):
+            if head is None:
+                head = merged_pr_head(branch, run)
+            rc, prid = (
+                run(
+                    [
+                        "run",
+                        "list",
+                        "--workflow",
+                        name,
+                        "--limit",
+                        "1",
+                        "--json",
+                        "databaseId",
+                        "--jq",
+                        ".[0].databaseId",
+                        "--commit",
+                        head,
+                    ]
+                )
+                if head
+                else (1, "")
+            )
+            pr = run_results(prid, run) if rc == 0 and prid and prid != rid else None
+            for k, c in (pr or {}).items():
+                if got.get(k) in ("skipped", None):
+                    got[k] = c
+        out[name] = got
     return out, problems
+
+
+def run_results(rid: str, run) -> dict | None:
+    """{job or step name: conclusion} of one run: every job and every step of it, or None if unreadable."""
+    rc, text = run(
+        [
+            "run",
+            "view",
+            rid,
+            "--json",
+            "jobs",
+            "--jq",
+            ".jobs[] | ([.name, .conclusion] | @tsv), (.steps[]? | [.name, .conclusion] | @tsv)",
+        ]
+    )
+    if rc != 0:
+        return None
+    return dict(ln.split("\t", 1) for ln in text.splitlines() if "\t" in ln)
 
 
 def required_problems(argv) -> list[str]:

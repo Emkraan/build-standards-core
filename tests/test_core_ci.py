@@ -378,7 +378,10 @@ class RequiredChecks(Overlay):
         )
         rc, out = self.ci("required-checks", "--api-json", f, "--fix")
         self.assertEqual(rc, 1)
-        self.assertIn("core-secret-scan", out)
+        self.assertEqual(self.jobs, ["core-checks"])
+        self.assertIn("does not require: core-checks", out)
+        self.assertIn("no longer exist: core-ascii, core-pr-title", out)
+        self.assertIn("-X DELETE", out)
         self.assertIn("protection/required_status_checks/contexts", out)
         self.assertIn("rulesets --input", out)
         rules = [
@@ -422,7 +425,7 @@ class RequiredChecks(Overlay):
         )
         rep = json.loads(out[out.index("{") :])
         self.assertTrue(
-            any("merge gate does not require" in p and "core-ascii" in p for p in rep["problems"]),
+            any("merge gate does not require" in p and "core-checks" in p for p in rep["problems"]),
             rep["problems"],
         )
 
@@ -911,6 +914,35 @@ class CiFallback(unittest.TestCase):
         self.assertEqual(
             len([c for c in calls if c[:2] == ["pr", "list"]]), 1
         )  # read once for both
+
+    def test_steps_answer_and_a_push_run_is_filled_from_the_merged_pr_head(self):
+        views = {
+            "11": "core-checks\tsuccess\ncore-secret-scan\tsuccess\ncore-ascii\tskipped\ncore-python\tskipped",
+            "22": "core-checks\tsuccess\ncore-secret-scan\tsuccess\ncore-ascii\tsuccess\ncore-python\tfailure",
+        }
+        run, calls = self.runner(
+            {"core-ci.yml": "11"},
+            prs=[{"headRefOid": "new", "mergedAt": "2026-10-02T00:00:00Z"}],
+            head_trees={"new": "T1"},
+            commit_runs={("core-ci.yml", "new"): "22"},
+        )
+
+        def viewing(args):
+            if args[:2] == ["run", "view"]:
+                return 0, views[args[2]]
+            return run(args)
+
+        out, problems = self.st.read_ci_runs(["core-ci.yml"], "main", viewing)
+        self.assertEqual(problems, [])
+        self.assertEqual(
+            out["core-ci.yml"],
+            {
+                "core-checks": "success",
+                "core-secret-scan": "success",
+                "core-ascii": "success",
+                "core-python": "failure",
+            },
+        )
 
     def test_no_fallback_when_the_tree_differs(self):
         run, _ = self.runner(

@@ -4,6 +4,7 @@ parameters rows added by sync, wait-checks progress, and the core.bare guard. Fi
 
 import io
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -39,14 +40,37 @@ def git(repo, *args):
 
 
 class JobNames(Work):
-    def test_every_template_job_is_core_prefixed_and_named(self):
+    def test_the_template_is_one_core_job_with_core_steps(self):
         names = ci.workflow_check_names(TEMPLATE_WF)
-        ids = ci.workflow_job_ids(TEMPLATE_WF)
-        self.assertEqual(names, ids)
-        self.assertTrue(all(n.startswith("core-") for n in names), names)
-        jobs = ci.core_ci_jobs(TEMPLATE_WF.parent.parent.parent)
-        self.assertNotIn("core-setup", jobs)
-        self.assertIn("core-python", jobs)
+        self.assertEqual(names, ci.workflow_job_ids(TEMPLATE_WF))
+        self.assertEqual(names, ["core-checks"])
+        self.assertEqual(ci.core_ci_jobs(TEMPLATE_WF.parent.parent.parent), ["core-checks"])
+        steps = re.findall(
+            r"^\s+-\s+name:\s*(core-[A-Za-z0-9_-]+)\s*$", TEMPLATE_WF.read_text(), re.M
+        )
+        self.assertEqual(len(steps), len(set(steps)), steps)
+        for s in ("core-setup", "core-secret-scan", "core-ascii", "core-python", "core-kit-peers"):
+            self.assertIn(s, steps)
+
+    def test_every_check_step_runs_after_a_failure_and_push_runs_only_the_secret_scan(self):
+        text = TEMPLATE_WF.read_text()
+        blocks = re.split(r"\n(?=\s+-\s+(?:name|uses):)", text.split("\njobs:", 1)[1])
+        checks = {}
+        for b in blocks:
+            m = re.search(r"-\s+name:\s*(core-[A-Za-z0-9_-]+)", b)
+            if m and m.group(1) != "core-setup":
+                cond = re.search(r"\n\s+if:\s*(.+)", b)
+                checks[m.group(1)] = cond.group(1) if cond else ""
+        for name, cond in checks.items():
+            self.assertIn("!cancelled()", cond, name)
+            if name != "core-secret-scan":
+                # FULL and COMMITS are false on push; the PR text checks need a pull_request event.
+                self.assertTrue(
+                    "env.FULL == 'true'" in cond
+                    or "env.COMMITS == 'true'" in cond
+                    or "github.event_name == 'pull_request'" in cond,
+                    name,
+                )
 
     def test_check_rules_job_name_guard(self):
         mod = load("check_rules_findings", "checks/check-rules.py")
@@ -65,12 +89,18 @@ class JobNames(Work):
         (repo / ".github" / "workflows" / "core-ci.yml").write_text(workflow_text)
         return repo
 
-    def test_stale_bare_names_in_the_gate_are_named_for_replacement(self):
+    def test_old_per_check_job_names_in_the_gate_are_obsolete(self):
         repo = self.repo_with(TEMPLATE_WF.read_text())
-        old = [j[len("core-") :] for j in ci.core_ci_jobs(repo)]
-        rep = ci.required_report(repo, api={"protection": {"contexts": old}, "rules": []})
-        self.assertEqual(rep["stale"]["python"], "core-python")
-        self.assertEqual(set(rep["missing"]), set(ci.core_ci_jobs(repo)))
+        rep = ci.required_report(
+            repo, api={"protection": {"contexts": ["core-ascii", "core-python"]}, "rules": []}
+        )
+        self.assertEqual(rep["missing"], ["core-checks"])
+        self.assertEqual(rep["obsolete"], ["core-ascii", "core-python"])
+        self.assertTrue(any("no longer exist" in n for n in rep["notes"]), rep["notes"])
+        rep = ci.required_report(
+            repo, api={"protection": {"contexts": ["core-checks", "unrelated"]}, "rules": []}
+        )
+        self.assertEqual((rep["missing"], rep["obsolete"]), ([], []))
 
     def test_an_old_workflow_copy_gets_a_recopy_note(self):
         repo = self.repo_with(
@@ -84,7 +114,12 @@ class JobNames(Work):
         st = load("core_status_findings", "templates/overlay/scripts/core-status.py")
         rule = {"check": {"kind": "overlay-ci", "workflow": "core-ci.yml", "jobs": ["core-python"]}}
         with mock.patch.object(
-            st, "workflow_jobs", lambda name: set(ci.workflow_job_ids(TEMPLATE_WF))
+            st,
+            "workflow_jobs",
+            lambda name: (
+                set(ci.workflow_job_ids(TEMPLATE_WF))
+                | set(re.findall(r"-\s+name:\s*(core-[A-Za-z0-9_-]+)", TEMPLATE_WF.read_text()))
+            ),
         ):
             self.assertEqual(
                 st.overlay_ci_status(rule, {"core-ci.yml": {"core-python": "success"}})[0], "pass"

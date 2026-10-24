@@ -1543,6 +1543,15 @@ def required_report(
         for j in missing
         if j.startswith(JOB_PREFIX) and j[len(JOB_PREFIX) :] in gated
     }
+    # Per-check job names of an older core-ci.yml (each check became a step of core-checks): a gate that
+    # still requires them waits for checks that no longer report, so they must be removed.
+    obsolete = sorted(n for n in gated if n.startswith(JOB_PREFIX) and n not in jobs)
+    if obsolete:
+        notes.append(
+            "the merge gate requires core-ci check names that no longer exist ("
+            + ", ".join(obsolete)
+            + "): require core-checks instead and remove them"
+        )
     return {
         "repo": repo or "OWNER/REPO",
         "branch": branch or "main",
@@ -1553,6 +1562,7 @@ def required_report(
         "gates": gates,
         "missing": missing,
         "stale": stale,
+        "obsolete": obsolete,
     }
 
 
@@ -1579,19 +1589,31 @@ def cmd_required_checks(argv: list) -> int:
         return 0
     for n in rep["notes"]:
         say(f"required-checks: note: {n}")
-    if not rep["missing"]:
+    if not rep["missing"] and not rep["obsolete"]:
         say(
             f"required-checks: all {len(rep['jobs'])} core-ci jobs are required ({', '.join(rep['sources'])})"
         )
         return 0
-    say(
-        f"::error::required-checks: core-ci jobs the merge gate of {rep['repo']} ({rep['branch']}) does not "
-        f"require: {', '.join(rep['missing'])}"
-    )
+    if rep["missing"]:
+        say(
+            f"::error::required-checks: core-ci jobs the merge gate of {rep['repo']} ({rep['branch']}) does not "
+            f"require: {', '.join(rep['missing'])}"
+        )
+    if rep["obsolete"]:
+        say(
+            f"::error::required-checks: the merge gate of {rep['repo']} ({rep['branch']}) requires core-ci "
+            f"check names that no longer exist: {', '.join(rep['obsolete'])}"
+        )
     if "--fix" not in args:
-        say("required-checks: --fix prints the command that adds them")
+        say("required-checks: --fix prints the commands that correct the gate")
         return 1
     say("Run one of these yourself; this script never changes the repo.")
+    if rep["obsolete"] and rep["protected"]:
+        for n in rep["obsolete"]:
+            say(
+                f"gh api -X DELETE repos/{rep['repo']}/branches/{rep['branch']}/protection/required_status_checks/contexts "
+                f"-f 'contexts[]={n}'"
+            )
     if rep["stale"]:
         say(
             "The gate still requires the old core-ci job names. Replace each, and remove the old one once no "
@@ -1599,13 +1621,16 @@ def cmd_required_checks(argv: list) -> int:
         )
         for old, new in sorted(rep["stale"].items()):
             say(f"  {old} -> {new}")
-    if rep["protected"]:
+    if rep["protected"] and rep["missing"]:
         say(
             f"gh api -X POST repos/{rep['repo']}/branches/{rep['branch']}/protection/required_status_checks/contexts "
             + " ".join(f"-f 'contexts[]={n}'" for n in rep["missing"])
         )
     for wf in rep["gates"]:
-        say(f"Or add to REQUIRED_CHECKS in {wf}: {' '.join(rep['missing'])}")
+        say(
+            f"Or set REQUIRED_CHECKS in {wf} to include {' '.join(rep['jobs'])}"
+            + (f" and drop {' '.join(rep['obsolete'])}" if rep["obsolete"] else "")
+        )
     say("Or a ruleset that requires every core-ci job:")
     say(ruleset_command(rep["repo"], rep["jobs"]))
     return 1
