@@ -201,7 +201,7 @@ export type { HubHomeProps, HubZones } from './chrome/HubHome';
 export { RECENT_MAX, addRecent, sanitizeRecents } from './chrome/recents';
 export type { Recent } from './chrome/recents';
 export { AccountMenu, accountDisplayName } from './chrome/AccountMenu';
-export type { AccountFact, AccountIdentity, AccountLink, AccountMenuProps } from './chrome/AccountMenu';
+export type { AccountAction, AccountFact, AccountIdentity, AccountLink, AccountMenuProps } from './chrome/AccountMenu';
 export { LAUNCHER_KEYS, LAUNCHER_TIMING, ToolLauncher, ToolSwitchButton, openToYouLabel, slideOffset, useToolLauncher } from './chrome/ToolLauncher';
 export type { LauncherTool, ToolLauncherProps, ToolLauncherState, ToolSwitchButtonProps, UseToolLauncherOptions } from './chrome/ToolLauncher';
 export { ShortcutLayer } from './chrome/ShortcutLayer';

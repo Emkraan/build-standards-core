@@ -4,7 +4,7 @@
    links and Sign out. Everything is plain data. The kit never reads an identity from anywhere. */
 
 import { useId, useRef, useState } from 'react';
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { IconChevronDown, IconExternal, IconLogOut } from '../icons/icons';
 import { cx } from '../lib/env';
 import { safeHref } from '../lib/url';
@@ -43,6 +43,20 @@ export interface AccountLink {
   href: string;
 }
 
+/** An action button in the panel, above Sign out (for example "Refresh permissions"). */
+export interface AccountAction {
+  key: string;
+  label: string;
+  /** Runs on click. The panel stays open, so the host can report the result through `status`. */
+  onSelect: () => Promise<unknown> | void;
+  /** Shows the button as working and blocks a second click. */
+  busy?: boolean | undefined;
+  /** `danger` for a destructive action. Default neutral. */
+  tone?: 'neutral' | 'danger' | undefined;
+  /** Leading icon, decorative. */
+  icon?: ReactNode;
+}
+
 const THEME_OPTIONS: readonly { value: ThemeChoice; label: string }[] = [
   { value: 'light', label: 'Light' },
   { value: 'dark', label: 'Dark' },
@@ -63,6 +77,12 @@ export interface AccountMenuProps {
   /** Extra lines under the email and role (access, last seen). */
   facts?: readonly AccountFact[] | undefined;
   links?: readonly AccountLink[] | undefined;
+  /** Action buttons shown above Sign out. Default none. */
+  actions?: readonly AccountAction[] | undefined;
+  /** A status line for the actions (for example "Permissions refreshed"), announced politely. Pass
+      it whenever the panel has actions, even as an empty string, so the live region exists before
+      its text changes. Default none. */
+  status?: ReactNode;
   /** Runs on Sign out. Leave it out to show no Sign out button. A rejected promise shows an inline
       error and keeps the panel open. */
   onSignOut?: (() => Promise<unknown> | void) | undefined;
@@ -90,6 +110,8 @@ export function AccountMenu({
   identity,
   facts = [],
   links = [],
+  actions = [],
+  status,
   onSignOut,
   showTheme = true,
   placement = 'top-start',
@@ -166,6 +188,29 @@ export function AccountMenu({
               );
             })}
           </ul>
+        ) : null}
+        {actions.length > 0 || status !== undefined ? (
+          <div className="account-actions">
+            {actions.map((action) => (
+              <Button
+                key={action.key}
+                variant={action.tone === 'danger' ? 'danger-subtle' : 'ghost'}
+                size="sm"
+                icon={action.icon}
+                loading={action.busy}
+                onClick={() => {
+                  if (!action.busy) void action.onSelect();
+                }}
+              >
+                {action.label}
+              </Button>
+            ))}
+            {status !== undefined ? (
+              <p className="account-status" aria-live="polite">
+                {status}
+              </p>
+            ) : null}
+          </div>
         ) : null}
         {onSignOut ? (
           <div className="account-foot">

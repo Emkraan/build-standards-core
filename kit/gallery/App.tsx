@@ -254,6 +254,37 @@ function SearchRoutingSpecimen() {
   );
 }
 
+function AccountActionsSpecimen() {
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState('');
+  return (
+    <div className="gallery-row">
+      <span className="gallery-note">AccountMenu actions and status: open it for Refresh permissions above Sign out.</span>
+      <AccountMenu
+        identity={{ name: 'Ada Example', email: 'ada@example.com', role: 'Operator' }}
+        placement="bottom-start"
+        status={status}
+        actions={[
+          {
+            key: 'refresh',
+            label: 'Refresh permissions',
+            busy,
+            onSelect: () => {
+              setBusy(true);
+              setStatus('');
+              window.setTimeout(() => {
+                setBusy(false);
+                setStatus('Permissions refreshed');
+              }, 600);
+            },
+          },
+        ]}
+        onSignOut={() => undefined}
+      />
+    </div>
+  );
+}
+
 function ButtonsSpecimen() {
   const [loading, setLoading] = useState(false);
   return (
@@ -2236,7 +2267,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'search-routing', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'palette-rank', 'tile-edge', 'freshness', 'month-grid'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'palette-rank', 'tile-edge', 'freshness', 'month-grid'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2454,6 +2485,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="search-routing" title="Search routed to an app's own palette">
           <SearchRoutingSpecimen />
+        </Specimen>
+        <Specimen id="account-actions" title="Account menu actions">
+          <AccountActionsSpecimen />
         </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">
