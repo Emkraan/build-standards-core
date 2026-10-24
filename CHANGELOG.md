@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-24 (v1.3.0, ops center design)
+
+Carried over from the previous core repository (opened 2026-10-23), where the owner made the decisions
+it records on two consumer reports: Table B rows B-01 to B-31 and the 20 assessment decisions, all as
+recommended.
+
+- New `opscenter/DESIGN.md`: the layout and the synced copy, slots versus parameters, the loopback
+  server with one Host and Origin guard and the `{success, data|error}` envelope, live reads, the single
+  default-deny writer and the `/api/approvals` inbox, the cost-gated analyzer and heartbeats, per-file
+  schemas on six envelope kinds with the conformance checker and the migration contract, the app on the
+  kit shell, the slot interfaces with reference adapters for the code host, work tracker and docs home,
+  every parameter including the declared exceptions, the deploy contract, automerge, `adopt`, the build
+  plan (P1 to P3, then R1 to R9) and each consumer's migration path.
+
 ## 2026-10-24 (v1.1.0, the public core needs no account to read)
 
 - `templates/overlay/scripts/corehash.py`: `clone()` and `latest_tag()` try `gh` first, then plain `git`
