@@ -11,7 +11,7 @@ Approved consumer item D-002 (consumer report on the intake).
 - `wrapClassName` adds a class on the scroll wrapper, next to `className`.
 - Defaults unchanged. Tests for the defaults, the labels and the wrapper attributes; a real-browser
   check in `kit/visual/interactions.visual.ts` that the rows become labelled cards at 390px and a table
-  again at 1280px; gallery specimen `table-cards`; docs in `kit/README.md`.
+  again at 1280px; gallery specimen `phone-cards`; docs in `kit/README.md`.
 
 ## 2026-10-24 (v1.4.0, month calendar grid)
 

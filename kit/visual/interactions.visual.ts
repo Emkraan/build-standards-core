@@ -43,7 +43,7 @@ test('palette filter tabs cycle with Tab and Shift+Tab and narrow the rows', asy
 });
 
 test('a Table with mobile="cards" reflows to labelled cards on a phone and back on a desktop', async ({ page }) => {
-  const specimen = page.locator('#specimen-table-cards');
+  const specimen = page.locator('#specimen-phone-cards');
   const firstRow = specimen.locator('tbody tr').first();
   const firstCell = firstRow.locator('td').first();
   await page.setViewportSize({ width: 390, height: 900 });
