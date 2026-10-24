@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-24 (v1.11.1, undici security fix)
+
+- `undici` (dev only, through jsdom) raised from 8.11.2 to 8.12.3, and an `overrides` entry lifts the copy
+  pinned by `@scalar/json-magic` from 7.29.1 to 7.30.1. Both close the content-encoding denial of service
+  advisory. No kit API or behaviour change.
+
 ## 2026-10-24 (v1.9.0, confirm runs its action, D-005)
 
 Approved consumer item D-005 (consumer report on the intake).
