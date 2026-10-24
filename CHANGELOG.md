@@ -12,6 +12,41 @@ Approved consumer item D-004 (consumer report on the intake).
 - New type `AccountAction`. Defaults unchanged. Tests for the unchanged default, an action with its
   status in an open panel, and a busy action; gallery specimen `account-actions`; docs in
   `kit/README.md`.
+## 2026-10-24 (v1.7.0, search routing, D-003)
+
+Approved consumer item D-003 (consumer report on the intake).
+
+- `PALETTE_OPEN_EVENT` (the document event that opens the palette) is exported, with
+  `onPaletteOpen(listener)`, which hears every open request (a trigger, the feed strip,
+  `openCommandPalette`, `openScopedPalette`) with its scope and returns the unsubscribe.
+- `SearchTrigger` and `FeedStrip` take `onSearch`: called instead of opening the kit palette, for an
+  app that still mounts its own during a migration. Unset, both behave as before.
+- Tests for the event export and listener, the unchanged default and the routed trigger through the
+  feed strip; gallery specimen `search-routing`; docs in `kit/README.md`.
+## 2026-10-24 (v1.6.0, Table phone cards and sticky-head opt-out, D-002)
+
+Approved consumer item D-002 (consumer report on the intake).
+
+- `Table` takes `mobile: 'scroll' | 'cards'` (default `scroll`): with `cards`, at 640px and below each row
+  becomes a card of label and value pairs, the label being the column header (`data-label`; a
+  `hideHeader` column gets none). The head stays in the accessibility tree, visually hidden.
+- `stickyHead={false}` keeps the head in place for a short table inside a card (default true).
+- `wrapClassName` adds a class on the scroll wrapper, next to `className`.
+- Defaults unchanged. Tests for the defaults, the labels and the wrapper attributes; a real-browser
+  check in `kit/visual/interactions.visual.ts` that the rows become labelled cards at 390px and a table
+  again at 1280px; gallery specimen `phone-cards`; docs in `kit/README.md`.
+## 2026-10-24 (v1.5.0, ThemeToggle system option, D-001)
+
+Approved consumer item D-001 (consumer report on the intake).
+
+- `ThemeToggle` takes `withSystem`: a compact three-way Light, System, Dark control (icon segments
+  built on `Segmented`, the labels as accessible names) instead of the flip button, so a user can go
+  back to following the OS after picking a theme. `system` is stored as its own value and follows
+  `prefers-color-scheme` while it is set; the reveal grows from the pressed segment. New props
+  `groupLabel`, `lightLabel`, `systemLabel`, `darkLabel`. Without `withSystem` the toggle is unchanged.
+- New icon `IconMonitor`.
+- Tests: the default button unchanged, the three-way choice and its storage, custom labels. Gallery
+  specimen `theme-system`, docs in `kit/README.md` and `standards/web-ui.md` section 6.
 
 ## 2026-10-24 (v1.4.0, month calendar grid)
 

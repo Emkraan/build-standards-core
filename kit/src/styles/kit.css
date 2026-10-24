@@ -681,6 +681,33 @@ button.md-link { padding: 0; border: 0; background: transparent; font: inherit; 
 .table-empty-row td { padding: var(--space-4); }
 .table th.table-select, .table td.table-select { width: 1%; padding: 0 var(--space-2) 0 var(--space-3); }
 .table th.table-select .choice, .table td.table-select .choice { vertical-align: middle; }
+/* stickyHead={false}: the head stays in place, for a short table inside a card. */
+.table-wrap[data-sticky-head="false"] .table th { position: static; }
+/* mobile="cards": on a phone each row becomes a card of label and value pairs; the head is kept for
+   assistive technology but visually hidden, and each cell shows its column header as its label. */
+@media (max-width: 640px) {
+  .table-wrap[data-mobile="cards"] { overflow: visible; border: 0; background: none; }
+  .table-wrap[data-mobile="cards"] .table,
+  .table-wrap[data-mobile="cards"] .table tbody { display: block; }
+  .table-wrap[data-mobile="cards"] .table thead {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  .table-wrap[data-mobile="cards"] .table-row {
+    display: block; margin-bottom: var(--space-2); border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg); background: var(--surface-1);
+  }
+  .table-wrap[data-mobile="cards"] .table td {
+    display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: var(--space-2);
+    border-bottom: 1px solid var(--border-subtle); text-align: left;
+  }
+  .table-wrap[data-mobile="cards"] .table-row td:last-child { border-bottom: 0; }
+  .table-wrap[data-mobile="cards"] .table td[data-label]::before {
+    content: attr(data-label); color: var(--text-secondary); font-size: var(--fs-label); font-weight: var(--fw-semibold);
+  }
+  .table-wrap[data-mobile="cards"] .table td.table-select { display: block; width: auto; padding: var(--space-2) var(--space-3); }
+  .table-wrap[data-mobile="cards"] .table-empty-row { display: block; }
+  .table-wrap[data-mobile="cards"] .table-empty-row td { display: block; border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
+}
 
 /* ---- Empty state and skeleton ---- */
 .empty-state { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-8) var(--space-4); text-align: center; color: var(--text-secondary); }
