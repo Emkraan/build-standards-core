@@ -1,0 +1,4 @@
+{
+  "$description": "How this repo proves rules core-status cannot see. rule id -> {kind: ci|test|review, ref, date, reviewed_by}. ref is <workflow file>#<job> for ci, a test file path for test, the review record path for review (paths from the repo root). A review needs date YYYY-MM-DD within $max_review_age_days. See scripts/core-status.py.",
+  "$max_review_age_days": 180
+}

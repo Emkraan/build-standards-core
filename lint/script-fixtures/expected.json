@@ -1,0 +1,10 @@
+{
+  "Bad.ps1::PS002": 4,
+  "Bad.ps1::PS003": 2,
+  "Partial.ps1::PS002": 1,
+  "Typo.ps1::PS001": 2,
+  "bad.py::PY001": 4,
+  "broken.py::PY001": 1,
+  "ruff-bad/ruff.toml::PY002": 1,
+  "ruff-missing/pyproject.toml::PY002": 1
+}

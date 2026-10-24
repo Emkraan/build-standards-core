@@ -1,0 +1,5 @@
+/* The cascade layer order, declared once. Load this first, before tokens.css and the kit
+   stylesheet, so every sheet that follows joins the same order. `base` holds an app's element
+   defaults (links, headings), `core` holds the kit and hub layer. Unlayered app CSS still beats
+   both, on purpose (web-ui.md section 7). */
+@layer base, core;

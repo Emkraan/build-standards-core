@@ -1,0 +1,19 @@
+{
+  "default": "cobalt",
+  "accents": [
+    "cobalt",
+    "blue",
+    "indigo",
+    "violet",
+    "fuchsia",
+    "rose",
+    "red",
+    "orange",
+    "hub",
+    "amber",
+    "gold",
+    "green",
+    "teal",
+    "cyan"
+  ]
+}

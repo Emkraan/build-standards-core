@@ -1,0 +1,8 @@
+{
+  "id": "beta",
+  "name": "Beta",
+  "accent": "teal",
+  "order": 2,
+  "tagline": "Second module",
+  "x-flag": false
+}

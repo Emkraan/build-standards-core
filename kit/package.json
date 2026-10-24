@@ -1,0 +1,60 @@
+{
+  "name": "@build-standards/kit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared React kit for apps on the build standards core: shell, primitives, overlays and required chrome.",
+  "type": "module",
+  "license": "UNLICENSED",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./theme-init": "./src/theme/theme-init.ts",
+    "./kit.css": "./src/styles/kit.css",
+    "./accents.json": "./src/theme/accents.json"
+  },
+  "engines": {
+    "node": ">=22.22"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json && tsc -p tsconfig.gallery.json && tsc -p tsconfig.visual.json",
+    "typecheck:nopeers": "tsc -p tsconfig.nopeers.json",
+    "test": "vitest run",
+    "changelog": "node scripts/gen-changelog.mjs",
+    "gallery:changelog": "node scripts/gen-changelog.mjs --out gallery/generated/changelog.json --version next",
+    "gallery:dev": "vite --config vite.gallery.config.ts",
+    "gallery:build": "npm run gallery:changelog && vite build --config vite.gallery.config.ts",
+    "check": "npm run typecheck && npm run test && npm run gallery:build",
+    "visual": "npm run gallery:build && playwright test",
+    "visual:update": "node scripts/visual-update.mjs",
+    "visual:report": "playwright show-report visual/report"
+  },
+  "peerDependencies": {
+    "react": ">=18 <20",
+    "react-dom": ">=18 <20"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.64.0",
+    "@scalar/api-reference-react": "^0.9.81",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "@xyflow/react": "^12.12.0",
+    "axe-core": "^4.14.0",
+    "jsdom": "^30.1.2",
+    "postcss": "^8.5.30",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-is": "^19.3.1",
+    "recharts": "^3.10.1",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4"
+  }
+}

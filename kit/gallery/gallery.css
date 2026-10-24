@@ -1,0 +1,85 @@
+/* Gallery page layout only. Tokens for every value, like the kit. */
+body { margin: 0; background: var(--bg-canvas); color: var(--text-primary); font-family: var(--font-sans); }
+.gallery-section { margin-bottom: var(--space-8); scroll-margin-top: calc(var(--topbar-h) + var(--space-4)); }
+.gallery-section-title {
+  margin: 0 0 var(--space-3); font-size: var(--fs-h2); font-weight: 600; letter-spacing: var(--track-title);
+  color: var(--text-primary);
+}
+.gallery-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.gallery-stack { display: flex; flex-direction: column; gap: var(--space-4); }
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-4); }
+.gallery-span { grid-column: 1 / -1; }
+.gallery-list { margin: 0; padding: 0; list-style: none; }
+.gallery-list-row { display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border-subtle); font-size: var(--fs-body); }
+.gallery-row-preview { border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--surface-2); box-shadow: var(--elev-3); }
+.gallery-accent { min-width: 220px; }
+.gallery-note { margin: 0; color: var(--text-secondary); font-size: var(--fs-label); }
+.gallery-popover { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2); }
+.gallery-build { max-width: 240px; }
+.gallery-chart { width: 100%; height: auto; }
+.gallery-compact-input { width: 180px; }
+/* Stick figure poses: an even three by two grid with the pose name under each figure. */
+.gallery-poses, .gallery-hues { margin: 0; padding: 0; list-style: none; display: grid; }
+.gallery-poses { grid-template-columns: repeat(3, minmax(0, 1fr)); justify-items: center; gap: var(--space-4) var(--space-3); }
+.gallery-pose { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); }
+/* Hues for data: one legend row per series (name, a bar at the chart value, the value). */
+.gallery-charts { align-items: start; }
+.gallery-hues { gap: var(--space-3); }
+.gallery-hue { display: grid; grid-template-columns: 80px minmax(0, 1fr) 3ch; align-items: center; gap: var(--space-3); }
+.gallery-hue .gallery-note { text-align: right; font-variant-numeric: tabular-nums; }
+.gallery-hue-track { display: block; height: 8px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; }
+.gallery-hue-bar { display: block; height: 100%; border-radius: inherit; }
+.gallery-hue-bar[data-hue="blue"] { background: rgb(var(--hue-blue)); }
+.gallery-hue-bar[data-hue="green"] { background: rgb(var(--hue-green)); }
+.gallery-hue-bar[data-hue="amber"] { background: rgb(var(--hue-amber)); }
+.gallery-hue-bar[data-hue="red"] { background: rgb(var(--hue-red)); }
+.gallery-hue-bar[data-hue="violet"] { background: rgb(var(--hue-violet)); }
+.gallery-hue-bar[data-hue="teal"] { background: rgb(var(--hue-teal)); }
+.gallery-hue > :first-child { justify-self: start; }
+.gallery-break { flex-basis: 100%; height: 0; }
+/* The visual gate grows the viewport to the page height, so the page state floor (60dvh) would make
+   the wayfinding specimen track the gallery length. Inside a gallery card it sizes to its content. */
+.gallery-grid .page-state { min-height: auto; }
+
+/* Surface ladder: one row per step, the four text inks on it. */
+.gallery-ladder { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-3); }
+.gallery-step { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3); border-radius: var(--radius-lg); border: 1px solid var(--border-default); }
+.gallery-step[data-step="bg-canvas"] { background: var(--bg-canvas); }
+.gallery-step[data-step="surface-1"] { background: var(--surface-1); }
+.gallery-step[data-step="surface-2"] { background: var(--surface-2); }
+.gallery-step[data-step="surface-3"] { background: var(--surface-3); }
+.gallery-step[data-step="surface-4"] { background: var(--surface-4); }
+.gallery-step[data-step="surface-5"] { background: var(--surface-5); }
+.gallery-step-name { font-size: var(--fs-micro); font-weight: 700; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-primary); }
+.gallery-step-ink { font-size: var(--fs-label); }
+.gallery-ink-primary { color: var(--text-primary); }
+.gallery-ink-secondary { color: var(--text-secondary); }
+.gallery-ink-tertiary { color: var(--text-tertiary); }
+.gallery-ink-quaternary { color: var(--text-quaternary); }
+/* Art mark recipes: one cell per recipe. */
+.gallery-art-grid { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-4); }
+.gallery-art-cell { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--surface-1); border: 1px solid var(--border-default); }
+
+/* Type roles: one row per role, each sample set only from the role tokens. */
+.gallery-type-roles { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-3); }
+.gallery-type-row { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); min-width: 0; padding-bottom: var(--space-3); border-bottom: 1px solid var(--border-subtle); }
+.gallery-type-name { font-size: var(--fs-micro); font-weight: 700; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-secondary); }
+.gallery-type-display { font-size: var(--fs-display); line-height: var(--lh-display); letter-spacing: var(--track-display); font-weight: 700; color: var(--text-primary); }
+.gallery-type-title { font-size: var(--fs-title); line-height: var(--lh-title); letter-spacing: var(--track-title); font-weight: 700; color: var(--text-primary); }
+.gallery-type-stat { font-size: var(--fs-stat); line-height: var(--lh-stat); letter-spacing: var(--track-stat); font-weight: 700; color: var(--text-primary); }
+.gallery-type-subtitle { font-size: var(--fs-subtitle); line-height: var(--lh-subtitle); letter-spacing: var(--track-subtitle); font-weight: 600; color: var(--text-primary); }
+.gallery-type-label { font-size: var(--fs-label); line-height: var(--lh-label); letter-spacing: var(--track-label); font-weight: 500; color: var(--text-primary); }
+.gallery-type-caption { font-size: var(--fs-caption); line-height: var(--lh-caption); letter-spacing: var(--track-caption); font-weight: 500; color: var(--text-secondary); }
+.gallery-type-eyebrow { font-size: var(--fs-caption); line-height: var(--lh-caption); letter-spacing: var(--track-eyebrow); font-weight: 700; text-transform: uppercase; color: var(--text-secondary); }
+.gallery-type-mono { font-family: var(--font-mono); font-size: var(--fs-mono); line-height: var(--lh-label); color: var(--text-primary); }
+.gallery-type-mono-caption { font-family: var(--font-mono); font-size: var(--fs-mono-caption); line-height: var(--lh-caption); color: var(--text-secondary); }
+
+.gallery-weights { margin-top: var(--space-4); }
+.gallery-fw-medium { font-size: var(--fs-subtitle); font-weight: var(--fw-medium); color: var(--text-primary); }
+.gallery-fw-semibold { font-size: var(--fs-subtitle); font-weight: var(--fw-semibold); color: var(--text-primary); }
+.gallery-fw-bold { font-size: var(--fs-subtitle); font-weight: var(--fw-bold); color: var(--text-primary); }
+.gallery-fw-extrabold { font-size: var(--fs-subtitle); font-weight: var(--fw-extrabold); color: var(--text-primary); }
+/* List and split specimen: the list scrolls and its pager stays in view under it. */
+.gallery-list-pane { display: flex; flex-direction: column; block-size: 100%; }
+.gallery-list-pane > .list-table { flex: 1 1 0; min-block-size: 0; }
+.gallery-list-pane > .pagination { flex: none; padding: var(--space-2) var(--space-3); border-top: 1px solid var(--border-subtle); }

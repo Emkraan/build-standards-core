@@ -1,0 +1,4085 @@
+{
+  "$description": "Every enforceable rule in the standards, one entry per rule. id is the stable slug, ref is the doc and section an exception names. check.kind says how a consumer proves it: lint (a ui_lint or script_lint rule), core-ci (proved in the core), overlay-ci (a job of the overlay's template workflow: check.workflow names the file under templates/overlay/.github/workflows and check.jobs the jobs whose success proves the rule), test (a test the app carries), review (design review, no automated check yet). applies_to lists the stacks a rule covers (web, wpf, local-ops, powershell, python, iac) or all. core-status reports a rule to a consumer that declares its stacks only when one of them matches or the rule is all. Tooling diffs this file between releases to raise new and changed rules.",
+  "format": "build-standards-rules/1",
+  "rules": [
+    {
+      "id": "web-ui.0.1",
+      "ref": "web-ui.md 0.1",
+      "title": "No edge-bar accents",
+      "statement": "Never carry colour, status or selection with a bar, stripe or thick single-side border on any edge. Use tone, a raised selected surface, a tinted fill, a full outline or a status dot. Data marks such as a chart today line are not accents.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "lint",
+        "id": "UI001"
+      },
+      "acceptance": "lint-core/ui_lint.py reports no UI001 finding."
+    },
+    {
+      "id": "web-ui.0.2",
+      "ref": "web-ui.md 0.2",
+      "title": "Accent discipline",
+      "statement": "The app accent marks brand, the primary action and active state only. It is never a categorical or data-series colour, and the categorical hue within 30 degrees of the accent is withheld from data.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Charts and categorical palettes come from the kit palette helper, which drops the withheld hue. No data series uses the accent."
+    },
+    {
+      "id": "web-ui.0.3",
+      "ref": "web-ui.md 0.3",
+      "title": "One glow recipe",
+      "statement": "Glow is one theme-gated recipe driven by the element hue, applied only to hero stat tiles, the active nav marker, selected cards and chart bars.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "No box-shadow glow outside the recipe and its four uses."
+    },
+    {
+      "id": "web-ui.0.4",
+      "ref": "web-ui.md 0.4",
+      "title": "One stat system",
+      "statement": "Hero numbers use the shared stat tile primitive. No second stat-card implementation exists on any surface.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Every hero number renders through the stat tile component."
+    },
+    {
+      "id": "web-ui.0.5",
+      "ref": "web-ui.md 0.5",
+      "title": "Contrast is a release gate",
+      "statement": "Text clears WCAG AA in both themes on every surface it can sit on, including tiles at their gloss peak. Custom accents are generated and certified, never hand-picked.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "core-ci",
+        "command": "python3 tokens/build.py --check"
+      },
+      "acceptance": "tokens/build.py --check exits 0 in the core, and any custom accent block in an app was printed by tokens-core/build.py --accent."
+    },
+    {
+      "id": "web-ui.0.6",
+      "ref": "web-ui.md 0.6",
+      "title": "Actions live with their content",
+      "statement": "The page header carries no buttons. Actions sit in a toolbar directly above the table, grid or list they affect, the primary create action is always visible to anyone permitted, and Refresh is an icon button placed first.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "No button in a page header. Create actions are visible without a mode toggle."
+    },
+    {
+      "id": "web-ui.0.7",
+      "ref": "web-ui.md 0.7",
+      "title": "The app owns every dialog",
+      "statement": "No browser-native alert, confirm or prompt. Use the kit confirm, prompt and toast. The only exception is the beforeunload guard for unsaved work.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "lint",
+        "id": "UI002"
+      },
+      "acceptance": "lint-core/ui_lint.py reports no UI002 finding."
+    },
+    {
+      "id": "web-ui.0.8",
+      "ref": "web-ui.md 0.8",
+      "title": "Undo over are-you-sure",
+      "statement": "A small reversible change applies at once and the toast offers Undo. A destructive or irreversible change asks first with a danger confirm whose title is a question and whose button is the verb.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A unit test mounts the toast provider, clicks Undo and asserts the callback ran (section 23)."
+    },
+    {
+      "id": "web-ui.0.9",
+      "ref": "web-ui.md 0.9",
+      "title": "One way home",
+      "statement": "Only the header home button navigates home. Logos, breadcrumbs and grid icons are not links.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "No logo or breadcrumb root is a link."
+    },
+    {
+      "id": "web-ui.0.10",
+      "ref": "web-ui.md 0.10",
+      "title": "Content stays inside its box",
+      "statement": "Text never escapes or is cut off by the control, chip or card that holds it at any supported width. Controls size with min-height, a single-line control holds one line (or truncates with an ellipsis and a tooltip), and no element borrows a kit control class and restyles its box inline.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "lint",
+        "id": "UI009"
+      },
+      "acceptance": "lint-core/ui_lint.py reports no UI009 finding, and kit/scripts/overflow-probe.mjs reports no finding on the changed routes at the widest and narrowest supported width."
+    },
+    {
+      "id": "web-ui.0.11",
+      "ref": "web-ui.md 0.11",
+      "title": "A UI consumer adopts the UI whole",
+      "statement": "A UI consumer uses the shell, tokens and kit as shipped: no local stylesheet redefines a core token, no hand-rolled copy of a kit part, no lint baseline. Apps extend by composing the kit and adding app-specific components with their own classes, recorded as named exceptions when they deviate.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "lint",
+        "id": "UI010"
+      },
+      "acceptance": "lint-core/ui_lint.py reports no UI010 finding and standards-local/ui-lint.json sets no baseline, and core-status.py reports the UI as adopted."
+    },
+    {
+      "id": "web-ui.1",
+      "ref": "web-ui.md 1",
+      "title": "A theme is a token swap",
+      "statement": "Light and dark are first-class and differ only by token values. Components never branch on theme.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "lint",
+        "id": "UI008"
+      },
+      "acceptance": "lint-core/ui_lint.py reports no UI008 finding."
+    },
+    {
+      "id": "web-ui.2",
+      "ref": "web-ui.md 2",
+      "title": "Colours come from tokens",
+      "statement": "Every colour in app code is a token from the synced token sheet. No hex, rgb, hsl, oklch or named colour literal outside the token files.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "lint",
+        "id": "UI003"
+      },
+      "acceptance": "lint-core/ui_lint.py reports no UI003 finding."
+    },
+    {
+      "id": "web-ui.4",
+      "ref": "web-ui.md 4",
+      "title": "ASCII punctuation in source",
+      "statement": "UI source uses ASCII punctuation: no em or en dash, curly quote, NBSP, zero-width or ellipsis character.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "lint",
+        "id": "UI006"
+      },
+      "acceptance": "lint-core/ui_lint.py reports no UI006 finding."
+    },
+    {
+      "id": "web-ui.5",
+      "ref": "web-ui.md 5",
+      "title": "Stacking comes from the z scale",
+      "statement": "Every z-index is a --z-* token. Only 0 and -1 are allowed as literals, for local stacking inside a component.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "lint",
+        "id": "UI004"
+      },
+      "acceptance": "lint-core/ui_lint.py reports no UI004 finding."
+    },
+    {
+      "id": "web-ui.9",
+      "ref": "web-ui.md 9",
+      "title": "Verify in both themes before done",
+      "statement": "A surface is verified in the browser in dark and light with no console errors, and axe reports no critical or serious violation.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "The Playwright e2e job runs axe on every route in both themes."
+    },
+    {
+      "id": "web-ui.14",
+      "ref": "web-ui.md 14",
+      "title": "Motion comes from the duration scale",
+      "statement": "Every transition and animation time is a --dur-* or --stagger-step token, and every animation honours prefers-reduced-motion. Decorative assets may declare their own timing variables once at the asset root.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "lint",
+        "id": "UI005"
+      },
+      "acceptance": "lint-core/ui_lint.py reports no UI005 finding."
+    },
+    {
+      "id": "web-ui.16",
+      "ref": "web-ui.md 16",
+      "title": "One accent token per app",
+      "statement": "The accent is set once, with data-app-accent on the root element. App CSS never sets accent tokens, except a certified accent block printed by the token builder.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "lint",
+        "id": "UI007"
+      },
+      "acceptance": "lint-core/ui_lint.py reports no UI007 finding."
+    },
+    {
+      "id": "web-ui.17",
+      "ref": "web-ui.md 17",
+      "title": "Categorical order and tone",
+      "statement": "Data uses the six categorical hues in their fixed order, minus the withheld hue. Tone and selection follow the recipes in this section.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Chart and badge colours come from the kit palette helper in order."
+    },
+    {
+      "id": "web-ui.18",
+      "ref": "web-ui.md 18",
+      "title": "Count-up is correct and skippable",
+      "statement": "Hero numbers count up on --dur-chart with ease out, land on the exact final value, skip in hidden tabs and render statically under reduced motion.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A unit test drives requestAnimationFrame with a fake clock and asserts an intermediate and the exact final value, and the reduced-motion path renders the final value at once."
+    },
+    {
+      "id": "web-ui.19",
+      "ref": "web-ui.md 19",
+      "title": "The desktop icon rail",
+      "statement": "The sidebar is a hover rail that can be pinned, and the state survives reloads.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A Playwright check asserts data-rail moves through collapsed, open and pinned and persists."
+    },
+    {
+      "id": "web-ui.20",
+      "ref": "web-ui.md 20",
+      "title": "Announcements, pulse feed and presenter",
+      "statement": "Announcements and the pulse feed follow section 20, with storage on every database dialect the app ships.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "The migration exists for every shipped dialect and the feed renders from it."
+    },
+    {
+      "id": "web-ui.21",
+      "ref": "web-ui.md 21",
+      "title": "System health request analytics",
+      "statement": "The health page summarises requests into fixed buckets per range.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A unit test asserts bucket counts (24 for 1h and 24h, 28 for 7d)."
+    },
+    {
+      "id": "web-ui.22",
+      "ref": "web-ui.md 22",
+      "title": "Build card and release notes",
+      "statement": "Every app with a sidebar shows the build card with its version and release notes parsed from the changelog.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A unit test asserts the parser keeps the three change types and strips references."
+    },
+    {
+      "id": "web-ui.24",
+      "ref": "web-ui.md 24",
+      "title": "Shell chrome is accessible",
+      "statement": "The chrome the behavioural layer adds (rail, palette, feed, toasts) passes axe with zero violations.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "axe-core reports zero violations on the home, health and announcements routes in both themes."
+    },
+    {
+      "id": "web-ui.25",
+      "ref": "web-ui.md 25",
+      "title": "Required chrome is mounted",
+      "statement": "Every app with a sidebar mounts the required chrome listed in section 25.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The overlay CI fails when an app with a sidebar lacks the build card with changelog or another required piece."
+    },
+    {
+      "id": "web-ui.12",
+      "ref": "web-ui.md 12",
+      "title": "The theme script is injected from the kit",
+      "statement": "The pre-paint theme script is the kit themeInitScript, injected at build by the kit HTML transform (kitThemeInit), never pasted; a build that cannot inject it tests the inline script against the kit byte for byte (hasCurrentThemeInit).",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "The built index.html carries the kit script, or a test with hasCurrentThemeInit passes."
+    },
+    {
+      "id": "web-ui.26.1",
+      "ref": "web-ui.md 26.1",
+      "title": "Each mounted app has an appId",
+      "statement": "Several apps on one origin pass their own appId to the shell, so seen and dismissed state stays per app while theme and rail pin stay shared.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Two apps with different appIds dismiss a banner in one and still show it in the other, while a theme change applies to both."
+    },
+    {
+      "id": "web-ui.26.2",
+      "ref": "web-ui.md 26.2",
+      "title": "Each tool owns one path prefix behind a guard",
+      "statement": "A tool on a shared origin keeps its routes under /<id>/*, wrapped in a route guard that admits no one the server would refuse.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the route table: one prefix per tool, each guarded."
+    },
+    {
+      "id": "web-ui.26.3",
+      "ref": "web-ui.md 26.3",
+      "title": "Switching tools goes through the hub or the rail",
+      "statement": "Moving between tools on one origin uses the hub or the tool rail, never a hand-built link.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review: no hand-built cross-tool links."
+    },
+    {
+      "id": "local-ops-app.1",
+      "ref": "local-ops-app.md 1",
+      "title": "Local ops apps read and draft, never act unasked",
+      "statement": "A local ops app reads other systems and shows or drafts. It never sends or changes anything on the operator's behalf without an explicit action in the UI.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review: no collector or analyzer path writes to another system."
+    },
+    {
+      "id": "local-ops-app.3",
+      "ref": "local-ops-app.md 3",
+      "title": "A neutral contract with a conformance check",
+      "statement": "State files and the HTTP API are specified in a neutral contract with a schema per file or section, each state file has one named writer and is written atomically, and contract changes update schemas, fixtures and tests together.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "CI runs the conformance checker against a fixture state directory."
+    },
+    {
+      "id": "local-ops-app.4",
+      "ref": "local-ops-app.md 4",
+      "title": "Model calls only behind a cost gate",
+      "statement": "Collectors never call a model. The analyzer calls one only through the gate (forced, daily audit, retry after failure, or a changed bundle past the floor), treats input as untrusted data with no tools, and produces drafts only.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Unit tests cover every gate decision, including the skip, and the dry run calls nothing."
+    },
+    {
+      "id": "local-ops-app.5",
+      "ref": "local-ops-app.md 5",
+      "title": "Noise is filtered before the spool",
+      "statement": "Filtering happens in the collector before the spool, rules are data in the local config, and spool and log sizes are bounded.",
+      "level": "should",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the collector and its config."
+    },
+    {
+      "id": "local-ops-app.6",
+      "ref": "local-ops-app.md 6",
+      "title": "The server is loopback only",
+      "statement": "The server binds 127.0.0.1 only, rejects a Host that is not loopback, rejects a write whose Origin is not loopback, serves only its built assets, sends nosniff, and marks people data no-store.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Tests assert 403 on a foreign Host and on a write with a foreign Origin."
+    },
+    {
+      "id": "local-ops-app.7",
+      "ref": "local-ops-app.md 7",
+      "title": "Read-only modules degrade per section",
+      "statement": "Each section of a read-only status module fails on its own inside a successful envelope, results are cached per key and served stale while one background refresh runs, every external command runs through one helper with a timeout, and other systems are opened read-only.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Tests patch the command helper to fail one source and assert the other sections still return."
+    },
+    {
+      "id": "local-ops-app.8",
+      "ref": "local-ops-app.md 8",
+      "title": "Runtime and state live outside the checkout",
+      "statement": "The service runs a copied runtime outside protected folders, and the state directory and local config live outside both the repo and the runtime, so a deploy never touches data.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the deploy script."
+    },
+    {
+      "id": "local-ops-app.9",
+      "ref": "local-ops-app.md 9",
+      "title": "Interactive sign-in, never device code",
+      "statement": "Directory API access uses an interactive authorization-code flow with PKCE and the least delegated scope. Device-code flow is not used. Token files are mode 0600 and never committed. The first sign-in runs in a background tab of a dedicated browser profile, never takes focus, and prints only an MFA number match.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the auth path, plus secret scanning on every PR."
+    },
+    {
+      "id": "local-ops-app.10",
+      "ref": "local-ops-app.md 10",
+      "title": "The CI minimum runs and gates merges",
+      "statement": "The repo runs the CI/CD standard minimum: ASCII, workflow lint, secret scanning, the language test jobs and the PR title check, all required by the merge gate.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The merge gate lists every required check."
+    },
+    {
+      "id": "local-ops-app.11",
+      "ref": "local-ops-app.md 11",
+      "title": "Parallel changes use worktrees",
+      "statement": "Each change gets its own worktree and branch off the remote main, and the main checkout stays clean and on main.",
+      "level": "should",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the workflow."
+    },
+    {
+      "id": "local-ops-app.12",
+      "ref": "local-ops-app.md 12",
+      "title": "Every gate runs before a PR",
+      "statement": "The unit tests, the conformance check, the ASCII check and the app typecheck, lint, test and build all run locally before a PR, and CI runs the same set.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "CI runs the same commands as the documented local gate."
+    },
+    {
+      "id": "local-ops-app.14",
+      "ref": "local-ops-app.md 14",
+      "title": "Local ops apps wear indigo",
+      "statement": "Local operations apps set data-app-accent=\"indigo\" on the root and withhold violet from data.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The root element carries data-app-accent=\"indigo\"."
+    },
+    {
+      "id": "local-ops-app.15",
+      "ref": "local-ops-app.md 15",
+      "title": "No request waits on an external call once warm",
+      "statement": "List endpoints serve stale-while-revalidate with single-flight refresh, live checks refresh in the background, every poller fits a per-upstream rate budget, one shared poller per dataset with a server-side badges endpoint, pollers pause on hidden tabs, routes load on demand, responses are compressed with ETag revalidation, and connections stay alive.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "With a sleeping fake upstream, a warm list request after its TTL returns in under 50 ms and starts exactly one refresh."
+    },
+    {
+      "id": "local-ops-app.16",
+      "ref": "local-ops-app.md 16",
+      "title": "What reaches the action queue is routing data",
+      "statement": "Collectors emit one candidate shape and ordered data rules route every candidate and analyzer item. A person who addressed the operator directly is considered when no rule names them, every must-consider candidate ends as an item or a drop reason, and a route-elsewhere click writes the rule. The prompt carries no routing rules.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Seed rules reproduce the filters they replaced, an unknown direct source routes to must consider, a click rule wins and is idempotent, and a broken routing file keeps every item visible."
+    },
+    {
+      "id": "local-ops-app.17",
+      "ref": "local-ops-app.md 17",
+      "title": "Heartbeat watch for every host job",
+      "statement": "A scheduled job on the host that goes silent or fails raises one action item keyed by job, which clears itself when the job recovers.",
+      "level": "should",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A job past its expected interval raises one item; a later success clears it."
+    },
+    {
+      "id": "local-ops-app.18",
+      "ref": "local-ops-app.md 18",
+      "title": "Runner-lost alert and recent failures",
+      "statement": "A run queued with no runner past N minutes raises an item, and cancelled and timed-out runs count as failures in a recent-failures view.",
+      "level": "should",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A run queued past N minutes raises one item; a cancelled run shows in the failures view."
+    },
+    {
+      "id": "local-ops-app.19",
+      "ref": "local-ops-app.md 19",
+      "title": "Core consumption panel",
+      "statement": "The ops center renders a Core consumption panel from consumption.json: per consumer the pin, behind count, sync pull request and CI, status counts, UI verdict and adoption suggestions with risk, plus the account's awaiting and approved-unopened items and the peers' shipped suggestions; each approval is one action through the pull request or issue-comment path only.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "From a fixture consumption.json the panel renders every row and list; another format shows an error state; an approval calls only pr ready, pr merge or issue comment, never a push to a default branch; no approval control on an apply-at-once row or on a pull request whose checks fail."
+    },
+    {
+      "id": "scripting-powershell.1.1",
+      "ref": "scripting-powershell.md 1.1",
+      "title": "Workload identity, never a stored secret",
+      "statement": "Authenticate as a managed identity where the host has one, otherwise with a certificate held non-exportable in the machine store. Automation never holds a password, client secret, account key or credential prompt.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The PowerShell standards lint finds no credential prompt and no secret literal, and the header names the identity the script runs as."
+    },
+    {
+      "id": "scripting-powershell.1.2",
+      "ref": "scripting-powershell.md 1.2",
+      "title": "Every write path has a trial mode that defaults safe",
+      "statement": "Mutating scripts support -WhatIf or a TrialRun switch. Scheduled and runbook entry points default to trial, and the switch gates every write, including state, ingestion and self-relaunch.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A Pester test runs each entry point in trial mode with every write cmdlet mocked and asserts none was called."
+    },
+    {
+      "id": "scripting-powershell.1.3",
+      "ref": "scripting-powershell.md 1.3",
+      "title": "Destructive runs cap and fail closed",
+      "statement": "A script that deletes or disables carries a maximum change count and stops when a source read fails, returns nothing or returns far fewer rows than the last run.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Tests cover a failed read, an empty read and a read over the cap, and each exits non-zero with no write."
+    },
+    {
+      "id": "scripting-powershell.1.4",
+      "ref": "scripting-powershell.md 1.4",
+      "title": "Errors are caught specifically and never swallowed",
+      "statement": "Wrap each external call in try/catch, catch the specific exception types first, and end with a catch that logs and rethrows or sets a failing exit code. No empty catch and no -ErrorAction SilentlyContinue on a call whose result is used.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "lint",
+        "id": "PS003"
+      },
+      "acceptance": "lint-core/script_lint.py reports no PS003 finding (empty catch), and review finds no silenced call whose output is read."
+    },
+    {
+      "id": "scripting-powershell.1.5",
+      "ref": "scripting-powershell.md 1.5",
+      "title": "Exit codes and output carry the result",
+      "statement": "Exit codes follow CMTrace Logging section 8. Runbooks write results with Write-Output as structured lines or objects, never Write-Host, and end with one summary line of counts.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Every exit path sets an explicit code and the last output line is the summary."
+    },
+    {
+      "id": "scripting-powershell.1.6",
+      "ref": "scripting-powershell.md 1.6",
+      "title": "Names and header are standard",
+      "statement": "Functions use approved Verb-Noun names, parameters are PascalCase, variables are descriptive, no local variable reuses a parameter name, and no helper shadows a built-in. Every script starts with the header block in section 5.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "lint",
+        "id": "PS002"
+      },
+      "acceptance": "lint-core/script_lint.py reports no PS002 finding (section 5 header fields present, every function an approved Verb-Noun)."
+    },
+    {
+      "id": "scripting-powershell.1.7",
+      "ref": "scripting-powershell.md 1.7",
+      "title": "ASCII only, both editions",
+      "statement": "Scripts are plain ASCII and run on Windows PowerShell 5.1 and PowerShell 7 unless the header names one edition.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "overlay-ci",
+        "workflow": "core-ci.yml",
+        "jobs": [
+          "core-ascii",
+          "core-powershell"
+        ]
+      },
+      "acceptance": "core-ci.yml jobs core-ascii and core-powershell pass: no byte above 127, and PSScriptAnalyzer PSUseCompatibleSyntax for 5.1 and 7 finds nothing."
+    },
+    {
+      "id": "scripting-powershell.1.8",
+      "ref": "scripting-powershell.md 1.8",
+      "title": "Idempotent by design",
+      "statement": "Read current state, change only what differs, read back and verify. A second run of a completed run changes nothing, and keys or folders are created only when missing.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test runs the change twice against mocks and asserts the second run makes no write."
+    },
+    {
+      "id": "scripting-powershell.1.9",
+      "ref": "scripting-powershell.md 1.9",
+      "title": "Scheduler parameters are parsed defensively",
+      "statement": "Treat switch values from schedulers and webhooks as strings, normalise with a strict match that keeps trial mode on unless the value is an explicit false, accept parameters the platform may pre-parse from JSON, and anchor validation patterns with \\z.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Tests pass \"true\", \"false\", \"\", \"garbage\" and a JSON string for each switch and parameter."
+    },
+    {
+      "id": "scripting-powershell.1.10",
+      "ref": "scripting-powershell.md 1.10",
+      "title": "Endpoint scripts respect their execution context",
+      "statement": "Detection only reads and reports, and matches exactly what remediation writes. Scripts assume SYSTEM context, a possibly 32-bit host and repeated retries, and record durable outcomes instead of clock-based limits (section 6).",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "A reviewer checks section 6 against the detection and remediation pair."
+    },
+    {
+      "id": "scripting-powershell.1.11",
+      "ref": "scripting-powershell.md 1.11",
+      "title": "Runtimes are tracked to retirement",
+      "statement": "Every runbook records the runtime it runs on, and a retirement notice is answered from job evidence with one move to the newest supported runtime.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The runbook inventory lists runtime per runbook and the next retirement date."
+    },
+    {
+      "id": "scripting-python.1.1",
+      "ref": "scripting-python.md 1.1",
+      "title": "Code runs on the interpreter floor",
+      "statement": "The floor is the oldest interpreter that runs the code (parameter, default 3.9 where the OS python is the runtime). Every module with annotations starts with from __future__ import annotations, no newer syntax is used, and CI runs on the floor.",
+      "level": "must",
+      "applies_to": [
+        "python"
+      ],
+      "check": {
+        "kind": "overlay-ci",
+        "workflow": "core-ci.yml",
+        "jobs": [
+          "core-python"
+        ]
+      },
+      "acceptance": "core-ci.yml job core-python runs on the floor interpreter from the parameters sheet and runs the test command there."
+    },
+    {
+      "id": "scripting-python.1.2",
+      "ref": "scripting-python.md 1.2",
+      "title": "Standard library first",
+      "statement": "Use a third-party package only when the standard library cannot do the job, pin it with hashes, and never install packages from inside a script at run time.",
+      "level": "must",
+      "applies_to": [
+        "python"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Every import outside the standard library is listed in a pinned requirements file with a reason."
+    },
+    {
+      "id": "scripting-python.1.3",
+      "ref": "scripting-python.md 1.3",
+      "title": "No secrets in argv, environment dumps or logs",
+      "statement": "Pass secrets on stdin, in a mode 0600 file or by reading the secret store in process. Never log a command line, environment or response body that can carry one, and redact secret-shaped values in errors.",
+      "level": "must",
+      "applies_to": [
+        "python"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "No secret is passed as a subprocess argument and the log helpers redact."
+    },
+    {
+      "id": "scripting-python.1.4",
+      "ref": "scripting-python.md 1.4",
+      "title": "State files are written atomically",
+      "statement": "Write to a temp file in the same directory, flush and fsync, then os.replace over the target. Sensitive files are created with mode 0600. Each file has exactly one named writer.",
+      "level": "must",
+      "applies_to": [
+        "python"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Tests write through the helper and assert the target is either old or new, never partial."
+    },
+    {
+      "id": "scripting-python.1.5",
+      "ref": "scripting-python.md 1.5",
+      "title": "Scheduled runs cannot overlap",
+      "statement": "A job that a scheduler starts takes a non-blocking exclusive lock on a lock file and exits 0 with one skip line when another run holds it. The lock is released by process exit.",
+      "level": "must",
+      "applies_to": [
+        "python"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test holds the lock and asserts a second run exits with the skip line and writes nothing."
+    },
+    {
+      "id": "scripting-python.1.6",
+      "ref": "scripting-python.md 1.6",
+      "title": "Every external path is overridable for tests",
+      "statement": "State directories, binaries (gh, cloud CLIs) and endpoints come from environment overrides with production defaults. Tests set them inline per command, never exported into a shared shell.",
+      "level": "must",
+      "applies_to": [
+        "python"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "The suite runs with every override pointed at scratch paths and fake binaries."
+    },
+    {
+      "id": "scripting-python.1.7",
+      "ref": "scripting-python.md 1.7",
+      "title": "Tests use synthetic data and pin every fixed bug",
+      "statement": "Tests run against fixtures and synthetic records, never real ones. Each fixed bug adds a regression case that fails on the old code.",
+      "level": "must",
+      "applies_to": [
+        "python"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "The stdlib unittest suite runs offline, and each fix PR names its regression case."
+    },
+    {
+      "id": "scripting-python.1.8",
+      "ref": "scripting-python.md 1.8",
+      "title": "Subprocesses go through one helper",
+      "statement": "Call external commands with an argument list (no shell=True), a timeout, and one helper that turns a missing binary, a timeout or a non-zero exit into an error value. Tests patch that helper.",
+      "level": "must",
+      "applies_to": [
+        "python"
+      ],
+      "check": {
+        "kind": "lint",
+        "id": "PY001"
+      },
+      "acceptance": "lint-core/script_lint.py reports no PY001 finding (no shell=True, os.system, os.popen or subprocess.getoutput), and review finds no subprocess call outside the helper."
+    },
+    {
+      "id": "scripting-python.1.9",
+      "ref": "scripting-python.md 1.9",
+      "title": "Reads fail closed and exits are meaningful",
+      "statement": "A failed or partial read is an error, never \"nothing found\". Exit 0 on success, 1 on failure, and other codes only when documented (for example 2 for sign-in needed).",
+      "level": "must",
+      "applies_to": [
+        "python"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Tests feed a failing source and assert a non-zero exit and no destructive write."
+    },
+    {
+      "id": "scripting-python.1.10",
+      "ref": "scripting-python.md 1.10",
+      "title": "Lint and format with a committed ruff config",
+      "statement": "pyproject.toml holds the ruff config with target-version equal to the floor, and CI runs ruff check and ruff format --check.",
+      "level": "must",
+      "applies_to": [
+        "python"
+      ],
+      "check": {
+        "kind": "overlay-ci",
+        "workflow": "core-ci.yml",
+        "jobs": [
+          "core-python"
+        ]
+      },
+      "acceptance": "core-ci.yml job core-python checks the committed ruff config targets the floor, then runs ruff check and ruff format --check with the hash-pinned ruff."
+    },
+    {
+      "id": "secrets-and-credentials.1.1",
+      "ref": "secrets-and-credentials.md 1.1",
+      "title": "Identity before secret",
+      "statement": "Use a managed identity, OIDC workload federation or a certificate whenever the caller and target support one. A stored secret is allowed only when the target supports nothing else, and then it has an owner, an expiry and a place in the secret store.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Every credential in the inventory names why no identity option applies."
+    },
+    {
+      "id": "secrets-and-credentials.1.2",
+      "ref": "secrets-and-credentials.md 1.2",
+      "title": "Grants are least privilege and scoped to the resource",
+      "statement": "Grant the narrowest role at the narrowest scope (a container or a single resource, not a subscription or a tenant). Narrowing creates the narrow grants first, proves them with a real run, and only then removes the broad grant.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Grant changes in code show the scope, and a narrowing PR cites the usage evidence it was based on."
+    },
+    {
+      "id": "secrets-and-credentials.1.3",
+      "ref": "secrets-and-credentials.md 1.3",
+      "title": "Federated credentials bind to protected environments",
+      "statement": "A CI federation subject names one deployment environment with required reviewers and a main-only branch policy, never a branch pattern or a wildcard. Each tier has its own identity scoped to its own resources.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Each federated subject is an exact environment subject and the environment has reviewers and a branch policy."
+    },
+    {
+      "id": "secrets-and-credentials.1.4",
+      "ref": "secrets-and-credentials.md 1.4",
+      "title": "Cross-repo CI reads use one read-only deploy key per consumer",
+      "statement": "CI that must read another private repo uses a deploy key without write access, one per consumer repo, never a personal token.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The consumer workflow checks out with ssh-key and the key is listed read-only on the source repo."
+    },
+    {
+      "id": "secrets-and-credentials.1.5",
+      "ref": "secrets-and-credentials.md 1.5",
+      "title": "Secret values never pass through a person or a transcript",
+      "statement": "Read a secret from the store straight into its destination in one step, test it before the write, compare the read-back by hash without printing, and unset it after. When a person must supply a value, use a masked prompt that names the account and the destination, never chat, a terminal echo or a command argument.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Scripts that move secrets print only the secret name and update time."
+    },
+    {
+      "id": "secrets-and-credentials.1.6",
+      "ref": "secrets-and-credentials.md 1.6",
+      "title": "Secrets live only in a secret store",
+      "statement": "Workloads read them at run time with their own identity. Never in a repo, a runbook or pipeline variable, a synced folder, a ticket or a CI log.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The secret scan passes and the inventory names the store entry for every secret."
+    },
+    {
+      "id": "secrets-and-credentials.1.7",
+      "ref": "secrets-and-credentials.md 1.7",
+      "title": "Rotation revokes the old value and is planned per consumer",
+      "statement": "Before rotating, list every consumer, plan the swap for the same minute (some issuers revoke the old value at once on reissue), verify each consumer on the new value, then delete the old credential and purge any soft-deleted copy.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The rotation record lists consumers, the verification of each, and the revocation of the old value."
+    },
+    {
+      "id": "secrets-and-credentials.1.8",
+      "ref": "secrets-and-credentials.md 1.8",
+      "title": "Every PR is scanned for secrets with a hardened scanner",
+      "statement": "Scan the commits of every PR and the default branch with a pinned scanner, using the config from the base commit, with ignore files and inline allow comments disabled, and allowlist known false positives only by path or by an id-shaped match.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "overlay-ci",
+        "workflow": "core-ci.yml",
+        "jobs": [
+          "core-secret-scan"
+        ]
+      },
+      "acceptance": "core-ci.yml job core-secret-scan passes on every PR and push to the default branch: the checksum-pinned scanner reads the base commit's config with ignore files and allow comments off, and the core's tests prove it fails on a planted secret."
+    },
+    {
+      "id": "secrets-and-credentials.1.9",
+      "ref": "secrets-and-credentials.md 1.9",
+      "title": "Broad grants are an owner decision with a recorded risk owner",
+      "statement": "A tenant-wide application permission (read-write on all objects, directory, role management, mail, full-control sites) is approved by the accountable owner, with the operational run path described and compensating controls recorded.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The grant PR carries the owner's sign-off and the decision record names the risk owner."
+    },
+    {
+      "id": "secrets-and-credentials.1.10",
+      "ref": "secrets-and-credentials.md 1.10",
+      "title": "Accepted long-lived tokens are recorded risks",
+      "statement": "A token that cannot be avoided records its scopes, owner, consumers and a review date, and revoking it is the documented recovery.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The token appears in the inventory with scopes and a review date not in the past."
+    },
+    {
+      "id": "secrets-and-credentials.2",
+      "ref": "secrets-and-credentials.md 2",
+      "title": "Each caller uses its first-choice identity",
+      "statement": "Each caller type uses the identity in the section 2 table: managed identity, OIDC federation, device identity, deploy keys, and for a local job calling a user-delegated API, PKCE with a loopback redirect and a 0600 token cache. Device code is never used where policy requires MFA.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of each credential against the table."
+    },
+    {
+      "id": "automation-safety.1.1",
+      "ref": "automation-safety.md 1.1",
+      "title": "Automation acts only on its owner's own work",
+      "statement": "A lane, job or session changes only items owned by the account it acts for. Work owned by other people is surfaced to the owner for direction and never fixed, merged, closed, approved or commented on by automation.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "The ownership check runs before any write, and a test with an item owned by someone else asserts no write."
+    },
+    {
+      "id": "automation-safety.1.2",
+      "ref": "automation-safety.md 1.2",
+      "title": "Every write path has a dry run",
+      "statement": "Each command that writes supports a dry-run or what-if mode that prints the exact actions it would take and makes no write. New jobs ship in dry run first.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test runs each write command in dry-run mode against a fake backend and asserts zero write calls."
+    },
+    {
+      "id": "automation-safety.1.3",
+      "ref": "automation-safety.md 1.3",
+      "title": "Never smoke-test on real items",
+      "statement": "Prove a write path with synthetic records, a scratch state directory, a scratch server port and fake binaries. Test refusal guards with an impossible value (an all-zero commit sha). Restore anything touched and label synthetic data as synthetic.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Test notes name the synthetic fixtures and the guard values used."
+    },
+    {
+      "id": "automation-safety.1.4",
+      "ref": "automation-safety.md 1.4",
+      "title": "Re-verify live state immediately before acting",
+      "statement": "A queued item, UI row or brief is a snapshot. Re-read the object right before the write, pin the version that was reviewed (head sha, run attempt, updated time), and refuse when it moved. Destructive and privileged acts also require a typed confirmation of the object's name.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Tests change the live version between read and act and assert a refusal with a \"refresh first\" message."
+    },
+    {
+      "id": "automation-safety.1.5",
+      "ref": "automation-safety.md 1.5",
+      "title": "Fail closed on read errors",
+      "statement": "An error, a timeout or a short read is never \"nothing there\". Nothing is approved, closed or deleted on a failed read, and destructive runs carry a change cap.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Tests feed a failing and a truncated source and assert no write and a non-zero result."
+    },
+    {
+      "id": "automation-safety.1.6",
+      "ref": "automation-safety.md 1.6",
+      "title": "One stable work item per problem set",
+      "statement": "Raise one item per distinct problem set, with an id from the sorted problem keys, never volatile text. The same set updates in place, a dismissed item stays dismissed until the set changes, and a clean run closes it. A handled decision holds against new keys unless there is new source evidence dated after it; model prose is never evidence.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Tests reword the title and reorder the problems and assert the same id, and change the set and assert a new one. A handled item regenerated under a new key stays handled without new source evidence, shows again with a source record dated after the decision, and stays handled when only model-written text changed."
+    },
+    {
+      "id": "automation-safety.1.7",
+      "ref": "automation-safety.md 1.7",
+      "title": "Retries are idempotent and bounded",
+      "statement": "Every action is safe to repeat and treats \"already done\" as success. One session runs per (object, version, problem), with a daily cap per object and a run budget per session.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Tests replay an action after success and assert one effect and a success result."
+    },
+    {
+      "id": "automation-safety.1.8",
+      "ref": "automation-safety.md 1.8",
+      "title": "No grace periods that hide failures",
+      "statement": "Act on or surface a problem the first time it is seen. Debounce only transient infrastructure errors, by counting consecutive failures, never by delaying the first report of a real problem or by timers that hide an item.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Every delay in the job is a consecutive-failure count, a backoff after the first alert, or a budget."
+    },
+    {
+      "id": "automation-safety.1.9",
+      "ref": "automation-safety.md 1.9",
+      "title": "Kill only your own processes",
+      "statement": "Track the process ids a job starts and stop them by id or process group after checking the command line still matches. Never kill by a name pattern.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "No pkill, killall or pattern kill in the job, and stops are by recorded id."
+    },
+    {
+      "id": "automation-safety.1.10",
+      "ref": "automation-safety.md 1.10",
+      "title": "Human gates stay human",
+      "statement": "Automation never approves its own work, bypasses a red required check, applies a delete or grants access on the owner's behalf. It prepares the evidence and a button, and the owner's click is the sign-off. The one standing exception is the bounded own-PR merge lane (section 8), which may bypass only the approval count.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Every bypass or privileged call is reachable only from an owner action."
+    },
+    {
+      "id": "automation-safety.7",
+      "ref": "automation-safety.md 7",
+      "title": "Count floors and an all-or-nothing change cap",
+      "statement": "A bulk cleanup reads the whole set first and refuses to continue when any paged read is under its floor (1,000 by default), builds the full candidate list before changing anything, and changes nothing when the list is over the cap (25 by default), printing the would-change list instead.",
+      "level": "should",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A read under the floor throws; a list one over the cap changes nothing and prints the list; a list at the cap proceeds."
+    },
+    {
+      "id": "automation-safety.8",
+      "ref": "automation-safety.md 8",
+      "title": "The own-PR merge lane bypasses the approval count only",
+      "statement": "A standing lane that merges the owner's own pull requests may bypass the required approval count and nothing else: never a red, missing or pending check, a freeze, a hold label or a firing escalation. It runs only while its switch is on and logs every bypass.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "With the switch on, a green owner pull request with no hold merges and logs the bypass; a red or pending check, a freeze, a hold label, an escalation or another author leaves it unmerged; with the switch off nothing merges."
+    },
+    {
+      "id": "pr-review-and-merge.1.1",
+      "ref": "pr-review-and-merge.md 1.1",
+      "title": "Commit only the files you changed, by name",
+      "statement": "Stage and commit with explicit paths (git add -- <files>, git commit -- <files>), from a worktree per change. Never git add -A, git add . or git commit -a.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The PR's file list matches the change and git diff --stat was read before the commit."
+    },
+    {
+      "id": "pr-review-and-merge.1.2",
+      "ref": "pr-review-and-merge.md 1.2",
+      "title": "Conventional Commits for every commit and PR title",
+      "statement": "Types and the semver mapping follow CI/CD section 3.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "overlay-ci",
+        "workflow": "core-ci.yml",
+        "jobs": [
+          "core-pr-title",
+          "core-commitlint"
+        ]
+      },
+      "acceptance": "core-ci.yml jobs core-pr-title and core-commitlint pass."
+    },
+    {
+      "id": "pr-review-and-merge.1.3",
+      "ref": "pr-review-and-merge.md 1.3",
+      "title": "Every change carries its changelog entry",
+      "statement": "The same PR adds a dated, versioned entry in the changelog of the thing it changes, in the docs home (Docs and Changelog).",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The PR links or contains the entry for its version."
+    },
+    {
+      "id": "pr-review-and-merge.1.4",
+      "ref": "pr-review-and-merge.md 1.4",
+      "title": "No tool attribution, owner identity only",
+      "statement": "Commits, PR text and comments carry no assistant or tool attribution and no generated-by lines, and commits use the owner's approved address.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "overlay-ci",
+        "workflow": "core-ci.yml",
+        "jobs": [
+          "core-attribution",
+          "core-identity"
+        ]
+      },
+      "acceptance": "core-ci.yml jobs core-attribution and core-identity pass (CI/CD section 2)."
+    },
+    {
+      "id": "pr-review-and-merge.1.5",
+      "ref": "pr-review-and-merge.md 1.5",
+      "title": "The main branch is protected",
+      "statement": "Nobody pushes to main. Changes land by PR after the required checks pass, by squash or rebase, through a ruleset or the auto-merge gate.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The ruleset or auto-merge gate lists the required checks and no direct push is possible."
+    },
+    {
+      "id": "pr-review-and-merge.1.6",
+      "ref": "pr-review-and-merge.md 1.6",
+      "title": "Merges are pinned to the reviewed head",
+      "statement": "Every merge names the head commit that was reviewed (--match-head-commit <sha> or the API sha field), and every push and merge re-reads the PR state immediately before it runs.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Merge commands and endpoints pass the head sha, and tooling refuses a moved head."
+    },
+    {
+      "id": "pr-review-and-merge.1.7",
+      "ref": "pr-review-and-merge.md 1.7",
+      "title": "Review findings are verified, not obeyed",
+      "statement": "Check each finding against the code, fix every real one, refute the rest with evidence (path and line, a run log, live state), and post one disposition reply per round. Stop pushing when the only findings left are re-raises already answered.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Each high finding has a fix commit or an evidence-backed refutation in the disposition reply."
+    },
+    {
+      "id": "pr-review-and-merge.1.8",
+      "ref": "pr-review-and-merge.md 1.8",
+      "title": "A triage marker attests to one head",
+      "statement": "A triage reply ends with a hidden marker naming the head sha and the finding ids it answers (<!-- triage:<sha> H1 H3 -->). The merge lane clears only the ids named, so a reply that answers one finding never clears another, and a marker with no ids clears nothing. Post it only after that head's review is in, and never on a reply that promises a fix.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "The merge lane ignores a marker for another sha and a marker older than the review of the head."
+    },
+    {
+      "id": "pr-review-and-merge.1.9",
+      "ref": "pr-review-and-merge.md 1.9",
+      "title": "Policy holds go to the owner, problems go to the fixer",
+      "statement": "A hold that needs a person's sign-off (a policy rule, a delete, an access grant, a gate that fails only because a change is intended) shows an approve button. A real problem (red check, conflict, untriaged finding) goes to the fixer and never shows a merge button.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "The hold classifier tests cover policy-only, problem-only and mixed holds."
+    },
+    {
+      "id": "pr-review-and-merge.1.10",
+      "ref": "pr-review-and-merge.md 1.10",
+      "title": "Working PRs get no action buttons",
+      "statement": "While checks run, a review is pending or a fix session is on the PR, the UI shows a working indicator and only a link to the PR.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "The PR row renders no action button when its working flag is set."
+    },
+    {
+      "id": "pr-review-and-merge.1.11",
+      "ref": "pr-review-and-merge.md 1.11",
+      "title": "Delegated work is verified before merge",
+      "statement": "The reviewer of work from a sub-agent, a bot or another account re-runs the checks locally (including private ones CI cannot run), reads the full diff and lists the PR's commits.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The merge record names the local checks run and the commits listed."
+    },
+    {
+      "id": "pr-review-and-merge.1.12",
+      "ref": "pr-review-and-merge.md 1.12",
+      "title": "Never weaken a gate to get green",
+      "statement": "A fix never lowers a threshold, adds a skip marker or ignore glob, or edits a review policy, workflow or ruleset to pass. A check that is red for an unrelated infrastructure reason is rerun (failed jobs only) and stays red until it passes or the owner bypasses it.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The diff of a fix PR touches no gate configuration, or a separate reviewed PR does."
+    },
+    {
+      "id": "pr-review-and-merge.1.13",
+      "ref": "pr-review-and-merge.md 1.13",
+      "title": "Preflight runs every gate before the push",
+      "statement": "Before a change is pushed or its PR opened, one local command runs the repo's tests, linters and builds, hygiene checks, a base conflict check, the merge lane's policy rules as a dry run (printing the owner sign-offs for the PR description) and an overlap check against other open changes. It fails closed on read errors with its own exit code and writes nothing outside the git directory.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "The preflight tests cover a passing change, each failing gate, a policy dry run that lists sign-offs, an overlapping open change and a read error that exits with the distinct code."
+    },
+    {
+      "id": "pr-review-and-merge.1.14",
+      "ref": "pr-review-and-merge.md 1.14",
+      "title": "Self-review uses the reviewers' own prompts and is bound to the diff",
+      "statement": "The author reviews the full diff against the automated reviewers' prompts plus the finding catalog and records each would-be high or blocking item as fixed or pre-triaged with evidence, in a file whose first line names a hash of the current diff. The preflight fails until the hash matches, so a changed diff needs a fresh self-review.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "The preflight fails with a missing record, fails when the diff changes after the record, and passes when the hash matches."
+    },
+    {
+      "id": "pr-review-and-merge.1.15",
+      "ref": "pr-review-and-merge.md 1.15",
+      "title": "Infrastructure noise is re-run, bounded and named",
+      "statement": "Refines rule 12. The merge lane re-runs failed jobs only, without a fix, only when every failed job's log tail matches a known infrastructure-noise pattern, at most a fixed number of times per head (parameter, default 2), and logs the matched pattern. Any failure it cannot name goes to the fixer.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "The classifier tests cover all-noise, mixed and unknown failures, the per-head cap and the logged pattern name."
+    },
+    {
+      "id": "pr-review-and-merge.1.16",
+      "ref": "pr-review-and-merge.md 1.16",
+      "title": "Deletes owned by another open change wait on it",
+      "statement": "When a plan deletes objects this diff does not touch and another open change by the same owner declares them (it applied them from its branch), this change waits on that one and re-arms (rebase) once it merges. It is never offered as a delete sign-off. A read failure or an undeclared delete keeps the normal sign-off hold.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "The hold tests cover an attributed delete (waits, then re-arms after the other merge), an unattributed delete and a read failure (both keep the sign-off hold)."
+    },
+    {
+      "id": "pr-review-and-merge.1.17",
+      "ref": "pr-review-and-merge.md 1.17",
+      "title": "A fixer that needs the owner returns a decision, and real findings feed the catalog",
+      "statement": "A fixer that stops on an owner-only choice returns a question, two to four options each with an action kind and its exact effect, and a recommendation. The UI shows one button per option pinned to the reviewed head, and the click signs off that head only. Text posted as the owner is validated first. Fixed findings the catalog missed are appended to it, deduplicated.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "The decision schema rejects fewer than two or more than four options and an option without an action kind, a click on a moved head is refused, and a fixed finding the catalog missed is appended once."
+    },
+    {
+      "id": "pr-review-and-merge.1.18",
+      "ref": "pr-review-and-merge.md 1.18",
+      "title": "A merge commit carries only a noreply author email, with no account setting required",
+      "statement": "Only GitHub noreply author emails land in history, with no account setting required. scripts/merge-pr.py builds the squash commit itself with the signed-in account's noreply author and merges it with --rebase; without rebase merging it squash merges and refuses non-noreply commits. CI fails any non-noreply email.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "core-ci",
+        "command": "python3 checks/check-authors.py origin/main"
+      },
+      "acceptance": "checks/check-authors.py exits 0 on the core; merge-pr.py builds a noreply squash commit and merges it with --rebase where rebase merging is allowed, refuses a pull request with a non-noreply commit email on the squash fallback, and prints the recovery when the merge commit leaks one."
+    },
+    {
+      "id": "pr-review-and-merge.1.19",
+      "ref": "pr-review-and-merge.md 1.19",
+      "title": "Every file is plain ASCII",
+      "statement": "No tracked text file holds a byte above 127. Binaries, lockfiles and synced core copies are out of scope; existing non-ASCII files get a time-boxed exception per path, never a narrowed check.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "overlay-ci",
+        "workflow": "core-ci.yml",
+        "jobs": [
+          "core-ascii"
+        ]
+      },
+      "acceptance": "core-ci.yml job core-ascii passes over every tracked text file, and each excepted line names its exception."
+    },
+    {
+      "id": "pr-review-and-merge.3",
+      "ref": "pr-review-and-merge.md 3",
+      "title": "The review bot is a required check that fails closed",
+      "statement": "The review bot reads its config from the base branch, an override covers one commit, and the check fails only on a confirmed block or a missing review for the head.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A PR that edits the bot config is reviewed under the base config; an older-sha override does not pass a newer head; a missing review fails."
+    },
+    {
+      "id": "pr-review-and-merge.4",
+      "ref": "pr-review-and-merge.md 4",
+      "title": "Trust holds, and a failed lookup holds",
+      "statement": "A review lane that merges other people's pull requests holds for the owner the first PR of a new app, a PR by an author with fewer than N merged PRs, and a PR touching device-shipped paths, even when every gate passes. When the lookup a trust hold needs fails, the PR is held.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A fixture PR for each kind is held with its rule id, an author at N merged PRs is not held as new, and a lookup error holds with the lookup reason."
+    },
+    {
+      "id": "live-actions.1.1",
+      "ref": "live-actions.md 1.1",
+      "title": "Success removes the object at once, everywhere",
+      "statement": "When the action endpoint returns success, the client removes the object from the shared store that every list, tab and badge reads, and shows a success flash. It does not refetch the list to decide what to show.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A UI test resolves the action and asserts the row and its badge count are gone before any refetch."
+    },
+    {
+      "id": "live-actions.1.2",
+      "ref": "live-actions.md 1.2",
+      "title": "A server-side tombstone keeps it gone",
+      "statement": "On success the server records a tombstone keyed by object and version (for example pr:<repo>#<n>@<head sha>) with the action, the expected end state and a TTL. Every list endpoint hides a tombstoned object until a read shows the expected state or the TTL passes.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "With a fake backend whose list keeps returning the old state, every list and count endpoint omits the object until the fake reports the end state."
+    },
+    {
+      "id": "live-actions.1.3",
+      "ref": "live-actions.md 1.3",
+      "title": "A tombstone that expires unconfirmed resurfaces the object, flagged",
+      "statement": "When the TTL passes and the backend still shows the old state, the object returns with a note that the last action did not land, and the event is logged.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Advance the clock past the TTL with the fake still on the old state and assert the object returns with the flag."
+    },
+    {
+      "id": "live-actions.1.4",
+      "ref": "live-actions.md 1.4",
+      "title": "Every write invalidates every cache that holds the object",
+      "statement": "The action handler clears the cached list, count and detail entries that include the object before it responds.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "After a successful action, the next GET of each affected endpoint misses the cache."
+    },
+    {
+      "id": "live-actions.1.5",
+      "ref": "live-actions.md 1.5",
+      "title": "\"Already done\" is an idempotent success",
+      "statement": "When the backend answers already merged, already closed, already in that sprint, already in that status or gone after a delete, the server confirms with a direct read and returns success with already: true, records the tombstone and shows no error.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Replay each action against a fake in the end state and assert success with already: true."
+    },
+    {
+      "id": "live-actions.1.6",
+      "ref": "live-actions.md 1.6",
+      "title": "Confirm through the direct read, never the search or list API",
+      "statement": "Verification after an action reads the object itself (a pull request by number, an issue by key). Search and list endpoints lag direct reads by seconds to minutes and are used only to build lists.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The action handler and the tombstone check call only direct-read endpoints (section 5)."
+    },
+    {
+      "id": "live-actions.1.7",
+      "ref": "live-actions.md 1.7",
+      "title": "Actions carry the version the operator saw",
+      "statement": "The request names the object and the version on screen, the server re-reads live state, and a moved version returns 409 \"Refresh first\" with no write.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Tests change the live version between render and click and assert 409 and no write."
+    },
+    {
+      "id": "live-actions.1.8",
+      "ref": "live-actions.md 1.8",
+      "title": "In-flight polls never resurrect",
+      "statement": "A poll response from a request that started before the latest successful write is dropped, or it passes through the same tombstone filter as the server.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test resolves a slow poll after the action and asserts the row stays gone."
+    },
+    {
+      "id": "live-actions.1.9",
+      "ref": "live-actions.md 1.9",
+      "title": "Asynchronous acceptance is a pending state, not a removal",
+      "statement": "When the backend accepts the action for later (a merge queue, auto-merge, a dispatched workflow), the row moves to an in-flight state with a live indicator and no actions, and it disappears when a direct read shows the end state.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A queued result renders the pending state, and the end state removes it."
+    },
+    {
+      "id": "live-actions.1.10",
+      "ref": "live-actions.md 1.10",
+      "title": "Badges and counts read the same filtered source as the page",
+      "statement": "Every badge counts from the store the page treats as authority, after tombstones and the page's own filters.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Page and badge counts agree in tests that add, act on and tombstone items."
+    },
+    {
+      "id": "live-actions.1.11",
+      "ref": "live-actions.md 1.11",
+      "title": "Actionable means the action would go through now",
+      "statement": "The server decides each object's phase from the same live preconditions its action handler checks, and the client renders buttons only for needs_action objects, never from a raw status field.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "For each precondition the handler enforces, a fixture that breaks it renders the object without buttons and outside the needs-action count."
+    },
+    {
+      "id": "live-actions.1.12",
+      "ref": "live-actions.md 1.12",
+      "title": "Upstream drift redoes the work by itself",
+      "statement": "When an upstream change invalidates a precondition, the server starts the refresh itself, once per new upstream version, and shows the object in flight until it lands.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Advancing the fake upstream version starts exactly one refresh and the object returns to needs_action or leaves when it completes."
+    },
+    {
+      "id": "live-actions.1.13",
+      "ref": "live-actions.md 1.13",
+      "title": "Every needs-action object carries a way forward",
+      "statement": "An object counted as needing the operator has at least one action that moves it. Objects nothing can act on are in flight or not shown.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Every needs-action fixture renders at least one enabled action."
+    },
+    {
+      "id": "live-actions.1.14",
+      "ref": "live-actions.md 1.14",
+      "title": "Unknown never hides",
+      "statement": "A failed live read leaves the object actionable and the handler re-verifies at click time. Live reads are cached briefly and refreshed in the background.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A failing live-read fake leaves the object in needs_action, and a warm list request makes no blocking backend call."
+    },
+    {
+      "id": "docs-and-changelog.1.1",
+      "ref": "docs-and-changelog.md 1.1",
+      "title": "Done means documented",
+      "statement": "A change is done when its docs in the docs home match the shipped behaviour, in the same PR when the docs home is the repo, otherwise the day it ships.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The PR or release record links the doc update."
+    },
+    {
+      "id": "docs-and-changelog.1.2",
+      "ref": "docs-and-changelog.md 1.2",
+      "title": "One docs home per thing, and one page set per home",
+      "statement": "Every distinct thing a team runs has exactly one home in the docs home, with an overview, a runbook and a changelog. A repo whose docs home is elsewhere points to it from its README.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The docs registry lists one home per thing."
+    },
+    {
+      "id": "docs-and-changelog.1.3",
+      "ref": "docs-and-changelog.md 1.3",
+      "title": "One changelog per app, versioned and dated",
+      "statement": "Each app keeps one changelog in its docs home. Every shipped change adds an entry headed with the date and version (## YYYY-MM-DD (vX.Y.Z)), unreleased work sits under \"Pending release\", and the release record is the version tag plus the entry.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "overlay-ci",
+        "workflow": "core-ci.yml",
+        "jobs": [
+          "core-changelog"
+        ]
+      },
+      "acceptance": "core-ci.yml job core-changelog passes: a PR that moves the version in a version file fails without a ## YYYY-MM-DD (vX.Y.Z) heading for it in the changelog."
+    },
+    {
+      "id": "docs-and-changelog.1.4",
+      "ref": "docs-and-changelog.md 1.4",
+      "title": "Claims are verified against code and live state",
+      "statement": "Every behaviour, setting and UI label a doc states is checked in the code and the running system before it is written. A doc that claims a stronger guarantee than the code gives is a defect.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The page footer names what it was last verified against."
+    },
+    {
+      "id": "docs-and-changelog.1.5",
+      "ref": "docs-and-changelog.md 1.5",
+      "title": "Coverage is audited against a registry",
+      "statement": "A registry lists everything the team runs with its tier, docs home, changelog and release source. A deterministic audit compares it with the docs home and raises gaps on the owner's documentation view, not on the operational action queue.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The audit runs on a schedule and its last run is recorded with its gap count."
+    },
+    {
+      "id": "docs-and-changelog.1.6",
+      "ref": "docs-and-changelog.md 1.6",
+      "title": "Security gaps go to the risk register, not to published pages",
+      "statement": "A weakness found while documenting is logged as risk and raised to its owner. Once the owner accepts a design, the page states the real trust model plainly.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "No open security gap is described on a published page."
+    },
+    {
+      "id": "docs-and-changelog.1.7",
+      "ref": "docs-and-changelog.md 1.7",
+      "title": "Retired things keep their history",
+      "statement": "Retiring a thing marks it retired in the registry, adds a note at the top of each page (date, replacement, where any data export lives) and a final changelog entry, and keeps the pages.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Retired entries in the registry have the note and the final entry."
+    },
+    {
+      "id": "docs-and-changelog.1.8",
+      "ref": "docs-and-changelog.md 1.8",
+      "title": "Publishing is idempotent and single-flight",
+      "statement": "Whatever writes approved pages to the docs home runs one instance at a time under an exclusive lock, records each page the moment it publishes, looks the title up before every create and never creates a page that already exists, and checks that the created title came back unchanged. The coverage audit raises a gap for any title that appears twice in the docs home.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Two concurrent publisher runs on the same queue create each page once, a create whose title exists is refused, and the audit reports a seeded duplicate."
+    },
+    {
+      "id": "docs-and-changelog.1.9",
+      "ref": "docs-and-changelog.md 1.9",
+      "title": "One changelog entry per pull request, append-only",
+      "statement": "A repo whose docs home is the repo adds exactly one changelog entry per pull request, newest first, with the fixed heading ## YYYY-MM-DD (vX.Y.Z[, theme]) or ## YYYY-MM-DD (no version change[, theme]) and at least one bullet, and never edits an older entry. A pull request that only refreshes the core sync paths in the overlay needs no entry.",
+      "level": "should",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "overlay-ci",
+        "workflow": "core-ci.yml",
+        "jobs": [
+          "core-changelog"
+        ]
+      },
+      "acceptance": "With the parameters row Changelog entries set to per-pr, core-ci.yml job core-changelog (step changelog-entries) fails a pull request that adds no entry or more than one, edits an older entry, uses another heading or dates the entry before the one below it, and fails in CI when the base commit is unknown."
+    },
+    {
+      "id": "iac-governance.1.1",
+      "ref": "iac-governance.md 1.1",
+      "title": "Everything is declared in code",
+      "statement": "Every resource and setting in the managed scope is in code. Console and CLI changes are break-glass only and are back-ported within the back-port window (parameter, default one business day). Existing resources are adopted import-first: a pure-import plan, then an empty follow-up plan.",
+      "level": "must",
+      "applies_to": [
+        "iac"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The nightly coverage sweep lists no unmanaged resource outside the recorded exclusions."
+    },
+    {
+      "id": "iac-governance.1.2",
+      "ref": "iac-governance.md 1.2",
+      "title": "State lives in a dedicated, locked backend",
+      "statement": "State is remote, in a store that holds nothing but state, reachable only by the plan, apply and break-glass identities, with versioning, soft delete and a delete lock. Applies take the state lock. PR plans run read-only without it, and nobody force-unlocks a lock they did not take.",
+      "level": "must",
+      "applies_to": [
+        "iac"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The backend config names the dedicated store and applies run with locking on."
+    },
+    {
+      "id": "iac-governance.1.3",
+      "ref": "iac-governance.md 1.3",
+      "title": "Every PR plans, and applies use only the reviewed plan",
+      "statement": "Each PR runs format, validate, lint and plan for every root it touches and posts the plan. Applies run from main with the saved, reviewed plan behind an environment approval, never -auto-approve on an unreviewed plan.",
+      "level": "must",
+      "applies_to": [
+        "iac"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The plan job runs on every PR and the apply job consumes the saved plan artifact."
+    },
+    {
+      "id": "iac-governance.1.4",
+      "ref": "iac-governance.md 1.4",
+      "title": "Plan runs auto-approve only for low-risk diffs",
+      "statement": "A gated plan run is approved automatically only when the diff cannot change what the pipeline executes or reads. Changes to workflows, code owners, backend or CLI config, external data sources, local or remote exec, non-allowlisted providers or module sources, and diffs too large to read wait for the owner.",
+      "level": "must",
+      "applies_to": [
+        "iac"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "The gate's matcher tests cover each hold rule and an ordinary diff that auto-approves."
+    },
+    {
+      "id": "iac-governance.1.5",
+      "ref": "iac-governance.md 1.5",
+      "title": "Deletes are guarded and released explicitly",
+      "statement": "A plan with any delete or replace fails the normal path. Deletes apply only through an explicit release path (a destroy workflow from main in a protected environment with a typed confirmation) whose plan equals exactly the deletes the PR approved.",
+      "level": "must",
+      "applies_to": [
+        "iac"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The plan job fails on any delete count above zero and the release workflow requires its environment approval."
+    },
+    {
+      "id": "iac-governance.1.6",
+      "ref": "iac-governance.md 1.6",
+      "title": "Delete-time guards land before the removal",
+      "statement": "Provider flags checked at delete time are read from prior state, so a guard is applied in its own PR before the PR that removes the resource.",
+      "level": "must",
+      "applies_to": [
+        "iac"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Removal PRs of guarded types reference the guard PR that applied first."
+    },
+    {
+      "id": "iac-governance.1.7",
+      "ref": "iac-governance.md 1.7",
+      "title": "Roots that govern the pipeline are owner-applied",
+      "statement": "Roots that create pipeline identities, grant roles, set policy or manage the state backend are applied only by an owner identity, never by the pipeline they govern.",
+      "level": "must",
+      "applies_to": [
+        "iac"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The roots registry marks each root's applier and the pipeline identity has no write on owner roots."
+    },
+    {
+      "id": "iac-governance.1.8",
+      "ref": "iac-governance.md 1.8",
+      "title": "Drift is detected nightly",
+      "statement": "A scheduled plan per root with a detailed exit code, plus a coverage sweep that compares live inventory (child objects included) with state, opens one work item per drift set.",
+      "level": "must",
+      "applies_to": [
+        "iac"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The drift workflow runs nightly and its last result is recorded."
+    },
+    {
+      "id": "iac-governance.1.9",
+      "ref": "iac-governance.md 1.9",
+      "title": "Change freeze windows block applies and deletes",
+      "statement": "Applies, destroys and releases check the freeze calendar (parameter) read live on each run, and fail closed when it cannot be read.",
+      "level": "must",
+      "applies_to": [
+        "iac"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The apply and release jobs run the freeze check first and fail on a read error."
+    },
+    {
+      "id": "iac-governance.1.10",
+      "ref": "iac-governance.md 1.10",
+      "title": "Providers and modules are pinned",
+      "statement": "Provider versions are pinned and the lock file is committed. A new provider address or a module from outside local paths and the allowlist is a held change.",
+      "level": "must",
+      "applies_to": [
+        "iac"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The plan job fails when the lock file adds a provider not on the allowlist without the owner's approval."
+    },
+    {
+      "id": "iac-governance.1.11",
+      "ref": "iac-governance.md 1.11",
+      "title": "Owner applies never delete open work's objects",
+      "statement": "Before applying a saved plan of an owner-applied root, a guard compares every planned delete with the resources that open pull requests declare in that root and refuses on a match unless the owner names that pull request as meant to lose them. Branch-applied changes to an owner root merge before anything else applies that root.",
+      "level": "must",
+      "applies_to": [
+        "iac"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "The guard's tests cover a refused delete declared by an open pull request, an allowed override, a plan with no deletes, and a lookup failure that refuses (fail closed)."
+    },
+    {
+      "id": "iac-governance.7",
+      "ref": "iac-governance.md 7",
+      "title": "Hash-checked plans, split deletes, placeholder vendor secrets",
+      "statement": "A saved plan carries its sha256 and one-day retention and the apply refuses a mismatch; the apply workflow fails any delete or replace, which go through a destroy workflow that lifts and recreates only the needed locks; vendor secrets are IaC placeholders with value-set, owner and expiry tags and ignore_changes on the value.",
+      "level": "must",
+      "applies_to": [
+        "iac"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "An altered plan fails the apply; a plan with a delete fails apply and passes destroy; a vendor secret without the tags or with a real value fails the IaC check."
+    },
+    {
+      "id": "rbac.1.1",
+      "ref": "rbac.md 1.1",
+      "title": "The server is the access boundary",
+      "statement": "Every route enforces access on the server. Client permission checks only show or hide UI and are never security.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test calls each protected route without the permission and asserts 403, whatever the client shows."
+    },
+    {
+      "id": "rbac.1.2",
+      "ref": "rbac.md 1.2",
+      "title": "Deny by default",
+      "statement": "Signing in grants nothing. Access comes only from a grant to the user or one of their groups.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test signs in a user with no grant and asserts every protected route returns 403."
+    },
+    {
+      "id": "rbac.1.3",
+      "ref": "rbac.md 1.3",
+      "title": "Every route declares its guard",
+      "statement": "No route ships without a declared guard (a permission, signed-in only with a reason, or public with a reason). A check walks the mounted route table and fails on any route without one.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The overlay CI runs the route-guard check and it fails on an unguarded route."
+    },
+    {
+      "id": "rbac.1.4",
+      "ref": "rbac.md 1.4",
+      "title": "No escalation",
+      "statement": "Nobody can grant a role, change a grant, or create or edit a role that involves a permission they do not hold.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test has a caller without a permission try to grant or edit a role holding it and asserts 403."
+    },
+    {
+      "id": "rbac.1.5",
+      "ref": "rbac.md 1.5",
+      "title": "Least privilege with real granularity",
+      "statement": "View is separate from write, sensitive reads are separate from ordinary reads, and no route uses a broad admin right when a narrower one fits.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of each new permission and guard."
+    },
+    {
+      "id": "rbac.1.6",
+      "ref": "rbac.md 1.6",
+      "title": "Effective access is an additive union",
+      "statement": "Effective access is the union of every matched grant (direct and through groups). No grant removes access granted by another.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test grants two roles through a user grant and a group grant and asserts the union."
+    },
+    {
+      "id": "rbac.1.7",
+      "ref": "rbac.md 1.7",
+      "title": "Access changes are audited",
+      "statement": "Every access change is audited with before and after values, and every RBAC denial records the missing permission.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test changes a grant and asserts the audit entry carries target, before and after."
+    },
+    {
+      "id": "rbac.2",
+      "ref": "rbac.md 2",
+      "title": "Permissions come from one catalog",
+      "statement": "Every permission is registered once in a shared catalog with key, label, description and group. A permission not in the catalog cannot be assigned, and a check fails when the catalog and the enforced permissions differ.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The overlay CI runs the RBAC lockstep check: no catalog permission enforced nowhere, no enforced permission missing from the catalog."
+    },
+    {
+      "id": "rbac.3",
+      "ref": "rbac.md 3",
+      "title": "Guards come from one module",
+      "statement": "Routes use the shared guard helpers only, and handlers decide record access with the shared evaluator, never by comparing permission strings by hand.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review: no hand-written permission comparison in handlers."
+    },
+    {
+      "id": "rbac.4",
+      "ref": "rbac.md 4",
+      "title": "Scopes are enforced or not grantable",
+      "statement": "Only scope kinds a route actually checks can be granted, so a scoped grant never silently grants nothing. Ownership is a permission pair (the base action and its .others variant), not a scope.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test asserts the admin API rejects a grant with a scope kind that is not enforced."
+    },
+    {
+      "id": "rbac.5",
+      "ref": "rbac.md 5",
+      "title": "Grants are data with an expiry",
+      "statement": "Roles and grants live in the database, grants map a user or group object id to a role, and an expired grant is ignored at resolution.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test gives a grant a past expiry and asserts it no longer resolves."
+    },
+    {
+      "id": "rbac.6",
+      "ref": "rbac.md 6",
+      "title": "View-As is read-only and exact",
+      "statement": "Impersonation runs on the server, is bound to the admin who started it, expires, rejects every write, and skips ownership exceptions so the preview shows exactly what the previewed role sees. A preview never exceeds the viewer's own permissions (403 and an audit row), and stored roles that hold retired permissions are flagged and stripped on save.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test asserts a write under View-As returns 403 and an owned record of the admin is not visible."
+    },
+    {
+      "id": "rbac.7",
+      "ref": "rbac.md 7",
+      "title": "The client uses the shared evaluator",
+      "statement": "The client has one permission source backed by the same evaluator as the server, and never duplicates server access logic.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review: client gating imports the shared evaluator and rules."
+    },
+    {
+      "id": "data-safety-sqlite.2.1",
+      "ref": "data-safety-sqlite.md 2.1",
+      "title": "One writer, enforced by a lock file",
+      "statement": "Before opening the database the server creates a lock file with an exclusive create and heartbeats it. No second process opens the database while the lock is fresh.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test holds a fresh lock and asserts a second server waits instead of opening the database."
+    },
+    {
+      "id": "data-safety-sqlite.2.2",
+      "ref": "data-safety-sqlite.md 2.2",
+      "title": "Stale takeover only",
+      "statement": "A waiting process takes over only when the heartbeat is older than the stale limit or the holder is dead on the same host, renames the stale lock aside atomically, and a holder that finds its token replaced stops.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test ages the heartbeat past the limit and asserts takeover, and asserts no takeover before it."
+    },
+    {
+      "id": "data-safety-sqlite.2.3",
+      "ref": "data-safety-sqlite.md 2.3",
+      "title": "Listen before you lock",
+      "statement": "The HTTP server listens first and answers 503 starting until the database is open, so platform warm-up succeeds while the old instance still holds the lock.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test asserts the health route answers 503 starting while the lock is held elsewhere."
+    },
+    {
+      "id": "data-safety-sqlite.2.4",
+      "ref": "data-safety-sqlite.md 2.4",
+      "title": "Journal mode for network storage",
+      "statement": "On network storage the database uses journal_mode DELETE with synchronous FULL. WAL is allowed only on local disk.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test opens the database with the network-storage setting and asserts the journal mode."
+    },
+    {
+      "id": "data-safety-sqlite.2.5",
+      "ref": "data-safety-sqlite.md 2.5",
+      "title": "Graceful shutdown",
+      "statement": "On SIGTERM or SIGINT the server stops HTTP and schedulers, checkpoints, closes the database and releases the lock, with a forced exit after a timeout.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test sends SIGTERM and asserts the lock file is released."
+    },
+    {
+      "id": "data-safety-sqlite.2.6",
+      "ref": "data-safety-sqlite.md 2.6",
+      "title": "Integrity gate on open",
+      "statement": "The server runs a quick check on open. On failure it copies the files aside, refuses to open the database and stays up returning 503 with restore instructions.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test opens a corrupted fixture and asserts the copy aside and the 503."
+    },
+    {
+      "id": "data-safety-sqlite.2.7",
+      "ref": "data-safety-sqlite.md 2.7",
+      "title": "No silent auto-restore",
+      "statement": "Restoring from a backup happens only when explicitly enabled, because it discards every write since that backup.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test asserts a failed integrity gate does not restore unless the setting is on."
+    },
+    {
+      "id": "data-safety-sqlite.2.8",
+      "ref": "data-safety-sqlite.md 2.8",
+      "title": "Verified app-level backups",
+      "statement": "Backups use the online backup API, each copy is verified with a quick check, and they run on startup, nightly, on demand and before every deploy.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test takes a backup and asserts the copy passes the quick check."
+    },
+    {
+      "id": "data-safety-sqlite.2.9",
+      "ref": "data-safety-sqlite.md 2.9",
+      "title": "Only the app opens the live database",
+      "statement": "No script, tool, route or console session opens the live database file. Ad hoc inspection uses a backup copy.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review: every database open goes through the one init function."
+    },
+    {
+      "id": "data-safety-sqlite.2.10",
+      "ref": "data-safety-sqlite.md 2.10",
+      "title": "Deploys are serialized and health-gated",
+      "statement": "Deploy and rollback share one concurrency group and gate on the health route reporting the new commit sha.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The deploy workflow declares the shared concurrency group and fails when health does not report the new sha."
+    },
+    {
+      "id": "data-safety-sqlite.2.11",
+      "ref": "data-safety-sqlite.md 2.11",
+      "title": "Stop before deploying over pre-lock code",
+      "statement": "When the running build predates the lock, or its version is unknown, the app is stopped before the deploy and started after it.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the deploy runbook and workflow."
+    },
+    {
+      "id": "data-safety-sqlite.2.12",
+      "ref": "data-safety-sqlite.md 2.12",
+      "title": "Migrations are forward-only and additive",
+      "statement": "Migrations only add tables, columns with defaults and indexes. Older code must keep working against the newer schema.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The overlay CI runs a migration safety check that fails on a destructive change or a NOT NULL column without a default."
+    },
+    {
+      "id": "data-safety-sqlite.7.1",
+      "ref": "data-safety-sqlite.md 7.1",
+      "title": "Server databases: managed identity sign-in",
+      "statement": "People and apps sign in to a server database with directory tokens or a workload identity; a remaining app password login has no superuser, an owner, an expiry and a place in the secret store.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Each database login is listed with its owner and expiry."
+    },
+    {
+      "id": "data-safety-sqlite.7.2",
+      "ref": "data-safety-sqlite.md 7.2",
+      "title": "Server databases: retention and restore drills",
+      "statement": "Backups are kept for the owner-set period, geo-redundant where data cannot be rebuilt, and restored into a scratch database on a schedule with the result recorded in a repo runbook.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The last drill date and result are in the runbook and within the schedule."
+    },
+    {
+      "id": "data-safety-sqlite.7.3",
+      "ref": "data-safety-sqlite.md 7.3",
+      "title": "Server databases: a migration screen in CI",
+      "statement": "CI fails a migration that drops, truncates, deletes, renames or changes a column type unless it is an approved exception with its reason.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "The screen fails on a fixture for each destructive form and passes on an additive one."
+    },
+    {
+      "id": "data-safety-sqlite.7.4",
+      "ref": "data-safety-sqlite.md 7.4",
+      "title": "An audit log is a serialised, keyed chain",
+      "statement": "Audit entries are appended under one lock, read the tip by sequence, store a keyed hash of the previous hash plus their content, are written by one shared module and checked by a verify walk.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Two concurrent appends produce one chain that verifies; an edited or removed row fails the walk."
+    },
+    {
+      "id": "ci-cd-release.1",
+      "ref": "ci-cd-release.md 1",
+      "title": "Workflows are pinned and least-privilege",
+      "statement": "Every action is pinned by full commit sha with the version in a comment, images by digest, workflows declare least-privilege permissions, installs use the frozen lockfile, and CI never rewrites it.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "overlay-ci",
+        "workflow": "core-ci.yml",
+        "jobs": [
+          "core-workflow-lint"
+        ]
+      },
+      "acceptance": "core-ci.yml job core-workflow-lint passes: it fails on an action not pinned by full commit sha with a version comment, an image without a digest, a workflow without a top-level permissions block, or an install that can rewrite the lockfile."
+    },
+    {
+      "id": "ci-cd-release.2",
+      "ref": "ci-cd-release.md 2",
+      "title": "Required checks are required",
+      "statement": "Each required check name is listed in the merge gate, and a missing check counts as not passed. The required set follows the repo shape (single hub app, monorepo with IaC, docs-only, local ops center) and always includes the core-ci.yml jobs that apply to it. A private term guard in the attribution job builds its terms from fragments (or hashes) and reports kind and place, never the term.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The merge gate reads its required check list from the workflow and blocks a PR with a missing check."
+    },
+    {
+      "id": "ci-cd-release.2.1",
+      "ref": "ci-cd-release.md 2.1",
+      "title": "A weekly full-tree lint sweep keeps one issue",
+      "statement": "A repo with a lint step runs a weekly lint of the whole tree (template lint-sweep.yml) that opens one issue labelled lint-sweep on the first failure, updates that same issue on later failures, never opens a second, and closes it on the first green sweep.",
+      "level": "should",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "overlay-ci",
+        "workflow": "lint-sweep.yml",
+        "jobs": [
+          "sweep"
+        ]
+      },
+      "acceptance": "lint-sweep.yml is installed and its sweep job succeeded on the latest default-branch run."
+    },
+    {
+      "id": "ci-cd-release.3",
+      "ref": "ci-cd-release.md 3",
+      "title": "Conventional commits drive the version",
+      "statement": "PR titles follow Conventional Commits, squash merges use the PR title, and the version is computed from commit subjects since the last tag. Nobody bumps versions by hand.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "overlay-ci",
+        "workflow": "core-ci.yml",
+        "jobs": [
+          "core-pr-title"
+        ]
+      },
+      "acceptance": "core-ci.yml job core-pr-title fails a PR title that is not a Conventional Commit."
+    },
+    {
+      "id": "ci-cd-release.4",
+      "ref": "ci-cd-release.md 4",
+      "title": "Major dependency updates never auto-merge",
+      "statement": "Minor and patch updates are grouped and auto-merge once green. Major updates, and 0.x minor updates, wait for a human review.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the dependency update configuration and the merge gate."
+    },
+    {
+      "id": "ci-cd-release.5",
+      "ref": "ci-cd-release.md 5",
+      "title": "The merge gate never runs PR code",
+      "statement": "Auto-merge reads only PR metadata and check results, merges only when every check on the head sha passed, and pins the merge to that sha. It merges by the repo's declared method, and a scheduled lane merges only a head unchanged since its last pass, one PR per pass.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the merge workflow: no checkout of PR code, merge call passes the head sha."
+    },
+    {
+      "id": "ci-cd-release.6",
+      "ref": "ci-cd-release.md 6",
+      "title": "Deploys re-run CI and are health-gated",
+      "statement": "A deploy runs serialized, re-runs CI on the exact commit, takes a pre-deploy backup where there is data, and gates on health reporting the new version and sha before tagging a release. Branch code builds with no environment or secrets and deploys only through a workflow_run stage running main's copy; software shipped to devices releases from main through signed rings with anti-rollback.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the deploy workflow."
+    },
+    {
+      "id": "ci-cd-release.7",
+      "ref": "ci-cd-release.md 7",
+      "title": "Rollback rebuilds a tag through the same gate",
+      "statement": "Rollback rebuilds an existing tag with its own packaging, shares the deploy concurrency group, and health-gates on that tag.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the rollback workflow."
+    },
+    {
+      "id": "ci-cd-release.8",
+      "ref": "ci-cd-release.md 8",
+      "title": "Off-site backups are encrypted and verified",
+      "statement": "An off-site backup is verified, encrypted before it leaves, round-trip checked, and never stored or attached in plaintext.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the backup workflow."
+    },
+    {
+      "id": "ci-cd-release.9",
+      "ref": "ci-cd-release.md 9",
+      "title": "Every secret is documented",
+      "statement": "Every secret a workflow reads is listed with where it lives and what uses it, and a workload identity replaces a stored secret wherever the platform offers one.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review: the secrets table matches the secrets the workflows read."
+    },
+    {
+      "id": "ci-cd-release.11",
+      "ref": "ci-cd-release.md 11",
+      "title": "Core consumption classes",
+      "statement": "An ops center takes every core release at once behind its own gate (when its source is a repo with its own CI gate, as a pull request that merges as soon as that CI passes, never waiting for the owner); every other app (product repos, hubs, multi-module shells, vendored copies) changes only through pull requests the owner approves, and nothing is applied to it directly.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review: every consumer maps to one class; an approval-gated repo's sync workflow opens a draft and merges nothing without the owner's approval or standing approval; no job pushes to its default branch."
+    },
+    {
+      "id": "wpf-design-system.6.1",
+      "ref": "wpf-design-system.md 6.1",
+      "title": "ASCII only in scripts and XAML",
+      "statement": "No byte above 127 in any .ps1 or .xaml. Non-ASCII silently breaks parsing when a script launches with a hidden window.",
+      "level": "must",
+      "applies_to": [
+        "wpf"
+      ],
+      "check": {
+        "kind": "overlay-ci",
+        "workflow": "core-ci.yml",
+        "jobs": [
+          "core-ascii"
+        ]
+      },
+      "acceptance": "core-ci.yml job core-ascii fails on any byte above 127 in tracked .ps1 and .xaml files."
+    },
+    {
+      "id": "wpf-design-system.6.2",
+      "ref": "wpf-design-system.md 6.2",
+      "title": "Two fonts only",
+      "statement": "Segoe UI for all UI text and Consolas for monospace. No other face is referenced.",
+      "level": "must",
+      "applies_to": [
+        "wpf"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the XAML."
+    },
+    {
+      "id": "wpf-design-system.6.3",
+      "ref": "wpf-design-system.md 6.3",
+      "title": "Borders, not shadows",
+      "statement": "Cards and panels use a 1px border and no effect. Only the primary button and toasts carry a subtle drop shadow.",
+      "level": "must",
+      "applies_to": [
+        "wpf"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the XAML."
+    },
+    {
+      "id": "wpf-design-system.6.4",
+      "ref": "wpf-design-system.md 6.4",
+      "title": "One accent, used sparingly",
+      "statement": "The accent appears only on the primary button, the focus border, the running badge and occasional category dots, with tints as explicit precomputed values.",
+      "level": "must",
+      "applies_to": [
+        "wpf"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the XAML."
+    },
+    {
+      "id": "wpf-design-system.6.5",
+      "ref": "wpf-design-system.md 6.5",
+      "title": "Uppercase tracked micro-labels",
+      "statement": "Nav-adjacent labels, table headers, badges and section labels use the micro-label style with text uppercased in code.",
+      "level": "should",
+      "applies_to": [
+        "wpf"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the XAML."
+    },
+    {
+      "id": "wpf-design-system.6.6",
+      "ref": "wpf-design-system.md 6.6",
+      "title": "No edge-bar indicators in WPF",
+      "statement": "Selection is a raised neutral surface with a full hairline and stronger text. Never a bar or stripe on any edge.",
+      "level": "must",
+      "applies_to": [
+        "wpf"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the XAML and screenshots."
+    },
+    {
+      "id": "wpf-design-system.6.7",
+      "ref": "wpf-design-system.md 6.7",
+      "title": "Focus is an accent border",
+      "statement": "Inputs, combo boxes and focusable surfaces switch their border to the accent on keyboard focus or open.",
+      "level": "must",
+      "applies_to": [
+        "wpf"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Keyboard walk-through of each window."
+    },
+    {
+      "id": "wpf-design-system.6.8",
+      "ref": "wpf-design-system.md 6.8",
+      "title": "Geometry from the scale",
+      "statement": "Card radius 12, button, input, combo box and nav radius 8, badge 4, page padding 24, card padding 20.",
+      "level": "should",
+      "applies_to": [
+        "wpf"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the XAML."
+    },
+    {
+      "id": "wpf-design-system.6.9",
+      "ref": "wpf-design-system.md 6.9",
+      "title": "Disabled is opacity 0.4",
+      "statement": "Every interactive control shows its disabled state at opacity 0.4.",
+      "level": "should",
+      "applies_to": [
+        "wpf"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the XAML."
+    },
+    {
+      "id": "wpf-design-system.6.10",
+      "ref": "wpf-design-system.md 6.10",
+      "title": "Triggers own the foreground",
+      "statement": "Inner text of nav items and buttons never sets its own foreground, so the template triggers drive it.",
+      "level": "must",
+      "applies_to": [
+        "wpf"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the XAML."
+    },
+    {
+      "id": "wpf-design-system.6.11",
+      "ref": "wpf-design-system.md 6.11",
+      "title": "Retemplated controls keep their parts",
+      "statement": "A retemplated control keeps every part WPF wires by name, so it still works under XamlReader.Load.",
+      "level": "must",
+      "applies_to": [
+        "wpf"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Each window loads with XamlReader.Load in a test run."
+    },
+    {
+      "id": "wpf-design-system.6.12",
+      "ref": "wpf-design-system.md 6.12",
+      "title": "Setters before triggers",
+      "statement": "In every Style, all Setter elements come before Style.Triggers and any other property element.",
+      "level": "must",
+      "applies_to": [
+        "wpf"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A checker walks each Style's child order and fails on a Setter after a property element."
+    },
+    {
+      "id": "wpf-powershell-gui.6",
+      "ref": "wpf-powershell-gui.md 6",
+      "title": "Scripts are ASCII and parse clean",
+      "statement": "Every script is plain ASCII (no BOM-dependent characters) and passes the PowerShell parser with zero errors before every commit.",
+      "level": "must",
+      "applies_to": [
+        "wpf"
+      ],
+      "check": {
+        "kind": "overlay-ci",
+        "workflow": "core-ci.yml",
+        "jobs": [
+          "core-ascii",
+          "core-powershell"
+        ]
+      },
+      "acceptance": "core-ci.yml jobs core-ascii and core-powershell pass: no non-ASCII byte and no parser error in any tracked .ps1."
+    },
+    {
+      "id": "wpf-powershell-gui.8",
+      "ref": "wpf-powershell-gui.md 8",
+      "title": "Tools log in CMTrace format",
+      "statement": "Every tool writes CMTrace-format logs to a per-user local path, never to a share, and logs every swallowed error around an external call.",
+      "level": "must",
+      "applies_to": [
+        "wpf"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review against the logging section and the CMTrace standard."
+    },
+    {
+      "id": "wpf-powershell-gui.9",
+      "ref": "wpf-powershell-gui.md 9",
+      "title": "Every script shows its version",
+      "statement": "Every script declares its version and shows it in the window title, the log pane and the log header, bumped on every change.",
+      "level": "should",
+      "applies_to": [
+        "wpf"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review: the version appears in all three places."
+    },
+    {
+      "id": "wpf-powershell-gui.10",
+      "ref": "wpf-powershell-gui.md 10",
+      "title": "Runspaces share state by reference",
+      "statement": "Background work runs in a runspace that receives shared state with SessionStateProxy.SetVariable, never AddArgument, and puts UI feedback before file logging in every catch block.",
+      "level": "must",
+      "applies_to": [
+        "wpf"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the runspace helper."
+    },
+    {
+      "id": "wpf-powershell-gui.11",
+      "ref": "wpf-powershell-gui.md 11",
+      "title": "Prerequisite modules install themselves",
+      "statement": "A tool that needs a module checks for it with version awareness and installs it to the current user scope behind a progress splash, with a manual fallback only when the install fails. It never requires elevation for that.",
+      "level": "must",
+      "applies_to": [
+        "wpf"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review, plus a run on a machine without the module."
+    },
+    {
+      "id": "wpf-powershell-gui.14",
+      "ref": "wpf-powershell-gui.md 14",
+      "title": "Launches quote paths and hide consoles",
+      "statement": "A launcher passes a single quoted argument string, never an array, and starts GUI scripts with no console window.",
+      "level": "must",
+      "applies_to": [
+        "wpf"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the launcher."
+    },
+    {
+      "id": "wpf-powershell-gui.16",
+      "ref": "wpf-powershell-gui.md 16",
+      "title": "Toolbox conventions hold for every tool",
+      "statement": "Results grids scroll horizontally, sort by default and have a click-row detail panel, and every tool carries the standard footer, version and description.",
+      "level": "should",
+      "applies_to": [
+        "wpf"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of each tool against the section."
+    },
+    {
+      "id": "web-api-runtime.1.1",
+      "ref": "web-api-runtime.md 1.1",
+      "title": "Never call the directory per request",
+      "statement": "Group membership (a transitive membership lookup in the directory) is resolved once per user and cached, never once per API call.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test sends several requests for one user and asserts the directory fake was called once."
+    },
+    {
+      "id": "web-api-runtime.1.2",
+      "ref": "web-api-runtime.md 1.2",
+      "title": "Per-user cache with a short TTL",
+      "statement": "Cached groups live about 5 minutes, keyed by the user's object id, in a bounded LRU so memory stays flat however many users sign in.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Entries expire after the TTL and the cache never holds more than its bound."
+    },
+    {
+      "id": "web-api-runtime.1.3",
+      "ref": "web-api-runtime.md 1.3",
+      "title": "Single-flight per user",
+      "statement": "Concurrent misses for the same user share one in-flight lookup.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "N concurrent requests for a cold user produce one directory call."
+    },
+    {
+      "id": "web-api-runtime.1.4",
+      "ref": "web-api-runtime.md 1.4",
+      "title": "Failures are never cached and fail closed",
+      "statement": "A failed or timed-out lookup returns no groups for that request (access denied or a retryable error) and leaves no cache entry.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A failing fake denies the request, and the next request retries the directory."
+    },
+    {
+      "id": "web-api-runtime.1.5",
+      "ref": "web-api-runtime.md 1.5",
+      "title": "Writes read groups live",
+      "statement": "Any request that changes data resolves the caller's groups from the directory, bypassing the cache. Reads tolerate the TTL.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Remove a user from the fake's group, then a write is refused at once while a read may still pass inside the TTL."
+    },
+    {
+      "id": "web-api-runtime.1.6",
+      "ref": "web-api-runtime.md 1.6",
+      "title": "In-app membership changes invalidate the cache",
+      "statement": "When the app itself adds or removes a member, it drops the affected users' cache entries in the same request.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "After an in-app grant the next request for that user misses the cache."
+    },
+    {
+      "id": "web-api-runtime.2.1",
+      "ref": "web-api-runtime.md 2.1",
+      "title": "Cache the managed identity token for the directory",
+      "statement": "The API gets its directory token from its managed identity and reuses it until shortly before expiry, never per lookup.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Two lookups in a row request one token."
+    },
+    {
+      "id": "web-api-runtime.2.2",
+      "ref": "web-api-runtime.md 2.2",
+      "title": "Drop the token on a 401",
+      "statement": "A 401 from the directory clears the cached token, and the lookup retries once with a fresh one.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A fake that answers 401 once is retried once with a new token."
+    },
+    {
+      "id": "web-api-runtime.3.1",
+      "ref": "web-api-runtime.md 3.1",
+      "title": "Send Access-Control-Max-Age 7200",
+      "statement": "Preflight responses carry the browser cap (7200 seconds) so a browser asks once per two hours, not once per call.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "An OPTIONS request from a listed origin returns Access-Control-Max-Age 7200."
+    },
+    {
+      "id": "web-api-runtime.3.2",
+      "ref": "web-api-runtime.md 3.2",
+      "title": "Keep an origin guard behind CORS",
+      "statement": "The API refuses writes and preflighted requests whose Origin is not on the list, independent of the CORS headers.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A write with an unlisted Origin returns 403 even when no preflight happened."
+    },
+    {
+      "id": "web-api-runtime.4.1",
+      "ref": "web-api-runtime.md 4.1",
+      "title": "Send Server-Timing marks to allowlisted origins",
+      "statement": "Each response carries marks for the costly steps (token check, group lookup with hit, miss or shared, permission check), with Timing-Allow-Origin set, only when the request Origin is on the list.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A listed origin gets Server-Timing and Timing-Allow-Origin, an unlisted one gets neither."
+    },
+    {
+      "id": "web-api-runtime.4.2",
+      "ref": "web-api-runtime.md 4.2",
+      "title": "One structured log line per request, nothing personal",
+      "statement": "The line holds method, route template, status, duration and the timing marks. It never holds the URL, query string, token, user name, email or object id.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A request with a query string and a bearer token logs one line that contains neither."
+    },
+    {
+      "id": "web-api-runtime.5.1",
+      "ref": "web-api-runtime.md 5.1",
+      "title": "Route names come only from declared route templates",
+      "statement": "The route name is read from the router's declared templates (walk the router definitions at startup), never built from the request path or the mount path values. A request that matches no declared template is named -.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Requests with ids, emails and unknown paths produce only declared templates or -."
+    },
+    {
+      "id": "web-api-runtime.5.2",
+      "ref": "web-api-runtime.md 5.2",
+      "title": "Health probes are not sent",
+      "statement": "Requests to the health endpoint are not recorded as telemetry.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A health request produces no telemetry item."
+    },
+    {
+      "id": "web-api-runtime.5.3",
+      "ref": "web-api-runtime.md 5.3",
+      "title": "Keyless ingestion",
+      "statement": "Local (key) auth is off on the telemetry resource. The API sends with its managed identity, which holds only the metrics publisher role on that resource.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The resource has local auth disabled and the identity holds only the publisher role."
+    },
+    {
+      "id": "web-api-runtime.5.4",
+      "ref": "web-api-runtime.md 5.4",
+      "title": "One telemetry component per API with a daily cap, and no stray alert mail",
+      "statement": "Each API reports to its own component with a daily ingestion cap. The anomaly alert rule the platform creates on its own is disabled or kept from mailing a shared action group.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Every component has a cap and no auto-created rule targets a shared group."
+    },
+    {
+      "id": "web-api-runtime.5.5",
+      "ref": "web-api-runtime.md 5.5",
+      "title": "Telemetry never blocks startup and flushes on SIGTERM",
+      "statement": "The exporter starts after the server listens, its failure is logged and ignored, and a SIGTERM handler flushes with a short timeout before exit.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "With an unreachable endpoint the server still answers, and SIGTERM exits within the timeout."
+    },
+    {
+      "id": "web-api-runtime.5.6",
+      "ref": "web-api-runtime.md 5.6",
+      "title": "Prefer the lightweight exporter on small plans",
+      "statement": "Use a plain trace SDK with the vendor exporter, not the vendor's all-in-one distribution.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The API's dependencies hold the exporter, not the distribution."
+    },
+    {
+      "id": "web-api-runtime.6.1",
+      "ref": "web-api-runtime.md 6.1",
+      "title": "One package for the runtime middleware, consumed by every API",
+      "statement": "Group caching, the directory token, the origin guard, Server-Timing, the request log and telemetry route naming live in one shared package that every API imports.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "No API carries its own copy of these middlewares."
+    },
+    {
+      "id": "web-api-runtime.6.2",
+      "ref": "web-api-runtime.md 6.2",
+      "title": "The shared package has no runtime dependencies",
+      "statement": "It uses only the platform's standard library and what the consuming API already passes in.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "A check in the consumer's CI asserts the package manifest lists no runtime dependencies."
+    },
+    {
+      "id": "web-api-runtime.6.3",
+      "ref": "web-api-runtime.md 6.3",
+      "title": "Validate the bearer token completely",
+      "statement": "The shared bearer check verifies signature (pinned algorithm allowlist), issuer, audience, expiry and not-before, refreshes signing keys on an unknown key id at most once per interval, and never accepts a token after a failed refresh.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Tokens with a wrong algorithm, issuer, audience, signature or expiry each return 401."
+    },
+    {
+      "id": "web-api-runtime.6.4",
+      "ref": "web-api-runtime.md 6.4",
+      "title": "The dev identity is for development and test only",
+      "statement": "DEV_BYPASS_AUTH is honoured only when the environment is development or test, and a boot preflight refuses any other environment while the bypass or a dev user is set.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A start with the bypass set in staging, unset or production exits non-zero before listening."
+    },
+    {
+      "id": "web-api-runtime.1.7",
+      "ref": "web-api-runtime.md 1.7",
+      "title": "Look up only referenced groups, in batches, with a generation guard",
+      "statement": "The resolver asks only about the groups the apps reference, sends at most 20 ids per call with at most 4 calls in flight, falls back to one id per call on a 400, retries a 429 once, and never writes a lookup that started before an invalidation into the cache.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test proves the referenced-only lookup, the batch and concurrency bounds, the 400 and 429 handling and that an invalidation during a lookup leaves the cache empty."
+    },
+    {
+      "id": "web-api-runtime.3.3",
+      "ref": "web-api-runtime.md 3.3",
+      "title": "CORS lives in the app only",
+      "statement": "The hosting platform CORS setting stays empty for every API; the app CORS layer and origin guard decide origins.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "A CI check over the hosting configuration fails when a platform CORS origin list is set."
+    },
+    {
+      "id": "web-api-runtime.5.7",
+      "ref": "web-api-runtime.md 5.7",
+      "title": "Retry telemetry exports through a short outage",
+      "statement": "A failed export is retried after 2, 5 and 10 seconds and unsent spans wait in a bounded buffer of 2,000; a full buffer drops the oldest and logs once per outage.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "With a fake collector down for 8 seconds no span is lost; past the buffer it holds 2,000 spans and logs one warning."
+    },
+    {
+      "id": "web-api-runtime.7",
+      "ref": "web-api-runtime.md 7",
+      "title": "Fixed bearer rules and a development-only dev identity",
+      "statement": "Bearer tokens use one signing algorithm (RS256), both issuer versions, the audience as the union of the API ids, signing keys cached 10 minutes with at most 10 key fetches a minute. A dev identity exists only when the environment is exactly development or test.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A token signed with another algorithm, a wrong audience and an unknown key id flood each fail; the dev identity is refused when the environment is unset or staging."
+    },
+    {
+      "id": "web-client-runtime.1.1",
+      "ref": "web-client-runtime.md 1.1",
+      "title": "One canonical boot sequence",
+      "statement": "The app initializes the auth library, handles the redirect response, sets the active account, then renders. The stored return target is routed in-app (MSAL navigateToLoginRequestUrl: false), never by a second full page load.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A simulated sign-in return renders the target route with one boot and no extra navigation."
+    },
+    {
+      "id": "web-client-runtime.1.2",
+      "ref": "web-client-runtime.md 1.2",
+      "title": "One boot module for every app",
+      "statement": "The boot sequence lives in the shared client package (section 5), not in each app.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "No app calls the auth library's initialize or redirect handling itself."
+    },
+    {
+      "id": "web-client-runtime.2.1",
+      "ref": "web-client-runtime.md 2.1",
+      "title": "Never depend on hidden-iframe renewal when the origin denies framing",
+      "statement": "When the app origin sends X-Frame-Options DENY (or a frame-ancestors policy that blocks itself), silent renewal uses the refresh token only (MSAL cache lookup policy refresh-token-only), never the hidden iframe fallback.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "With an expired access token and a valid refresh token, renewal succeeds with no iframe created."
+    },
+    {
+      "id": "web-client-runtime.2.2",
+      "ref": "web-client-runtime.md 2.2",
+      "title": "Iframe timeouts mean interaction required",
+      "statement": "Timeout errors from the silent path (MSAL monitor_window_timeout and its relatives) are treated as interaction required, so the user is sent to sign in once.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A silent call that fails with a timeout code starts one interactive sign-in."
+    },
+    {
+      "id": "web-client-runtime.2.3",
+      "ref": "web-client-runtime.md 2.3",
+      "title": "Only real session expiry redirects",
+      "statement": "Interaction required is decided by the session-expiry codes (expired or missing session, refresh token expired). Consent and conditional access policy errors are shown to the user once and never start a redirect.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A consent error renders a message and starts no redirect."
+    },
+    {
+      "id": "web-client-runtime.2.4",
+      "ref": "web-client-runtime.md 2.4",
+      "title": "Check the loop guard before redirecting",
+      "statement": "A guard (a counter or timestamp in session storage) is read before every interactive redirect, and a tripped guard shows a sign-in button instead.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Two redirects inside the guard window show the button and start no third redirect."
+    },
+    {
+      "id": "web-client-runtime.2.5",
+      "ref": "web-client-runtime.md 2.5",
+      "title": "Single-flight the interactive redirect",
+      "statement": "One redirect promise is shared by every caller, and the library's interaction in progress error is treated as \"already redirecting\".",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Five concurrent calls that need interaction start one redirect and report no error."
+    },
+    {
+      "id": "web-client-runtime.2.6",
+      "ref": "web-client-runtime.md 2.6",
+      "title": "Match errors by name and code too",
+      "statement": "Error checks compare the error name and code as well as instanceof.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "An error object from a different library copy with the same name and code is classified the same way."
+    },
+    {
+      "id": "web-client-runtime.3.1",
+      "ref": "web-client-runtime.md 3.1",
+      "title": "The bearer token goes only to the configured API base",
+      "statement": "The client attaches the token only to paths under the configured base, and rejects absolute URLs, protocol-relative paths, backslashes, path traversal and encoded dot segments.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Each rejected form throws before any request leaves, and no token is attached."
+    },
+    {
+      "id": "web-client-runtime.3.2",
+      "ref": "web-client-runtime.md 3.2",
+      "title": "Identical GETs in flight share one request",
+      "statement": "A GET for a key that is already in flight returns the same promise.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Three concurrent GETs of one path produce one request."
+    },
+    {
+      "id": "web-client-runtime.3.3",
+      "ref": "web-client-runtime.md 3.3",
+      "title": "Stale-while-revalidate with a per-key TTL",
+      "statement": "Cached reads return at once and refresh in the background when older than their TTL, and each key may set its own TTL.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A stale key returns the cached value and starts one background refresh."
+    },
+    {
+      "id": "web-client-runtime.3.4",
+      "ref": "web-client-runtime.md 3.4",
+      "title": "Persist only identity reads, and always as stale",
+      "statement": "Only identity reads (who am I, my permissions) persist to sessionStorage so the shell paints at once on load. They are always treated as stale, and cleared on sign-out and on an account change.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A reload paints from storage and refetches, sign-out and an account switch clear it."
+    },
+    {
+      "id": "web-client-runtime.3.5",
+      "ref": "web-client-runtime.md 3.5",
+      "title": "Invalidate drops in-flight GETs",
+      "statement": "Invalidating a key also forgets any in-flight GET for it, so the next read starts fresh.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A GET in flight during a write is not returned to a caller that reads after the invalidate."
+    },
+    {
+      "id": "web-client-runtime.3.6",
+      "ref": "web-client-runtime.md 3.6",
+      "title": "A rejected refresh leaves no stuck entry",
+      "statement": "A failed or superseded request removes its in-flight entry, and a stale rejection never overwrites newer data.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "After a rejected GET the next read sends a new request."
+    },
+    {
+      "id": "web-client-runtime.3.7",
+      "ref": "web-client-runtime.md 3.7",
+      "title": "Background polls never navigate",
+      "statement": "A poll passes its own on-401 handler that throws, so only a user-started call may send the user to sign in.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A 401 on a poll throws to the poller and starts no navigation."
+    },
+    {
+      "id": "web-client-runtime.3.8",
+      "ref": "web-client-runtime.md 3.8",
+      "title": "Polls pause while the tab is hidden",
+      "statement": "Polling stops on visibility hidden and resumes, with one immediate refresh, when the tab is visible again.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "No poll fires while the document is hidden."
+    },
+    {
+      "id": "web-client-runtime.4.1",
+      "ref": "web-client-runtime.md 4.1",
+      "title": "Lazy routes, first page started at boot, the rest prefetched on idle",
+      "statement": "Every route is a lazy chunk. The route the user landed on starts loading during boot, and the other routes prefetch when the browser is idle.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The build reports an entry chunk under the budget the consumer sets."
+    },
+    {
+      "id": "web-client-runtime.4.2",
+      "ref": "web-client-runtime.md 4.2",
+      "title": "Long-lived vendor chunks",
+      "statement": "The framework and the auth library build into their own named chunks so an app release does not change their hashes.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The build config names the vendor chunks and their hashes survive an app-only change."
+    },
+    {
+      "id": "web-client-runtime.4.3",
+      "ref": "web-client-runtime.md 4.3",
+      "title": "Large inline assets become hashed files",
+      "statement": "Images, fonts and data above a few kilobytes are emitted as hashed files, not inlined into the script.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "No inline asset above the bundler's inline limit is in the entry chunk."
+    },
+    {
+      "id": "web-client-runtime.5.1",
+      "ref": "web-client-runtime.md 5.1",
+      "title": "One client package for every app on the origin",
+      "statement": "Auth boot, token renewal, the API client and polling live in one package that every app imports.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "No app carries its own token or fetch wrapper."
+    },
+    {
+      "id": "web-client-runtime.5.2",
+      "ref": "web-client-runtime.md 5.2",
+      "title": "One token cache across apps on the same origin",
+      "statement": "Apps on one origin share the auth library's cache location and client configuration, so signing in to one signs in to all.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "After signing in to one app, another app on the origin acquires a token silently."
+    },
+    {
+      "id": "web-client-runtime.6.1",
+      "ref": "web-client-runtime.md 6.1",
+      "title": "Every app shows the same live strip from one feed endpoint",
+      "statement": "A health line and platform announcements come from one feed endpoint that requires sign-in and no extra permission, and every app renders them with the shared component.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Every app mounts the shared strip against the one feed endpoint."
+    },
+    {
+      "id": "web-client-runtime.6.2",
+      "ref": "web-client-runtime.md 6.2",
+      "title": "Per-app items are gated by the user's own permissions",
+      "statement": "The feed adds items for an app only when the caller holds that app's permissions, and each app may add its own items to the strip.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A user without an app's permission receives none of its items."
+    },
+    {
+      "id": "web-client-runtime.1.3",
+      "ref": "web-client-runtime.md 1.3",
+      "title": "An app without a session bounces once, with a validated return target",
+      "statement": "An app with no session signs in with the current in-app path as the return target, accepted on return only as a same-origin path (single leading slash, no //, backslash, control character, more than 2048 characters or other origin). A rejected target routes to the app home.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Each rejected form routes to the app home and a valid deep link returns to itself."
+    },
+    {
+      "id": "web-client-runtime.1.4",
+      "ref": "web-client-runtime.md 1.4",
+      "title": "An account change clears the old account's state",
+      "statement": "When the active account changes, cached API data and error state for the old account are cleared and the app re-boots for the new one.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Switching account in a second tab clears cached data and the error banner in the first."
+    },
+    {
+      "id": "notifications.1",
+      "ref": "notifications.md 1",
+      "title": "Pure signal, plain language, no sensitive content",
+      "statement": "Send only failures and things that need action, in plain words, in first person where the message speaks for the owner, with no AI or tool attribution, no PHI, identifiers or credentials, and never a change to what is sent to other people.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "A review of a sample of alerts finds none that break the principles."
+    },
+    {
+      "id": "notifications.2",
+      "ref": "notifications.md 2",
+      "title": "HTML parse mode, no banned characters",
+      "statement": "Messages use HTML parse mode with only <, > and & escaped, and the formatter strips em and en dashes, curly quotes and other banned characters.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The formatter test covers escaping and stripping."
+    },
+    {
+      "id": "notifications.3",
+      "ref": "notifications.md 3",
+      "title": "Messages follow the standard layout",
+      "statement": "Every message uses the layout: severity icon and bold headline, time line, plain-language body, next step, collapsed facts and log excerpt, read-only buttons, capped at 4096 characters.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The formatter samples render each element and the truncation."
+    },
+    {
+      "id": "notifications.4",
+      "ref": "notifications.md 4",
+      "title": "Severity levels have fixed icons and sounds",
+      "statement": "Critical, failure, warning, recovered and info use the documented icon and sound, and recovered is sent only after an earlier alert for the same key.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The formatter samples show each level."
+    },
+    {
+      "id": "notifications.5",
+      "ref": "notifications.md 5",
+      "title": "Alerts are deduplicated per key and recover",
+      "statement": "The same severity for the same key is suppressed for 15 minutes (critical), 1 hour (failure) or 6 hours (warning, info), and a recovered message is sent only when an alert was open.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The formatter tests cover suppression and recovery."
+    },
+    {
+      "id": "notifications.6",
+      "ref": "notifications.md 6",
+      "title": "Delivery goes direct to the owner and never raises",
+      "statement": "Send goes by direct Bot API call to the owner chat only, with the token read at runtime and never printed, falling back from rich with buttons to rich to plain text, and a delivery failure never raises into the calling job.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "A forced failure leaves the calling job exit code unchanged."
+    },
+    {
+      "id": "notifications.7",
+      "ref": "notifications.md 7",
+      "title": "Scheduled jobs run under the guard",
+      "statement": "Scheduled jobs run through the guard wrapper, which sends one formatted alert on failure, preserves the exit code and avoids a second plain failure notice.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "A failing guarded job sends exactly one alert and exits non-zero."
+    },
+    {
+      "id": "notifications.9",
+      "ref": "notifications.md 9",
+      "title": "Email goes through one renderer behind a CI guard",
+      "statement": "Every email a tool sends goes through one block renderer: a fixed-width card, callouts without edge bars, a subject naming the change and item, lists capped at 12, public-hostname links and [TEST] self-tests to the sender only. A CI guard fails hand-built email HTML and platform-host links.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A fixture with a raw table in an email module and one with a platform-host link each fail the guard."
+    },
+    {
+      "id": "identity-and-people-data.1.1",
+      "ref": "identity-and-people-data.md 1.1",
+      "title": "The directory is the source of truth for identity",
+      "statement": "The identity provider directory owns object id, display name, email and job title. The app stores a cached copy, never a competing one.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "No write path edits an identity field except the sync."
+    },
+    {
+      "id": "identity-and-people-data.1.2",
+      "ref": "identity-and-people-data.md 1.2",
+      "title": "One roster",
+      "statement": "A single team_members table is the only list of people and every feature links to it by member_id.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "No feature table holds its own list of names."
+    },
+    {
+      "id": "identity-and-people-data.1.3",
+      "ref": "identity-and-people-data.md 1.3",
+      "title": "Directory-only adds",
+      "statement": "New members are added only by picking a user from the directory, and adding is refused when the directory is unavailable.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test shows a free-text add is refused."
+    },
+    {
+      "id": "identity-and-people-data.1.4",
+      "ref": "identity-and-people-data.md 1.4",
+      "title": "Never fabricate people from name-only data",
+      "statement": "A seed, import or migration with only a name does not create a member.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A test shows a name-only import creates no member."
+    },
+    {
+      "id": "identity-and-people-data.1.5",
+      "ref": "identity-and-people-data.md 1.5",
+      "title": "Nightly sync with confident matching",
+      "statement": "A scheduled sync matches by object id, then exact email, then exact display name when safe, and an ambiguous match is marked unmatched and changes nothing.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Sync tests cover each match tier and the ambiguous case."
+    },
+    {
+      "id": "identity-and-people-data.1.6",
+      "ref": "identity-and-people-data.md 1.6",
+      "title": "Safe propagation",
+      "statement": "A confident match overwrites team_members without blanking fields, linked snapshots are fill-only, and past schedule rows, swap audit and OOF entries are never rewritten.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A sync test shows snapshots and past rows unchanged."
+    },
+    {
+      "id": "identity-and-people-data.1.7",
+      "ref": "identity-and-people-data.md 1.7",
+      "title": "Test data is synthetic",
+      "statement": "Fixtures and seeds use made-up people on example.test, never real staff.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "A scan of fixtures finds no real address."
+    },
+    {
+      "id": "web-build.4",
+      "ref": "web-build.md 4",
+      "title": "One auth model per app type, dev bypass development or test only",
+      "statement": "An app behind the platform uses platform-level auth; the dev bypass is honoured only in development or test, and a boot preflight refuses a production start while it is set.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A start with the bypass set in production, staging or an unset environment exits before listening."
+    },
+    {
+      "id": "web-build.7",
+      "ref": "web-build.md 7",
+      "title": "One tools manifest drives every navigation surface",
+      "statement": "A single manifest feeds the hub, sidebars and palette; visibility combines the view permissions, accessPrefixes (never narrower than the server), hiddenWithPermission, visibleTo for scoped grants, and previewFlag for nav items.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A tool with hiddenWithPermission is hidden from a caller holding it; a nav item with an unregistered flag is hidden; a caller with only an access-prefix permission reaches the tool."
+    },
+    {
+      "id": "web-build.8.1",
+      "ref": "web-build.md 8.1",
+      "title": "One local gate runs what CI runs",
+      "statement": "One script (pnpm run verify) runs typecheck, lint, every check guard, the build, the bundle-size check, the tests and the pinned static analysis scan, failing on the first non-zero step.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The repo has the verify script and it lists every CI step."
+    },
+    {
+      "id": "web-build.10",
+      "ref": "web-build.md 10",
+      "title": "One global search, access-filtered, with index health",
+      "statement": "Global search covers every record the user can see, filters by the record access rules on the server, indexes up to 100,000 characters of file text with a highlighted passage, and reports stale, skipped and broken-link counts from a health endpoint.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A search never returns a key the caller cannot read; the health endpoint reports a stale fixture document."
+    },
+    {
+      "id": "web-shell.1",
+      "ref": "web-shell.md 1",
+      "title": "Pick one shell shape per product",
+      "statement": "A product is either several apps on one origin or one shell with many modules; a module inside a shell never signs in on its own or tries a silent sign-in frame.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A module with no session bounces to the shell sign-in with no hidden frame."
+    },
+    {
+      "id": "web-shell.2",
+      "ref": "web-shell.md 2",
+      "title": "Client-runtime sections apply per shape",
+      "statement": "Each client-runtime section applies as the shape table says; with platform sign-in there is no browser token, so auth boot, renewal and the token cache do not apply.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review against the table."
+    },
+    {
+      "id": "web-shell.3",
+      "ref": "web-shell.md 3",
+      "title": "The registry is generated from manifests",
+      "statement": "A script generates the module list and one icon map with a fallback from per-module manifests, and CI fails a stale registry.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A manifest added without regenerating fails CI; a module with no icon gets the fallback."
+    },
+    {
+      "id": "web-shell.4",
+      "ref": "web-shell.md 4",
+      "title": "One route table, standalone or hosted",
+      "statement": "A module exports one route table, a shared typed descriptor and a host hook; the standalone entry and the shell mount the same table.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A manifest test per module keeps manifest and route table aligned."
+    },
+    {
+      "id": "web-shell.5",
+      "ref": "web-shell.md 5",
+      "title": "Per-module CSS scope",
+      "statement": "Module stylesheets are built inside :where([data-module=\"<id>\"]), keyframes are named <id>-<name>, root selectors map onto the module root, and the token sheet loads once.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A module rule does not match an element of another module."
+    },
+    {
+      "id": "web-shell.6",
+      "ref": "web-shell.md 6",
+      "title": "Per-module storage scope",
+      "statement": "Each module has its own appId so seen versions, dismissed banners and saved filters stay per module.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A banner dismissed in one module still shows in another."
+    },
+    {
+      "id": "web-shell.7",
+      "ref": "web-shell.md 7",
+      "title": "One accent per mounted module",
+      "statement": "Each module mounts in the kit AccentProvider with an accent name from the kit accents data.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Switching modules switches the accent with no leftovers."
+    },
+    {
+      "id": "web-shell.8",
+      "ref": "web-shell.md 8",
+      "title": "Safe return-target bounce",
+      "statement": "The shell validates the return target and accepts only a same-origin path, rejecting protocol-relative, backslash, control-character, over-2,048-character and other-origin targets.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Each rejected shape returns the home route; a plain in-origin path survives."
+    },
+    {
+      "id": "web-shell.9",
+      "ref": "web-shell.md 9",
+      "title": "Home is the hub",
+      "statement": "In a multi-module shell home is the hub; module pages never claim /, and the header Home, the bounce fallback and the palette point there.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of the route table and header home."
+    },
+    {
+      "id": "web-shell.10",
+      "ref": "web-shell.md 10",
+      "title": "One AppShell per module, mounted and routed by id",
+      "statement": "Each active module gets its own AppShell, a router at /<id>, a remount on switch and rail entries filtered by its own permission check; the switcher uses the Rail brandSlot.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Switching modules remounts; a same-origin link into another module does not reload; a hidden rail entry still answers 403 from the server."
+    }
+  ]
+}

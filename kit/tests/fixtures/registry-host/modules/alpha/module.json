@@ -1,0 +1,10 @@
+{
+  "id": "alpha",
+  "name": "Alpha",
+  "accent": "brand",
+  "order": 1,
+  "tagline": "First module",
+  "tags": ["one", "two"],
+  "links": { "docs": "/alpha/docs" },
+  "x-flag": true
+}

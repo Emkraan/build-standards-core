@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "note": "Decision registry for the Claude Code setup of every consumer. Mirrors hermes/tools.json for the other harness. claude/apply_claude.py reads it; claude/README.md is the prose. One standard for every repo: user-scope install, no per-repo variation. Describe only; never put a path, account or secret here.",
+  "tools": [
+    {
+      "id": "rtk",
+      "kind": "hook",
+      "decision": "adapt",
+      "required": true,
+      "binary": "rtk",
+      "verify_settings": "rtk hook claude",
+      "install": [
+        "rtk",
+        "init",
+        "-g",
+        "--auto-patch"
+      ],
+      "install_hint": "brew install rtk, then: rtk init -g --auto-patch (adds a PreToolUse hook to the user settings).",
+      "reason": "Shell-output filter. Same decision as the Hermes entry; Claude Code needs its own hook. Never-rewrite list applies (configurations.md section 11)."
+    },
+    {
+      "id": "context-mode",
+      "kind": "plugin",
+      "decision": "adapt",
+      "required": true,
+      "marketplace": "mksglu/context-mode",
+      "plugin": "context-mode@context-mode",
+      "install_hint": "claude plugin marketplace add mksglu/context-mode; claude plugin install context-mode@context-mode",
+      "reason": "Sandboxes large tool output and keeps session state across compaction; complements rtk. Licence is Elastic 2.0, not OSI open source: consumers that redistribute must review it first (claude/README.md section 3)."
+    },
+    {
+      "id": "codebase-memory-mcp",
+      "kind": "mcp",
+      "decision": "adopt",
+      "required": true,
+      "server": "codebase-memory-mcp",
+      "npm": "codebase-memory-mcp",
+      "install": [
+        "codebase-memory-mcp",
+        "install",
+        "-y"
+      ],
+      "config": [
+        [
+          "auto_index",
+          "true"
+        ]
+      ],
+      "install_hint": "npm install -g codebase-memory-mcp; codebase-memory-mcp install -y; codebase-memory-mcp config set auto_index true",
+      "reason": "The one code-graph standard: user scope, so every repo gets it with no per-repo file, indexed automatically. Its install adds hooks that steer the agent to the graph, which MCP-only tools lack."
+    },
+    {
+      "id": "token-savior",
+      "kind": "mcp",
+      "decision": "reject",
+      "required": false,
+      "install_hint": "Not installed.",
+      "reason": "Overlaps the code graph (a second set of tool schemas loaded every session) and its only independent measurement is one repo with an unverified vendor claim. Revisit if a paired benchmark appears."
+    },
+    {
+      "id": "caveman-compress",
+      "kind": "memory-file",
+      "decision": "adapt",
+      "required": true,
+      "files": [
+        "~/.claude/CLAUDE.md"
+      ],
+      "min_bytes": 2000,
+      "install_hint": "Needs the caveman-compress skill, Python 3.10+ and the claude CLI. Read its scripts once before the first run.",
+      "reason": "Memory files load every session, so a one-time 10-30 percent cut repeats forever. Mandatory for the user-level memory file; a backup is kept out of tree and a failed validation leaves the file untouched."
+    },
+    {
+      "id": "mcp-secrets",
+      "kind": "rule",
+      "decision": "adopt",
+      "required": true,
+      "install_hint": "Move the literal token into the OS keychain and point the server at a headersHelper script that prints the header JSON, or use an environment variable reference. Never leave a literal token in the user config.",
+      "reason": "A bearer token written into the user config is readable by every process and is copied by backups. Checked nightly; a finding is reported as MISSING and never auto-rewritten."
+    },
+    {
+      "id": "claude-ai-connectors",
+      "kind": "rule",
+      "decision": "adopt",
+      "required": false,
+      "install_hint": "Remove unused connectors in the Claude account settings (web UI); the CLI cannot remove them.",
+      "reason": "Each connected claude.ai connector adds its tool schemas to every session. Keep only the ones in regular use; list the keepers in the consumer's own notes, not here."
+    }
+  ]
+}

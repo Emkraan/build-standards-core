@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>Label</key><string>ai.hermes.safe-restart</string>
+<key>ProgramArguments</key><array><string>/usr/bin/python3</string><string>__HOME__/.hermes/scripts/safe_hermes_restart_exec.py</string></array>
+<key>EnvironmentVariables</key><dict><key>PATH</key><string>__HOME__/.hermes/hermes-agent/.hermes/bin:__HOME__/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string></dict>
+<key>WatchPaths</key><array><string>__HOME__/.hermes/state/safe-restart.trigger</string></array>
+<key>StandardOutPath</key><string>__HOME__/.hermes/logs/safe-restart.log</string>
+<key>StandardErrorPath</key><string>__HOME__/.hermes/logs/safe-restart.log</string>
+</dict></plist>

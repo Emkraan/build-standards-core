@@ -1,0 +1,18 @@
+/* Every block below breaks one rule. Counts live in expected.json. */
+.row { border-left: 3px solid var(--accent); }
+.row-2 { border-top: 1px solid var(--accent); }
+.row-3 { box-shadow: inset 3px 0 0 var(--hue-red); }
+.row-4::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+.card { color: #ff0000; background: rgba(0, 0, 0, 0.4); }
+.card-2 { border-color: white; }
+.pop { z-index: 999; }
+.fade { transition: opacity 200ms ease; }
+.spin { animation: spin 1.2s linear infinite; }
+html[data-theme="light"] .card { background: var(--surface-2); }
+.brand { --accent: var(--hue-violet); }
+.local { --my-tint: #123456; }
+@media (prefers-color-scheme: dark) { .card-3 { background: var(--surface-2); } }
+.list-row { display: grid; grid-template-columns: 4px 92px 1fr; }
+.list-row .prio { align-self: stretch; background: var(--danger); }
+.list-row-2 { display: grid; grid-template-columns: [start] 1fr 120px 5px [end]; }
+.marker { width: 3px; height: 24px; background: var(--accent); }

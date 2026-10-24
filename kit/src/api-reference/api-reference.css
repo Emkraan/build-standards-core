@@ -1,0 +1,124 @@
+/* api-reference.css: the sheet for ApiReference (`kit-core/api-reference.css`). Import it once,
+   after kit.css, in an app that renders the reference.
+
+   It loads the Scalar sheet into core.vendor, a layer nested in core: inside a layer the rules
+   outside any nested layer beat the nested ones, so the core rules below win, and maps
+   Scalar's --scalar-* variables onto the kit tokens. The tokens already swap with the theme, so
+   nothing here branches on it.
+
+   Why the mapping is important: Scalar also injects a runtime palette, in a layer of its own that
+   is declared after core, on its dark-mode and light-mode classes. It puts one of those on body
+   and forces dark-mode onto the request example cards inside a light reference. Where a mode
+   class and the mapping meet on one element, the later layer would win whatever the selectors.
+   An important declaration in core beats every normal one in any layer, so the reference, its
+   portalled menus and tooltips (all carry scalar-app) and those code card islands all follow the
+   kit theme, whatever Scalar names its layer. Variables Scalar derives from its palette are
+   restated too: a derived variable resolves where it is declared. */
+
+@import url('@scalar/api-reference-react/style.css') layer(core.vendor);
+
+@layer core {
+  .scalar-app,
+  .scalar-app .dark-mode,
+  .scalar-app .light-mode {
+    /* Type and shape */
+    --scalar-font: var(--font-sans) !important;
+    --scalar-font-code: var(--font-mono) !important;
+    --scalar-radius: var(--radius-xs) !important;
+    --scalar-radius-md: var(--radius-xs) !important;
+    --scalar-radius-lg: var(--radius-sm) !important;
+    --scalar-radius-xl: var(--radius-md) !important;
+    --scalar-radius-2xl: var(--radius-lg) !important;
+    --scalar-radius-3xl: var(--radius-xl) !important;
+    --scalar-radius-full: var(--radius-pill) !important;
+    --scalar-shadow-1: var(--elev-1) !important;
+    --scalar-shadow-2: var(--elev-2) !important;
+
+    /* Surfaces, text and lines */
+    --scalar-background-1: var(--surface-1) !important;
+    --scalar-background-2: var(--surface-2) !important;
+    --scalar-background-3: var(--surface-3) !important;
+    --scalar-background-accent: var(--accent-soft) !important;
+    --scalar-color-1: var(--text-primary) !important;
+    --scalar-color-2: var(--text-secondary) !important;
+    --scalar-color-3: var(--text-tertiary) !important;
+    --scalar-color-accent: var(--accent-bright) !important;
+    --scalar-border-color: var(--border-default) !important;
+    --scalar-focus-color: var(--accent) !important;
+    --scalar-link-color: var(--accent-bright) !important;
+    --scalar-link-color-hover: var(--accent-bright) !important;
+
+    /* Status and method colours. Scalar sets these as text (method labels, syntax highlighting),
+       so each takes a certified coloured text ink, never a hue triplet, which is certified for
+       marks only. There is no violet ink: purple (OPTIONS, keywords) takes the accent ink, and
+       the rare QUERY method stays neutral like HEAD. */
+    --scalar-color-green: var(--success) !important;
+    --scalar-color-red: var(--danger) !important;
+    --scalar-color-orange: var(--urgent) !important;
+    --scalar-color-yellow: var(--warning) !important;
+    --scalar-color-blue: var(--info) !important;
+    --scalar-color-purple: var(--accent-bright) !important;
+    --scalar-color-query: var(--text-secondary) !important;
+    --scalar-color-alert: var(--warning) !important;
+    --scalar-background-alert: var(--warning-dim) !important;
+    --scalar-color-danger: var(--danger) !important;
+    --scalar-background-danger: var(--danger-dim) !important;
+
+    /* Primary button */
+    --scalar-button-1: var(--accent) !important;
+    --scalar-button-1-hover: var(--accent-hover) !important;
+    --scalar-button-1-color: var(--text-on-accent) !important;
+
+    /* Tooltip */
+    --scalar-tooltip-background: var(--surface-4) !important;
+    --scalar-tooltip-color: var(--text-primary) !important;
+
+    /* Sidebar */
+    --scalar-sidebar-background-1: var(--surface-1) !important;
+    --scalar-sidebar-border-color: var(--border-default) !important;
+    --scalar-sidebar-color-1: var(--text-primary) !important;
+    --scalar-sidebar-color-2: var(--text-secondary) !important;
+    --scalar-sidebar-color-active: var(--text-primary) !important;
+    --scalar-sidebar-item-hover-color: var(--text-primary) !important;
+    --scalar-sidebar-item-hover-background: var(--surface-2) !important;
+    --scalar-sidebar-item-active-background: var(--accent-soft) !important;
+    --scalar-sidebar-indent-border: var(--border-default) !important;
+    --scalar-sidebar-indent-border-hover: var(--border-strong) !important;
+    --scalar-sidebar-indent-border-active: var(--accent) !important;
+    --scalar-sidebar-search-background: var(--surface-inset) !important;
+    --scalar-sidebar-search-border-color: var(--border-default) !important;
+    --scalar-sidebar-search-color: var(--text-tertiary) !important;
+
+    /* Scrollbars, as quiet as the sidebar's */
+    --scalar-scrollbar-color: var(--border-default) !important;
+    --scalar-scrollbar-color-active: var(--border-strong) !important;
+  }
+
+  /* A code card island takes the surrounding reference's colour scheme and the two brightness
+     factors Scalar keys to its mode, which have no kit token. */
+  .scalar-app .dark-mode,
+  .scalar-app .light-mode {
+    color-scheme: inherit;
+    --scalar-backdrop-brightness: inherit !important;
+    --scalar-lifted-brightness: inherit !important;
+  }
+
+  /* The frame the reference sits in on an app page. */
+  .kit-api-ref {
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    overflow: hidden;
+  }
+
+  /* Holds the reference's space while a fetched document loads, so the page does not shift. */
+  .kit-api-ref-loading {
+    min-height: 70vh;
+  }
+
+  .kit-api-ref-error {
+    border: 0;
+    background: transparent;
+    overflow: visible;
+  }
+}
