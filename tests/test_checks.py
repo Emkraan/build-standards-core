@@ -106,6 +106,10 @@ class LicenseExempt(Work):
         (repo / "docs" / "LICENSE").write_text("Copyright (c) 2026 acme\n")
         (repo / "notes.md").write_text("written for acme\n")
         (repo / "renovate.json").write_text('{"extends": ["github>acme/.github//renovate.json"]}\n')
+        (repo / ".github" / "workflows").mkdir(parents=True)
+        (repo / ".github" / "workflows" / "automerge.yml").write_text(
+            "uses: acme/.github/x.yml@abc\n"
+        )
         sh(["git", "init", "-q"], cwd=repo)
         sh(["git", "add", "-A"], cwd=repo)
         code, out = sh([sys.executable, ROOT / "checks/check-sanitised.py"], cwd=repo)
@@ -114,6 +118,7 @@ class LicenseExempt(Work):
         self.assertIn("docs/LICENSE", out)
         self.assertNotIn("file=LICENSE", out)
         self.assertNotIn("file=renovate.json", out)
+        self.assertNotIn("file=.github/workflows/automerge.yml", out)
         code, out = sh(
             [sys.executable, ROOT / "checks/check-sanitised.py", "--file", repo / "LICENSE"],
             cwd=repo,
