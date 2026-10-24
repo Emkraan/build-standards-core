@@ -56,5 +56,10 @@
     "typescript": "~6.0.3",
     "vite": "^8.3.4",
     "vitest": "^5.0.4"
+  },
+  "overrides": {
+    "@scalar/json-magic": {
+      "undici": "7.30.1"
+    }
   }
 }
