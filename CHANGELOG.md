@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-24 (v1.4.0, month calendar grid)
+
+Carried over from the previous core repository (item D-011 of a consumer report, approved).
+
+- New `MonthGrid` primitive: weeks of day cells, weekday headers, event chips with a "+N more"
+  line, a today marker (`aria-current="date"`, a filled number) and roving keyboard navigation (arrows,
+  Home, End, PageUp, PageDown, Enter and Space to pick a day). Dates are ISO day strings, so no time zone
+  moves a cell. Events arrive as a list; `renderEvent`, `renderDay` and `dayHint` are the slots, and what an
+  event means (coverage, shifts, leave) stays in the app. `onMonthChange` fires when keys leave the month.
+  Exports `monthWeeks`, `isoDay` and `addDays`.
+- Tests in `kit/tests/month-grid.test.tsx`, a gallery specimen `month-grid` and a README line.
+- Known limit, noted in `kit/README.md`: an event covers one day; multi-day spans are not supported.
+
 ## 2026-10-24 (v1.1.1, public repository automerge)
 
 - `.github/workflows/automerge.yml`: the repository is public, so it merges through the owning org's

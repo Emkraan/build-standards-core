@@ -114,6 +114,8 @@ export { Forbidden, NotFound } from './primitives/PageStates';
 export type { ForbiddenProps, NotFoundProps } from './primitives/PageStates';
 export { SearchInput } from './primitives/SearchInput';
 export type { SearchInputProps } from './primitives/SearchInput';
+export { MonthGrid, addDays, isoDay, monthWeeks } from './primitives/MonthGrid';
+export type { MonthGridDay, MonthGridEvent, MonthGridProps, MonthGridTone } from './primitives/MonthGrid';
 export { ProgressBar } from './primitives/ProgressBar';
 export type { ProgressBarProps, ProgressSegment, ProgressTone } from './primitives/ProgressBar';
 export { TextDiff, diffLines } from './primitives/TextDiff';

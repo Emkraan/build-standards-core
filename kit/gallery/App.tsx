@@ -75,6 +75,7 @@ import {
   Switch,
   ShortcutLayer,
   Skeleton,
+  MonthGrid,
   StatTile,
   FreshnessGrid,
   StatusDot,
@@ -378,6 +379,19 @@ function WorkingSpecimen() {
       </div>
     </div>
   );
+}
+
+function MonthGridSpecimen() {
+  const [picked, setPicked] = useState<string | undefined>('2026-10-14');
+  const events = [
+    { id: '1', date: '2026-10-05', label: 'Primary shift', tone: 'accent' as const },
+    { id: '2', date: '2026-10-14', label: 'Out of office', tone: 'warning' as const },
+    { id: '3', date: '2026-10-14', label: 'Backup shift' },
+    { id: '4', date: '2026-10-14', label: 'Review', tone: 'info' as const },
+    { id: '5', date: '2026-10-14', label: 'Handover', tone: 'success' as const },
+    { id: '6', date: '2026-10-23', label: 'Release window', tone: 'danger' as const },
+  ];
+  return <MonthGrid year={2026} month={9} label="Example calendar" today="2026-10-23" events={events} selected={picked} onSelectDay={setPicked} />;
 }
 
 function StatSpecimen() {
@@ -2211,7 +2225,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'empty', 'overlays', 'chrome', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'palette-rank', 'tile-edge', 'freshness'];
+  const sections = ['theme', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'empty', 'overlays', 'chrome', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'palette-rank', 'tile-edge', 'freshness', 'month-grid'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2398,6 +2412,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="filter-bulk" title="Filter panel and bulk run">
           <FilterBulkSpecimen />
+        </Specimen>
+        <Specimen id="month-grid" title="Month grid">
+          <MonthGridSpecimen />
         </Specimen>
         <Specimen id="list-split" title="List table, paging and split layout">
           <ListSplitSpecimen />
