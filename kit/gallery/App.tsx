@@ -2316,7 +2316,7 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         <Specimen id="table" title="Table and toolbar">
           <TableSpecimen />
         </Specimen>
-        <Specimen id="table-cards" title="Table on a phone, short table in a card">
+        <Specimen id="table-cards" title="Rows as cards on a phone">
           <span className="gallery-note">Table mobile="cards" stickyHead={'{false}'}: below 640px each row is a card labelled by its column headers:</span>
           <Table
             caption="Hosts"
