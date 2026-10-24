@@ -138,9 +138,9 @@ The ops center is consumed the way the kit is: a synced copy, never hand edited.
 Every route is declared once:
 
 ```python
-route("GET",  "/api/action-center", auth="read",  schema="api/action-center", handler=...)
-route("POST", "/api/handled",       auth="write", body="api/handled-request", handler=...)
-route("GET",  "/api/tackle/prompt", auth="plugin", token="one-time", handler=...)
+route("GET", "/api/action-center", auth="read", schema="api/action-center", handler=...)
+route("POST", "/api/handled", auth="write", body="api/handled-request", handler=...)
+route("GET", "/api/tackle/prompt", auth="plugin", token="one-time", handler=...)
 ```
 
 - Fields: method, path pattern, auth class, response schema, request body schema, handler, cache
@@ -249,9 +249,9 @@ approves. The shell consumer renames its local `/api/approvals` (change records)
 **Test fixture helper** (`opscenter/testing/fixtures.py`, D7-5):
 
 ```python
-with approved(op_or_matcher, live=True) as rec:   # writes a rule and an approval record
+with approved(op_or_matcher, live=True) as rec:  # writes a rule and an approval record
     call_the_flow()
-assert rec.applied == [...]                       # what the writer did, read back from a fake
+assert rec.applied == [...]  # what the writer did, read back from a fake
 ```
 
 It also ships `fake_slot(scope)` (records `act` calls, scripted `read` results) so a consumer's
