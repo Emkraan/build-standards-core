@@ -6,7 +6,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { flushSync } from 'react-dom';
-import { IconMoon, IconSun } from '../icons/icons';
+import { IconMonitor, IconMoon, IconSun } from '../icons/icons';
+import { Segmented } from '../primitives/Tabs';
 import { STORAGE_KEYS, cx, isBrowser, mediaQuery, onMediaChange, prefersLightScheme, prefersReducedMotion, readStorage, writeStorage } from '../lib/env';
 import { useIsoLayoutEffect } from '../lib/layers';
 import { tokenDuration, tokenValue } from '../lib/timing';
@@ -143,10 +144,68 @@ export interface ThemeToggleProps {
   /** Accessible names. The label says what a click does. */
   toLightLabel?: string | undefined;
   toDarkLabel?: string | undefined;
+  /** Adds System: a compact three-way control (Light, System, Dark) instead of the flip button, so a
+      user can go back to following the OS after picking a theme. `system` is stored as its own value
+      and follows prefers-color-scheme while it is set. Default false: the icon button, unchanged. */
+  withSystem?: boolean | undefined;
+  /** Accessible names of the three-way control and its options (withSystem only). */
+  groupLabel?: string | undefined;
+  lightLabel?: string | undefined;
+  systemLabel?: string | undefined;
+  darkLabel?: string | undefined;
 }
 
-/** Icon button that flips the theme with the circle reveal from the button itself. */
-export function ThemeToggle({ className, toLightLabel = 'Switch to light theme', toDarkLabel = 'Switch to dark theme' }: ThemeToggleProps) {
+/** The centre of the element that has focus, so the reveal grows from the segment that was pressed. */
+function focusOrigin(): RevealOrigin | undefined {
+  if (!isBrowser || !(document.activeElement instanceof HTMLElement)) return undefined;
+  const r = document.activeElement.getBoundingClientRect();
+  return r.width || r.height ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : undefined;
+}
+
+interface ThemeChoiceToggleProps {
+  className?: string | undefined;
+  groupLabel: string;
+  lightLabel: string;
+  systemLabel: string;
+  darkLabel: string;
+}
+
+function ThemeChoiceToggle({ className, groupLabel, lightLabel, systemLabel, darkLabel }: ThemeChoiceToggleProps) {
+  const { choice, setChoice } = useTheme();
+  return (
+    <Segmented<ThemeChoice>
+      label={groupLabel}
+      className={cx('theme-toggle', className)}
+      value={choice}
+      onChange={(next) => setChoice(next, focusOrigin())}
+      options={[
+        { value: 'light', label: lightLabel, icon: <IconSun />, iconOnly: true },
+        { value: 'system', label: systemLabel, icon: <IconMonitor />, iconOnly: true },
+        { value: 'dark', label: darkLabel, icon: <IconMoon />, iconOnly: true },
+      ]}
+    />
+  );
+}
+
+/** Icon button that flips the theme with the circle reveal from the button itself, or with
+    `withSystem` a three-way Light, System, Dark control. */
+export function ThemeToggle({
+  className,
+  toLightLabel = 'Switch to light theme',
+  toDarkLabel = 'Switch to dark theme',
+  withSystem = false,
+  groupLabel = 'Theme',
+  lightLabel = 'Light',
+  systemLabel = 'System',
+  darkLabel = 'Dark',
+}: ThemeToggleProps) {
+  if (withSystem) {
+    return <ThemeChoiceToggle className={className} groupLabel={groupLabel} lightLabel={lightLabel} systemLabel={systemLabel} darkLabel={darkLabel} />;
+  }
+  return <ThemeFlipButton className={className} toLightLabel={toLightLabel} toDarkLabel={toDarkLabel} />;
+}
+
+function ThemeFlipButton({ className, toLightLabel, toDarkLabel }: { className?: string | undefined; toLightLabel: string; toDarkLabel: string }) {
   const { resolved, toggle } = useTheme();
   const label = resolved === 'dark' ? toLightLabel : toDarkLabel;
   return (

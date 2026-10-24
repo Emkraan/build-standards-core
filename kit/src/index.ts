@@ -163,7 +163,7 @@ export { Menu, Popover } from './overlays/Popover';
 export type { MenuItemDef, MenuProps, Placement, PopoverProps } from './overlays/Popover';
 
 // Required chrome
-export { CommandPalette, SearchTrigger, filterPaletteItems, groupPaletteItems, highlight, isSlashOpen, openCommandPalette, openScopedPalette, paletteOwnsKey, paletteScope, scorePaletteItem } from './chrome/CommandPalette';
+export { CommandPalette, PALETTE_OPEN_EVENT, SearchTrigger, filterPaletteItems, groupPaletteItems, highlight, isSlashOpen, onPaletteOpen, openCommandPalette, openScopedPalette, paletteOwnsKey, paletteScope, scorePaletteItem } from './chrome/CommandPalette';
 export type { CommandPaletteProps, PaletteFilter, PaletteItem, SearchTriggerProps } from './chrome/CommandPalette';
 export { BuildCard, ReleaseNotesDialog, RollingText, safeReleaseLink, versionLabel } from './chrome/BuildCard';
 export type { BuildCardProps, ReleaseItem, ReleaseItemType, ReleaseNote, ReleaseNotesDialogProps, ReleaseNotesLink } from './chrome/BuildCard';
@@ -201,7 +201,7 @@ export type { HubHomeProps, HubZones } from './chrome/HubHome';
 export { RECENT_MAX, addRecent, sanitizeRecents } from './chrome/recents';
 export type { Recent } from './chrome/recents';
 export { AccountMenu, accountDisplayName } from './chrome/AccountMenu';
-export type { AccountFact, AccountIdentity, AccountLink, AccountMenuProps } from './chrome/AccountMenu';
+export type { AccountAction, AccountFact, AccountIdentity, AccountLink, AccountMenuProps } from './chrome/AccountMenu';
 export { LAUNCHER_KEYS, LAUNCHER_TIMING, ToolLauncher, ToolSwitchButton, openToYouLabel, slideOffset, useToolLauncher } from './chrome/ToolLauncher';
 export type { LauncherTool, ToolLauncherProps, ToolLauncherState, ToolSwitchButtonProps, UseToolLauncherOptions } from './chrome/ToolLauncher';
 export { ShortcutLayer } from './chrome/ShortcutLayer';
@@ -262,6 +262,7 @@ export {
   IconLogOut,
   IconMail,
   IconMenu,
+  IconMonitor,
   IconMoon,
   IconMore,
   IconPause,
