@@ -18,7 +18,9 @@ class EditedRunsAreFull(unittest.TestCase):
     def test_no_gate_excludes_an_edit(self):
         for path in (TEMPLATE, REUSABLE):
             text = self.read(path)
-            code = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("#"))
+            code = "\n".join(
+                line for line in text.splitlines() if not line.lstrip().startswith("#")
+            )
             self.assertNotIn("'edited'", code, f"{path.name} gates a step on the edited action")
 
     def test_full_and_commits_cover_every_pull_request_run(self):
@@ -26,7 +28,10 @@ class EditedRunsAreFull(unittest.TestCase):
             text = self.read(path)
             full = re.search(r"^\s*FULL: (.+)$", text, re.M).group(1)
             commits = re.search(r"^\s*COMMITS: (.+)$", text, re.M).group(1)
-            self.assertEqual(full, "${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}")
+            self.assertEqual(
+                full,
+                "${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}",
+            )
             self.assertEqual(commits, "${{ github.event_name == 'pull_request' }}")
 
     def test_template_still_runs_on_an_edit(self):
