@@ -16,12 +16,18 @@ nightly ingest, and still exits 1 on any problem.
 
 import datetime
 import json
+import os
 import pathlib
 import re
 import subprocess
 import sys
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
+# CORE_CI_OVERLAY points the checker at the caller's overlay when the reusable workflow runs this pinned copy.
+ROOT = (
+    pathlib.Path(os.environ["CORE_CI_OVERLAY"]).resolve()
+    if os.environ.get("CORE_CI_OVERLAY")
+    else pathlib.Path(__file__).resolve().parent.parent
+)
 TABLE = ROOT / "standards-local" / "exceptions.md"
 CORE = ROOT / "standards-core"
 HEADER = ["ID", "Rule", "Scope", "Deviation", "Reason", "Owner", "Approved", "Review by"]

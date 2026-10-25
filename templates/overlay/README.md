@@ -86,6 +86,10 @@ and a missing workflow or step fails it. A skipped step (a stack the repo does n
 passes a rule. A push run skips the pull request steps, so their results are read from the run on
 the head of the last merged pull request with the same tree.
 
+**Reusable alternative (v1.12.0).** A repo may call the core's reusable `core-ci` workflow from a pinned
+caller instead of copying this file; the check is then `core-checks / core-checks`. A sync leaves such a
+caller alone. See CONSUMING.md, "Alternative: call the reusable `core-ci` workflow".
+
 The workflow file gained the `kit-peers` job and the setup output `kit` in v0.57.0: copy it again.
 
 **Job names (v0.77.0).** Every job id and check name starts with `core-` (`core-python`,

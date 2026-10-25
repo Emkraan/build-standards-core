@@ -80,7 +80,15 @@ import urllib.error
 import urllib.request
 import zipfile
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
+HERE = pathlib.Path(__file__).resolve().parent
+# The overlay folder whose standards-local/ and synced copies the checks read. It is the folder above
+# this script, unless the reusable workflow runs a pinned copy of the core's scripts against the caller's
+# repo: it then sets CORE_CI_OVERLAY to the caller's overlay folder.
+ROOT = (
+    pathlib.Path(os.environ["CORE_CI_OVERLAY"]).resolve()
+    if os.environ.get("CORE_CI_OVERLAY")
+    else HERE.parent
+)
 PARAMETERS = ROOT / "standards-local" / "parameters.md"
 DENYLIST = ROOT / "standards-local" / "denylist.sha256"
 ZERO = "0" * 40
@@ -735,7 +743,7 @@ def ascii_hits(files: list) -> list:
 def ascii_exceptions(root: pathlib.Path = ROOT) -> list:
     """(id, scopes) of every active exception to the every-file ASCII rule in standards-local/exceptions.md.
     The exceptions checker owns the table's validation; an expired row excepts nothing."""
-    checker = root / "scripts" / "check-exceptions.py"
+    checker = (HERE if root == ROOT else root / "scripts") / "check-exceptions.py"
     if not checker.is_file() or not (root / "standards-local" / "exceptions.md").is_file():
         return []
     r = subprocess.run(
@@ -1370,12 +1378,25 @@ def workflow_job_ids(path: pathlib.Path) -> list | None:
     return jobs
 
 
+# The reusable form of core-ci.yml (.github/workflows/core-ci-reusable.yml in the core): a caller job's check
+# name is "<caller job name or id> / core-checks", the name GitHub gives a job that calls a reusable workflow.
+REUSABLE_JOB = "core-checks"
+REUSABLE_CALL = re.compile(
+    r"^\s+uses:\s*[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/\.github/workflows/core-ci-reusable\.yml@\S+"
+)
+
+
+def is_reusable_caller(text: str) -> bool:
+    """True when a workflow file calls the core's reusable core-ci workflow."""
+    return any(REUSABLE_CALL.match(line) for line in text.splitlines())
+
+
 def workflow_check_names(path: pathlib.Path) -> list | None:
     """The check name of every job of a workflow file (its name: when set, else its id), or None when the
     file does not exist. A name with an expression in it is kept as written."""
     if not path.is_file():
         return None
-    names, inside, current = [], False, None
+    names, inside, current, calls = [], False, None, set()
     for line in path.read_text(encoding="utf8").splitlines():
         if re.match(r"^jobs:\s*$", line):
             inside = True
@@ -1389,11 +1410,13 @@ def workflow_check_names(path: pathlib.Path) -> list | None:
             current = len(names)
             names.append(m.group(1))
             continue
+        if current is not None and REUSABLE_CALL.match(line):
+            calls.add(current)
         m = re.match(r"^    name:\s*(.+?)\s*(#.*)?$", line)
         if m and current is not None:
             names[current] = m.group(1).strip("'\"")
-            current = None
-    return names
+    # A job that calls the reusable workflow reports as "<caller job> / <called job>".
+    return [f"{n} / {REUSABLE_JOB}" if i in calls else n for i, n in enumerate(names)]
 
 
 # Every core-ci.yml job id and check name carries this prefix (v0.77.0), so no core-ci check shares a
@@ -1530,7 +1553,15 @@ def required_report(
     gated = set(contexts)
     for names in gates.values():
         gated |= set(names)
-    legacy = [j for j in jobs if not j.startswith(JOB_PREFIX)]
+    legacy = [
+        j for j in jobs if not j.startswith(JOB_PREFIX) and not j.endswith(" / " + REUSABLE_JOB)
+    ]
+    if any(j.endswith(" / " + REUSABLE_JOB) for j in jobs):
+        notes.append(
+            f"core-ci.yml calls the reusable workflow: its check reports as "
+            f"{', '.join(j for j in jobs if j.endswith(' / ' + REUSABLE_JOB))}, so the gate requires that "
+            f"name, not the bare {REUSABLE_JOB} of the synced template"
+        )
     if legacy:
         notes.append(
             f"core-ci.yml predates the core- job names ({', '.join(legacy)}): copy the template "

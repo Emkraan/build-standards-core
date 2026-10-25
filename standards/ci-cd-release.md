@@ -63,6 +63,16 @@ One job per pull request run, a push to the default branch that runs only the se
 title or body edit that runs only the two text checks keep the shared runner pool free (twelve jobs
 per run used to be most of a busy consumer's queue).
 
+**Reusable workflow (opt in, v1.12.0).** A repo can call the core's reusable workflow
+(`.github/workflows/core-ci-reusable.yml`, pinned to a release sha) from a caller `core-ci.yml` instead of
+carrying a copy of the template. It is the same one job with the same steps, gating and job budget, the
+caller keeps the triggers, and the pinned scripts read the repo's `standards-local` through
+`CORE_CI_OVERLAY`. Because GitHub reports a job that calls a reusable workflow as
+`<caller job> / <called job>`, a caller job named `core-checks` reports `core-checks / core-checks`, and that
+is the one name the merge gate then requires instead of the bare `core-checks`; change the required check in
+the same sitting as the caller (CONSUMING.md, "Alternative: call the reusable `core-ci` workflow"). The
+copied template remains the default and is unchanged.
+
 **Migrating to one job (v1.0.0).** Copy `core-ci.yml` from the template again (keep `OVERLAY`), then
 in the merge gate require `core-checks` and remove the per-check names (`core-ascii`, `core-python`
 and the others): `python3 scripts/core-ci.py required-checks --fix` prints both changes. Do it in the

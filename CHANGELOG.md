@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-10-25 (v1.12.0, reusable core-ci workflow)
+
+- New opt-in distribution path: `.github/workflows/core-ci-reusable.yml`, a `workflow_call` workflow that runs
+  the same ONE job `core-checks` with the same named steps, `FULL` and `COMMITS` gating and job budget as the
+  template `core-ci.yml` (a test keeps the steps and gating byte for byte equal). A repo, internal or on another
+  account, hosted or self-hosted, calls it from a tiny caller pinned to a release sha. It checks out the
+  caller's repo at the pull request head and the core at the commit the workflow was called at
+  (`job.workflow_sha`), so the pinned scripts always match the workflow. Inputs: `runs-on` (falls back to the
+  `CORE_CI_RUNNER` variable, then `ubuntu-latest`), `overlay`, `core-ref`, `core-repository`.
+- The check a caller reports is `<caller job> / core-checks`, so `core-checks / core-checks` for a caller job
+  named `core-checks`; GitHub offers no way to keep the bare name. CONSUMING.md has the migration recipe, which
+  changes the required check in the same sitting as the caller.
+- `core-ci.py` and `check-exceptions.py` read the overlay folder named by `CORE_CI_OVERLAY` when it is set (the
+  folder above the script otherwise, as before). `core-ci.py required-checks` and `wait-checks` understand a
+  caller (`core-checks / core-checks`), `core-status.py` reads the core steps of a caller and the qualified job
+  name, and `sync-core.py` leaves a `core-ci.yml` that calls the reusable workflow alone.
+- The synced-copy path is unchanged for every current consumer. Docs: CONSUMING.md, `standards/ci-cd-release.md`
+  section 2, `templates/overlay/README.md`. Tests in `tests/test_reusable_ci.py`.
+
 ## 2026-10-24 (v1.11.1, undici security fix)
 
 - `undici` (dev only, through jsdom) raised from 8.11.2 to 8.12.3, and an `overrides` entry lifts the copy
