@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-25 (v1.12.1, an edit runs every check)
+
+- `core-ci.yml` (template) and `core-ci-reusable.yml`: a pull request `edited` run (title or body) now runs
+  every check, like `synchronize`. It used to run only the title and attribution checks. The merge gate reads
+  the newest result for the check name `core-checks`, and an edit made right after a push cancels that push's
+  run through the concurrency group, so the lighter edit run reported a green `core-checks` for a commit whose
+  full checks were cancelled or had failed. Observed on a consumer: a push followed by a body edit seconds
+  later left only the light run, and a merged pull request carried no full run.
+- Cost: one more single-job run per title or body edit; the one-job budget per run is unchanged.
+- Consumers pick it up with `sync-core.py` (template path) or by moving the pin (reusable path). A new test
+  asserts no gate excludes `edited` and that the template still triggers on it.
+
 ## 2026-10-25 (v1.12.0, reusable core-ci workflow)
 
 - New opt-in distribution path: `.github/workflows/core-ci-reusable.yml`, a `workflow_call` workflow that runs

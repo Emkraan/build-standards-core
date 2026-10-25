@@ -171,7 +171,9 @@ When a job is added, renamed or removed, update `REQUIRED_CHECKS` in `automerge.
   Copilot, GPT-4 or LLM-generated (case-insensitive). File references such as `CLAUDE.md` and
   `.claude/` are allowed because they name a file, not an author. Dependabot PRs are skipped. The
   job runs on `opened`, `edited`, `synchronize` and `reopened`, so fixing the title or body
-  re-runs it. Commit and PR text is written by the owner in the first person and carries no tool
+  re-runs it. An edit runs every check, never a lighter subset: the merge gate reads the newest
+  result for the check name, and an edit made seconds after a push cancels that push's run, so a
+  lighter edit run would turn the gate green for a commit whose full checks never completed. Commit and PR text is written by the owner in the first person and carries no tool
   attribution. If it ever lands in history, the fix is a message-only rewrite of every branch and
   tag with a tree-hash comparison before and after; never edit trees.
 - **Private term guard that does not contain its terms.** A repo that must never carry private

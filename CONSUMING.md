@@ -115,6 +115,11 @@ jobs:
       overlay: "."                                    # optional
 ```
 
+An `edited` run (a title or body change) runs every check, the same as a push to the branch: the merge
+gate reads the newest result for `core-checks`, and an edit made seconds after a push cancels that run, so
+a lighter edit run would report green for a commit whose full checks never completed. Keep `edited` in the
+trigger list so a fixed title or body is re-validated.
+
 - Inputs, all optional: `runs-on` (a JSON `runs-on` value; empty means the repository variable
   `CORE_CI_RUNNER`, else `ubuntu-latest`), `overlay` (the overlay folder, `.` by default), `core-ref` and
   `core-repository` (override where the scripts come from; by default the exact commit the workflow was
