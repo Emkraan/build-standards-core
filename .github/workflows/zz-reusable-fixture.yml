@@ -1,0 +1,11 @@
+name: zz-reusable-fixture
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+permissions:
+  contents: read
+jobs:
+  core-checks:
+    uses: ./.github/workflows/core-ci-reusable.yml
+    with:
+      overlay: templates/overlay
