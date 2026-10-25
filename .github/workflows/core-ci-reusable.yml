@@ -1,0 +1,164 @@
+name: core-ci-reusable
+# The reusable form of the template core-ci.yml: the same ONE job, core-checks, the same named steps and
+# the same gating, run from a tiny caller workflow pinned to a core release instead of from a synced copy
+# of the workflow file. See CONSUMING.md "Reusable workflow" for the caller, the check name it reports
+# and the migration. A caller:
+#
+#   name: core-ci
+#   on:
+#     pull_request:
+#       types: [opened, edited, synchronize, reopened]
+#     merge_group:
+#     push:
+#       branches: [main]
+#   permissions:
+#     contents: read
+#   jobs:
+#     core-checks:
+#       uses: Emkraan/build-standards-core/.github/workflows/core-ci-reusable.yml@<release sha> # vX.Y.Z
+#
+# The called workflow checks out the CALLER's repo at the pull request head, and the core at the very
+# commit this file was loaded from (job.workflow_sha), so the scripts always match the pinned workflow.
+# The caller's standards-local/parameters.md (and its synced copies, when it has them) are read through
+# CORE_CI_OVERLAY; the caller's own scripts/ folder is not used. Triggers, and therefore the job budget
+# (one job per pull request event, the secret scan alone on a push to the default branch, every check on
+# a merge queue entry), belong to the caller; the gating below reads the same github.event values as the
+# template does.
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        description: 'JSON runs-on value, for example ["self-hosted", "linux"]. Empty: the repository variable CORE_CI_RUNNER, else ubuntu-latest.'
+        type: string
+        default: ""
+      overlay:
+        description: 'The overlay folder relative to the repo root ("." when it is the root).'
+        type: string
+        default: "."
+      core-ref:
+        description: "Core commit or tag to run the scripts from. Empty: the commit this workflow was called at."
+        type: string
+        default: ""
+      core-repository:
+        description: "The core repository (owner/name). Empty: the repository this workflow was called from."
+        type: string
+        default: ""
+permissions:
+  contents: read
+env:
+  OVERLAY: ${{ inputs.overlay }}
+  CORE_CI_OVERLAY: ${{ github.workspace }}/${{ inputs.overlay }}
+  BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+  HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+  # Every check except the two that read the pull request text: pull requests (not a text edit) and
+  # merge queue entries.
+  FULL: ${{ (github.event_name == 'pull_request' && github.event.action != 'edited') || github.event_name == 'merge_group' }}
+  # Checks that read the pull request's commits: pull requests only (a merge queue entry has no pull
+  # request of its own; its commits were checked on the pull request).
+  COMMITS: ${{ github.event_name == 'pull_request' && github.event.action != 'edited' }}
+jobs:
+  core-checks:
+    name: core-checks
+    runs-on: ${{ fromJSON(inputs.runs-on || vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
+    concurrency:
+      group: core-ci-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.HEAD }}
+          fetch-depth: 0
+          persist-credentials: false
+      # The core is public: fetch the one commit by sha, with no credentials. It lands outside the
+      # workspace so no repo-wide tool (ruff, the ASCII scan) ever sees it.
+      - name: core-fetch
+        env:
+          CORE_REPO: ${{ inputs.core-repository || job.workflow_repository }}
+          CORE_REF: ${{ inputs.core-ref || job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/core"
+          git init -q "$dir"
+          git -C "$dir" fetch -q --depth 1 "https://github.com/$CORE_REPO" "$CORE_REF"
+          git -C "$dir" checkout -q --detach FETCH_HEAD
+          echo "core-fetch: $CORE_REPO at $(git -C "$dir" rev-parse HEAD)"
+          echo "CORE_CI=$dir/templates/overlay/scripts/core-ci.py" >> "$GITHUB_ENV"
+      - name: core-setup
+        id: p
+        run: python3 "$CORE_CI" params --github-output
+
+      - name: core-secret-scan
+        if: ${{ !cancelled() && github.actor != 'dependabot[bot]' && github.event.action != 'edited' }}
+        run: |
+          python3 "$CORE_CI" install-gitleaks "$RUNNER_TEMP/bin"
+          python3 "$CORE_CI" secret-scan "$BASE" "$HEAD" --gitleaks "$RUNNER_TEMP/bin/gitleaks"
+
+      - name: core-workflow-lint
+        if: ${{ !cancelled() && env.FULL == 'true' }}
+        run: python3 "$CORE_CI" workflow-lint
+
+      - name: core-ascii
+        if: ${{ !cancelled() && env.FULL == 'true' }}
+        run: python3 "$CORE_CI" ascii
+
+      - name: core-pr-title
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: python3 "$CORE_CI" pr-title
+
+      - name: core-commitlint
+        if: ${{ !cancelled() && env.COMMITS == 'true' }}
+        run: python3 "$CORE_CI" commitlint "$BASE" "$HEAD"
+
+      - name: core-attribution
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' }}
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: python3 "$CORE_CI" attribution "$BASE" "$HEAD"
+
+      - name: core-identity
+        if: ${{ !cancelled() && env.COMMITS == 'true' }}
+        run: python3 "$CORE_CI" identity "$BASE" "$HEAD"
+
+      # One entry per pull request, append-only, when the parameters row "Changelog entries" is per-pr.
+      - name: core-changelog
+        if: ${{ !cancelled() && env.COMMITS == 'true' }}
+        run: |
+          python3 "$CORE_CI" changelog "$BASE" "$HEAD"
+          python3 "$CORE_CI" changelog-entries "$BASE" "$HEAD"
+
+      # Stack steps run only when standards-local/parameters.md declares the stack (core-setup outputs).
+      - name: set up the Python floor
+        if: ${{ !cancelled() && env.FULL == 'true' && steps.p.outputs.python == 'true' }}
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ steps.p.outputs.python_floor }}
+      - name: core-python
+        if: ${{ !cancelled() && env.FULL == 'true' && steps.p.outputs.python == 'true' }}
+        env:
+          TEST_CMD: ${{ steps.p.outputs.python_test }}
+        run: |
+          python "$CORE_CI" python-config
+          python "$CORE_CI" ruff-requirements > "$RUNNER_TEMP/ruff.txt"
+          python -m pip install --disable-pip-version-check --require-hashes --only-binary :all: -r "$RUNNER_TEMP/ruff.txt"
+          python -m ruff check .
+          python -m ruff format --check .
+          bash -c "$TEST_CMD"
+
+      - name: core-powershell
+        if: ${{ !cancelled() && env.FULL == 'true' && steps.p.outputs.powershell == 'true' }}
+        run: |
+          python3 "$CORE_CI" install-psscriptanalyzer "$RUNNER_TEMP/psmodules"
+          python3 "$CORE_CI" powershell --analyzer "$RUNNER_TEMP/psmodules"
+
+      - name: core-node-pin
+        if: ${{ !cancelled() && env.FULL == 'true' && steps.p.outputs.web == 'true' }}
+        run: python3 "$CORE_CI" node-pin
+
+      # Static checks always; tsc runs too when the repo has installed it (add an install step before
+      # this one to typecheck the copy with the optional peers blocked).
+      - name: core-kit-peers
+        if: ${{ !cancelled() && env.FULL == 'true' && steps.p.outputs.kit == 'true' }}
+        run: python3 "$CORE_CI" kit-peers

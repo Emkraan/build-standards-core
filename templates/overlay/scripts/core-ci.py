@@ -80,7 +80,15 @@ import urllib.error
 import urllib.request
 import zipfile
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
+HERE = pathlib.Path(__file__).resolve().parent
+# The overlay folder whose standards-local/ and synced copies the checks read. It is the folder above
+# this script, unless the reusable workflow runs a pinned copy of the core's scripts against the caller's
+# repo: it then sets CORE_CI_OVERLAY to the caller's overlay folder.
+ROOT = (
+    pathlib.Path(os.environ["CORE_CI_OVERLAY"]).resolve()
+    if os.environ.get("CORE_CI_OVERLAY")
+    else HERE.parent
+)
 PARAMETERS = ROOT / "standards-local" / "parameters.md"
 DENYLIST = ROOT / "standards-local" / "denylist.sha256"
 ZERO = "0" * 40
@@ -735,7 +743,7 @@ def ascii_hits(files: list) -> list:
 def ascii_exceptions(root: pathlib.Path = ROOT) -> list:
     """(id, scopes) of every active exception to the every-file ASCII rule in standards-local/exceptions.md.
     The exceptions checker owns the table's validation; an expired row excepts nothing."""
-    checker = root / "scripts" / "check-exceptions.py"
+    checker = (HERE if root == ROOT else root / "scripts") / "check-exceptions.py"
     if not checker.is_file() or not (root / "standards-local" / "exceptions.md").is_file():
         return []
     r = subprocess.run(
