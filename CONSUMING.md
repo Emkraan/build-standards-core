@@ -77,7 +77,9 @@ accordingly (README "Direction").
 - The repo carries the template `core-ci.yml` beside `core-drift.yml` (templates/overlay/README.md
   "CI workflow"): it proves the `overlay-ci` rules, and its one check, `core-checks`, belongs in the merge gate.
   `python3 scripts/core-ci.py required-checks` reports when the gate does not require it, and
-  `--fix` prints the command that adds them (it never runs it).
+  `--fix` prints the command that adds them (it never runs it). A repo can instead call the reusable
+  workflow from a pinned caller (see "Alternative: call the reusable `core-ci` workflow"); its check is
+  then `core-checks / core-checks`.
 - The repo's default branch must require status checks: branch protection, an active ruleset, or a
   `REQUIRED_CHECKS` list in its merge gate workflow. `hermes/setup.py --ui OWNER/REPO` reads them
   through gh and refuses a `workflow` repo that has none, because nothing would stop a red sync
@@ -87,6 +89,94 @@ accordingly (README "Direction").
 - This needs the `CORE_TOKEN` secret in the repo, a token that can open pull requests on THIS repo
   (reading the public core needs nothing). A `workflow` repo without it: register it with its `PATH`,
   and the job syncs from the local clone and opens the pull request itself.
+
+#### Alternative: call the reusable `core-ci` workflow (opt in)
+
+Instead of a synced copy of `core-ci.yml`, a `workflow` repo, internal or on another account, on
+GitHub-hosted or self-hosted runners, can run the same checks from a tiny caller pinned to a core release.
+The copy path above is unchanged and stays the default; nothing moves a repo from one to the other.
+
+```yaml
+# .github/workflows/core-ci.yml  (keep this file name and name: core-ci)
+name: core-ci
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  merge_group:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  core-checks:
+    uses: OWNER/build-standards-core/.github/workflows/core-ci-reusable.yml@<40 hex release sha> # vX.Y.Z
+    with:
+      runs-on: '["self-hosted", "linux", "arm64"]'   # optional
+      overlay: "."                                    # optional
+```
+
+- Inputs, all optional: `runs-on` (a JSON `runs-on` value; empty means the repository variable
+  `CORE_CI_RUNNER`, else `ubuntu-latest`), `overlay` (the overlay folder, `.` by default), `core-ref` and
+  `core-repository` (override where the scripts come from; by default the exact commit the workflow was
+  called at, read from `job.workflow_sha`, so the scripts always match the pinned workflow). No `secrets:`
+  line is needed: no step reads a secret and the core is fetched anonymously.
+- It runs the same ONE job with the same named steps, gating and `FULL` and `COMMITS` values as the
+  template (a test keeps the two byte for byte equal): every check on a pull request and a merge queue
+  entry, a title or body edit runs only `core-pr-title` and `core-attribution`, and a push to the default
+  branch runs only `core-secret-scan`. The triggers stay in the caller, so the job budget is the same:
+  one job per pull request event.
+- The caller's repo is checked out at the pull request head with full history; the core is fetched at the
+  pinned commit into the runner's temp folder, outside the workspace, so no repo-wide tool sees it. The
+  caller's own `scripts/core-ci.py` is not used; the pinned copy runs with `CORE_CI_OVERLAY` pointing at the
+  caller's overlay, so `standards-local/parameters.md`, `exceptions.md` and `kit-core` are still the repo's.
+- A sync (`sync-core.py`, the nightly) leaves a `core-ci.yml` that calls the reusable workflow as it is and
+  prints a note; move the pinned sha to a new release yourself, or let Renovate do it (it updates a
+  sha-pinned `uses:` and its version comment).
+- The runner needs `git`, `python3` (3.9 or newer) and network access to github.com. A repo that cannot reach
+  the public core must use the copy path.
+- Access: the core is public, so any repo, private, internal or on another account, can call it with no
+  setting on the core (the repository "Actions access" setting applies only to private and internal
+  repos, and the API answers 422 for a public one). The calling repo's own Actions policy must allow it: when
+  an organisation limits Actions to a list, add `OWNER/build-standards-core/.github/workflows/*` to the
+  allowed actions and reusable workflows, pinned to a full sha.
+
+**The required check name changes.** GitHub reports a job that calls a reusable workflow as
+`<caller job name, else id> / <called job name>`. The called job is `core-checks`, so a caller job `core-checks`
+reports **`core-checks / core-checks`** (verified on a real run, in the same repo and from a private repo, and
+in the check-runs API). The bare `core-checks` of the synced template cannot be produced by a reusable call
+whatever the caller job is named, so the merge gate must require `core-checks / core-checks` instead. Name the
+caller job `core-checks` as above; any other id or `name:` gives `<that> / core-checks`. The steps are still
+steps of that one job, so `core-status.py --ci` reads them as before and `required-checks` reports the
+qualified name.
+
+**Migration recipe (once per repo, one sitting).**
+
+1. Pick the release commit: `gh api repos/OWNER/build-standards-core/commits/vX.Y.Z --jq .sha`.
+2. Open a pull request that replaces `.github/workflows/core-ci.yml` with the caller above, that sha and its
+   `# vX.Y.Z` comment. Its run reports `core-checks / core-checks`; the old `core-checks` stays pending
+   because the new workflow no longer reports it, so the pull request cannot merge yet.
+3. Once that check is green, change the required check, then merge straight away. Ruleset:
+
+   ```sh
+   gh api repos/OWNER/REPO/rulesets --jq '.[] | [.id, .name]'
+   gh api repos/OWNER/REPO/rulesets/ID | jq '{name, target, enforcement, conditions, bypass_actors,
+     rules: (.rules | map(if .type == "required_status_checks" then .parameters.required_status_checks |=
+     map(if .context == "core-checks" then .context = "core-checks / core-checks" else . end) else . end))}' > body.json
+   gh api -X PUT repos/OWNER/REPO/rulesets/ID --input body.json
+   ```
+
+   Branch protection: `gh api -X DELETE repos/OWNER/REPO/branches/main/protection/required_status_checks/contexts
+   -f 'contexts[]=core-checks'`, then the same path with `-X POST -f 'contexts[]=core-checks / core-checks'`.
+   A `REQUIRED_CHECKS` list in a merge gate workflow takes the new name in the same pull request.
+4. Open pull requests that still run the old copy report the bare name and wait on the new one until they
+   are updated from the default branch; do the swap when few are open.
+5. Verify: `python3 scripts/core-ci.py required-checks` reports all jobs required, and
+   `python3 scripts/core-status.py --ci` still reads each step.
+
+Rollback is the reverse: restore the template copy of `core-ci.yml` (`sync-core.py` writes nothing for a
+repo that has none, so copy it from `templates/overlay/.github/workflows/`) and require `core-checks` again.
+`required-checks` prints the old and new names it finds in either direction. This recipe is for the owner or
+the repo's agent to run; the core never changes a ruleset or a required check itself.
 
 ### `ops-center`: the machine's ops center and other local tools without CI
 

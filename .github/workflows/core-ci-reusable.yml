@@ -15,7 +15,7 @@ name: core-ci-reusable
 #     contents: read
 #   jobs:
 #     core-checks:
-#       uses: Emkraan/build-standards-core/.github/workflows/core-ci-reusable.yml@<release sha> # vX.Y.Z
+#       uses: OWNER/build-standards-core/.github/workflows/core-ci-reusable.yml@<release sha> # vX.Y.Z
 #
 # The called workflow checks out the CALLER's repo at the pull request head, and the core at the very
 # commit this file was loaded from (job.workflow_sha), so the scripts always match the pinned workflow.

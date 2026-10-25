@@ -205,6 +205,25 @@ def repo_root() -> pathlib.Path:
     return pathlib.Path(r.stdout.strip()) if r.returncode == 0 and r.stdout.strip() else ch.ROOT
 
 
+# The named steps of core-checks in the core's core-ci workflow (the template and the reusable one run the
+# same); a test keeps this list equal to both files.
+CORE_CI_STEPS = (
+    "core-setup",
+    "core-secret-scan",
+    "core-workflow-lint",
+    "core-ascii",
+    "core-pr-title",
+    "core-commitlint",
+    "core-attribution",
+    "core-identity",
+    "core-changelog",
+    "core-python",
+    "core-powershell",
+    "core-node-pin",
+    "core-kit-peers",
+)
+
+
 def workflow_jobs(name: str) -> set | None:
     """The check names a rule may bind to in .github/workflows/<name> at the repo root: its job ids and the
     names of its core- steps (core-ci.yml runs every check as a step of one job). None when not installed."""
@@ -212,6 +231,9 @@ def workflow_jobs(name: str) -> set | None:
     if not f.is_file():
         return None
     jobs, inside = set(), False
+    # A core-ci.yml that calls the reusable workflow does not list the steps; they are the core's.
+    if ch.REUSABLE_CALL.search(f.read_text(encoding="utf8")):
+        jobs.update(CORE_CI_STEPS)
     for line in f.read_text(encoding="utf8").splitlines():
         if re.match(r"^jobs:\s*$", line):
             inside = True
@@ -394,7 +416,11 @@ def run_results(rid: str, run) -> dict | None:
     )
     if rc != 0:
         return None
-    return dict(ln.split("\t", 1) for ln in text.splitlines() if "\t" in ln)
+    out = dict(ln.split("\t", 1) for ln in text.splitlines() if "\t" in ln)
+    # A job that calls the reusable workflow reads "<caller job> / core-checks": keep the bare name too.
+    for k in [k for k in out if k.endswith(" / core-checks")]:
+        out.setdefault("core-checks", out[k])
+    return out
 
 
 def required_problems(argv) -> list[str]:

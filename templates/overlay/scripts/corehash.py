@@ -371,6 +371,13 @@ _KEY = r"^(\s*)(?:-\s+)?([A-Za-z0-9_.-]+):(?:\s+(.*?))?\s*$"
 SETUP_JOB_NAMES = ("setup", "core-setup")
 
 
+# A core-ci.yml that calls the core's reusable workflow instead of being a copy of the template.
+REUSABLE_CALL = re.compile(
+    r"^\s+uses:\s*[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/\.github/workflows/core-ci-reusable\.yml@\S+",
+    re.M,
+)
+
+
 def repo_root(root=ROOT):
     """The git work tree the overlay lives in (its workflows are at its root), else the overlay itself."""
     r = subprocess.run(
@@ -491,6 +498,13 @@ def sync_workflows(core_dir, root=ROOT):
         if not tpl.is_file() or not local.is_file():
             continue
         old = local.read_text(encoding="utf8")
+        if name == "core-ci.yml" and REUSABLE_CALL.search(old):
+            # A caller of the reusable workflow is pinned by its own ref, not copied from the template.
+            notes.append(
+                "core-ci.yml calls the reusable workflow: left as is (move its pinned ref to the new "
+                "release yourself)"
+            )
+            continue
         new = merge_workflow(tpl.read_text(encoding="utf8"), old)
         if new == old:
             continue
