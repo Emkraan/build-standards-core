@@ -12,8 +12,11 @@ name: core-ci
 # was cancelled), so one run reports every finding, and core-status reads each step's result.
 #
 # When each step runs:
-#   pull_request (opened, synchronize, reopened) and merge_group: every check.
-#   pull_request edited (title or body changed): only core-pr-title and core-attribution.
+#   pull_request (opened, edited, synchronize, reopened) and merge_group: every check.
+#   An edit (title or body) runs every check too, never a lighter subset: the newest run's result for
+#   the check name `core-checks` is the one the merge gate reads, and an edit that starts seconds after
+#   a push cancels that push's run through the concurrency group. A lighter edit run would then report
+#   a green `core-checks` for a commit whose full checks were cancelled or had failed.
 #   push to the default branch: only core-secret-scan, the one check that covers a commit that lands
 #   without a pull request. The merge gate requires an up to date head, so re-running the rest after
 #   the merge would re-test the tree the pull request run proved.
@@ -41,12 +44,11 @@ env:
   OVERLAY: .
   BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
   HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
-  # Every check except the two that read the pull request text: pull requests (not a text edit) and
-  # merge queue entries.
-  FULL: ${{ (github.event_name == 'pull_request' && github.event.action != 'edited') || github.event_name == 'merge_group' }}
+  # Every check: pull requests (including a title or body edit) and merge queue entries.
+  FULL: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
   # Checks that read the pull request's commits: pull requests only (a merge queue entry has no pull
   # request of its own; its commits were checked on the pull request).
-  COMMITS: ${{ github.event_name == 'pull_request' && github.event.action != 'edited' }}
+  COMMITS: ${{ github.event_name == 'pull_request' }}
 jobs:
   core-checks:
     name: core-checks
@@ -62,7 +64,7 @@ jobs:
         run: python3 "$OVERLAY/scripts/core-ci.py" params --github-output
 
       - name: core-secret-scan
-        if: ${{ !cancelled() && github.actor != 'dependabot[bot]' && github.event.action != 'edited' }}
+        if: ${{ !cancelled() && github.actor != 'dependabot[bot]' }}
         run: |
           python3 "$OVERLAY/scripts/core-ci.py" install-gitleaks "$RUNNER_TEMP/bin"
           python3 "$OVERLAY/scripts/core-ci.py" secret-scan "$BASE" "$HEAD" --gitleaks "$RUNNER_TEMP/bin/gitleaks"

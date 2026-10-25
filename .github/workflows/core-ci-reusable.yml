@@ -50,12 +50,11 @@ env:
   CORE_CI_OVERLAY: ${{ github.workspace }}/${{ inputs.overlay }}
   BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
   HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
-  # Every check except the two that read the pull request text: pull requests (not a text edit) and
-  # merge queue entries.
-  FULL: ${{ (github.event_name == 'pull_request' && github.event.action != 'edited') || github.event_name == 'merge_group' }}
+  # Every check: pull requests (including a title or body edit) and merge queue entries.
+  FULL: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
   # Checks that read the pull request's commits: pull requests only (a merge queue entry has no pull
   # request of its own; its commits were checked on the pull request).
-  COMMITS: ${{ github.event_name == 'pull_request' && github.event.action != 'edited' }}
+  COMMITS: ${{ github.event_name == 'pull_request' }}
 jobs:
   core-checks:
     name: core-checks
@@ -88,7 +87,7 @@ jobs:
         run: python3 "$CORE_CI" params --github-output
 
       - name: core-secret-scan
-        if: ${{ !cancelled() && github.actor != 'dependabot[bot]' && github.event.action != 'edited' }}
+        if: ${{ !cancelled() && github.actor != 'dependabot[bot]' }}
         run: |
           python3 "$CORE_CI" install-gitleaks "$RUNNER_TEMP/bin"
           python3 "$CORE_CI" secret-scan "$BASE" "$HEAD" --gitleaks "$RUNNER_TEMP/bin/gitleaks"
