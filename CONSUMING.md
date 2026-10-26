@@ -86,8 +86,16 @@ accordingly (README "Direction").
   pull request from merging. Add the required checks, or register the repo as `ops-center` (the
   local gate). `--allow-no-required-checks` registers it anyway and prints a warning; choose it only
   knowingly, since `core-update.yml` then is the only thing that waits for CI.
-- This needs the `CORE_TOKEN` secret in the repo, a token that can open pull requests on THIS repo
-  (reading the public core needs nothing). A `workflow` repo without it: register it with its `PATH`,
+- This needs one token that can open pull requests that start CI on THIS repo (reading the public core
+  needs nothing). Prefer a GitHub App: set the repository variable `CORE_APP_ID` (the App's client ID) and
+  the secret `CORE_APP_PRIVATE_KEY` (or name an existing App secret in the variable `CORE_APP_KEY_SECRET`);
+  the job mints a short-lived installation token with contents, pull-requests and workflows write on this
+  repo, so no personal token exists. The App needs those three repository permissions. An account with no
+  App sets the `CORE_TOKEN` secret instead, used only while `CORE_APP_ID` is unset.
+- The job runs on `workflow_dispatch`; the template carries no cron. GitHub drops scheduled runs of
+  private repositories, so dispatch it from the scheduler you already run (for example `gh workflow run
+  core-update.yml --repo OWNER/REPO` from a job runner), or add a `schedule:` block under `on:` yourself
+  (a sync keeps it) on a public repository or when a missed run is acceptable. A `workflow` repo without it: register it with its `PATH`,
   and the job syncs from the local clone and opens the pull request itself.
 
 #### Alternative: call the reusable `core-ci` workflow (opt in)

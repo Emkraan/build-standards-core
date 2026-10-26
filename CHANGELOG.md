@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-26 (v1.13.0, core-update for private repos: App token, dispatch trigger)
+
+- `core-update.yml` (template): when the repository variable `CORE_APP_ID` is set, the job mints a short-lived
+  GitHub App installation token with `actions/create-github-app-token` (SHA pinned), scoped to contents,
+  pull-requests and workflows write on the repo, and uses it to check out, push and open the pull request,
+  so a private repo needs no personal access token. The App's private key is the secret `CORE_APP_PRIVATE_KEY`,
+  or any existing secret named by the variable `CORE_APP_KEY_SECRET`. `CORE_TOKEN` stays supported and is used
+  only while `CORE_APP_ID` is unset. A missing token now fails the job with one clear message.
+- `workflow_dispatch` is now the only default trigger. The template no longer ships a `schedule:` cron:
+  GitHub drops scheduled runs of private repositories, so a consumer dispatches the workflow from its own
+  scheduler (or adds a cron itself). A sync keeps a `schedule:` block the repo added (`corehash.merge_workflow`).
+- The job is serialised with a `core-update` concurrency group so two dispatches never race on one branch.
+- CONSUMING.md, README.md, the overlay README and `standards/ci-cd-release.md` describe both token lanes and
+  the dispatch trigger. New tests in `tests/test_core_update_app_token.py`.
+
 ## 2026-10-25 (v1.12.1, an edit runs every check)
 
 - `core-ci.yml` (template) and `core-ci-reusable.yml`: a pull request `edited` run (title or body) now runs
