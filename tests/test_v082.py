@@ -53,6 +53,16 @@ class WorkflowMerge(unittest.TestCase):
         self.assertIn('- cron: "3 2 * * 2"  # core-sync: keep', new)
         self.assertIn("# new line", new)
 
+    def test_lint_sweep_sets_up_node_only_for_web(self):
+        tpl = (TEMPLATES / "lint-sweep.yml").read_text()
+        gate = "if: steps.p.outputs.web == 'true' && steps.p.outputs.lint_sweep != ''"
+        self.assertEqual(tpl.count(gate), 2)
+        self.assertRegex(tpl, r"uses: actions/setup-node@[0-9a-f]{40} # v")
+        self.assertIn("corepack enable", tpl)
+        self.assertIn("pnpm install --frozen-lockfile", tpl)
+        self.assertIn("::error::toolchain missing", tpl)
+        self.assertIn('"$src" -eq 127', tpl)
+
     def test_core_drift_prefix_is_kept(self):
         tpl = (TEMPLATES / "core-drift.yml").read_text()
         local = tpl.replace("python3 scripts/", "python3 ov/scripts/").replace(

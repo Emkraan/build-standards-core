@@ -233,8 +233,13 @@ template `lint-sweep.yml` (templates/overlay): once a week it lints the whole tr
 and script lint over the configured paths, plus the repo's own full-tree command from the
 parameters row "Lint sweep command"), and while the sweep fails it keeps exactly one open issue
 labelled `lint-sweep`: it opens it on the first failure, updates the same issue on every later
-failure, never opens a second, and closes it on the first green sweep. Its action is SHA-pinned and
-it runs on `CORE_CI_RUNNER` like the other templates.
+failure, never opens a second, and closes it on the first green sweep. Its actions are SHA-pinned and
+it runs on `CORE_CI_RUNNER` like the other templates. A runner need not carry Node: when the repo is
+a web stack and sets a sweep command, the job sets up Node at the repo's Node major (lts/* when none
+is pinned), enables corepack so `package.json` "packageManager" decides the package manager, and
+installs from the lockfile before the sweep; a Python-only repo gets none of this. A sweep command
+that exits 127 (not found) fails the run with a `toolchain missing` error instead of opening a
+lint issue, because a missing tool is not a lint finding.
 
 - Prevents: rot that only shows up when an unrelated pull request touches an old file and fails for
   a reason its author did not cause.
