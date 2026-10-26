@@ -43,7 +43,7 @@ def top_entry(text):
 
 
 def fmt(version):
-    return "v%d.%d.%d" % version
+    return "v{}.{}.{}".format(*version)
 
 
 def decide(top, prev_top, tags, sha):
