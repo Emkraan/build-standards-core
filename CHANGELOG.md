@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-26 (v1.23.0, proof batch 3: web UI and build rules)
+
+- Five more `repo-check` rules: `web-ui.9` (RC014, test suites run axe and cover both themes), `web-ui.25`
+  (RC015, an app that mounts the app shell renders the build card), `web-build.8.1` (RC016, a verify script runs
+  every check:* script and each typecheck, lint, build and test script the package defines), `scripting-python.1.3`
+  (RC017, no secret-named value or flag in a subprocess argument list) and `web-client-runtime.4.2` (RC018, a vite
+  config names its vendor chunks). Each has a failing and a passing fixture; the core passes them.
+- Acceptance lines narrowed to what each check proves (statements unchanged): the log-redaction half of
+  `scripting-python.1.3`, the route coverage of `web-ui.9` and the hash survival of `web-client-runtime.4.2` stay
+  with review.
+
 ## 2026-10-26 (v1.22.0, proof batch 2: security, secrets and release rules)
 
 - Three more `repo-check` rules: `secrets-and-credentials.1.4` (RC011, a checkout of another repository carries an

@@ -793,6 +793,148 @@ def rc013(repo):
     return out
 
 
+# ---------------------------------------------------------------- RC014 verify in both themes
+
+UI_EXTS = (".tsx", ".jsx", ".vue", ".svelte")
+
+
+def has_ui(repo):
+    return bool(repo.select(exts=UI_EXTS, tests=False)) or any(
+        p.rsplit("/", 1)[-1] == "index.html" for p in repo.paths
+    )
+
+
+def rc014(repo):
+    if not has_ui(repo):
+        return []
+    specs = [
+        p
+        for p in repo.select(exts=(".ts", ".js", ".mjs", ".tsx"))
+        if TEST_PART.search(p) or re.search(r"(^|/)(visual|playwright)(/|$)", p)
+    ]
+    text = "\n".join(repo.text(p) for p in specs)
+    if not specs:
+        return [
+            (
+                "playwright.config.ts",
+                1,
+                "a web app has no test suite that could run axe in both themes",
+            )
+        ]
+    out = []
+    if not re.search(r"AxeBuilder|axe-core|@axe-core/playwright|checkA11y", text):
+        out.append((specs[0], 1, "no test runs axe"))
+    if not (re.search(r"[\"'`]dark[\"'`]", text) and re.search(r"[\"'`]light[\"'`]", text)):
+        out.append((specs[0], 1, "no test covers both the light and the dark theme"))
+    return out
+
+
+# ---------------------------------------------------------------- RC015 required chrome is mounted
+
+
+def rc015(repo):
+    files = repo.select(exts=(".tsx", ".jsx"), tests=False)
+    shells = [p for p in files if re.search(r"<AppShell\b", repo.text(p))]
+    if not shells:
+        return []
+    if any(re.search(r"\bBuildCard\b", repo.text(p)) for p in files):
+        return []
+    return [(shells[0], 1, "an app shell is mounted and no file renders the build card")]
+
+
+# ---------------------------------------------------------------- RC016 one local gate
+
+
+def rc016(repo):
+    if "package.json" not in repo.paths:
+        return []
+    try:
+        scripts = json.loads(repo.text("package.json")).get("scripts", {})
+    except ValueError:
+        return [("package.json", 1, "package.json cannot be read")]
+    if not isinstance(scripts, dict):
+        return []
+    verify = scripts.get("verify")
+    if not verify:
+        return [("package.json", 1, "no verify script: one local gate that runs what CI runs")]
+    body = verify
+    for m in re.finditer(r"(?:node|bash|sh|python3?|tsx)\s+(\S+\.(?:mjs|js|cjs|ts|sh|py))", verify):
+        if m.group(1) in repo.paths:
+            body += "\n" + repo.text(m.group(1))
+    out = []
+    wanted = [k for k in scripts if k.startswith("check:")] + [
+        k for k in ("typecheck", "lint", "build", "test") if k in scripts
+    ]
+    for k in wanted:
+        if not re.search(rf"(?<![\w:-]){re.escape(k)}(?![\w:-])", body):
+            out.append(("package.json", 1, f"the verify script does not run {k}"))
+    return out
+
+
+# ---------------------------------------------------------------- RC017 no secret in a subprocess argument
+
+SECRET_NAME = re.compile(r"password|passwd|secret|token|api[_-]?key|credential", re.I)
+SAFE_SUFFIX = re.compile(r"(stdin|file|path|env|name|id|url|dir)$", re.I)
+SUBPROCESS_CALLS = {"run", "Popen", "call", "check_call", "check_output"}
+
+
+def rc017(repo):
+    import ast
+
+    out = []
+    for p in repo.select(exts=(".py",), tests=False):
+        try:
+            tree = ast.parse(repo.text(p))
+        except (SyntaxError, ValueError):
+            continue
+        lines = repo.text(p).splitlines()
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            f = node.func
+            name = f.attr if isinstance(f, ast.Attribute) else getattr(f, "id", "")
+            if (
+                name not in SUBPROCESS_CALLS
+                or not node.args
+                or not isinstance(node.args[0], (ast.List, ast.Tuple))
+            ):
+                continue
+            items = node.args[0].elts
+            for i, el in enumerate(items):
+                if isinstance(el, ast.Constant) and isinstance(el.value, str):
+                    flag = (
+                        el.value.startswith("-")
+                        and SECRET_NAME.search(el.value)
+                        and not SAFE_SUFFIX.search(el.value)
+                    )
+                    hit = bool(flag and i + 1 < len(items) and "=" not in el.value)
+                else:
+                    hit = bool(
+                        SECRET_NAME.search(ast.unparse(el))
+                        and not SAFE_SUFFIX.search(ast.unparse(el))
+                    )
+                if hit and not skipped(lines, el.lineno - 1):
+                    out.append(
+                        (
+                            p,
+                            el.lineno,
+                            "a secret is passed as a subprocess argument; use stdin or a file",
+                        )
+                    )
+    return out
+
+
+# ---------------------------------------------------------------- RC018 long-lived vendor chunks
+
+
+def rc018(repo):
+    out = []
+    for p in repo.paths:
+        if re.search(r"(^|/)vite\.config\.[a-z]+$", p) and "manualChunks" not in repo.text(p):
+            out.append((p, 1, "the build config names no vendor chunks (manualChunks)"))
+    return out
+
+
 # id -> (title, doc rule ref, function)
 CHECKS = {
     "RC001": ("kill by name or pattern", "automation-safety.md 1.9", rc001),
@@ -808,6 +950,11 @@ CHECKS = {
     "RC011": ("cross-repo checkout without a deploy key", "secrets-and-credentials.md 1.4", rc011),
     "RC012": ("import outside the standard library not pinned", "scripting-python.md 1.2", rc012),
     "RC013": ("deploy without CI or health gate", "ci-cd-release.md 6", rc013),
+    "RC014": ("no axe run in both themes", "web-ui.md 9", rc014),
+    "RC015": ("app shell without the build card", "web-ui.md 25", rc015),
+    "RC016": ("no complete verify script", "web-build.md 8.1", rc016),
+    "RC017": ("secret in a subprocess argument", "scripting-python.md 1.3", rc017),
+    "RC018": ("no vendor chunks", "web-client-runtime.md 4.2", rc018),
 }
 
 

@@ -247,9 +247,10 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "repo-check",
+        "id": "RC014"
       },
-      "acceptance": "The Playwright e2e job runs axe on every route in both themes."
+      "acceptance": "repo check RC014 reports a web app whose test suites never run axe or never cover both the light and the dark theme."
     },
     {
       "id": "web-ui.14",
@@ -393,9 +394,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC015"
       },
-      "acceptance": "The overlay CI fails when an app with a sidebar lacks the build card with changelog or another required piece."
+      "acceptance": "repo check RC015 reports an app that mounts an app shell and renders no build card."
     },
     {
       "id": "web-ui.12",
@@ -897,9 +899,10 @@
         "python"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC017"
       },
-      "acceptance": "No secret is passed as a subprocess argument and the log helpers redact."
+      "acceptance": "repo check RC017 reports no subprocess call that passes a secret-named value or flag as an argument."
     },
     {
       "id": "scripting-python.1.4",
@@ -3615,9 +3618,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC018"
       },
-      "acceptance": "The build config names the vendor chunks and their hashes survive an app-only change."
+      "acceptance": "repo check RC018 reports no vite config without manualChunks."
     },
     {
       "id": "web-client-runtime.4.3",
@@ -3966,9 +3970,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC016"
       },
-      "acceptance": "The repo has the verify script and it lists every CI step."
+      "acceptance": "repo check RC016 reports a package with no verify script, or one that does not run each check:* script and each typecheck, lint, build and test script the package defines."
     },
     {
       "id": "web-build.10",
