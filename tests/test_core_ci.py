@@ -194,6 +194,36 @@ class WorkflowLint(Overlay):
         ):
             self.assertIn(kind, out)
 
+    def test_every_core_workflow_is_valid_yaml_plain_scalars(self):
+        mod = load("core_ci_yaml", "templates/overlay/scripts/core-ci.py")
+        for path in sorted((ROOT / ".github/workflows").glob("*.yml")) + sorted(
+            (ROOT / "templates/overlay/.github/workflows").glob("*.yml")
+        ):
+            self.assertEqual(mod.yaml_colon_scalars(path.read_text(encoding="utf8")), [], path.name)
+
+    def test_unquoted_colon_space_value_is_found(self):
+        mod = load("core_ci_yaml2", "templates/overlay/scripts/core-ci.py")
+        text = (
+            "on:\n  workflow_dispatch:\n    inputs:\n      sha:\n"
+            "        description: Commit to release (default: the head)\n"
+            "        required: false\n"
+        )
+        self.assertEqual(mod.yaml_colon_scalars(text), [5])
+
+    def test_quoted_block_and_comment_values_are_not_flagged(self):
+        mod = load("core_ci_yaml3", "templates/overlay/scripts/core-ci.py")
+        text = (
+            "jobs:\n  a:\n    steps:\n"
+            "      - name: 'quoted (default: ok)'\n"
+            '      - name: "also quoted: fine"\n'
+            "      - run: |\n          echo a: b\n          echo c: d\n"
+            "      - uses: x/y@abc # v1: note\n"
+            "    if: ${{ github.event_name == 'push' }}\n"
+            "    # a comment with: a colon\n"
+            "    url: https://example.com/a:80\n"
+        )
+        self.assertEqual(mod.yaml_colon_scalars(text), [])
+
 
 class AsciiNodePython(Overlay):
     def test_ascii(self):

@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       sha:
-        description: Commit to release (default: the head of the selected ref)
+        description: 'Commit to release (default: the head of the selected ref)'
         required: false
         default: ''
 concurrency:
