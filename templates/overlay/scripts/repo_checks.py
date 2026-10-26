@@ -132,8 +132,9 @@ def is_comment(line):
 
 # ---------------------------------------------------------------- RC001 kill only your own processes
 
+# The names are split so this file, synced into every overlay, does not match its own check.
 KILL = re.compile(
-    r"\b(?:pkill|killall)\b"
+    r"\b(?:p" + "kill|kill" + r"all)\b"
     r"|\bkill\b[^\n]*\$\(\s*(?:pgrep|pidof)\b"
     r"|\bpgrep\b[^\n|]*\|\s*xargs\s+(?:-\S+\s+)*kill\b"
     r"|\btaskkill\b[^\n]*\s/IM\b"

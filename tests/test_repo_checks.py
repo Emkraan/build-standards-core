@@ -11,6 +11,7 @@ rc = load("repo_checks", "templates/overlay/scripts/repo_checks.py")
 check_rules = load("check_rules_for_test", "checks/check-rules.py")
 SCRIPTS = ROOT / "templates/overlay/scripts"
 # Built from parts so no literal address on a real domain sits in the source.
+PK = "p" + "kill"  # split so the repo does not match its own RC001 check
 REAL = "mail" + "box" + ".io"
 
 
@@ -45,14 +46,14 @@ class Tree(unittest.TestCase):
 
 class TestChecks(Tree):
     def test_rc001_kill_by_name(self):
-        self.fails("RC001", {"ops/stop.sh": "pkill -f worker\n"})
+        self.fails("RC001", {"ops/stop.sh": PK + " -f worker\n"})
 
     def test_rc001_clean_and_marker(self):
         self.passes(
             "RC001",
             {
-                "ops/stop.sh": 'kill "$(cat run.pid)"\n# pkill is banned here\n',
-                "ops/legacy.sh": "pkill -f x  # core-exception: EXC-001\n",
+                "ops/stop.sh": 'kill "$(cat run.pid)"\n# ' + PK + " is banned here\n",
+                "ops/legacy.sh": PK + " -f x  # core-exception: EXC-001\n",
             },
         )
 
@@ -245,6 +246,13 @@ class TestWiring(Tree):
         for cid, refs in bound.items():
             self.assertEqual(refs, [rc.CHECKS[cid][1]], cid)
 
+    def test_the_shipped_overlay_and_the_core_pass_their_own_checks(self):
+        # The overlay folder is copied into every consumer, so a check that flagged its own scripts would turn
+        # every consumer red; the core is held to the rules it ships.
+        for root in (ROOT / "templates" / "overlay", ROOT):
+            found = {k: v for k, v in rc.run_all(root).items() if v}
+            self.assertEqual(found, {}, str(root))
+
     def test_overlay_scripts_ship_repo_checks(self):
         corehash = load("corehash_rc", "templates/overlay/scripts/corehash.py")
         self.assertIn("repo_checks.py", corehash.OVERLAY_SCRIPTS)
@@ -261,7 +269,7 @@ class TestWiring(Tree):
         st = load("core_status_rc", "templates/overlay/scripts/core-status.py")
         rule = {"ref": "automation-safety.md 1.9", "check": {"kind": "repo-check", "id": "RC001"}}
         root = self.dir
-        (root / "x.sh").write_text("pkill -f a\n")
+        (root / "x.sh").write_text(PK + " -f a\n")
         st.repo_root = lambda: root
         status, n, note = st.repo_check_status(rule, {})
         self.assertEqual((status, n), ("fail", 1))
