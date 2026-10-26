@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-26 (v1.16.0, UI lint advisory notes for data palettes and neutral dividers)
+
+- `ui_lint.py` adds advisory notes. A finding that probably is data rather than theme keeps its finding, its
+  `::error` annotation and the exit code exactly as before, and gains a `::notice` line, an `N advisory` count
+  in the summary and, with `--json`, an `advisories` list. Two notes: `data-palette` (a UI003 colour literal in a
+  file matched by the new optional `data_palettes` globs in `ui-lint.json`) and `neutral-divider` (a UI001
+  one-sided border under 2px in a neutral grey). A note never hides or adds a finding and never fails a build.
+- Self-test fixtures and `tests/test_ui_lint_advisory.py` cover both notes, the coloured and thick cases that
+  carry none, and an unchanged exit code. `lint/README.md` documents the config key and the notes.
+
 ## 2026-10-26 (v1.14.1, lint-sweep sets up Node for web repos)
 
 - `lint-sweep.yml` ran the repo's "Lint sweep command" on whatever the runner carried, so on a self-hosted

@@ -1,0 +1,6 @@
+/* Neutral one-sided hairlines are still findings and carry an advisory note; a coloured one does not. */
+.divider { border-left: 1px solid #e5e5e5; }
+.divider-2 { border-right: 1px solid rgba(255, 255, 255, 0.1); }
+.divider-3 { border-bottom: 1px solid hsl(220 5% 40%); }
+.accent-hair { border-left: 1px solid #ff0000; }
+.thick { border-left: 2px solid #e5e5e5; }

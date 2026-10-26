@@ -1,4 +1,6 @@
 {
+  "advisory.css::UI001": 5,
+  "advisory.css::UI003": 5,
   "bad.css::UI001": 7,
   "bad.css::UI003": 4,
   "bad.css::UI004": 1,
@@ -11,6 +13,7 @@
   "bad.tsx::UI004": 1,
   "bad.tsx::UI005": 1,
   "bad.tsx::UI007": 1,
+  "data-palette.css::UI003": 2,
   "dialogs-bad.tsx::UI002": 2,
   "expired.tsx::UI002": 1,
   "restyle-bad.tsx::UI009": 3,
