@@ -22,7 +22,7 @@ class Migration(Work):
         notes = []
         cfg = nightly.load_config(p, notes)
         self.assertEqual(cfg["version"], 2)
-        self.assertEqual(cfg["ui_consumers"][0]["mode"], "ops-center")
+        self.assertEqual(cfg["ui_consumers"][0]["mode"], "direct")
         self.assertEqual(json.loads(p.read_text())["version"], 2)
         self.assertEqual(json.loads((self.dir / "consumer.json.v1.bak").read_text()), v1)
         self.assertEqual(len(notes), 1)
@@ -70,18 +70,18 @@ class Dispatch(unittest.TestCase):
         )
         seen = []
         run.latest_tag = lambda: "v9"
-        for m in ("workflow", "ops_center", "vendored"):
+        for m in ("workflow", "direct", "vendored"):
             setattr(run, "ui_" + m, lambda c, latest, m=m: seen.append(m))
         run.ui()
         return seen, run.problems
 
     def test_modes(self):
         self.assertEqual(self.run_ui("workflow")[0], ["workflow"])
-        self.assertEqual(self.run_ui("ops-center")[0], ["ops_center"])
+        self.assertEqual(self.run_ui("direct")[0], ["direct"])
         self.assertEqual(self.run_ui("vendored")[0], ["vendored"])
 
     def test_local_alias(self):
-        self.assertEqual(self.run_ui("local")[0], ["ops_center"])
+        self.assertEqual(self.run_ui("local")[0], ["direct"])
 
     def test_unknown_mode_is_a_problem(self):
         seen, problems = self.run_ui("bogus")
@@ -150,7 +150,7 @@ class SetupRequiredChecks(Work):
         entries = [
             {"repo": "o/gated", "mode": "workflow"},
             {"repo": "o/open", "mode": "workflow"},
-            {"repo": "o/local", "mode": "ops-center"},
+            {"repo": "o/local", "mode": "direct"},
             {"repo": "o/err", "mode": "workflow"},
         ]
 

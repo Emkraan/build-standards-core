@@ -51,17 +51,17 @@ Four ways to take the core. Every consumer picks one per repo, recorded in the m
 | Way | For | What lands |
 |---|---|---|
 | `workflow` | a product repo with its own CI: one pull request per release, merged only on the owner's approval and only when the overlay's checks pass | synced copies pinned to a release; a pull request per release |
-| `ops-center` | a machine's ops center app and other local tools without CI: the sync applies at once, gated on the core's checks, with a rollback | synced copies applied directly; one log line per apply |
+| `direct` | a machine's ops center app and other local tools without CI: the sync applies at once, gated on the core's checks, with a rollback | synced copies applied directly; one log line per apply |
 | `vendored` | a repo that must carry no record of the core: a scrubbed copy with the identity files removed | files only; release and source hash recorded on the machine, never in the repo |
 | `agent-home` | the agent runtime on a machine: skills, settings, hooks, cron jobs, plugins | applied at once by the nightly job; one log line per apply |
 
-`local` was the older name of `ops-center`; a config that still says it behaves the same, and
+`local` was the older name of `direct`; a config that still says it behaves the same, and
 the nightly notes the rename once.
 
 Two consumption classes. This is the owner's rule, and every way above falls in one class:
 
 1. **Apply at once: the ops center.** A local, single-operator app takes every core release at
-   once, nightly, behind its own gate and with rollback (the `ops-center` way). The agent home
+   once, nightly, behind its own gate and with rollback (the `direct` way). The agent home
    is applied the same way.
 2. **Approval-gated: every other app.** Product repos, hubs, multi-module shells and vendored
    copies never change without the owner's approval. Each new release arrives as a pull request
@@ -225,7 +225,7 @@ For an account that owns its own repos (a different GitHub owner than the core).
 
 ## Consuming the core
 
-Which way a repo consumes the core (`workflow`, `ops-center`, `vendored`, `agent-home`) is in
+Which way a repo consumes the core (`workflow`, `direct`, `vendored`, `agent-home`) is in
 [Direction](#direction), and [CONSUMING.md](CONSUMING.md) is the agent-side procedure for
 each way. What follows is the `workflow` way in full: the overlay, its pinned pull requests
 and the CI that keeps a repo current.

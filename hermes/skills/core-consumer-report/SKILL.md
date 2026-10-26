@@ -69,7 +69,7 @@ are in the core's `CONTRIBUTING.md` ("Reporting from a consumer") and the templa
    scheduler entry that runs `hermes/nightly.py`, or `not collected: no scheduler found`.
 3. Per registered repo, from its clone:
    - the way, written with its neutral label, never the mode value: `workflow`, `apply-at-once`
-     (the `ops-center` mode), `vendored` or `agent-home`. A mode value can equal a private repo
+     (the `direct` mode), `vendored` or `agent-home`. A mode value can equal a private repo
      name on someone's denylist, so the label keeps the draft passing the checks;
    - pinned release: `standards.lock` in the overlay (`ref`);
    - `python3 scripts/core-status.py --json --latest` (the overlay's copy of the script). Take

@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-10-26 (v1.12.3, private-list terms removed)
+
+- A consumer account's private list flagged 16 terms on 176 lines of the public tree (hashes only were
+  reported). Every match that could be changed was removed from the current tree by hash: organisation and
+  product names in examples became neutral placeholders, a sample person name in the kit gallery and
+  combobox test changed (the gallery visual baselines were regenerated), a consumption mode name used in
+  `hermes/` and `CONSUMING.md` was renamed to a neutral word, and a design-doc directory was renamed.
+- Fourteen of the hashes are now in `checks/denylist.sha256`, so any reintroduction fails the sanitiser. A new
+  test pins them. Two hashes (indexes 3 and 11) are NOT in the list yet: each is a vendor domain or action
+  name that the repo needs verbatim (XAML namespace URLs, a container registry image, a PowerShell module
+  name, and a deploy action with its secret name), so listing them would fail every run. They stay out until
+  the owner decides.
+- Earlier commits of the public history still contain the old text; this release changes the current tree
+  only. No terms are listed here.
+- Consumers: a consumer that registered the renamed consumption mode must re-register it with the new
+  mode name (`setup.py --ui OWNER/REPO=direct:PATH`) and update `ui_consumers[].mode` in its nightly config.
+
 ## 2026-10-25 (v1.12.1, an edit runs every check)
 
 - `core-ci.yml` (template) and `core-ci-reusable.yml`: a pull request `edited` run (title or body) now runs
@@ -53,7 +70,7 @@ Carried over from the previous core repository (opened 2026-10-23), where the ow
 it records on two consumer reports: Table B rows B-01 to B-31 and the 20 assessment decisions, all as
 recommended.
 
-- New `opscenter/DESIGN.md`: the layout and the synced copy, slots versus parameters, the loopback
+- New `ops-app/DESIGN.md`: the layout and the synced copy, slots versus parameters, the loopback
   server with one Host and Origin guard and the `{success, data|error}` envelope, live reads, the single
   default-deny writer and the `/api/approvals` inbox, the cost-gated analyzer and heartbeats, per-file
   schemas on six envelope kinds with the conformance checker and the migration contract, the app on the
@@ -575,25 +592,25 @@ Five findings from the consumer report #115, fixed together.
   cell and a marker comment (`<!-- sync-core: row added from the template vX.Y.Z; set a value -->`),
   never changes an existing row (a label matches by its prefix, as scripts read it) and prints one
   line naming the rows. A missing `Commit emails` row had failed a sync's identity check. The
-  ops-center apply commits the sheet with the sync.
+  Direct apply commits the sheet with the sync.
 - **Progress while waiting for checks.** `core-ci.py wait-checks` prints a progress line at most every
   5 minutes (`--progress MIN`): minutes waited and checks done, pending and failed. The nightly streams
   that line from an ops center's sync pull request to its own output as it comes (`hermes/nightly.py`
   `sh(..., echo=...)`, `hermes/ops_center.py` `progress_printer`), so a 30 minute wait is visible.
-- **core.bare flipping to true (cause found).** The ops-center apply pushed from its gate worktree.
+- **core.bare flipping to true (cause found).** The direct apply pushed from its gate worktree.
   Git hands a hook `GIT_DIR`, from a worktree `<clone>/.git/worktrees/<name>`; a pre-push hook, or the
   tests it runs, that calls `git init` with it set reinitialises the clone and, since that path does
   not end in `/.git`, writes `core.bare = true` into the clone's shared config, after which `git pull`
   fails. Pushes (and the branch delete on rollback) now run from the clone, so the hook runs as it does
   for a push by hand there. The nightly also drops `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE` and the
   other variables that point git at one repository from every command it runs. A guard checks the core
-  clone and every consumer clone before and after the run (and around each ops-center apply), sets
+  clone and every consumer clone before and after the run (and around each direct apply), sets
   `core.bare = true` on a clone with a work tree back to false, and reports it once per clone.
   CONSUMING.md section 3 says why a repo's fixture tests should drop those variables too.
 - Tests: `tests/test_consumer_findings.py` (template names and the check-rules guard, stale names and
   the re-copy note, core-status by the new names, the trigger warning in both list forms, the rows
   added by a real `sync-core.py` run and by the helper, progress with a fake clock, streaming and the
-  dropped variables, the reproduced flip from a worktree push, core.bare false after an ops-center
+  dropped variables, the reproduced flip from a worktree push, core.bare false after a direct
   apply whose pre-push hook runs `git init`, and the guard).
 - **Visual baselines.** README.md "Visual gate": after an update-baselines run, copy the full linux
   baseline set from the artifact, never a single specimen (copying one left unrelated specimens one
@@ -940,12 +957,12 @@ posted).
   `pr_timeout_min`, default 60) and merges at once with `scripts/merge-pr.py --match-head-commit`.
   It never waits for the owner and never writes the deploy checkout. A failure or timeout closes the
   pull request, deletes the branch and leaves the pin unchanged, reported once per kind. Documented
-  in `CONSUMING.md` (`ops-center`, the keys table and the class table), `ci-cd-release.md` section
+  in `CONSUMING.md` (`direct`, the keys table and the class table), `ci-cd-release.md` section
   11 (new item 3, rule `ci-cd-release.11` wording) and `local-ops-app.md` section 19.
 - One report issue per run (#117 G-033): `hermes/report.py` creates the consumer-report issue at most
   once per nightly. The section that creates it records its number in a run dict the nightly passes
   to both sections, and the other reads that number directly instead of the lagging issue list.
-- Overlay node_modules (#117 G-034): the ops-center gate also links `<clone>/<overlay>/node_modules`
+- Overlay node_modules (#117 G-034): the direct gate also links `<clone>/<overlay>/node_modules`
   into the worktree when the overlay is a subfolder that has one.
 - `core-status.py --ci` fallback (#117 G-035): with no run of a workflow on the default branch (a
   merge gate that merges with the workflow token never starts a push run), the run on the head of the
@@ -1067,7 +1084,7 @@ center needs to act as the owner's approval desk. Plus the two core fixes approv
   block from every open `consumer-report` issue, with other accounts' shipped D items as
   suggestions, the new ones marked. Read-only on every remote. New entry key `sync_head` names a
   vendoring tool's pull request branch prefix. Tests in `tests/test_consumption.py`, fixtures only.
-- `hermes/setup.py` prints each registered repo's class: an `ops-center` repo applies at once, any
+- `hermes/setup.py` prints each registered repo's class: a `direct` repo applies at once, any
   other mode is approval-gated.
 - #117 G-031: a `vendored` repo registered report only now gets its machine record each night (the
   record only reads the clones and writes on this machine), and the report sections scan its clone
@@ -1103,7 +1120,7 @@ their source, not here.
   `check-consumer-neutral.py --file` accept the account login inside a raw gist image URL
   (`gist.githubusercontent.com/<login>/<id>/raw/<file>.png`), the posting account's own public
   login, and still check everything else. Shipped files never get the allowance.
-- Push guards (#115 G-005): `hermes/setup.py --ui OWNER/REPO=ops-center:PATH` looks for a pre-push
+- Push guards (#115 G-005): `hermes/setup.py --ui OWNER/REPO=direct:PATH` looks for a pre-push
   hook, branch protection or an active ruleset on the default branch and prints which mode fits; the
   nightly's failure line names a refusing pre-push hook and the two fixes. CONSUMING.md section 3.
 - Vendored release (#117 G-025): the vendored record holds the release the copy carries, from the
@@ -1382,9 +1399,9 @@ This release closes every item that was partly or not done and is not settling.
 - Not changed here: the generated `core-practices` skill still drops `level` (fix is in `hermes/build_skills.py`, owned by another PR).
 - Note on history: older headings without a version (for example `2026-10-12 (single token source)`) and the missing v0.31.0 heading are left as they are. v0.31.0 was never published as a heading; v0.30.0 is followed by v0.32.0.
 
-## 2026-10-20 (v0.49.0, nightly: modes, config v2, ops-center apply-at-once, vendored record, upward report)
+## 2026-10-20 (v0.49.0, nightly: modes, config v2, direct apply-at-once, vendored record, upward report)
 
-- Nightly UI modes: `workflow`, `ops-center` and `vendored`. `local` stays as an alias of `ops-center`.
+- Nightly UI modes: `workflow`, `direct` and `vendored`. `local` stays as an alias of `direct`.
 - Config version 2. A version 1 `consumer.json` is migrated in place with `consumer.json.v1.bak` beside it.
   `apply.claude` and `apply.safe_restart` default off; the claude step is skipped quietly when the CLI is
   absent. `apply_setup.py --safe-restart` installs the safe restart job only on request.
@@ -1404,7 +1421,7 @@ This release closes every item that was partly or not done and is not settling.
 
 - **README gains a `Direction` section**: the core is the mandatory baseline for UI design, web
   frontend and backend practice, proven CI workflows, and agent runtime practice. It names the
-  four ways to take the core (`workflow`, `ops-center`, `vendored`, `agent-home`), the
+  four ways to take the core (`workflow`, `direct`, `vendored`, `agent-home`), the
   baseline-first rule (sync and adapt through call-site-keeping adapters before any swap),
   core-owned vs consumer-owned paths, and the rule that the core names no build: a build
   contributes designs by role, never by name. "Consuming the core", "What an overlay may and
@@ -1426,7 +1443,7 @@ This release closes every item that was partly or not done and is not settling.
   `standards/web-ui.md` 0.11 counts adapters over kit parts as adoption and local parts
   duplicating a kit role as not. (#115, #117)
 - `standards/local-ops-app.md` gains the overlay row and the deploy rule: the app consumes
-  the core in the `ops-center` way, kit from `kit-core/`, tokens from `tokens-core/`, local
+  the core in the `direct` way, kit from `kit-core/`, tokens from `tokens-core/`, local
   additions in `src/`, and the build runs against the synced copies. (#117)
 
 ## 2026-10-19 (v0.47.4, Hermes config guidance: reasoning key, fallback proof, board retirement)

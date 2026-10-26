@@ -18,7 +18,7 @@ Related: [First-Party Build Standard](web-build.md) (stack and commands),
 - Every check is free. This rule assumes the free personal plan described above (no branch protection, no paid minutes). A repo on a paid plan or an organisation may use hosted runners and required-check rulesets instead, and records that choice as an explicit exception. Jobs run on the **self-hosted runner**: `runs-on: [self-hosted, linux, arm64]`,
   never `ubuntu-latest` (GitHub-hosted minutes are not paid for on this account). The runner is a
   native linux/arm64 container (GitHub's `actions-runner` image, plus `gh`, PowerShell 7 and Playwright deps)
-  under the container runtime on the owner's Mac. The hub has a pool of three (`runner-pool-1`, `-2`, `-3`) because its checks run in parallel; every other repo has one runner (`colima-buildstandards`, `colima-toolbox`, `colima-opscenter`, `colima-a sibling app-store repo`), the second runners were removed 2026-10-09 to save memory; build files and the registration script
+  under the container runtime on the owner's Mac. The hub has a pool of three (`runner-pool-1`, `-2`, `-3`) because its checks run in parallel; every other repo has one runner (`runner-core`, `runner-tool`, `runner-ops-app`, `runner-a sibling app-store repo`), the second runners were removed 2026-10-09 to save memory; build files and the registration script
   are kept in the runner scripts directory of the ops workspace. The container runtime VM is
   8 CPU / 8 GiB (raised from 6 on 2026-10-09 after OOM kills, and kept modest on purpose: guest page cache is
   not returned to macOS on a 16 GB host that already swaps). CI and deploys run only while that Mac and the container runtime are up; the Mac has system sleep
@@ -192,7 +192,7 @@ When a job is added, renamed or removed, update `REQUIRED_CHECKS` in `automerge.
   `git config user.email` to the organisation address in every checkout and globally. If a personal
   address ever lands in history, the fix is the same message-and-identity-only rewrite as the
   attribution guard (a `git filter-repo` mailmap, tree hashes compared before and after).
-- **Runner image and PowerShell.** The image bakes in PowerShell 7 so the toolbox and a sibling app-store repo
+- **Runner image and PowerShell.** The image bakes in PowerShell 7 so the sibling tool and a sibling app-store repo
   PowerShell CI set (parse, XAML well-formedness, PSScriptAnalyzer, standards lint, Pester) runs on
   linux/arm64. Those checks are static, so nothing needs Windows. A check that loads WPF would; none does.
 - **Deploy-package smoke.** `scripts/build-deploy-package.sh` builds `app.zip` exactly as the
@@ -446,7 +446,7 @@ never upload or attach it unencrypted. Restore steps are in
 - **Scope:** one classic personal access token owned by the repo owner, with the `repo` and
   `workflow` scopes only. It is broader than a fine-grained token (it reaches every repo the owner
   can write to, not just the five that use it). Classic is chosen because the workflow permission
-  then covers all five repos (the reference app, toolbox, an app-store repo, this standards repo, the ops app) with one
+  then covers all five repos (the reference app, sibling tool, an app-store repo, this standards repo, the ops app) with one
   token and the annual review is a single step. No admin, org or user scopes.
 - **Install:** run `<agent-home>/scripts/set-automerge-token.sh`. It asks for the token in a hidden
   dialog, stores it in the macOS login Keychain (service `the automerge-token keychain service`), validates
@@ -481,7 +481,7 @@ and the deploy, health gate, rollback and backup pieces for anything that runs i
 ### 10.1 PowerShell repos
 
 PowerShell repos (WPF tools, the device-management system packages, automation) add the PowerShell CI set on top of the
-minimum. Reference copies: the sibling toolbox repo and the sibling app-store repo. Copy
+minimum. Reference copies: the sibling sibling tool repo and the sibling app-store repo. Copy
 these files unchanged except `ci/Policy.psd1` and the `EXCLUDE` list in `scripts/check-ascii.mjs`:
 
 - `.github/workflows/powershell-ci.yml` with jobs `parse`, `xaml`, `psscriptanalyzer`,
@@ -499,7 +499,7 @@ these files unchanged except `ci/Policy.psd1` and the `EXCLUDE` list in `scripts
 - XAML check: `.xaml` files and embedded XAML here-strings must be well-formed XML; documents
   assembled by concatenation (`$Head + $Resources + $Body`) are resolved and checked whole.
 - Standards lint: no `Get-Credential` or `Read-Host -AsSecureString` outside GUI tools, no
-  hardcoded secret literals, CMTrace logging (see the [CMTrace Logging Standard](cmtrace-logging.md); `Write-CMTraceLog`, or PSADT's `Open-ADTSession` /
+  hardcoded secret literals, CMTrace logging (see the [CMTrace Logging Standard](cmtrace-logging.md); `Write-CMTraceLog`, or the deployment toolkit's `Open-ADTSession` /
   `Write-ADTLogEntry`) in automation.
 - Pester 5 smoke tests (`tests/Standards.Tests.ps1`): every file parses, every script is classified,
   logging present, automation supports `-WhatIf` and sets exit codes, the device-management system CI discovery scripts
@@ -536,7 +536,7 @@ two classes, and the way it is registered with (`consumer.json` `mode`) decides 
    checks on that head waited for, and the pull request merged at once pinned to that head. The
    owner is not waited for and the deploy checkout is never written directly. A failure or timeout
    closes the pull request, deletes the branch and leaves the pin unchanged (`CONSUMING.md`,
-   `ops-center`).
+   `direct`).
 4. **The nightly reports, it does not wait.** An open sync pull request on an approval-gated app
    is its normal state and is reported as awaiting approval; only failing checks on it are a
    problem.

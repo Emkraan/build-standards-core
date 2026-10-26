@@ -23,7 +23,7 @@ tools that are not deployed to the cloud host and have exactly one user. Multi-u
 | Server and engine | Python 3 standard library only (`http.server`, `urllib`, `sqlite3` read-only where needed, `unittest`). No third-party Python packages. |
 | Front end | React, TypeScript, Vite, `react-router-dom`. The UI library is the core kit (next row) and nothing else: no third-party UI component library. Charts come from the kit's chart entry (its optional peer), not a second chart library. |
 | Styling | The core token sheets and kit stylesheet (next row), then `app.css` for app-specific classes only. Per-app accent by the kit accent, never a token redefinition. An app that does not take the core yet uses the plain-CSS port of the [Web Design System](web-ui.md#plain-css-port-no-tailwind) (`theme.css` plus `app.css`) until it adopts. |
-| Core baseline | The app consumes the core in the `ops-center` way (README "Direction", `CONSUMING.md`): the component kit from `kit-core/`, the token sheets from `tokens-core/`, both synced copies never hand-edited, and app-specific code in `src/` and `app.css` only. |
+| Core baseline | The app consumes the core in the `direct` way (README "Direction", `CONSUMING.md`): the component kit from `kit-core/`, the token sheets from `tokens-core/`, both synced copies never hand-edited, and app-specific code in `src/` and `app.css` only. |
 | Package manager | pnpm 12 through corepack (`packageManager` in `package.json`, `corepack prepare pnpm@12.9.1 --activate` in CI), `pnpm install --frozen-lockfile`. |
 | Lint and test | Biome (`biome lint src`), Vitest, `tsc --noEmit` as part of `build`. |
 
@@ -51,7 +51,7 @@ scripts/     check-ascii.mjs
 ## 3. The neutral contract
 
 The data files and the HTTP API are specified in a neutral contract
-(`contract/ops-center-contract.md`) with a JSON Schema per file or API section in
+(`contract/direct-contract.md`) with a JSON Schema per file or API section in
 `contract/schemas/`. Collectors and UI can then be swapped independently, and the contract names no
 organization, person or role. Identity and deployment facts live only in the deployment's
 `config.json` in the state directory, which is never committed.
@@ -126,7 +126,7 @@ Do not add a model call anywhere else without putting it behind a gate of the sa
 ## 6. Server: loopback only
 
 - Bind `127.0.0.1` only (`ThreadingHTTPServer(("127.0.0.1", port), ...)`); default port 8766 for
-  the Ops Center. State directory from `OPS_STATE_DIR` (default `<agent-home>/ops-center`).
+  the Ops Center. State directory from `OPS_STATE_DIR` (default `<agent-home>/direct`).
 - **One gate in front of the router.** The Host check, the Origin check and the security headers
   below run in one deny-by-default gate that every request passes before any route, not in each
   route. A new route is covered without its author remembering. The gate also caps the request body
@@ -179,13 +179,13 @@ lives there, so the service runs a **copied runtime** in an unprotected location
 
 - `tools/deploy-local.sh [runtime dir]` builds the app (`pnpm install --frozen-lockfile`, `pnpm run
   build`), then `rsync -a --delete` copies `server/`, `engine/`, `contract/` and `app/dist/` to
-  `<agent-home>/ops-center/runtime`, strips `__pycache__`, and restarts the service with
+  `<agent-home>/direct/runtime`, strips `__pycache__`, and restarts the service with
   `launchctl kickstart -k gui/<uid>/<label>` when it is loaded (label from `OPS_LAUNCH_LABEL`,
   default `the ops-app keychain service`). It is safe to re-run.
-- The state directory (`<agent-home>/ops-center`) and `config.json` live outside both the repo and
+- The state directory (`<agent-home>/direct`) and `config.json` live outside both the repo and
   the runtime, so a deploy never touches data or identity.
 - Redeploy after every merge that changes `server/`, `engine/`, `contract/` or `app/`. The
-  scheduler job (`ops-center-refresh`) runs `engine/refresh.py` from the runtime copy on a
+  scheduler job (`direct-refresh`) runs `engine/refresh.py` from the runtime copy on a
   30-minute cadence.
 - CI deploys nothing; this tool runs locally. The build runs against the synced core copies:
   `pnpm run build` compiles the app against `kit-core/` and copies the token sheets from
@@ -229,7 +229,7 @@ The repo runs the standard [CI/CD and Release Standard](ci-cd-release.md) minimu
   that edits the auto-merge workflow itself, or any workflow file that GitHub refuses to merge
   with `GITHUB_TOKEN`, is not merged by it. Merge those with an admin squash:
   `gh pr merge <n> --squash --admin --delete-branch`.
-- The runner pool for this repo (`colima-opscenter`, `-2`) is registered with the runner
+- The runner pool for this repo (`runner-ops-app`, `-2`) is registered with the runner
   registration script, which accepts full `owner/name` repo names for repos that do not follow the
   hub's naming prefix.
 - PR titles are Conventional Commits; green PRs squash-merge automatically; the `no-automerge`
@@ -394,7 +394,7 @@ the same kind of data the same way.
 
 For every consumer registered on the machine (one row per `consumer.json` entry):
 
-- its class (apply-at-once or approval-gated) and way (`workflow`, `ops-center`, `vendored`);
+- its class (apply-at-once or approval-gated) and way (`workflow`, `direct`, `vendored`);
 - the pinned release against the latest, and how many releases behind;
 - for `workflow` and `vendored` repos, the open sync pull request with its CI state (pass, fail,
   pending, none), or that none is open;
@@ -470,7 +470,7 @@ Schema, format `build-standards-consumption/1` (a reader refuses another format 
 }
 ```
 
-Field rules: `class` is `apply-at-once` for mode `ops-center` and `approval-gated` for every other
+Field rules: `class` is `apply-at-once` for mode `direct` and `approval-gated` for every other
 mode. `pinned`, `behind`, `sync_pr`, `status`, `ui_verdict`, `latest` and an adoption row's `risk`
 are `null` when unknown, never guessed; the reason goes in the nearest `not_collected` list.
 `sync_pr` is always `null` for an ops center. `ci` is one of `pass`, `fail`, `pending`, `none`. An

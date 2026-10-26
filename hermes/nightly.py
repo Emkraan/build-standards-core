@@ -15,13 +15,13 @@ Steps, in order, all from this clone so every consumer runs the identical code:
   4. Bring every registered UI consumer repo to the newest core release by its mode:
        workflow    run the repo's own core-update workflow, which opens the sync pull request for the
                    owner's approval; report one whose checks fail
-       ops-center  apply at once from a local clone behind a local gate (hermes/ops_center.py); a repo
+       Direct  apply at once from a local clone behind a local gate (hermes/ops_center.py); a repo
                    with its own CI gate gets a pull request that merges once its checks pass
        vendored    the repo carries no record of the core; record on this machine the release the copy
                    carries (the vendoring tool's pin, or its source hash matched against each release)
        pin-file    the repo records the core as one KEY=<tag> line; open the bump pull request for the
                    repo's own merge path, and push optional pin metrics (hermes/pin_file.py)
-       (the old mode name "local" is migrated to "ops-center")
+       (the old mode name "local" is migrated to "direct")
   5. Keep the account's upward report on the core current (hermes/report.py), when apply.report is on:
      the candidates section and the changes-since-last-nightly section. A vendored repo is scanned at
      its root against the core's kit, read-only; a vendored repo registered report only still gets
@@ -90,7 +90,7 @@ APPLY_DEFAULTS = {
     "report": True,
     "consumption": True,
 }
-MODES = ("workflow", "ops-center", "vendored", "pin-file")
+MODES = ("workflow", "direct", "vendored", "pin-file")
 STATE_DIR = Path("~/.config/build-standards-core").expanduser()
 
 
@@ -177,7 +177,7 @@ def migrate(cfg: dict) -> bool:
         changed = True
     for c in cfg.get("ui_consumers", []):
         if c.get("mode") == "local":
-            c["mode"] = "ops-center"
+            c["mode"] = "direct"
             changed = True
     ap = cfg.setdefault("apply", {})
     for k, v in APPLY_DEFAULTS.items():
@@ -209,7 +209,7 @@ def load_config(path: Path, notes: list[str] | None = None) -> dict:
     cfg.setdefault("ui_consumers", [])
     for c in cfg["ui_consumers"]:
         if c.get("mode") == "local":  # an in-memory alias when no file was read
-            c["mode"] = "ops-center"
+            c["mode"] = "direct"
     return cfg
 
 
@@ -388,7 +388,7 @@ class Run:
             try:
                 mode = c.get("mode", "workflow")
                 if mode == "local":
-                    mode = "ops-center"
+                    mode = "direct"
                 if mode not in MODES:
                     raise RuntimeError(f"unknown mode {mode!r} (known: {', '.join(MODES)})")
                 getattr(self, "ui_" + mode.replace("-", "_"))(c, latest)
@@ -572,11 +572,11 @@ class Run:
                 f"ui {repo}: behind ({ref}, core is {latest}) and {wf} could not start: {out[-200:]}"
             )
 
-    def ui_ops_center(self, c: dict, latest: str) -> None:
+    def ui_direct(self, c: dict, latest: str) -> None:
         r = ops_center.apply(c, latest, sh, STATE_DIR, self.check)
         if r.get("bare"):
             self.bare.setdefault(str(Path(c["path"]).expanduser()), []).append(
-                "around the ops-center apply"
+                "around the direct apply"
             )
         if r["status"] in ("applied", "would"):
             self.info.append(r["message"])

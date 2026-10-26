@@ -8,10 +8,10 @@ What it does, all idempotent (run it again to change anything):
   1. Writes the consumer file ~/.config/build-standards-core/consumer.json: where the core clone is,
      the Hermes home, and the UI consumer repos to keep on the newest core release. Existing UI
      entries are kept; --ui adds or updates one. Mode "workflow" (default) runs the repo's own
-     core-update workflow; "ops-center:PATH" applies at once from a local clone behind a local gate;
+     core-update workflow; "direct:PATH" applies at once from a local clone behind a local gate;
      "vendored:PATH" records the release on this machine only; "pin-file:PATH" keeps a one-line pin
      current by pull request (set "file" and the other hermes/pin_file.py keys in the entry) ("local:PATH" is the old name of
-     ops-center and is migrated). The file is version 2; an older file is migrated with a backup.
+     Direct and is migrated). The file is version 2; an older file is migrated with a backup.
      apply.claude and apply.safe_restart are off unless the file or --claude / --safe-restart turns
      them on; --no-claude and --no-safe-restart turn them off again.
   2. Writes the cron wrapper <hermes home>/scripts/core-nightly.sh, which runs hermes/nightly.py from
@@ -28,13 +28,13 @@ workflows (the merge gate workflow of a plan without branch protection). A repo 
 that stops a red sync pull request from merging, so setup refuses it and says how to fix it.
 --allow-no-required-checks registers it anyway (core-update.yml still waits for every check before it
 merges) and prints a warning.
-An "ops-center" repo given with --ui is checked for a guard on its default branch that refuses the
+A "direct" repo given with --ui is checked for a guard on its default branch that refuses the
 nightly's direct push: a pre-push hook in the local clone, branch protection or an active ruleset (read
 through gh). Setup registers it and prints which mode fits (an overlay-only allowance in the hook, or
 mode workflow), because otherwise every apply rolls back on the push.
 --report-only registers the --ui repos for the report sections only, for a repo a local job of this
 machine already applies the core to (CONSUMING.md section 5); the nightly skips their apply.
-Each --ui repo gets one line naming its consumption class: an ops-center repo applies at once, every
+Each --ui repo gets one line naming its consumption class: a direct repo applies at once, every
 other mode is approval-gated (README "Direction", "Two consumption classes").
 --check prints what it would do and changes nothing. Python 3.9, stdlib only.
 """
@@ -108,12 +108,12 @@ def parse_ui(spec: str) -> dict:
     entry = {"repo": repo.strip(), "mode": "workflow", "overlay": "standards-overlay"}
     name, _, path = mode.partition(":")
     if name == "local":
-        name = "ops-center"
-    if name in ("ops-center", "vendored", "pin-file") and path:
+        name = "direct"
+    if name in ("direct", "vendored", "pin-file") and path:
         entry.update(mode=name, path=path)
     elif mode and name != "workflow":
         raise SystemExit(
-            f"--ui {spec}: mode must be empty, workflow, ops-center:PATH, vendored:PATH or pin-file:PATH"
+            f"--ui {spec}: mode must be empty, workflow, direct:PATH, vendored:PATH or pin-file:PATH"
         )
     return entry
 
@@ -121,7 +121,7 @@ def parse_ui(spec: str) -> dict:
 def class_note(e: dict) -> str:
     """One line on the consumption class a registered repo falls in (README "Direction")."""
     mode = e.get("mode", "workflow")
-    if mode in ("ops-center", "local"):
+    if mode in ("direct", "local"):
         return (
             f"{e['repo']} ({mode}): apply-at-once, every core release is applied at once by the nightly "
             "behind the local gate, with rollback"
@@ -173,10 +173,10 @@ def unguarded(entries: list[dict], lookup=required_checks) -> list[str]:
 
 
 def push_guards(entries: list[dict], sh=nightly.sh) -> list[str]:
-    """One line per ops-center repo whose default branch refuses a direct push, saying which mode fits."""
+    """One line per direct repo whose default branch refuses a direct push, saying which mode fits."""
     out = []
     for e in entries:
-        if e.get("mode") != "ops-center" or not e.get("path"):
+        if e.get("mode") != "direct" or not e.get("path"):
             continue
         clone = Path(e["path"]).expanduser()
         if not (clone / ".git").exists():
@@ -216,7 +216,7 @@ def main() -> int:
         "--ui",
         action="append",
         default=[],
-        help="OWNER/REPO or OWNER/REPO=ops-center:PATH or =vendored:PATH",
+        help="OWNER/REPO or OWNER/REPO=direct:PATH or =vendored:PATH",
     )
     ap.add_argument("--overlay", default="standards-overlay", help="overlay folder in the UI repos")
     ap.add_argument("--at", default="15 3 * * *", help="cron schedule, default 03:15 daily")
@@ -311,7 +311,7 @@ def main() -> int:
             "Its core sync pull request must merge only after the repo's own CI passes. Require the "
             "core-ci.yml jobs on the default branch (in a clone: python3 scripts/core-ci.py required-checks "
             "--fix prints the command) or list them in the REQUIRED_CHECKS of its merge gate workflow, or "
-            "register it as ops-center:PATH. To register it anyway, rerun with --allow-no-required-checks.",
+            "register it as direct:PATH. To register it anyway, rerun with --allow-no-required-checks.",
             file=sys.stderr,
         )
         return 2

@@ -47,7 +47,7 @@ ignores `@types/node` majors above 22.
 ## 2. Repository layout
 
 ```text
-device-solutions-hub/
+example-org-hub/
   package.json          # packageManager pnpm@12.8.1; root scripts call turbo / pnpm --filter
   pnpm-workspace.yaml   # workspaces: client, server; allowBuilds; security overrides
   turbo.json            # build / typecheck / test / lint tasks
@@ -345,8 +345,8 @@ Reference implementation: the local ops app Command Center v1.2.0 (`the command-
 
 - **Lexical (always on, client or server):** BM25 over every record, field-weighted (title 3x,
   body 1x, parent/project name lower), light stemming, a curated domain synonym list
-  (device/endpoint/laptop, cert/certificate/renewal, MDM/Intune/Jamf/the device-management system,
-  ticket/ServiceNow/CHG/INC, and so on), typo tolerance (Damerau edit distance 1, or 2 for words
+  (device/endpoint/laptop, cert/certificate/renewal, MDM/ExampleMDM/OtherMDM/the device-management system,
+  ticket/ExampleITSM/CHG/INC, and so on), typo tolerance (Damerau edit distance 1, or 2 for words
   of 7+ characters, also matched against the synonym dictionary), prefix match on the word being
   typed, and soft-AND (documents covering more query words rank higher). Filter tokens such as
   `is:open`, `is:overdue` and `is:high` narrow lexically and skip semantic.

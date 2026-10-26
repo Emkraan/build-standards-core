@@ -3,7 +3,7 @@
 
 An ops center is an app only its operator uses. It has no pull request gate worth waiting on, so the
 nightly is the gate (README, "Local alternative"). This module is that gate, called by
-hermes/nightly.py for every consumer in mode "ops-center":
+hermes/nightly.py for every consumer in mode "direct":
 
   1. Read the pin from the committed default branch. Equal to the release: nothing to do.
   2. Make an isolated git worktree of the committed default branch. The working tree is never read,
@@ -225,7 +225,7 @@ class State:
     """The last failure kind per consumer, so a failure is reported once until a clean run."""
 
     def __init__(self, directory: Path, repo: str):
-        self.file = directory / ("ops-center__" + re.sub(r"[^A-Za-z0-9_.-]", "__", repo) + ".json")
+        self.file = directory / ("direct__" + re.sub(r"[^A-Za-z0-9_.-]", "__", repo) + ".json")
 
     def last(self) -> str:
         try:
@@ -263,7 +263,7 @@ def apply(c: dict, latest: str, sh: Sh, state_dir: Path, check: bool = False) ->
     failed. report says whether the nightly should print the message as a problem (a new kind). bare is
     "" or the one line saying core.bare was found true on the clone and set back to false."""
     if not c.get("path"):
-        raise RuntimeError('mode "ops-center" needs "path", the local clone')
+        raise RuntimeError('mode "direct" needs "path", the local clone')
     clone = Path(c["path"]).expanduser()
     when = []
     if not check and bare_flag_restore(clone, sh):
@@ -593,7 +593,7 @@ def guard_advice(repo: str, branch: str, hook: str, remote: str) -> str:
         )
     if remote:
         return (
-            f"{repo}: {remote} refuses a direct push. ops-center then lands each release as a pull request; with "
+            f"{repo}: {remote} refuses a direct push. direct then lands each release as a pull request; with "
             f'required checks it waits for them on that head and merges at once ("apply_via": "pr"). A '
             f"branch that also requires a review refuses that merge, so register such a repo as workflow."
         )

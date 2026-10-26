@@ -59,7 +59,7 @@ STATUSES = ("awaiting decision", "approved", "held", "rejected", "shipped")
 
 def consumption_class(mode: str) -> str:
     """An ops center takes every release at once; every other app only through owner approval."""
-    return APPLY_AT_ONCE if mode in ("ops-center", "local") else APPROVAL_GATED
+    return APPLY_AT_ONCE if mode in ("direct", "local") else APPROVAL_GATED
 
 
 # Pure functions (tests/test_consumption.py runs them on fixtures) ------------------------------
@@ -424,7 +424,7 @@ def consumer_row(
 ) -> dict:
     mode = c.get("mode", "workflow")
     if mode == "local":
-        mode = "ops-center"
+        mode = "direct"
     row = {
         "repo": c["repo"],
         "label": report.repo_label(c["repo"]),
@@ -447,7 +447,7 @@ def consumer_row(
     except Exception as exc:
         row["not_collected"].append(f"pinned: {exc}")
     row["behind"] = behind_count(row["pinned"] or "", latest, tags)
-    if mode != "ops-center":
+    if mode != "direct":
         try:
             row["sync_pr"] = sync_pr(c, sh)
         except Exception as exc:
