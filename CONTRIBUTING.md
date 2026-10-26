@@ -36,6 +36,9 @@
 - Shared Hermes skills are named `core-<name>` and live in `hermes/skills/`. Any shareable improvement
   found in a consumer comes back here in the same piece of work (`hermes/README.md` section 4).
 - Do not force-push `main`. Changes land by pull request.
+- Repository secrets: `DEPLOY_APP_PRIVATE_KEY` (with the variable `DEPLOY_APP_ID`) is the private key of the
+  GitHub App the merge workflow `automerge.yml` signs in as. It is the only secret the workflows read; the
+  built-in `GITHUB_TOKEN` is the rest. `repo_checks.py` (RC010) fails a workflow secret named nowhere in the docs.
 - Never put a GitHub closing keyword (`close`, `closes`, `closed`, `fix`, `fixes`, `fixed`,
   `resolve`, `resolves`, `resolved`) in front of a reference to a `consumer-report` issue in a pull
   request title, body or commit message: merging would close that account's report. Link it with

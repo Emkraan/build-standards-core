@@ -9,6 +9,9 @@ the registry (a script_lint rule that only covers part of a rule's acceptance su
 without making it a lint rule). Prints the rule count per doc so docs with no registered rules stay
 visible.
 
+Every repo-check rule names a check in templates/overlay/scripts/repo_checks.py with the same ref, and every
+repo check is registered exactly once.
+
 Usage: python3 checks/check-rules.py        Exit codes: 0 valid, 1 problems.
 """
 
@@ -21,7 +24,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 REG = ROOT / "standards" / "rules.json"
 FORMAT = "build-standards-rules/1"
 LEVELS = {"must", "should"}
-KINDS = {"lint", "core-ci", "overlay-ci", "test", "review"}
+KINDS = {"lint", "core-ci", "overlay-ci", "repo-check", "test", "review"}
 # Scopes a rule applies to. A consumer declares the stacks it has (standards-local/parameters.md) and
 # core-status reports only the rules whose scopes it has, plus every 'all' rule.
 APPLIES = {"web", "wpf", "local-ops", "powershell", "python", "iac", "all"}
@@ -34,6 +37,8 @@ import ui_lint  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 LINT_RULES = {**ui_lint.RULES, **script_lint.RULES}
 
+sys.path.insert(0, str(ROOT / "templates" / "overlay" / "scripts"))
+import repo_checks  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 TEMPLATES = ROOT / "templates" / "overlay" / ".github" / "workflows"
 
@@ -96,6 +101,13 @@ def job_name_problems(name="core-ci.yml"):
     return bad
 
 
+def core_ci_test_missing(command, root):
+    """True when a core-ci command that runs one test file ("npm --prefix kit test -- tests/x.test.tsx")
+    names a file that is not there: the proof would run nothing."""
+    m = re.search(r"--prefix\s+(\S+)\s+test\s+--\s+(\S+)", command)
+    return bool(m) and not (pathlib.Path(root) / m.group(1) / m.group(2)).is_file()
+
+
 def section_exists(text, sec):
     major, _, minor = sec.partition(".")
     lines = text.splitlines()
@@ -122,7 +134,7 @@ def main():
         return 1
     if reg.get("format") != FORMAT:
         bad.append(f"format is {reg.get('format')!r}, expected {FORMAT!r}")
-    seen, per_doc, lint_ids = set(), {}, {}
+    seen, per_doc, lint_ids, repo_ids = set(), {}, {}, {}
     docs = {}
     for i, r in enumerate(reg.get("rules", [])):
         where = f"rule {i} ({r.get('id', '?')})"
@@ -184,6 +196,20 @@ def main():
                 bad.append(f"{where}: the acceptance line must name {wf} and each job")
         if kind == "core-ci" and not r["check"].get("command"):
             bad.append(f"{where}: a core-ci check needs the command core CI runs")
+        if kind == "core-ci" and core_ci_test_missing(r["check"].get("command", ""), ROOT):
+            bad.append(f"{where}: the test file the command runs does not exist")
+        if kind == "repo-check":
+            cid = r["check"].get("id")
+            if cid not in repo_checks.CHECKS:
+                bad.append(f"{where}: check.id {cid!r} is not a repo_checks check")
+            else:
+                if repo_checks.CHECKS[cid][1] != r["ref"]:
+                    bad.append(
+                        f"{where}: repo check {cid} points at {repo_checks.CHECKS[cid][1]!r}, the registry says {r['ref']!r}"
+                    )
+                repo_ids[cid] = repo_ids.get(cid, 0) + 1
+                if cid not in r["acceptance"]:
+                    bad.append(f"{where}: the acceptance line must name {cid}")
         for k in ("title", "statement", "acceptance"):
             if not r[k].isascii():
                 bad.append(f"{where}: {k} is not ASCII")
@@ -192,6 +218,11 @@ def main():
     for lid in ui_lint.RULES:
         if lint_ids.get(lid, 0) != 1:
             bad.append(f"ui_lint {lid} is registered {lint_ids.get(lid, 0)} times, expected once")
+    for cid in repo_checks.CHECKS:
+        if repo_ids.get(cid, 0) != 1:
+            bad.append(
+                f"repo check {cid} is registered {repo_ids.get(cid, 0)} times, expected once"
+            )
     refs = {r.get("ref") for r in reg.get("rules", [])}
     for lid, (_, ref, _) in script_lint.RULES.items():
         if lint_ids.get(lid, 0) > 1:

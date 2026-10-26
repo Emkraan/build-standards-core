@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-10-26 (v1.15.0, proof batch 1: ten rules get a static check, five a core test)
+
+- New rule check kind `repo-check` and `scripts/repo_checks.py` (synced to every overlay). A repo check reads the
+  repo's tracked files and returns findings; `core-status.py` runs the check of every `repo-check` rule and reports
+  pass (no finding), fail (a finding) or excepted (an active exception names the rule), and `unverified` only when
+  the check cannot run. A check passes when the repo holds nothing the rule governs and fails only on a violation
+  (or, where the rule demands a thing, on its absence). A line with `core-exception: EXC-NNN` is skipped. Each
+  check has a failing and a passing fixture in `tests/test_repo_checks.py`. `check-rules.py` binds every check to
+  exactly one rule with the same ref and requires the rule's acceptance line to name it.
+- Ten rules move from review or test to `repo-check`, and their acceptance line now says what the check proves:
+  `automation-safety.1.9` (RC001, no kill by name or pattern), `pr-review-and-merge.1.6` (RC002, merge calls pass
+  the head sha), `ci-cd-release.4` (RC003, no major auto-merge in a renovate config), `ci-cd-release.5` (RC004, a
+  trusted-trigger workflow never checks out or runs pull request code), `web-api-runtime.3.3` (RC005, no platform
+  CORS list in hosting or infrastructure config), `data-safety-sqlite.2.10` (RC006, a SQLite repo's deploy
+  workflows queue and wait for a health endpoint that names the sha), `data-safety-sqlite.2.12` (RC007, no
+  destructive migration and no NOT NULL column without a default), `identity-and-people-data.1.7` (RC008, fixture
+  emails only on reserved test domains), `web-client-runtime.1.2` (RC009, the auth redirect handled in at most one
+  non-test file), `ci-cd-release.9` (RC010, every secret a workflow reads is named in a documentation page).
+- Five rules whose acceptance is a test the kit already ships move to `core-ci`, proved in the core before release
+  by that test: `web-ui.0.8` (toast Undo), `web-ui.12` (theme init), `web-ui.18` (count-up), `web-ui.22`
+  (changelog parser) and `web-shell.3` (generated registry). `check-rules.py` fails a `core-ci` command that
+  names a kit test file that does not exist.
+- The ops-center sync lane now merges its sync pull request with `--match-head-commit` on the commit it pushed.
+  CONTRIBUTING documents the one repository secret the workflows read.
+
 ## 2026-10-26 (v1.14.1, lint-sweep sets up Node for web repos)
 
 - `lint-sweep.yml` ran the repo's "Lint sweep command" on whatever the runner carried, so on a self-hosted

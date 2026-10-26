@@ -40,6 +40,8 @@ Each registered rule gets a status:
   pass        no finding (lint rules), or proved in the core before release (core-ci rules)
   excepted    findings exist but sit inside a ratchet baseline or an active exception
   fail        findings above the baseline
+  pass (repo-check)  a rule whose check is a scripts/repo_checks.py check (RC0nn) is run here against the repo's
+              tracked files: no finding is pass, a finding is fail, an active exception makes it excepted
   proved      a test or review rule (or an overlay-ci rule with no result read) that a valid entry in
               standards-local/proofs.json proves; counted apart from pass
   unverified  a test or review rule with no proof record, an overlay-ci rule whose workflow is installed
@@ -96,6 +98,11 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import corehash as ch  # noqa: E402
+
+try:
+    import repo_checks  # noqa: E402
+except ImportError:  # an overlay that predates repo_checks.py
+    repo_checks = None
 
 REGISTRY = ch.ROOT / "standards-core" / "rules.json"
 LINT = ch.ROOT / "lint-core" / "ui_lint.py"
@@ -502,7 +509,15 @@ def overlay_ci_status(rule, results) -> tuple[str, str]:
 PROOFS = ch.ROOT / "standards-local" / "proofs.json"
 PROOF_KINDS = ("ci", "test", "review")
 # A proof may be the rule's own kind or stronger: ci beats test beats review.
-STRENGTH = {"review": 0, "test": 1, "ci": 2, "overlay-ci": 2, "core-ci": 2, "lint": 2}
+STRENGTH = {
+    "review": 0,
+    "test": 1,
+    "ci": 2,
+    "overlay-ci": 2,
+    "core-ci": 2,
+    "lint": 2,
+    "repo-check": 2,
+}
 REVIEW_MAX_DAYS = 180
 
 
@@ -573,6 +588,22 @@ def load_proofs(registry, today=None) -> tuple[dict, list[str]]:
                 continue
         good[rid] = p
     return good, problems
+
+
+def repo_check_status(rule, by_ref) -> tuple[str, int, str]:
+    """(status, finding count, note) of a repo-check rule: pass on no finding, fail on a finding, excepted
+    while an active exception names the rule, unverified when the check cannot run."""
+    cid = rule["check"].get("id")
+    if repo_checks is None or cid not in repo_checks.CHECKS:
+        return "unverified", 0, f"repo check {cid} is not in this overlay's scripts/repo_checks.py"
+    try:
+        found = repo_checks.run(cid, repo_root())
+    except Exception as e:  # a crashed check proves nothing
+        return "unverified", 0, f"repo check {cid} could not run: {e}"
+    if not found:
+        return "pass", 0, ""
+    first = f"{found[0][0]}:{found[0][1]}: {found[0][2]}"
+    return ("excepted" if by_ref.get(rule["ref"]) else "fail"), len(found), first
 
 
 def in_scope(rule, scopes) -> bool:
@@ -831,6 +862,9 @@ def main(argv):
             )
         elif kind == "core-ci":
             status = "pass"
+        elif kind == "repo-check":
+            status, n, note = repo_check_status(r, by_ref)
+            n_over = n if status == "fail" else 0
         elif kind == "overlay-ci":
             status, note = overlay_ci_status(r, results)
             if status == "unverified" and by_ref.get(r["ref"]):

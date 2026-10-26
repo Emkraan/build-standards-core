@@ -16,6 +16,7 @@ only what is specific to that business.
 | `scripts/triage_marker.py` | The one reference parser for triage markers (`<!-- triage:<sha> <ids> -->`), imported by the merge lane and any CI re-review planner |
 | `scripts/core-status.py` | One report for tooling: the pin, each registered rule's status, expiring exceptions, and (`--latest`) rules new or changed upstream |
 | `scripts/core-ci.py` | The checks behind `core-ci.yml`, one subcommand per job, standard library only, with the scanner, analyzer and ruff pins |
+| `scripts/repo_checks.py` | Static proofs of rules a repo's own files can show (kill by name, unpinned merges, destructive migrations, undocumented secrets and more); `core-status.py` runs them for every rule whose check kind is `repo-check` and reports pass or fail, never a guess |
 | `scripts/merge-pr.py` | Squash merge with a noreply author email; refuses a pull request whose commits carry a non-noreply email, prints the recovery when the merge commit leaks one; remote only, then a local branch cleanup that is safe from any worktree or a detached HEAD |
 | `.github/workflows/core-drift.yml` | The offline drift check |
 | `.github/workflows/core-ci.yml` | The CI half of the standard (section "CI workflow") |
