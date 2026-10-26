@@ -24,7 +24,7 @@ name: core-ci
 # Configure: OVERLAY is the overlay folder relative to the repo root ("." when it is the root).
 # scripts/sync-core.py refreshes this file on every sync and keeps the repo's OVERLAY value.
 # The repository variable CORE_CI_RUNNER, when set, is a JSON runs-on value (for example
-# '["self-hosted", "linux", "arm64"]'); unset, the job runs on ubuntu-latest. The job id, its check
+# '["self-hosted", "linux", "arm64"]'); unset, the job runs on ubuntu-24.04 (not ubuntu-latest: newer images have no Python 3.9 build for the Python floor). The job id, its check
 # name and every check step name start with core-, so nothing here shares a name with the repo's own
 # workflows. Require the one check name core-checks in the merge gate: `python3
 # "$OVERLAY/scripts/core-ci.py" required-checks` reports it when nothing requires it and lists the
@@ -52,7 +52,7 @@ env:
 jobs:
   core-checks:
     name: core-checks
-    runs-on: ${{ fromJSON(vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
+    runs-on: ${{ fromJSON(vars.CORE_CI_RUNNER || '"ubuntu-24.04"') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

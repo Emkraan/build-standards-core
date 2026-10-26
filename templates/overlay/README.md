@@ -76,7 +76,7 @@ not read the pull request, and a push to the default branch runs only `core-secr
 
 Values come from `standards-local/parameters.md`: Stacks, Python floor and test command, commit
 emails, changelog file, version files, ASCII patterns, Node major. The repository variable
-`CORE_CI_RUNNER` sets `runs-on` as JSON; unset, the job runs on `ubuntu-latest`. Require `core-checks`
+`CORE_CI_RUNNER` sets `runs-on` as JSON; unset, the job runs on `ubuntu-24.04` (the Python floor, 3.9, has no build on newer images). Require `core-checks`
 in the merge gate (section "Required checks"). Exclude the vendored copies (`standards-core/`, `lint-core/`,
 `tokens-core/`, `kit-core/`) in the ruff config, as for any formatter.
 
