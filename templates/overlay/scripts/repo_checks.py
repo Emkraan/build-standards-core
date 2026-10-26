@@ -669,6 +669,19 @@ IMPORT_ALIASES = {
     "multipart": "python-multipart",
     "jose": "python-jose",
     "usb": "pyusb",
+    "googleapiclient": "google-api-python-client",
+    "google_auth_oauthlib": "google-auth-oauthlib",
+    "google_auth_httplib2": "google-auth-httplib2",
+    "oauth2client": "oauth2client",
+    "httplib2": "httplib2",
+    "google.protobuf": "protobuf",
+    "markdown": "Markdown",
+    "magic": "python-magic",
+    "crypto": "pycryptodome",
+    "ldap": "python-ldap",
+    "pkg_resources": "setuptools",
+    "mpl_toolkits": "matplotlib",
+    "skimage": "scikit-image",
 }
 # modules provided by pywin32 (the distribution name differs from every import name)
 for _m in [
@@ -848,6 +861,33 @@ def pyproject_requirements(text):
     return reqs
 
 
+def hashed_lock(text):
+    """True for a pip-compile --generate-hashes style file: every requirement line carries a hash."""
+    joined = re.sub(r"\\[ \t]*\r?\n", " ", text)
+    reqs = 0
+    for ln in joined.splitlines():
+        t = ln.split(" #")[0].strip() if not ln.lstrip().startswith("#") else ""
+        if not t or t.startswith("-"):
+            continue
+        reqs += 1
+        if "--hash=sha256:" not in t:
+            return False
+    return reqs > 0
+
+
+def _hashed_lock_beside(repo, d):
+    """A hashed requirements/constraints file in project dir d or its requirements/ or locks/ subdirectory."""
+    homes = {d, (d + "/" if d else "") + "requirements", (d + "/" if d else "") + "locks"}
+    for p in repo.paths:
+        head, _, base = p.rpartition("/")
+        if head not in homes:
+            continue
+        named = re.match(r"(requirements|constraints).*\.txt$|.*\.lock\.txt$", base)
+        if (named or (head != d and base.endswith(".txt"))) and hashed_lock(repo.text(p)):
+            return True
+    return False
+
+
 def declared_deps(repo):
     """(names, unpinned or reasonless requirement lines) from requirements*.txt and pyproject.toml."""
     names, problems = set(), []
@@ -858,6 +898,13 @@ def declared_deps(repo):
     for p in repo.paths:
         base = p.rsplit("/", 1)[-1]
         if re.match(r"requirements.*\.txt$", base):
+            if hashed_lock(repo.text(p)):
+                lines = []  # a generated lock: names come from it, no reason comments are due
+                for ln in repo.text(p).splitlines():
+                    m = re.match(r"([A-Za-z0-9][A-Za-z0-9._-]*)\s*(==|$|\\)", ln)
+                    if m:
+                        names.add(norm_dist(m.group(1)))
+                continue
             lines = repo.text(p).splitlines()
             for i, ln in enumerate(lines):
                 t = ln.split("#")[0].strip()
@@ -881,9 +928,20 @@ def declared_deps(repo):
                 m = re.match(r"\s*([A-Za-z0-9][A-Za-z0-9._-]*)", req)
                 if m:
                     names.add(norm_dist(m.group(1)))
-            if not locked and re.search(r"(?m)^\s*dependencies\s*=", text):
+            if (
+                not locked
+                and not _hashed_lock_beside(repo, p.rpartition("/")[0])
+                and re.search(r"(?m)^\s*dependencies\s*=", text)
+            ):
                 problems.append((p, 1, "dependencies are declared with no lock file to pin them"))
     return names, problems
+
+
+def _mod_key(dotted):
+    """Top-level import name; google.protobuf keeps its second part (protobuf is a distribution)."""
+    if dotted == "google.protobuf" or dotted.startswith("google.protobuf."):
+        return "google.protobuf"
+    return dotted.split(".")[0]
 
 
 def import_declared(mod, declared):
@@ -917,9 +975,9 @@ def rc012(repo):
         for node in ast.walk(tree):
             mods = []
             if isinstance(node, ast.Import):
-                mods = [a.name.split(".")[0] for a in node.names]
+                mods = [_mod_key(a.name) for a in node.names]
             elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
-                mods = [node.module.split(".")[0]]
+                mods = [_mod_key(node.module)]
             for m in mods:
                 if m in std or m in local or m == "__future__":
                     continue

@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-26 (v1.27.2, RC012 lock files and import aliases)
+
+- `repo_checks.py` RC012 accepts a pip-tools hashed file (`pip-compile --generate-hashes` output named
+  `requirements*.txt`, `constraints*.txt` or `*.lock.txt`) as a lock file for the project it sits beside, or in its
+  `requirements/` or `locks/` subdirectory. Every requirement line in the file must carry a `--hash=sha256:`, so a
+  plain or partly hashed file is still not a lock. A generated hashed requirements file no longer needs reason
+  comments.
+- The import-to-distribution table gains `googleapiclient`, `google_auth_oauthlib`, `google_auth_httplib2`,
+  `oauth2client`, `httplib2`, `google.protobuf` (to `protobuf`), `markdown`, `magic`, `Crypto`, `ldap`,
+  `pkg_resources`, `mpl_toolkits` and `skimage`; the `google-*` family still covers `google.auth`,
+  `google.oauth2` and `google.cloud.*`. A truly undeclared import still fails.
+- Tests cover each case.
+
 ## 2026-10-26 (v1.27.1, RC012 false positives)
 
 - `repo_checks.py` RC012 (every import outside the standard library is pinned) no longer reports a declared
