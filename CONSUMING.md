@@ -13,6 +13,21 @@ Your first job is to make this machine a consumer, so the standard applies itsel
 these steps in order, then report the result to the operator. Each step is idempotent: if it was
 done before, running it again only updates it.
 
+## The three channels
+
+The core reaches a consumer through three channels. A consumer uses one, two or all three, and
+none of them needs an invitation, a token or an account to read the core: it is public.
+
+| Channel | What it delivers | How it stays current | Section |
+|---|---|---|---|
+| Overlay sync | `standards-core/`, `tokens-core/`, `lint-core/`, `kit-core/`, the overlay scripts and the template workflows (`core-ci.yml`, `core-drift.yml`, `core-update.yml`, `lint-sweep.yml`), pinned by `standards.lock` | the repo's own `core-update.yml` opens a pull request on every release; or run `python3 scripts/update-core.py` by hand | 3, 12 |
+| Reusable workflow (opt in) | the same one-job `core-ci` checks, run from the core at a pinned release, with no copy of `core-ci.yml` in the repo | move the pinned commit (by hand or with Renovate) | 3 ("Alternative") |
+| Agent skills | the `core-` skills and settings for the agent on a machine | the nightly job (`hermes/nightly.py`) | 2, 4 |
+
+The overlay is still what holds `standards-local/` (parameters, exceptions, proofs, lint config),
+even when CI runs through the reusable workflow. A repo with no Hermes agent skips sections 1, 2
+and 4 to 7 and reads sections 3 and 8 to 14. The sections after 7 are written for any consumer.
+
 ## 1. Get the clone and check the basics
 
 - If you are not already in a clone of this repo, run
@@ -42,12 +57,13 @@ operator to rerun it with `--ui OWNER/REPO` for each UI repo.
 Run from this clone:
 
 ```
-python3 hermes/setup.py --ui OWNER/REPO[:MODE[:PATH]] [--ui OWNER/REPO ...]
+python3 hermes/setup.py --ui OWNER/REPO[=MODE:PATH] [--ui OWNER/REPO ...]
 ```
 
-`MODE` is `workflow` (default), `ops-center` or `vendored`, and `PATH` is the repo's local clone
-(required for the last two: section 3 says what each mode does). `local` is the deprecated name of
-`ops-center` and keeps working as an alias. Setup writes
+`MODE` is `workflow` (the default, written as just `OWNER/REPO`), `ops-center`, `vendored` or
+`pin-file`, and `PATH` is the repo's local clone (required for the last three: `OWNER/REPO=ops-center:PATH`;
+section 3 says what each mode does). `local` is the deprecated name of `ops-center` and keeps working as
+an alias. Setup writes
 `~/.config/build-standards-core/consumer.json`, the machine's consumer record (section 5), the cron
 wrapper `~/.hermes/scripts/core-nightly.sh`, and the Hermes cron job `core-nightly` (no-agent, daily
 at 03:15, output to the origin chat, failures notified). It removes the older `core-skills-sync` job
@@ -58,7 +74,7 @@ them. Then it runs the job once and prints what it did. Add `--check` first to p
 
 ## 3. Set up each way
 
-A repo takes the core one of four ways; the registration records which, and the nightly treats it
+A repo takes the core one of five ways; the registration records which, and the nightly treats it
 accordingly (README "Direction").
 
 ### `workflow`: a product repo
@@ -86,8 +102,9 @@ accordingly (README "Direction").
   pull request from merging. Add the required checks, or register the repo as `ops-center` (the
   local gate). `--allow-no-required-checks` registers it anyway and prints a warning; choose it only
   knowingly, since `core-update.yml` then is the only thing that waits for CI.
-- This needs one token that can open pull requests that start CI on THIS repo (reading the public core
-  needs nothing). Prefer a GitHub App: set the repository variable `CORE_APP_ID` (the App's client ID) and
+- Set the repository variable `CORE_REPO` to `OWNER/build-standards-core`: it is where `core-update.yml`
+  finds the core (a variable, so no file in the repo names it). Reading the core needs no credential.
+- This needs one token that can open pull requests that start CI on THIS repo. Prefer a GitHub App: set the repository variable `CORE_APP_ID` (the App's client ID) and
   the secret `CORE_APP_PRIVATE_KEY` (or name an existing App secret in the variable `CORE_APP_KEY_SECRET`);
   the job mints a short-lived installation token with contents, pull-requests and workflows write on this
   repo, so no personal token exists. The App needs those three repository permissions. An account with no
@@ -134,9 +151,9 @@ trigger list so a fixed title or body is re-validated.
   called at, read from `job.workflow_sha`, so the scripts always match the pinned workflow). No `secrets:`
   line is needed: no step reads a secret and the core is fetched anonymously.
 - It runs the same ONE job with the same named steps, gating and `FULL` and `COMMITS` values as the
-  template (a test keeps the two byte for byte equal): every check on a pull request and a merge queue
-  entry, a title or body edit runs only `core-pr-title` and `core-attribution`, and a push to the default
-  branch runs only `core-secret-scan`. The triggers stay in the caller, so the job budget is the same:
+  template (a test keeps the two byte for byte equal): every check on a pull request event (an edit
+  included, as above), every step that does not read the pull request on a merge queue entry, and only
+  `core-secret-scan` on a push to the default branch. The triggers stay in the caller, so the job budget is the same:
   one job per pull request event.
 - The caller's repo is checked out at the pull request head with full history; the core is fetched at the
   pinned commit into the runner's temp folder, outside the workspace, so no repo-wide tool sees it. The
@@ -258,13 +275,23 @@ the repo's agent to run; the core never changes a ruleset or a required check it
   scan the clone at its root against the core's kit, so section g and the candidates list the repo
   too.
 
+### `pin-file`: a repo that records the core as one line
+
+- For a repo that holds the core only as a `KEY=<tag>` line in a plain file (for example a deploy repo
+  whose host syncs the pinned release at deploy time). Register it with `--ui OWNER/REPO=pin-file:PATH`,
+  then set `file` (and optionally `key`, `after`, `add`, `message`, `metrics`) in its entry in
+  `consumer.json`; `hermes/pin_file.py` documents each key.
+- Approval-gated. The nightly reads the pin from the default branch and, when it is behind, rewrites the
+  line in a throwaway worktree, commits as the clone's noreply identity, pushes `chore/core-pin-<release>`
+  and opens the pull request. The repo's own merge path takes it after the owner approves.
+
 ### Who does what, per class
 
 The owner's rule (README "Direction", "Two consumption classes"; `ci-cd-release.md` section 11):
 
-| | Apply-at-once (`ops-center`, `agent-home`) | Approval-gated (`workflow`, `vendored`) |
+| | Apply-at-once (`ops-center`, `agent-home`) | Approval-gated (`workflow`, `vendored`, `pin-file`) |
 |---|---|---|
-| A new release | the nightly applies it at once behind the ops center's gate, rolls back on failure; a gated repo's release lands as a pull request that merges as soon as its own checks pass | arrives as a pull request: `core-update.yml`'s draft, or the vendoring tool's |
+| A new release | the nightly applies it at once behind the ops center's gate, rolls back on failure; a gated repo's release lands as a pull request that merges as soon as its own checks pass | arrives as a pull request: `core-update.yml`'s draft, the vendoring tool's, or the pin-file bump |
 | Who approves it | nobody: the gate is the approval | the owner, one action in the Core consumption panel or on GitHub |
 | Who merges it | the nightly, after the gate passes (and the repo's own checks, for a gated repo) | the repo's merge gate or `merge-pr.py`, after the owner's approval and green checks |
 | Adopting new kit parts | the ops center's own changes | planned pull requests the owner approves, one per swap |
@@ -324,8 +351,10 @@ Version 2 is the current shape:
     "ui": true,
     "claude": false,
     "safe_restart": false,
-    "report": true
+    "report": true,
+    "consumption": true
   },
+  "report_repo": "OWNER/PRIVATE-INTAKE",
   "ui_consumers": [
     {
       "repo": "OWNER/REPO",
@@ -349,13 +378,14 @@ Version 2 is the current shape:
 | `apply.report` | the upward report step, on when missing | v0.49.0 |
 | `apply.consumption` | the consumption feed `consumption.json` (standards/local-ops-app.md section 19), on when missing | v0.59.0 |
 | `ui_consumers[].repo` | the repo as `OWNER/REPO` on GitHub | v0.36.0 |
-| `ui_consumers[].mode` | `workflow`, `ops-center` or `vendored`; `local` is a deprecated alias of `ops-center` | v0.36.0 (`ops-center` and `vendored` from v0.49.0) |
+| `ui_consumers[].mode` | `workflow`, `ops-center`, `vendored` or `pin-file`; `local` is a deprecated alias of `ops-center` | v0.36.0 (`ops-center` and `vendored` from v0.49.0, `pin-file` from v0.88.0) |
 | `ui_consumers[].overlay` | the overlay folder inside the repo (default `standards-overlay`) | v0.36.0 |
 | `ui_consumers[].path` | the repo's local clone; required for `ops-center` and `vendored` | v0.36.0 |
 | `ui_consumers[].apply` | `false`: report only, a local job of this machine applies the core (`setup.py --report-only`); missing means on | v0.58.0 |
 | `ui_consumers[].sync_head` | the head-branch prefix of the repo's sync pull request, for the consumption feed (default `chore/core-`; a vendoring tool names its own) | v0.59.0 |
 | `ui_consumers[].apply_via` | `ops-center` only: `pr` lands each release as a pull request through the repo's own CI gate and merges it at once; `direct` commits to the default branch; missing: detected (a remote whose default branch requires status checks, or the repo's own pre-push guard, means `pr`) | v0.64.0 |
 | `ui_consumers[].pr_timeout_min` | `ops-center` with `apply_via` `pr`: minutes to wait for the repo's own checks before the pull request is closed (default 60) | v0.64.0 |
+| `report_repo` | `OWNER/REPO` of the private intake that receives this account's consumer report (section 7); set it with `hermes/setup.py --report-repo OWNER/REPO` | v0.102.0 |
 | `ui_consumers[].pin` | `vendored` only: a file on this machine where the vendoring tool writes the release it copied (the first `vX.Y.Z` in it is read); optional when the tool records the source hash instead | v0.58.0 |
 
 A release that adds a key adds its row here with the release, and the nightly fills the default in
@@ -404,9 +434,9 @@ remote and never writes to another account's issue.
 - `standards-local/parameters.md` has a `Stacks` row (a missing row is a problem, and
   `--require-lint-config` fails on it).
 - Every rule still `unverified` either gets a proof record in `standards-local/proofs.json` (a
-  `ci` job, a `test` file that carries the rule id, a dated `review` record that reports as `attested`, or a dated
-  `waiver` with a reason that reports as `waived`; README "Source of truth and explicit
-  exceptions") or stays on the operator's list. A stale or broken record is reported as a problem.
+  `ci` job, a `test` file that carries the rule id, a dated `review` record that reports as `attested`, or a
+  dated `waiver` with a reason that reports as `waived`; section 8) or stays on the operator's list. A
+  stale or broken record is reported as a problem.
 - Tell the operator what changed, and that the app needs a restart if the run said RESTART.
 - If the nightly pull is blocked by local changes you did not make (generated files), run `git status`,
   `git restore` those files and run the job again. Never commit in this clone.
@@ -467,6 +497,271 @@ the sanitising rules in [CONTRIBUTING.md](CONTRIBUTING.md#reporting-from-a-consu
 approves items in the issue; the account that owns an approved item opens the core pull request and
 links the issue.
 
+## 8. Rule status, proofs and the repo checks
+
+`python3 scripts/core-status.py` is the one report on an overlay: the pin, one status per registered rule,
+exceptions expiring within 30 days and problems. `--json` prints the machine form, `--latest` adds the rules
+that are new or changed in the newest release, `--ci` reads the `overlay-ci` results from the repo's latest
+default-branch run (needs `gh`), `--require-ui-adopted` and `--require-lint-config` exit 1 for the drift
+workflow, and `--vendored OWNER/REPO` reads a vendored repo's record. It never changes a file.
+
+### The eight statuses
+
+| Status | Means | How a consumer gets it |
+|---|---|---|
+| `pass` | no finding: a lint rule with zero findings, a `repo-check` rule with no finding, an `overlay-ci` job that succeeded, or a rule the core proved before release (`core-ci`) | nothing to record; fix the finding |
+| `proved` | a `ci` or `test` proof record is valid; counted apart from `pass`, because the script did not watch it pass | a `ci` or `test` record in `standards-local/proofs.json` |
+| `attested` | a person looked: a dated `review` record that expires | a `review` record |
+| `waived` | the rule is set aside for this repo with a reason; never counted as proof and it expires | a `waiver` record |
+| `not_applicable` | a rule the core proves on the kit, in an app that does not adopt the kit whole (below) | nothing; adopt the UI or leave it |
+| `excepted` | findings sit inside a ratchet baseline or an active exception | a row in `standards-local/exceptions.md` that names the rule (README "Source of truth and explicit exceptions") |
+| `unverified` | nothing proves it yet: a `test` or `review` rule with no record, or an `overlay-ci` result that was not read | record a proof, or leave it on the operator's list |
+| `fail` | a finding above the baseline, a `core-ci.yml` or `lint-sweep.yml` job the rule needs is not installed, or a declared stack has no lint config | fix it; no record can turn a `fail` into anything else |
+
+A proof record only ever replaces `unverified`. The rule kinds in `standards/rules.json` are `lint`,
+`core-ci`, `overlay-ci`, `repo-check`, `test` and `review`.
+
+### Recording a proof: `standards-local/proofs.json`
+
+The file is consumer-owned. Every record is `"<rule id>": {"kind": ..., "ref": ...}`; paths are from the
+repo root, dates are `YYYY-MM-DD`.
+
+```json
+{
+  "$max_review_age_days": 180,
+  "rbac.1.3": {"kind": "ci", "ref": "ci.yml#route-guard"},
+  "web-ui.20": {"kind": "test", "ref": "app/test/rail.test.ts"},
+  "ci-cd-release.7": {"kind": "review", "ref": "docs/reviews/deploy.md", "date": "2026-10-20", "reviewed_by": "owner"},
+  "web-ui.0.3": {"kind": "waiver", "ref": "docs/waivers/glow.md", "date": "2026-10-20", "reason": "the app draws no glow surfaces", "reviewed_by": "owner"}
+}
+```
+
+| Kind | `ref` | Also needed | Reports as |
+|---|---|---|---|
+| `ci` | `<workflow file>#<job>` of a workflow installed in `.github/workflows/` (a job id, or a `core-` step of `core-ci.yml`) | nothing | `proved` |
+| `test` | a test file that exists | the file carries the rule id, as a comment such as `core-rule: web-ui.20` | `proved` |
+| `review` | the review record | `date` within `$max_review_age_days` (default 180); `reviewed_by` (a missing one is a warning) | `attested` |
+| `waiver` | the waiver record | `date` (same expiry), `reason` and `reviewed_by`, all required | `waived` |
+
+A proof's kind must be the rule's own check kind or stronger (`ci`, then `test`, then `review`), so a
+`review` record cannot prove a `test` rule; a `waiver` can set aside any rule that would read `unverified`.
+A missing file, an unknown rule id, a weaker kind, a stale date or a waiver without a reason is listed
+under problems and proves nothing. `unverified` rules are the work list; the verified ones need no file.
+
+**The `core-rule: <id>` tag and `PROOF_TAG_ENFORCED`.** A test proof must name its rule, so the proof
+fails when the test file is replaced or the tag removed. Today a missing tag keeps the proof and adds a
+`WARNING` line (a `warnings` entry in `--json`). `PROOF_TAG_ENFORCED` is a constant at the top of the
+synced `scripts/core-status.py`: a core release sets it to `True`, and from then a missing tag is a
+problem and the proof stops counting. A consumer never edits it (the file is core-owned); tag every test
+proof now so the release that flips it changes nothing. The release notes say when it flips.
+
+### Kit-test proofs: `not_applicable` without UI adoption
+
+Nine rules are proved by a test the kit already ships, run in the core before release, and carry
+`requires: ui-adoption` in the registry: `web-ui.0.8` (toast Undo), `web-ui.12` (theme init), `web-ui.18`
+(count-up), `web-ui.19` (rail state and pin), `web-ui.22` (changelog parser), `web-ui.24` (axe on the shell
+and overlays in both themes), `web-ui.26.1` (per-app dismissal keys), `web-shell.3` (generated registry) and
+`web-shell.5` (module CSS scope). An app that adopts the kit whole (the UI verdict `adopted`) reads `pass`
+for them; any other app reads `not_applicable`, counted apart in the summary. A proof record does not
+change a `not_applicable` rule: the way to a `pass` is to adopt the UI (`kit/MIGRATION.md`).
+
+### The `repo-check` kind: RC001 to RC022
+
+A `repo-check` rule is proved by a static check of the repo's own tracked files, `scripts/repo_checks.py`.
+`core-status.py` runs the check of every such rule: no finding is `pass`, a finding is `fail`, an active
+exception that names the rule is `excepted`, and `unverified` only when the check cannot run. A check
+passes when the repo holds nothing the rule governs (no migrations, no deploy workflow) and fails on a
+violation or, where the rule demands a thing, on its absence. A line carrying `core-exception: EXC-NNN` is
+skipped. The synced copies (`standards-core/`, `kit-core/`, `lint-core/`, `tokens-core/`), build output
+and dependency folders are not scanned.
+
+| Check | Rule | Reports a finding when |
+|---|---|---|
+| RC001 | `automation-safety.1.9` | a script or workflow kills a process by name or pattern |
+| RC002 | `pr-review-and-merge.1.6` | a merge command or merge endpoint call carries no head sha |
+| RC003 | `ci-cd-release.4` | a renovate config auto-merges major updates |
+| RC004 | `ci-cd-release.5` | a workflow with a trusted trigger checks out or runs pull request code |
+| RC005 | `web-api-runtime.3.3` | hosting or infrastructure config holds a platform CORS origin list |
+| RC006 | `data-safety-sqlite.2.10` | a SQLite repo's deploy workflow has no queueing concurrency group or no health step that names the sha (a static-site or Vercel-only deploy is carved out) |
+| RC007 | `data-safety-sqlite.2.12` | a migration is destructive, or adds a NOT NULL column without a default |
+| RC008 | `identity-and-people-data.1.7` | a fixture email address is outside the reserved test domains |
+| RC009 | `web-client-runtime.1.2` | the auth redirect is handled in more than one non-test source file |
+| RC010 | `ci-cd-release.9` | a secret a workflow reads is named in no documentation page |
+| RC011 | `secrets-and-credentials.1.4` | a checkout of another repository has no ssh-key |
+| RC012 | `scripting-python.1.2` | an import outside the standard library is not in a pinned requirements file with a reason comment, or in a declared dependency list with a lock file (a `pip-compile --generate-hashes` file counts as a lock only when every line carries a hash) |
+| RC013 | `ci-cd-release.6` | a stateful deploy workflow neither re-runs CI nor waits on a CI job, or has no health check |
+| RC014 | `web-ui.9` | a web app's test suites never run axe or never cover both themes |
+| RC015 | `web-ui.25` | an app mounts an app shell and renders no build card |
+| RC016 | `web-build.8.1` | a package has no verify script, or one that skips a `check:*`, typecheck, lint, build or test script the package defines |
+| RC017 | `scripting-python.1.3` | a subprocess call passes a secret-named value or flag as an argument |
+| RC018 | `web-client-runtime.4.2` | a vite config has no `manualChunks` |
+| RC019 | `web-client-runtime.4.1` | a bundled app has no bundle size budget check (a size-limit or bundlewatch config, or a budget script) |
+| RC020 | `web-client-runtime.4.3` | a vite config has no `assetsInlineLimit` |
+| RC021 | `web-client-runtime.5.1` | an app's client code builds the bearer header in more than one file |
+| RC022 | `rbac.3` | an app compares permissions or roles by hand in more than one non-test file |
+
+RC021 and RC022 group files per app (`apps/<name>`, `packages/<name>`, `services/<name>`). Each rule's
+acceptance line says exactly what its check proves and what stays with review.
+
+Run them locally from the repo (the overlay's `scripts/` folder):
+
+```sh
+python3 scripts/repo_checks.py              # every check: one line each, exit 1 on any finding
+python3 scripts/repo_checks.py --list       # each check id and the rule it proves
+python3 scripts/repo_checks.py --json       # findings as JSON
+python3 scripts/repo_checks.py --root DIR   # another repository (the git top level of DIR is used)
+```
+
+In a clone of the core the script is `templates/overlay/scripts/repo_checks.py`.
+
+## 9. UI lint config and scrolling
+
+**Lint config.** `standards-local/ui-lint.json` tells `python3 lint-core/ui_lint.py` what to read:
+
+```json
+{ "paths": ["src"], "exclude": [], "token_files": [], "data_palettes": [], "baseline": null }
+```
+
+`paths` and `exclude` pick the files; `token_files` adds files allowed to hold colour literals (the synced
+`tokens-core/` always is); `baseline` is only for an app that runs the lint without taking the kit (a UI
+consumer may not keep one: `core-status.py --require-ui-adopted` and the lint refuse it). `data_palettes`
+lists globs of files that hold data colours (a chart theme, a table of category colours): the colour
+literal rule UI003 is skipped in them and every other rule still applies. A colour literal in any other
+file still fails. A one-sided border under 2px in a neutral grey (equal channels, or saturation of 10% or
+less) is a hairline divider and UI001 does not flag it; a coloured hairline, a border of 2px or more and
+every accent edge bar still fail. Suppress a finding only with `core-exception: EXC-NNN` (or `edge-ok` for
+a data mark that looks like an edge bar, UI001 only); there is no switch that turns a rule off. The full
+rule table is `lint/README.md`.
+
+**Scrolling.** The standard is `web-ui.md` rule 0.12 (`web-ui.0.12`, a review rule): the page body is one
+vertical scroll container, a board is sized to the window with a floor and scrolls on its own edge, a wide
+table has a capped scroll area with a floor, a page header is never capped with a viewport fraction, and
+`overflow: hidden` is never put on a flex parent to fit a board. The kit carries the sizing, so use it
+instead of local CSS:
+
+| Kit part | What it does |
+|---|---|
+| `page-scroll` class | makes the page body the one vertical scroll container (full height) |
+| `Table` `capped` prop | limits the table to the window height less 15rem, never under 16rem, as a named focusable region so the keyboard can scroll it |
+| `LaneBoard` `fit` prop | sizes the board to the window height less 6rem, never under 360px, scrolls sideways on the board edge and each lane on its own |
+
+`capped` and `fit` default to off, so an existing use is unchanged. The proof is loading every route that has a
+board or a wide table at a window about 700px tall; record it as an `attested` review in `proofs.json`.
+Details are in `kit/README.md`.
+
+## 10. Releases and versions
+
+- A release is a tag `vMAJOR.MINOR.PATCH` plus a GitHub Release. Nobody tags by hand. When a pull request
+  that adds a new top `CHANGELOG.md` entry merges, `release.yml` (`checks/auto-release.py`) creates the
+  annotated tag on the merge commit, creates the Release with that entry as its notes, and calls
+  `gallery-release.yml` to attach `kit-gallery-<tag>.zip`. A push with no new top entry does nothing. The
+  top version must be greater than the latest tag and an existing tag is never moved: a mismatch fails the
+  run. `python3 checks/auto-release.py --dry-run` prints the decision for the current commit and changes
+  nothing.
+- The entry heading is `## YYYY-MM-DD (vX.Y.Z, short title)`, newest first. A rule that becomes stricter, or
+  a parameter that becomes required, is a major release; a new rule, doc or optional parameter is a minor
+  release; a wording fix or clarification is a patch release.
+- The version is assigned at merge, not when you start. Just before you open the pull request, and again
+  before it merges, read the latest tag and the top entry on `main` (`git fetch origin` then
+  `git ls-remote --tags --sort=-v:refname origin 'v*'` and the first heading of `origin/main:CHANGELOG.md`).
+  If another change took your number, merge `origin/main` into your branch, renumber your entry to the next
+  free version, and run the checks again. Never leave two entries with one version.
+- Consumers move only to published releases. Read the `CHANGELOG.md` entries between your pin and the
+  newest release before moving the pin.
+- Monitoring. An external monitor, outside this repository, watches the releases and the pins of the
+  consumers. The core runs none of it and a consumer needs nothing from it; the in-repo signal is the
+  consumer's own `check-core-sync.py --latest` (exit 3 when behind).
+
+## 11. Reporting and contributing
+
+- The core is public. Reading it, syncing it and calling its reusable workflow need no account, invitation
+  or token.
+- A build's agent never opens a pull request on this repo and never files a report on it. Findings go to the
+  account's one open `consumer-report` issue in the owner's private intake repository (section 7). The owner
+  approves items there; the account that owns an approved item opens the core pull request, links the issue
+  with `Refs #N` or `for #N` (never a closing keyword in front of a report issue: `check-closing-refs.py`
+  fails it), and merges it once `ci` and `visual` pass.
+- A pull request from a fork of the public core runs the same checks. `merge-pr.py` refuses a branch on a
+  fork (it cannot rewrite it), so such a pull request is merged by an owner account, and one with no
+  approved item behind it is closed unmerged (CONTRIBUTING.md).
+- A vulnerability is reported privately through the repository's Security tab (`SECURITY.md`), never as an
+  issue.
+- Every change needs a dated `CHANGELOG.md` entry, plain ASCII, no business names and no real email
+  addresses (CONTRIBUTING.md). Commit with a GitHub noreply address and enable the hook once per clone:
+  `git config core.hooksPath checks/hooks`.
+
+## 12. The update flow for an account that only has the public docs
+
+This is the flow for a repo on its own GitHub account, with no access to anything of the owner's. It needs
+`git` and Python 3.9 or newer; `gh` is optional (the scripts fall back to plain `git` over HTTPS).
+
+1. Check the core is reachable: `git ls-remote --tags https://github.com/OWNER/build-standards-core.git`.
+2. Tell the scripts where the core is. In CI set the repository variable `CORE_REPO` to
+   `OWNER/build-standards-core`; on a machine export `CORE_REPO` (or run `hermes/setup.py`, which writes
+   `core_repo` into `consumer.json`). The lock file never names it.
+3. Adopt once: copy `templates/overlay/` into the repo, fill `standards-local/parameters.md`, run
+   `python3 scripts/sync-core.py latest`, and commit the lock, the synced copies and the scripts (README
+   "Consuming the core"). Put `core-ci.yml` in the root `.github/workflows/` and require `core-checks` in the
+   merge gate (`python3 scripts/core-ci.py required-checks`).
+4. See where you stand: `python3 scripts/check-core-sync.py --latest` prints `pinned vX, latest vY` and exits
+   3 when behind. `python3 scripts/core-status.py` is the rule report.
+5. Update. By hand: `git switch -c chore/core-sync`, `python3 scripts/update-core.py` (prints the new tag
+   when it changed files, nothing when current), run `python3 scripts/check-core-sync.py`, commit, open the
+   pull request and let CI run. Automatically: dispatch `core-update.yml` from your scheduler
+   (`gh workflow run core-update.yml --repo OWNER/REPO`); it needs the token lane in section 3 (the App
+   variable `CORE_APP_ID` and secret `CORE_APP_PRIVATE_KEY`, or the secret `CORE_TOKEN`).
+6. Hold-free means no one has to remember to release a held pull request. `core-update.yml` opens the sync
+   as a draft until someone marks it ready (`gh pr ready N`); that is the default (`CORE_UPDATE_MERGE`
+   unset or `approve`). An account that is its own approver sets the variable `CORE_UPDATE_MERGE` to `wait`
+   (the job waits for every check on the head commit to be green on two reads, then merges that exact commit
+   with `merge-pr.py --match-head-commit`) or `gate` (the repo's own merge gate merges it once the required
+   checks pass). A red check or the `CORE_UPDATE_WAIT_MINUTES` timeout (default 60) leaves the pull request
+   open. GitHub's auto-merge is never used.
+7. Read the `CHANGELOG.md` entries since the old pin, list any rule your apps now violate, land the
+   standards first and the code fixes after.
+
+## 13. What READY means, and troubleshooting
+
+**A pull request to the core is READY** when it is opened as a normal (not draft) pull request after every
+check in `.github/workflows/checks.yml` has passed locally, the changelog top entry carries the next free
+version, and `ci` and `visual` are the checks that remain. Locally, from the clone:
+
+```sh
+python3 checks/check-sanitised.py --diff origin/main      # also run with no argument for the full tree
+python3 checks/check-consumer-neutral.py --diff origin/main
+python3 checks/check-ascii.py
+python3 checks/check-placeholders.py
+python3 checks/check-links.py
+python3 checks/check-rules.py
+python3 checks/check-hermes-skills.py        # regenerate with python3 hermes/build_skills.py when a source doc changed
+python3 checks/check-changelog.py origin/main
+python3 checks/check-authors.py origin/main
+python3 checks/check-closing-refs.py origin/main
+python3 -m unittest discover -s tests -p "test_*.py"
+ruff check . && ruff format --check .
+```
+
+README "Checks" lists the rest (tokens, lints, kit). Run the unit tests under the oldest interpreter too
+(`/usr/bin/python3` on macOS is 3.9), not only the newest.
+
+**A consumer repo is READY** when `python3 scripts/check-core-sync.py` prints `core sync: clean`,
+`python3 scripts/check-exceptions.py` and `python3 lint-core/ui_lint.py` pass, `python3
+scripts/core-status.py --require-ui-adopted --require-lint-config` exits 0 (a UI repo), `core-checks`
+(or `core-checks / core-checks`) is required in the merge gate and green, and no rule is `fail`. The
+`unverified` list is the open work, not a blocker.
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| The pull request is `UNSTABLE` and nothing is running; one check shows cancelled | a non-required check was cancelled (an edit seconds after a push cancels the earlier run) and the merge workflow did not run again | `gh run rerun <run id>`, then `gh workflow run automerge.yml --repo OWNER/build-standards-core`. Check `gh pr view N --json state,mergeStateStatus` no more often than every 3 minutes |
+| The merge gate waits forever on `core-checks` after the move to the reusable workflow | the called job reports `core-checks / core-checks` | require the qualified name (section 3, migration recipe) |
+| `core-ci.yml has no job core-python` and the `overlay-ci` rules fail | the repo's `core-ci.yml` predates the `core-` job names | `python3 scripts/sync-core.py latest`, then `python3 scripts/core-ci.py required-checks --fix` |
+| `Could not read OWNER/build-standards-core at <ref>` | the ref does not exist, `CORE_REPO` is unset or wrong, or no route to github.com | check the tag and `CORE_REPO` (step 2 of section 12) |
+| `DRIFT` or `content hash ... does not match the lock` | someone edited a synced copy, or a formatter reflowed it | rerun `sync-core.py` and commit both; exclude the synced folders from formatters (README) |
+| `version 3.9 was not found` on a runner | a job set up Python 3.9 on an image that has none (`ubuntu-latest`) | run on `ubuntu-24.04`, which the template and reusable workflows default to; `CORE_RUNNER` and `CORE_CI_RUNNER` override |
+| A script fails with a syntax or import error on the system Python | a construct newer than 3.9 | Python 3.9 is the floor for every shipped script and for core CI: no `match`, no `X | Y` types at runtime without `from __future__ import annotations`, no `tomllib` without a fallback |
+| `check-closing-refs` fails | a closing keyword sits in front of a `consumer-report` reference | write `Refs #N` or `for #N` |
+| A proof reads `WARNING ... does not name the rule` | the test file lacks the rule id | add the comment `core-rule: <rule id>` |
+
 ## What the job will not do
 
 - Install anything the Hermes skills security scan blocks (`caveman-compress` stays optional and
@@ -484,8 +779,8 @@ links the issue.
 - Every account that commits or opens pull requests keeps its email private (section 1 and
   `pr-review-and-merge.md 1.18`); merge with `merge-pr.py`, which refuses a pull request whose commits
   carry an email that is not noreply and prints the recovery if the merge commit still leaks one.
-- After the merge, tag the merge commit (`vX.Y.Z`) and push the tag. The tag push publishes the
-  GitHub release, and consumers move only to published releases.
+- Never tag by hand. A merged pull request that adds a new top `CHANGELOG.md` entry is released
+  automatically (section 10), and consumers move only to published releases.
 - Scope: the Hermes part of the standard covers only what is listed in `hermes/tools.json`.
   Whether something found on this machine belongs in the core is decided by one test
   (CONTRIBUTING.md "Does it belong in the core?"): would it help another consumer's agent that
@@ -497,7 +792,7 @@ links the issue.
 
 | Need | File |
 |---|---|
-| What the core is for, the four ways and the two consumption classes | README "Direction" |
+| What the core is for, the five ways, the three channels and the two consumption classes | README "Direction" |
 | The consumption feed and the ops center's approval desk | `standards/local-ops-app.md` section 19, `hermes/consumption.py` |
 | Rules for code, UI, CI and scripts | `standards/` and `standards/rules.json` |
 | Hermes settings and plugins, with reasons | `hermes/configurations.md` |
@@ -505,4 +800,8 @@ links the issue.
 | Per-tool decisions the nightly job installs | `hermes/tools.json` |
 | How a UI repo consumes the core | README "Consuming the core", `templates/overlay/` |
 | How a build reports to the core | the private intake's `consumer-report` template (`report_repo`), `CONTRIBUTING.md` |
-| How to contribute | `CONTRIBUTING.md`, `hermes/README.md` section 4 |
+| How to contribute | `CONTRIBUTING.md`, `hermes/README.md` section 4, sections 10, 11 and 13 above |
+| Rule statuses, proof records, the `RC001` to `RC022` checks | section 8, `standards/rules.json` |
+| UI lint config, scrolling, kit scroll parts | section 9, `lint/README.md`, `kit/README.md` |
+| The overlay's own files and CI steps | `templates/overlay/README.md` |
+| Updating from a repo with only the public docs | section 12 |
