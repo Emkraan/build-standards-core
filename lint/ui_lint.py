@@ -12,6 +12,13 @@ Usage (from anywhere, paths resolve from the config file):
 
 Exit codes: 0 clean or within the baseline, 1 violations, 2 configuration error.
 
+Advisory notes (never change the exit code): a finding that looks like data rather than theme is also listed
+under "advisory", so a reviewer sees how many are probably false positives. Two kinds: a colour literal in a
+file the config declares a data palette ("data_palettes", globs: a chart or node-kind colour table), and a
+one-sided border under 2px in a neutral grey (a hairline divider). The finding itself, its annotation and the
+exit code are exactly as without the note; the notes add a ::notice line, a summary count and, with --json, an
+"advisories" list.
+
 Suppression is deliberate and traceable, never a blanket switch:
   edge-ok                 on the line or the line above, UI001 only, for data marks that look like
                           bars (a chart today line, a timeline connector)
@@ -103,7 +110,12 @@ DEFAULTS = {
         "**/standards-core/**",
     ],
     "token_files": ["**/tokens.css", "**/tokens.ts", "**/tailwind.preset.cjs"],
+    "data_palettes": [],
     "baseline": None,
+}
+ADVISORY_WHY = {
+    "data-palette": "this file is declared a data palette in ui-lint.json, so the colour may be data rather than theme",
+    "neutral-divider": "a hairline in a neutral grey reads as a divider, not an accent bar",
 }
 EXTS = {".css", ".tsx", ".ts", ".jsx", ".js", ".mjs", ".html"}
 NAMED = {
@@ -208,6 +220,33 @@ def css_decls(body, body_pos):
 
 
 # ------------------------------------------------------------------ checks
+
+
+def neutral_hairline(val):
+    """True for a border value that is a hairline (under 2px) in a neutral grey: a divider, not an accent."""
+    px = re.search(r"(\d+(?:\.\d+)?)px", val)
+    if not px or float(px.group(1)) >= 2:
+        return False
+    if re.search(r"accent|hue|success|warning|danger|info", val):
+        return False
+    cols = []
+    for m in re.finditer(r"#([0-9a-fA-F]{3,8})\b", val):
+        h = m.group(1)
+        if len(h) in (3, 4):
+            h = "".join(c * 2 for c in h[:3])
+        if len(h) not in (6, 8):
+            return False
+        ch = [int(h[i : i + 2], 16) for i in (0, 2, 4)]
+        cols.append(max(ch) - min(ch) <= 16)
+    for m in re.finditer(r"rgba?\(([^)]*)\)", val):
+        nums = re.findall(r"\d*\.?\d+", m.group(1))[:3]
+        if len(nums) < 3:
+            return False
+        ch = [float(n) for n in nums]
+        cols.append(max(ch) - min(ch) <= 16)
+    for m in re.finditer(r"hsla?\(\s*[\d.]+(?:deg)?[\s,]+([\d.]+)%", val):
+        cols.append(float(m.group(1)) <= 10)
+    return bool(cols) and all(cols)
 
 
 NARROW_PX = 6
@@ -349,7 +388,12 @@ def check_css(text, clean, hit, is_token_file, allow_accent_block):
                 if (px and float(px.group(1)) >= 2) or (
                     coloured and not re.search(r"transparent", val)
                 ):
-                    hit("UI001", pos, f"{prop}: {val[:40]}")
+                    hit(
+                        "UI001",
+                        pos,
+                        f"{prop}: {val[:40]}",
+                        "neutral-divider" if neutral_hairline(val) else None,
+                    )
             if prop == "box-shadow":
                 for sm in re.finditer(
                     r"inset\s+(-?\d+(?:\.\d+)?)(?:px)?\s+(-?\d+(?:\.\d+)?)(?:px)?\s+0(?:px)?(?:\s+0(?:px)?)?\s",
@@ -575,10 +619,19 @@ def lint_file(path, rel, root, cfg, active, findings, accent_writes):
                         return True
         return False
 
-    def hit(rule, pos, detail):
+    is_data = any(
+        fnmatch.fnmatch(rel, g) or fnmatch.fnmatch("/" + rel, g)
+        for g in cfg.get("data_palettes", [])
+    )
+
+    def hit(rule, pos, detail, advisory=None):
         line = line_of(clean, pos)
         if not suppressed(rule, line):
-            findings.append({"rule": rule, "file": rel, "line": line, "detail": detail.strip()})
+            f = {"rule": rule, "file": rel, "line": line, "detail": detail.strip()}
+            note = advisory or ("data-palette" if rule == "UI003" and is_data else None)
+            if note:
+                f["advisory"] = note
+            findings.append(f)
 
     for i, ln in enumerate(raw_lines, 1):
         for m in TYPO.finditer(ln):
@@ -625,6 +678,7 @@ def load_config(argv):
                 cfg[k] = user[k]
         cfg["exclude"] = DEFAULTS["exclude"] + user.get("exclude", [])
         cfg["token_files"] = DEFAULTS["token_files"] + user.get("token_files", [])
+        cfg["data_palettes"] = list(user.get("data_palettes", []))
         cfg["_overlay"] = (
             cpath.parent.parent if cpath.parent.name == "standards-local" else cpath.parent
         )
@@ -705,9 +759,16 @@ def self_test():
     cfg["exclude"] = ["**/expected.json"]
     cfg["_overlay"] = fx
     cfg["paths"] = ["."]
+    cfg["data_palettes"] = ["**/data-palette.css"]
     files, findings, _ = run(cfg, fx)
     got = counts(findings)
     bad = []
+    adv = sorted(f"{f['file']}::{f['advisory']}" for f in findings if f.get("advisory"))
+    want_adv = sorted(
+        ["advisory.css::neutral-divider"] * 3 + ["data-palette.css::data-palette"] * 2
+    )
+    if adv != want_adv:
+        bad.append(f"advisory notes: expected {want_adv}, got {adv}")
     for k in sorted(set(expected) | set(got)):
         if expected.get(k, 0) != got.get(k, 0):
             bad.append(f"{k}: expected {expected.get(k, 0)}, got {got.get(k, 0)}")
@@ -755,6 +816,11 @@ def main(argv):
     files, findings, active = run(cfg, root)
     now = counts(findings)
     baseline_set = bool(cfg.get("baseline"))
+    advisories = [
+        {k: f[k] for k in ("rule", "file", "line", "advisory")}
+        for f in findings
+        if f.get("advisory")
+    ]
     base_msg = (
         "a baseline is not allowed for a UI consumer (web-ui.md 0.11). Fix the findings, or record a named "
         "exception (owner, reason, review date) in standards-local/exceptions.md and mark the line with "
@@ -767,6 +833,7 @@ def main(argv):
                 {
                     "files": len(files),
                     "findings": findings,
+                    "advisories": advisories,
                     "over_baseline": now,
                     "fixed_since_baseline": 0,
                     "baseline_set": baseline_set,
@@ -782,13 +849,20 @@ def main(argv):
             print(
                 f"::error file={f['file']},line={f['line']}::{f['rule']} {title} ({ref}): {f['detail']}. Not allowed: {why}."
             )
+        for f in findings:
+            if f.get("advisory"):
+                why = ADVISORY_WHY[f["advisory"]]
+                print(
+                    f"::notice file={f['file']},line={f['line']}::{f['rule']} advisory ({f['advisory']}): {why}. Reported only; the finding above stands."
+                )
         if baseline_set:
             print(f"::error::ui-lint: {base_msg}.")
         by_rule = {}
         for f in findings:
             by_rule[f["rule"]] = by_rule.get(f["rule"], 0) + 1
         summary = ", ".join(f"{k} {v}" for k, v in sorted(by_rule.items())) or "none"
-        print(f"ui-lint: {len(files)} file(s), {len(findings)} finding(s) [{summary}]")
+        note = f", {len(advisories)} advisory" if advisories else ""
+        print(f"ui-lint: {len(files)} file(s), {len(findings)} finding(s) [{summary}]{note}")
     return 1 if findings or baseline_set else 0
 
 

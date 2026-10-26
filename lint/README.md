@@ -20,12 +20,31 @@ against the paths in `standards-local/ui-lint.json`, and in core CI against its 
 ## Config (`standards-local/ui-lint.json`)
 
 ```json
-{ "paths": ["src"], "exclude": [], "token_files": [], "baseline": null }
+{ "paths": ["src"], "exclude": [], "token_files": [], "data_palettes": [], "baseline": null }
 ```
 
 `token_files` adds files allowed to hold colour literals (the synced `tokens-core/` is always
 allowed). A custom accent block printed by `tokens-core/build.py --accent` is recognised by its
 header and may set accent tokens.
+
+`data_palettes` lists globs of files that hold data colours (a chart theme, a table of category colours)
+rather than theme colours. It only feeds the advisory notes below.
+
+## Advisory notes
+
+Some findings are probably data, not theme. The lint says so without changing anything: the finding, its
+`::error` annotation and the exit code are exactly what they were, and the note is an extra `::notice`
+line, a count in the summary (`N advisory`) and, with `--json`, an `advisories` list
+(`rule`, `file`, `line`, `advisory`). A note never hides or adds a finding and never fails a build.
+
+| Note | When |
+|---|---|
+| `data-palette` | A UI003 colour literal in a file matching `data_palettes` |
+| `neutral-divider` | A UI001 one-sided border under 2px whose colour is a neutral grey (equal channels, or saturation of 10% or less): a hairline divider, not an accent bar |
+
+A coloured hairline, a 2px or thicker border and every other rule carry no note. Use the notes to decide
+which findings to fix, and the real fix stays the same: a token for the colour, a `--border-*` token for
+the divider, or a named exception.
 
 ## Suppression is traceable
 

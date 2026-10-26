@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-26 (v1.15.0, boards and wide tables keep their own scrollbars)
+## 2026-10-26 (v1.19.0, boards and wide tables keep their own scrollbars)
 
 - New UI rule 0.12 (`web-ui.md`, registered as `web-ui.0.12`, a review rule): the page body is one vertical
   scroll container, a board is sized to the window with a floor, a wide table has a capped scroll area with a
@@ -11,6 +11,16 @@
   15rem, never under 16rem, a named focusable region so the keyboard can scroll it) and `LaneBoard` `fit` prop
   (the window height less 6rem, never under 360px, sideways scroll on the board edge, each lane scrolls on its
   own). Both props default to off, so existing uses are unchanged. Gallery specimen and tests added.
+
+## 2026-10-26 (v1.16.0, UI lint advisory notes for data palettes and neutral dividers)
+
+- `ui_lint.py` adds advisory notes. A finding that probably is data rather than theme keeps its finding, its
+  `::error` annotation and the exit code exactly as before, and gains a `::notice` line, an `N advisory` count
+  in the summary and, with `--json`, an `advisories` list. Two notes: `data-palette` (a UI003 colour literal in a
+  file matched by the new optional `data_palettes` globs in `ui-lint.json`) and `neutral-divider` (a UI001
+  one-sided border under 2px in a neutral grey). A note never hides or adds a finding and never fails a build.
+- Self-test fixtures and `tests/test_ui_lint_advisory.py` cover both notes, the coloured and thick cases that
+  carry none, and an unchanged exit code. `lint/README.md` documents the config key and the notes.
 
 ## 2026-10-26 (v1.14.1, lint-sweep sets up Node for web repos)
 
