@@ -45,9 +45,9 @@ Run from this clone:
 python3 hermes/setup.py --ui OWNER/REPO[:MODE[:PATH]] [--ui OWNER/REPO ...]
 ```
 
-`MODE` is `workflow` (default), `direct` or `vendored`, and `PATH` is the repo's local clone
+`MODE` is `workflow` (default), `ops-center` or `vendored`, and `PATH` is the repo's local clone
 (required for the last two: section 3 says what each mode does). `local` is the deprecated name of
-`direct` and keeps working as an alias. Setup writes
+`ops-center` and keeps working as an alias. Setup writes
 `~/.config/build-standards-core/consumer.json`, the machine's consumer record (section 5), the cron
 wrapper `~/.hermes/scripts/core-nightly.sh`, and the Hermes cron job `core-nightly` (no-agent, daily
 at 03:15, output to the origin chat, failures notified). It removes the older `core-skills-sync` job
@@ -83,7 +83,7 @@ accordingly (README "Direction").
 - The repo's default branch must require status checks: branch protection, an active ruleset, or a
   `REQUIRED_CHECKS` list in its merge gate workflow. `hermes/setup.py --ui OWNER/REPO` reads them
   through gh and refuses a `workflow` repo that has none, because nothing would stop a red sync
-  pull request from merging. Add the required checks, or register the repo as `direct` (the
+  pull request from merging. Add the required checks, or register the repo as `ops-center` (the
   local gate). `--allow-no-required-checks` registers it anyway and prints a warning; choose it only
   knowingly, since `core-update.yml` then is the only thing that waits for CI.
 - This needs one token that can open pull requests that start CI on THIS repo (reading the public core
@@ -191,7 +191,7 @@ repo that has none, so copy it from `templates/overlay/.github/workflows/`) and 
 `required-checks` prints the old and new names it finds in either direction. This recipe is for the owner or
 the repo's agent to run; the core never changes a ruleset or a required check itself.
 
-### `direct`: the machine's ops center and other local tools without CI
+### `ops-center`: the machine's ops center and other local tools without CI
 
 - Register with the repo's local `PATH`; the repo needs no CI and no token.
 - The nightly applies a release at once. In an isolated git worktree of the committed default
@@ -227,7 +227,7 @@ the repo's agent to run; the core never changes a ruleset or a required check it
   marker comment, and names them on one line (templates/overlay/README.md "Updating"). Fill them in;
   a missing `Commit emails` row is what failed a sync's `core-identity` check before.
 - A guard on the default branch that refuses the nightly's push (the repo's own pre-push hook,
-  branch protection or a ruleset) rolls back every direct apply. `hermes/setup.py --ui OWNER/REPO=direct:PATH`
+  branch protection or a ruleset) rolls back every direct apply. `hermes/setup.py --ui OWNER/REPO=ops-center:PATH`
   looks for one and prints which mode fits, and the nightly's failure line names the hook. Two
   fixes: let the hook allow a push to the default branch whose diff touches only the overlay
   folder (with a test of the hook), or register the repo as `workflow` (the pull request mode). A
@@ -262,7 +262,7 @@ the repo's agent to run; the core never changes a ruleset or a required check it
 
 The owner's rule (README "Direction", "Two consumption classes"; `ci-cd-release.md` section 11):
 
-| | Apply-at-once (`direct`, `agent-home`) | Approval-gated (`workflow`, `vendored`) |
+| | Apply-at-once (`ops-center`, `agent-home`) | Approval-gated (`workflow`, `vendored`) |
 |---|---|---|
 | A new release | the nightly applies it at once behind the ops center's gate, rolls back on failure; a gated repo's release lands as a pull request that merges as soon as its own checks pass | arrives as a pull request: `core-update.yml`'s draft, or the vendoring tool's |
 | Who approves it | nobody: the gate is the approval | the owner, one action in the Core consumption panel or on GitHub |
@@ -331,7 +331,7 @@ Version 2 is the current shape:
       "repo": "OWNER/REPO",
       "mode": "workflow",
       "overlay": "standards-overlay",
-      "path": "<local clone, required for direct and vendored>"
+      "path": "<local clone, required for ops-center and vendored>"
     }
   ]
 }
@@ -349,13 +349,13 @@ Version 2 is the current shape:
 | `apply.report` | the upward report step, on when missing | v0.49.0 |
 | `apply.consumption` | the consumption feed `consumption.json` (standards/local-ops-app.md section 19), on when missing | v0.59.0 |
 | `ui_consumers[].repo` | the repo as `OWNER/REPO` on GitHub | v0.36.0 |
-| `ui_consumers[].mode` | `workflow`, `direct` or `vendored`; `local` is a deprecated alias of `direct` | v0.36.0 (`direct` and `vendored` from v0.49.0) |
+| `ui_consumers[].mode` | `workflow`, `ops-center` or `vendored`; `local` is a deprecated alias of `ops-center` | v0.36.0 (`ops-center` and `vendored` from v0.49.0) |
 | `ui_consumers[].overlay` | the overlay folder inside the repo (default `standards-overlay`) | v0.36.0 |
-| `ui_consumers[].path` | the repo's local clone; required for `direct` and `vendored` | v0.36.0 |
+| `ui_consumers[].path` | the repo's local clone; required for `ops-center` and `vendored` | v0.36.0 |
 | `ui_consumers[].apply` | `false`: report only, a local job of this machine applies the core (`setup.py --report-only`); missing means on | v0.58.0 |
 | `ui_consumers[].sync_head` | the head-branch prefix of the repo's sync pull request, for the consumption feed (default `chore/core-`; a vendoring tool names its own) | v0.59.0 |
-| `ui_consumers[].apply_via` | `direct` only: `pr` lands each release as a pull request through the repo's own CI gate and merges it at once; `direct` commits to the default branch; missing: detected (a remote whose default branch requires status checks, or the repo's own pre-push guard, means `pr`) | v0.64.0 |
-| `ui_consumers[].pr_timeout_min` | `direct` with `apply_via` `pr`: minutes to wait for the repo's own checks before the pull request is closed (default 60) | v0.64.0 |
+| `ui_consumers[].apply_via` | `ops-center` only: `pr` lands each release as a pull request through the repo's own CI gate and merges it at once; `direct` commits to the default branch; missing: detected (a remote whose default branch requires status checks, or the repo's own pre-push guard, means `pr`) | v0.64.0 |
+| `ui_consumers[].pr_timeout_min` | `ops-center` with `apply_via` `pr`: minutes to wait for the repo's own checks before the pull request is closed (default 60) | v0.64.0 |
 | `ui_consumers[].pin` | `vendored` only: a file on this machine where the vendoring tool writes the release it copied (the first `vX.Y.Z` in it is read); optional when the tool records the source hash instead | v0.58.0 |
 
 A release that adds a key adds its row here with the release, and the nightly fills the default in
@@ -370,10 +370,10 @@ or a vendoring tool with its own scrub and skip rules). With no entry in `ui_con
 nightly never fills the report's two marker sections for that repo. Migrate it one of two ways:
 
 - **Switch the job to the mode.** Register the repo with the mode that matches what the local job
-  does (`direct:PATH` for a gated local apply, `vendored:PATH` for a scrubbed copy), check that
+  does (`ops-center:PATH` for a gated local apply, `vendored:PATH` for a scrubbed copy), check that
   the nightly's run is green for a night, then retire the local job.
 - **Keep the local job, register for the report only.** Register the repo with its mode and
-  `--report-only` (`python3 hermes/setup.py --ui OWNER/REPO=direct:PATH --report-only`), which
+  `--report-only` (`python3 hermes/setup.py --ui OWNER/REPO=ops-center:PATH --report-only`), which
   writes `"apply": false` on that entry: the nightly then skips the apply for it but still reads
   its local clone for the report sections (`nightly:candidates`, `nightly:changes`), so section g
   tracks it.

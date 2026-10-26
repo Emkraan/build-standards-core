@@ -18,7 +18,7 @@ Related: [First-Party Build Standard](web-build.md) (stack and commands),
 - Every check is free. This rule assumes the free personal plan described above (no branch protection, no paid minutes). A repo on a paid plan or an organisation may use hosted runners and required-check rulesets instead, and records that choice as an explicit exception. Jobs run on the **self-hosted runner**: `runs-on: [self-hosted, linux, arm64]`,
   never `ubuntu-latest` (GitHub-hosted minutes are not paid for on this account). The runner is a
   native linux/arm64 container (GitHub's `actions-runner` image, plus `gh`, PowerShell 7 and Playwright deps)
-  under the container runtime on the owner's Mac. The hub has a pool of three (`runner-pool-1`, `-2`, `-3`) because its checks run in parallel; every other repo has one runner (`runner-core`, `runner-tool`, `runner-ops-app`, `runner-a sibling app-store repo`), the second runners were removed 2026-10-09 to save memory; build files and the registration script
+  under the container runtime on the owner's Mac. The hub has a pool of three (`runner-pool-1`, `-2`, `-3`) because its checks run in parallel; every other repo has one runner (`runner-core`, `runner-tool`, `runner-opscenter`, `runner-a sibling app-store repo`), the second runners were removed 2026-10-09 to save memory; build files and the registration script
   are kept in the runner scripts directory of the ops workspace. The container runtime VM is
   8 CPU / 8 GiB (raised from 6 on 2026-10-09 after OOM kills, and kept modest on purpose: guest page cache is
   not returned to macOS on a 16 GB host that already swaps). CI and deploys run only while that Mac and the container runtime are up; the Mac has system sleep
@@ -536,7 +536,7 @@ two classes, and the way it is registered with (`consumer.json` `mode`) decides 
    checks on that head waited for, and the pull request merged at once pinned to that head. The
    owner is not waited for and the deploy checkout is never written directly. A failure or timeout
    closes the pull request, deletes the branch and leaves the pin unchanged (`CONSUMING.md`,
-   `direct`).
+   `ops-center`).
 4. **The nightly reports, it does not wait.** An open sync pull request on an approval-gated app
    is its normal state and is reported as awaiting approval; only failing checks on it are a
    problem.

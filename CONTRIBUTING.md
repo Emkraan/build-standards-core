@@ -80,7 +80,7 @@ functionality precisely enough that adopting a core part never breaks a feature.
 
 - **a. Machine and ways in.** `consumer.json` with names replaced by role labels; the nightly
   jobs; per repo the way it takes the core, by neutral label (`workflow`, `apply-at-once` for the
-  Direct mode, `vendored`, `agent-home`),
+  ops-center mode, `vendored`, `agent-home`),
   the pinned release and how far behind it is; `core-status --json` counts (pass, proved, fail,
   unverified) and the UI verdict.
 - **b. Design inventory per app.** Tokens used and any local token or accent work; the shell

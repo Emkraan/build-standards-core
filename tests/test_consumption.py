@@ -79,7 +79,7 @@ def fake_gh(issues, prs_by_repo=None, core_prs=None, login="me-acct"):
 
 class Pure(unittest.TestCase):
     def test_classes(self):
-        self.assertEqual(consumption.consumption_class("direct"), "apply-at-once")
+        self.assertEqual(consumption.consumption_class("ops-center"), "apply-at-once")
         self.assertEqual(consumption.consumption_class("local"), "apply-at-once")
         for m in ("workflow", "vendored"):
             self.assertEqual(consumption.consumption_class(m), "approval-gated")
@@ -232,7 +232,7 @@ class Feed(Work):
         self.vend = self.make_clone("vend", {"src/StatusPill.tsx": "export const StatusPill = 1\n"})
         self.cfg = {
             "ui_consumers": [
-                {"repo": "o/ops", "mode": "direct", "path": str(self.ops)},
+                {"repo": "o/ops", "mode": "ops-center", "path": str(self.ops)},
                 {"repo": "o/prod", "mode": "workflow"},
                 {
                     "repo": "o/vend",
@@ -504,7 +504,7 @@ class G032MovedTableLink(Work):
 
 class Classes(unittest.TestCase):
     def test_setup_names_the_class(self):
-        self.assertIn("apply-at-once", setup.class_note({"repo": "o/a", "mode": "direct"}))
+        self.assertIn("apply-at-once", setup.class_note({"repo": "o/a", "mode": "ops-center"}))
         for m in ("workflow", "vendored"):
             note = setup.class_note({"repo": "o/a", "mode": m})
             self.assertIn("approval-gated", note)

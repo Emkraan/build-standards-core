@@ -192,7 +192,7 @@ class VendoredRelease(Work):
                 "core": ".",
                 "hermes_home": ".",
                 "apply": dict(nightly.APPLY_DEFAULTS),
-                "ui_consumers": [entry, {"repo": "o/o", "mode": "direct", "apply": False}],
+                "ui_consumers": [entry, {"repo": "o/o", "mode": "ops-center", "apply": False}],
             },
             True,
             0,
@@ -264,7 +264,7 @@ class PushGuard(Work):
 
         notes = setup.push_guards(
             [
-                {"repo": "o/app", "mode": "direct", "path": str(self.clone)},
+                {"repo": "o/app", "mode": "ops-center", "path": str(self.clone)},
                 {"repo": "o/wf", "mode": "workflow"},
             ],
             fake,

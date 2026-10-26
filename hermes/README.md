@@ -140,7 +140,7 @@ UI consumer modes (`--ui OWNER/REPO=MODE:PATH`):
 
 - `workflow`: approval-gated. Runs the repo's own core-update workflow, which opens the sync pull request
   as a draft for the owner's approval; an open one is reported as awaiting approval, a red one as a problem.
-- `direct`: for an app only its operator uses. Applies at once, behind a local gate
+- `ops-center`: for an app only its operator uses. Applies at once, behind a local gate
   (`hermes/ops_center.py`): read the pin from the committed default branch; make an isolated worktree of it
   (uncommitted work is never read or touched); run the gate on the current pin and hold the update if that
   fails (reported as the consumer's failure, once per kind); sync and run the gate again; commit and land

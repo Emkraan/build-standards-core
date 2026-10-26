@@ -30,10 +30,10 @@ owner decisions as `D7-n` (section 7 of the assessment summary).
 ### 1.1 Where it lives in the core
 
 ```text
-ops-app/
+opscenter/
   DESIGN.md            this file
   CONTRACT.md          the neutral contract (routes, state files, slots, parameters); replaces the
-                       per-app contract/direct-contract.md
+                       per-app contract/ops-center-contract.md
   server/              stdlib Python HTTP server and API modules
     app.py             entry: bind, gate, registry, static files
     gate.py            Host and Origin guard, body cap, security headers, preflight
@@ -85,7 +85,7 @@ The ops center is consumed the way the kit is: a synced copy, never hand edited.
 
 ```text
 <consumer ops center repo>/
-  ops-app-core/      synced copy of the core ops-app/ (except DESIGN.md, tests/, adopt/)
+  opscenter-core/      synced copy of the core opscenter/ (except DESIGN.md, tests/, adopt/)
   kit-core/            synced copy of kit/ (existing)
   tokens-core/         synced copy of tokens/ (existing)
   standards-overlay/   existing overlay, lock and checks
@@ -95,16 +95,16 @@ The ops center is consumed the way the kit is: a synced copy, never hand edited.
     modules.json       which optional slot modules are on (people, lanes, builds, documents)
 ```
 
-- The consumer's ops center is registered in mode `direct` (class apply-at-once, as today in
+- The consumer's ops center is registered in mode `ops-center` (class apply-at-once, as today in
   `CONSUMING.md` and `hermes/ops_center.py`). The nightly applies each core release at once behind
   the local gate; a repo with its own CI gate lands it by pull request (`apply_via: pr`). Nothing in
-  this flow changes; the sync step gains `ops-app-core/` as a target path.
-- The build compiles `ops-app-core/app` against `kit-core/` and `local/slots/*/ui` (slot UI is
+  this flow changes; the sync step gains `opscenter-core/` as a target path.
+- The build compiles `opscenter-core/app` against `kit-core/` and `local/slots/*/ui` (slot UI is
   loaded through the slot registry, section 5.1), so the runtime copy never reads the checkout.
-- `standards-overlay` gains one check, `check-ops-app-sync`: `ops-app-core/` equals the pinned
+- `standards-overlay` gains one check, `check-opscenter-sync`: `opscenter-core/` equals the pinned
   release byte for byte, so a local edit fails CI and the pre-push guard.
-- Mode name note: the current core uses mode `direct` with class `apply-at-once`; the two
-  assessments disagreed on the name. This design keeps `direct` (mode) and `apply-at-once`
+- Mode name note: the current core uses mode `ops-center` with class `apply-at-once`; the two
+  assessments disagreed on the name. This design keeps `ops-center` (mode) and `apply-at-once`
   (class) and does not rename either.
 
 ### 1.3 Slot versus parameter
@@ -198,7 +198,7 @@ response carrying a wildcard CORS header, and an unregistered POST answered 404.
 ### 2.5 The single outward writer
 
 There is one path to change anything outside the state directory: `writer.py`. No module, slot or
-engine job calls an outward write any other way. A core check (`check-ops-app-writer`) fails on
+engine job calls an outward write any other way. A core check (`check-opscenter-writer`) fails on
 an outward call site outside `writer.py` and the slot `act` methods it invokes.
 
 **Operation.** Every outward change is an operation:
@@ -246,7 +246,7 @@ entries. Machine callers (engine jobs, sessions) queue proposals here; only an o
 approves. The shell consumer renames its local `/api/approvals` (change records) before it adopts
 (D7-4).
 
-**Test fixture helper** (`ops-app/testing/fixtures.py`, D7-5):
+**Test fixture helper** (`opscenter/testing/fixtures.py`, D7-5):
 
 ```python
 with approved(op_or_matcher, live=True) as rec:  # writes a rule and an approval record
@@ -578,7 +578,7 @@ name of the parameter. `adopt` prompts for every required row (section 8.1).
 
 ### 7.1 The deploy contract
 
-`ops-app-core/deploy/deploy.py [--strategy copy|checkout] [--check]`
+`opscenter-core/deploy/deploy.py [--strategy copy|checkout] [--check]`
 
 Strategy `copy` (default):
 
@@ -599,7 +599,7 @@ health check; on failure reset to the previous commit, rebuild, restart. Same he
 - Drift check (B-28): `--check` compares `current/release.json` to the committed head and the
   content hash of the runtime tree; drift is one board item.
 - State dir and `params.json` are never inside a release.
-- The nightly calls deploy after an apply that changed `ops-app-core/` or `local/`; the scheduler
+- The nightly calls deploy after an apply that changed `opscenter-core/` or `local/`; the scheduler
   job runs `engine/refresh.py` from `current`.
 - No nightly mirror of live code into the repo; the runtime is built from the repo (A-105).
 
@@ -627,12 +627,12 @@ only what differs.
 
 1. Checks: core clone present and current; `consumer.json` version; the code host CLI signed in.
 2. The ops center repo: creates it from the core template when absent, or takes an existing one
-   (`--direct PATH`). Syncs `ops-app-core/`, `kit-core/`, `tokens-core/` and the overlay with
+   (`--ops-center PATH`). Syncs `opscenter-core/`, `kit-core/`, `tokens-core/` and the overlay with
    its lock.
 3. `local/params.json`: prompts for every required parameter row, fills discovered values
    (account, repos, report issue), writes and validates it. Includes the `Commit emails` row the hub
    consumer found missing.
-4. Registers the ops center in `consumer.json` as mode `direct` with `apply_via` detected.
+4. Registers the ops center in `consumer.json` as mode `ops-center` with `apply_via` detected.
 5. Template workflows only for repos in mode `workflow` (with the core token).
 6. Scheduled jobs: the core nightly, deploy after apply, refresh, heartbeats, state autosave, from
    the job manifest through the runtime slot (or the host scheduler when the runtime slot is null).
@@ -645,7 +645,7 @@ only what differs.
 
 - Scans `discovery.roots` for repos with a `standards.lock`, a local standards folder, a core CI
   workflow or a pin line.
-- Classifies each with the existing modes (`workflow`, `direct`, `vendored`, `pin-file`) and
+- Classifies each with the existing modes (`workflow`, `ops-center`, `vendored`, `pin-file`) and
   proposes the mode; the owner confirms each in the prompt (or in `--dry-run` output).
 - Registers every repo `report_only: true`. Discovery never changes a repo.
 - A repo that needs an overlay first is listed with that next step and stays report only.
@@ -672,7 +672,7 @@ only what differs.
 ## 9. Build plan
 
 One core release per step. Each step ships its code, tests and an acceptance check that runs in core
-CI, plus a fixture consumer (`ops-app/tests/consumer`) that the release must deploy and pass.
+CI, plus a fixture consumer (`opscenter/tests/consumer`) that the release must deploy and pass.
 Release numbers are assigned at merge in a fixed merge order (D7-19).
 
 ### 9.1 Prerequisites
@@ -681,7 +681,7 @@ Release numbers are assigned at merge in a fixed merge order (D7-19).
 |---|---|---|
 | P1 | `check-sanitised` and `check-consumer-neutral` scope to added lines in a diff mode; the pre-commit and CI paths forbid `--no-verify` bypass (D7-20) | a pre-existing hit in CHANGELOG no longer fails; a new hit in an added line fails; a commit made with `--no-verify` is caught by CI |
 | P2 | S-1 and S-2 reference runtime packages with a neutral identity interface (D7-6); S-3 and S-4 core CI checks (D7-7); S-5 deploy section rewrite (D7-8); S-6 and S-8, S-8 for the shared dev tier only (D7-9); S-7 after a measured saving | each package has its own tests and a consumer fixture; each check has a failing and a passing fixture; S-7 ships only with the measurement attached |
-| P3 | `ops-app/applicability.json`: the published list of rules that apply to an ops center (D7-18); `check-rules` reads it | both consumers' ops center reports compute against the same applicable set; a rule id not in rules.json fails |
+| P3 | `opscenter/applicability.json`: the published list of rules that apply to an ops center (D7-18); `check-rules` reads it | both consumers' ops center reports compute against the same applicable set; a rule id not in rules.json fails |
 
 ### 9.2 Ops center releases
 
@@ -690,7 +690,7 @@ Release numbers are assigned at merge in a fixed merge order (D7-19).
 | R1 Guard and route registry | `gate.py`, `registry.py`, `app.py` skeleton, `/api/health`, static files | registry walk (bad Host, foreign Origin, body cap, no wildcard CORS, unknown POST 404), traversal 403 | fixture consumer serves the SPA and health; every probe in the walk is refused as specified |
 | R2 Envelope | `envelope.py`, error codes, tolerant client reader for one release, response validation in tests | shape test on every route; error code to status map | fixture consumer and both tolerant and strict readers pass; R3 removes the tolerant reader |
 | R3 Schemas and checker | six envelope kinds, all core state and API schemas, `state.py`, `conformance.py` with `extends` and JSON lines, `migrate.py`, params schema, the estate-literal check | conformance on fixture state; migrate plan and apply on a copy (idempotent, backup, failure report) | fixture state passes; a seeded bad record is reported and not converted |
-| R4 Writer and inbox | `writer.py`, `approvals.py`, tombstones, applied ledger, `testing/fixtures.py`, `check-ops-app-writer`, the three core approvals and the consumption panel server module | the writer acceptance in 2.5; panel tests from local-ops-app 19 | fixture flows write only through the writer; the consumption panel's three approvals pass against a fake code host |
+| R4 Writer and inbox | `writer.py`, `approvals.py`, tombstones, applied ledger, `testing/fixtures.py`, `check-opscenter-writer`, the three core approvals and the consumption panel server module | the writer acceptance in 2.5; panel tests from local-ops-app 19 | fixture flows write only through the writer; the consumption panel's three approvals pass against a fake code host |
 | R5 Live reads and engine | `swr.py`, `run.py`, core server modules, collector and analyzer engine with the gate, routing, heartbeats, sign-in loop, notice discipline; the app shell and every core screen in 4.2 | swr single flight and last-good; gate order; heartbeat raise and clear; app unit and e2e smoke on fixture state in both themes | fixture consumer runs every core screen live with no bundle step |
 | R6 Slots | slot loader, interfaces, null adapters, reference adapters (code host, work tracker, docs home), slot UI mounts, claim token protocol, optional modules | per-slot conformance on fixtures; null adapter hides UI; claim token states | fixture consumer runs with all null, then with the three reference adapters against fakes |
 | R7 Automerge | `automerge.yml` template, overlay install step | newest run per check, rerun unblocks, hold label, draft skip, head pin | merges a test PR on one repo; a failing then rerun check behaves as specified |
@@ -721,7 +721,7 @@ the consumer that leaves its ops center working.
 | 12 automerge | R7 | |
 | 13 deploy contract, mirror dropped, drift check kept | R8 | `strategy: checkout` available if copy cannot be used yet |
 
-After PR 13 the consumer replaces its local server and app with `ops-app-core/` plus `local/`
+After PR 13 the consumer replaces its local server and app with `opscenter-core/` plus `local/`
 (the swap PR), runs `adopt` in place for registration and the report-back (R9), and deletes the
 local copies one release later.
 
@@ -747,7 +747,7 @@ Then the same swap PR as 10.1. The hub consumer's standards repo retires in favo
    launch path (a runtime database binding or a deep link with claim tokens) is an adapter.
 3. **Review of schemas and slot interfaces.** Both consumers get a 48 hour review window on a release
    candidate before R3 and R6 ship. The owner decides any disagreement.
-4. **Swap timing.** Each consumer swaps to `ops-app-core/` after its last mechanism PR, as this
+4. **Swap timing.** Each consumer swaps to `opscenter-core/` after its last mechanism PR, as this
    design says.
 5. **People data retention.** When the people slot is on, its data stays local only and never passes
    the writer, is deleted after 90 days by default, and the period is a parameter
