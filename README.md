@@ -362,13 +362,15 @@ Never edit `standards-core/`, `tokens-core/` or any file listed in `targets.map`
    relative to the overlay root. `sync-core.py` writes the destination and `check-core-sync.py` fails CI if
    it differs from the synced copy.
 2. **Updater.** `scripts/update-core.py` moves the overlay to the newest release and prints the tag only
-   when something changed. The template `.github/workflows/core-update.yml` runs it daily and opens a pull
+   when something changed. The template `.github/workflows/core-update.yml`, dispatched by the repo's scheduler, opens a pull
    request that waits for the owner's approval (Direction, "Two consumption classes"). Only where the
    owner set a standing approval for the repo does it merge on its own: `CORE_UPDATE_MERGE=wait` waits
    for every check on the head commit to pass and then merges that commit, so a red one never lands, and
    `CORE_UPDATE_MERGE=gate` leaves the merge to the repo's own merge gate. It never turns on GitHub's auto-merge, which merges at once on a
-   repo with no required checks. It needs one repository secret, `CORE_TOKEN`, from an account that can
-   read the core, with contents and pull-requests write on the consumer. Require the `core-ci.yml` jobs
+   repo with no required checks. It runs on `workflow_dispatch` (the consumer's own scheduler dispatches it; a cron is optional) and
+   needs one token with contents, pull-requests and workflows write on the consumer: a GitHub App
+   (repository variable `CORE_APP_ID`, secret `CORE_APP_PRIVATE_KEY`) or, without an App, the secret
+   `CORE_TOKEN`. The core is public, so reading it needs no credential. Require the `core-ci.yml` jobs
    in the merge gate (`scripts/core-ci.py required-checks`, templates/overlay/README.md "Required
    checks").
 3. **Local alternative.** Where a repo secret is not wanted, run the update from a scheduled job on a
