@@ -91,7 +91,7 @@ class Shape(unittest.TestCase):
     def test_runner_inputs_keep_the_variable_fallback(self):
         text = REUSABLE.read_text(encoding="utf8")
         self.assertIn(
-            "fromJSON(inputs.runs-on || vars.CORE_CI_RUNNER || '\"ubuntu-latest\"')", text
+            "fromJSON(inputs.runs-on || vars.CORE_CI_RUNNER || '\"ubuntu-24.04\"')", text
         )
 
     def test_lints_clean(self):
