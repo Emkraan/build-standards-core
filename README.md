@@ -672,6 +672,11 @@ git config core.hooksPath checks/hooks
 git config user.email <id>+<login>@users.noreply.github.com
 ```
 
+The hook checks only the lines a commit adds (`check-sanitised.py --staged`, `check-consumer-neutral.py
+--staged`). CI runs the same checks as `--diff <base commit>` over a pull request's added lines, so
+`--no-verify` does not get a hit in; with no argument each check reads the whole tree, which the weekly
+`sweep.yml` does.
+
 ## Visual gate
 
 The `visual` workflow screenshots every kit gallery specimen (each `section` with a stable

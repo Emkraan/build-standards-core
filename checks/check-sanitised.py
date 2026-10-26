@@ -10,6 +10,12 @@ every span of one to four words in a line is hashed and compared, and a shared h
 place only. Private lists hold one plain term per line. Matching is case-insensitive and on word
 boundaries (so a short name does not hit inside an ordinary word). Blank lines and # comments are
 ignored. `check-sanitised.py --hash TERM` prints the line to add to the shared file.
+Diff mode: `check-sanitised.py --diff BASE` checks only the lines `git diff BASE...HEAD` adds, and
+`check-sanitised.py --staged` only the lines staged for commit. A hit already sitting in a historical
+file (a changelog entry) is not the change's to fix; a new hit on an added line fails. The pre-commit hook
+uses `--staged`; CI runs `--diff` against the pull request's base commit, so a commit made with
+`--no-verify` is caught there. With no argument the whole tree is checked (the default, and what the
+periodic sweep runs); that mode is unchanged.
 Email addresses are allowed only for GitHub noreply (including noreply@github.com), example.com,
 example.org, example.net and the .invalid TLD.
 
@@ -34,6 +40,9 @@ import subprocess
 import sys
 
 HERE = pathlib.Path(__file__).parent
+sys.path.insert(0, str(HERE))
+import diffadded  # noqa: E402
+
 SHARED = HERE / "denylist.sha256"
 SOURCES = [
     pathlib.Path(os.environ.get("CORE_PRIVATE_DENYLIST", "/nonexistent")),
@@ -107,8 +116,17 @@ def main():
     deny = terms()
     hashes = shared_hashes()
     bad = []
+    base, staged, _rest = diffadded.parse_args(sys.argv[1:])
+    diff_mode = base is not None or staged
     file_mode = sys.argv[1:2] == ["--file"]
-    if file_mode:
+    # (path, [(line number, text)]) for every file to check
+    units = []
+    if diff_mode:
+        root = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True
+        ).stdout.strip()
+        units = list(diffadded.added_lines(root, base, staged).items())
+    elif file_mode:
         files = sys.argv[2:]
         if not files:
             sys.exit("check-sanitised: --file needs a path")
@@ -116,8 +134,17 @@ def main():
         files = subprocess.run(
             ["git", "ls-files", "-co", "--exclude-standard"], capture_output=True, text=True
         ).stdout.split("\n")
-    for f in files:
-        if not f or f.startswith("checks/denylist") or not pathlib.Path(f).is_file():
+    if not diff_mode:
+        for f in files:
+            if not f or not pathlib.Path(f).is_file():
+                continue
+            try:
+                lines = pathlib.Path(f).read_text(encoding="utf8").split("\n")
+            except (UnicodeDecodeError, OSError):
+                continue
+            units.append((f, list(enumerate(lines, 1))))
+    for f, lines in units:
+        if not f or f.startswith("checks/denylist"):
             continue
         # Repo identity files name their owner by necessity, not as business content: the licence names its
         # copyright holder, renovate.json extends the owning org's shared config, and automerge.yml calls the
@@ -125,11 +152,7 @@ def main():
         # exempt from the term lists (owner decisions 2026-10-24).
         if not file_mode and f in IDENTITY_FILES:
             continue
-        try:
-            lines = pathlib.Path(f).read_text(encoding="utf8").split("\n")
-        except (UnicodeDecodeError, OSError):
-            continue
-        for i, line in enumerate(lines, 1):
+        for i, line in lines:
             if file_mode:
                 line = mask_gist_logins(line)
             low = line.lower()
@@ -147,6 +170,7 @@ def main():
     print("\n".join(bad))
     print(
         f"check-sanitised: {len(bad)} hit(s), {len(hashes)} shared and {len(deny)} private term(s) checked"
+        + (" (diff mode: added lines only)" if diff_mode else "")
     )
     sys.exit(1 if bad else 0)
 

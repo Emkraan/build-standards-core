@@ -1,0 +1,20 @@
+name: sweep
+# The periodic full-tree run of the two checks that pull requests run on added lines only (checks.yml).
+# It reads every tracked file, so a hit that reached the tree some other way still surfaces.
+on:
+  schedule:
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sweep:
+    runs-on: ${{ fromJSON(vars.CORE_RUNNER || '"ubuntu-24.04"') }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.9'
+      - run: python3 checks/check-sanitised.py
+      - run: python3 checks/check-consumer-neutral.py
