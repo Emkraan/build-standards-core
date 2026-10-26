@@ -1,5 +1,5 @@
 {
-  "$description": "Every enforceable rule in the standards, one entry per rule. id is the stable slug, ref is the doc and section an exception names. check.kind says how a consumer proves it: lint (a ui_lint or script_lint rule), core-ci (proved in the core), overlay-ci (a job of the overlay's template workflow: check.workflow names the file under templates/overlay/.github/workflows and check.jobs the jobs whose success proves the rule), test (a test the app carries), review (design review, no automated check yet). applies_to lists the stacks a rule covers (web, wpf, local-ops, powershell, python, iac) or all. core-status reports a rule to a consumer that declares its stacks only when one of them matches or the rule is all. Tooling diffs this file between releases to raise new and changed rules.",
+  "$description": "Every enforceable rule in the standards, one entry per rule. id is the stable slug, ref is the doc and section an exception names. check.kind says how a consumer proves it: lint (a ui_lint or script_lint rule), core-ci (proved in the core; check.requires ui-adoption makes it not_applicable for an app that has not adopted the kit), overlay-ci (a job of the overlay's template workflow: check.workflow names the file under templates/overlay/.github/workflows and check.jobs the jobs whose success proves the rule), repo-check (a static check of the repo's own files in scripts/repo_checks.py, run by core-status: no finding is pass), test (a test the app carries), review (design review, no automated check yet). applies_to lists the stacks a rule covers (web, wpf, local-ops, powershell, python, iac) or all. core-status reports a rule to a consumer that declares its stacks only when one of them matches or the rule is all. Tooling diffs this file between releases to raise new and changed rules.",
   "format": "build-standards-rules/1",
   "rules": [
     {
@@ -113,7 +113,9 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "core-ci",
+        "command": "npm --prefix kit test -- tests/toast.test.tsx",
+        "requires": "ui-adoption"
       },
       "acceptance": "A unit test mounts the toast provider, clicks Undo and asserts the callback ran (section 23)."
     },
@@ -303,7 +305,9 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "core-ci",
+        "command": "npm --prefix kit test -- tests/stat-tile.test.tsx",
+        "requires": "ui-adoption"
       },
       "acceptance": "A unit test drives requestAnimationFrame with a fake clock and asserts an intermediate and the exact final value, and the reduced-motion path renders the final value at once."
     },
@@ -359,7 +363,9 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "core-ci",
+        "command": "npm --prefix kit test -- tests/gen-changelog.test.ts",
+        "requires": "ui-adoption"
       },
       "acceptance": "A unit test asserts the parser keeps the three change types and strips references."
     },
@@ -401,7 +407,9 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "core-ci",
+        "command": "npm --prefix kit test -- tests/theme-init.test.ts",
+        "requires": "ui-adoption"
       },
       "acceptance": "The built index.html carries the kit script, or a test with hasCurrentThemeInit passes."
     },
@@ -1275,9 +1283,10 @@
         "all"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC001"
       },
-      "acceptance": "No pkill, killall or pattern kill in the job, and stops are by recorded id."
+      "acceptance": "repo check RC001 reports no process kill by name or pattern in scripts or workflows."
     },
     {
       "id": "automation-safety.1.10",
@@ -1411,9 +1420,10 @@
         "all"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC002"
       },
-      "acceptance": "Merge commands and endpoints pass the head sha, and tooling refuses a moved head."
+      "acceptance": "repo check RC002 reports no merge command or merge endpoint call without the head sha."
     },
     {
       "id": "pr-review-and-merge.1.7",
@@ -2446,9 +2456,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC006"
       },
-      "acceptance": "The deploy workflow declares the shared concurrency group and fails when health does not report the new sha."
+      "acceptance": "repo check RC006 reports every deploy workflow of a SQLite repo, other than a static-site or Vercel-only deploy, with a concurrency group that queues and a health step that names the sha."
     },
     {
       "id": "data-safety-sqlite.2.11",
@@ -2474,9 +2485,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC007"
       },
-      "acceptance": "The overlay CI runs a migration safety check that fails on a destructive change or a NOT NULL column without a default."
+      "acceptance": "repo check RC007 reports no destructive migration and no NOT NULL column added without a default."
     },
     {
       "id": "data-safety-sqlite.7.1",
@@ -2612,9 +2624,10 @@
         "all"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC003"
       },
-      "acceptance": "Review of the dependency update configuration and the merge gate."
+      "acceptance": "repo check RC003 reports no renovate config that auto-merges major updates."
     },
     {
       "id": "ci-cd-release.5",
@@ -2626,9 +2639,10 @@
         "all"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC004"
       },
-      "acceptance": "Review of the merge workflow: no checkout of PR code, merge call passes the head sha."
+      "acceptance": "repo check RC004 reports no workflow with a trusted trigger that checks out or runs pull request code."
     },
     {
       "id": "ci-cd-release.6",
@@ -2682,9 +2696,10 @@
         "all"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC010"
       },
-      "acceptance": "Review: the secrets table matches the secrets the workflows read."
+      "acceptance": "repo check RC010 reports every secret a workflow reads named in a documentation page."
     },
     {
       "id": "ci-cd-release.11",
@@ -3307,9 +3322,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC005"
       },
-      "acceptance": "A CI check over the hosting configuration fails when a platform CORS origin list is set."
+      "acceptance": "repo check RC005 reports no platform CORS origin list in hosting or infrastructure config."
     },
     {
       "id": "web-api-runtime.5.7",
@@ -3363,9 +3379,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC009"
       },
-      "acceptance": "No app calls the auth library's initialize or redirect handling itself."
+      "acceptance": "repo check RC009 reports the auth redirect handled in at most one non-test source file."
     },
     {
       "id": "web-client-runtime.2.1",
@@ -3895,9 +3912,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC008"
       },
-      "acceptance": "A scan of fixtures finds no real address."
+      "acceptance": "repo check RC008 reports no fixture email address outside the reserved test domains."
     },
     {
       "id": "web-build.4",
@@ -3993,7 +4011,9 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "core-ci",
+        "command": "npm --prefix kit test -- tests/build-registry.test.ts",
+        "requires": "ui-adoption"
       },
       "acceptance": "A manifest added without regenerating fails CI; a module with no icon gets the fallback."
     },

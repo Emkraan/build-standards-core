@@ -645,6 +645,25 @@ class CoreStatus(Overlay):
                 self.by_id(self.status("--ci-results", res)[1])["a.1"]["status"], want, conclusion
             )
 
+    def test_kit_core_ci_rule_is_not_applicable_without_ui_adoption(self):
+        rules = json.loads((self.repo / "standards-core" / "rules.json").read_text())["rules"]
+        rules.append(
+            {
+                "id": "a.9",
+                "ref": "a.md 9",
+                "title": "T9",
+                "statement": "s",
+                "level": "must",
+                "applies_to": ["all"],
+                "check": {"kind": "core-ci", "command": "x", "requires": "ui-adoption"},
+                "acceptance": "x",
+            }
+        )
+        (self.repo / "standards-core" / "rules.json").write_text(json.dumps({"rules": rules}))
+        rc, rep = self.status()
+        self.assertEqual(self.by_id(rep)["a.9"]["status"], "not_applicable")
+        self.assertEqual(rep["summary"]["not_applicable"], 1)
+
     def test_proofs(self):
         (self.repo / "tests").mkdir()
         (self.repo / "tests" / "t.py").write_text("")
