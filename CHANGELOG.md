@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-26 (v1.17.0, proof batch 1: ten rules get a static check, five a core test)
+## 2026-10-26 (v1.19.0, proof batch 1: ten rules get a static check, five a core test)
 
 - New rule check kind `repo-check` and `scripts/repo_checks.py` (synced to every overlay). A repo check reads the
   repo's tracked files and returns findings; `core-status.py` runs the check of every `repo-check` rule and reports
@@ -24,6 +24,19 @@
   names a kit test file that does not exist.
 - The ops-center sync lane now merges its sync pull request with `--match-head-commit` on the commit it pushed.
   CONTRIBUTING documents the one repository secret the workflows read.
+
+## 2026-10-26 (v1.18.0, fix: UI lint exempts data palettes and no longer flags neutral hairline dividers)
+
+- Fix, replacing the advisory notes of the previous release: the notes only labelled findings and left them
+  failing. `ui_lint.py` now exempts files matched by the optional `data_palettes` globs in `ui-lint.json` from
+  the colour-literal rule (UI003), since a chart theme or category colour table holds data colours. Every other
+  rule still applies to those files, and a colour literal in any other file still fails.
+- The edge-bar rule (UI001) no longer flags a one-sided border under 2px in a neutral grey (a hairline
+  divider). A coloured hairline, a 2px or thicker one-sided border and every accent edge bar still fail, and
+  the exit code for real violations is unchanged.
+- The `::notice` lines, the `N advisory` summary count and the `advisories` key of `--json` are removed.
+  `tests/test_ui_lint_advisory.py` is replaced by `tests/test_ui_lint_data_palettes.py`; fixtures and
+  `lint/README.md` follow.
 
 ## 2026-10-26 (v1.16.0, UI lint advisory notes for data palettes and neutral dividers)
 
