@@ -176,7 +176,9 @@ and section an exception names, the statement, the acceptance line and how a con
 (`lint`, `core-ci`, `overlay-ci`, `test` or `review`), and `applies_to`, the stacks it covers (`web`,
 `wpf`, `local-ops`, `powershell`, `python`, `iac`, or `all`). `checks/check-rules.py` keeps it in step
 with the docs and the UI lint, and consumers diff it between releases to raise new and changed rules.
-Docs without registered rules are listed by the check until they have them. A consumer lists its
+Docs without registered rules are listed by the check until they have them. `opscenter/applicability.json`
+is the published list of rule ids that apply to an ops center, so every consumer's ops center report
+computes against the same set; `check-rules.py` fails when an id in it is not in the registry. A consumer lists its
 stacks in the `Stacks` row of `standards-local/parameters.md`, and `core-status.py` then leaves out the
 rules for stacks it does not have. With the row empty every rule is reported.
 

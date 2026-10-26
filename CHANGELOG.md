@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-26 (v1.14.1, opscenter/applicability.json and its check)
+
+- `opscenter/applicability.json` is the published list of `standards/rules.json` rule ids that apply to an ops
+  center, so both consumers' ops center reports compute against the same applicable set. It ships empty: a rule
+  is added when the owner decides it applies, and none has been decided yet.
+- `check-rules.py` reads it and fails when the file is missing or malformed, or lists an id that is not in
+  `rules.json` (or lists one twice). Tests cover a passing and a failing fixture and the published file.
+  Ops center prerequisite P3.
+
 ## 2026-10-26 (v1.14.0, sanitised and consumer-neutral checks gain a diff mode)
 
 - `check-sanitised.py` and `check-consumer-neutral.py` take `--diff BASE` (the lines `git diff BASE...HEAD`

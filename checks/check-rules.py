@@ -9,6 +9,9 @@ the registry (a script_lint rule that only covers part of a rule's acceptance su
 without making it a lint rule). Prints the rule count per doc so docs with no registered rules stay
 visible.
 
+opscenter/applicability.json, the published list of rules that apply to an ops center, is read too: it
+must exist, have the right format, and list only ids that are in the registry, each once.
+
 Usage: python3 checks/check-rules.py        Exit codes: 0 valid, 1 problems.
 """
 
@@ -19,7 +22,9 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 REG = ROOT / "standards" / "rules.json"
+APPLICABILITY = ROOT / "opscenter" / "applicability.json"
 FORMAT = "build-standards-rules/1"
+APPLICABILITY_FORMAT = "build-standards-opscenter-applicability/1"
 LEVELS = {"must", "should"}
 KINDS = {"lint", "core-ci", "overlay-ci", "test", "review"}
 # Scopes a rule applies to. A consumer declares the stacks it has (standards-local/parameters.md) and
@@ -93,6 +98,35 @@ def job_name_problems(name="core-ci.yml"):
             bad.append(
                 f"{name}: job {job} needs name: {job} (the check name a merge gate requires)"
             )
+    return bad
+
+
+def applicability_problems(path, rule_ids):
+    """Problems in the ops center applicability list at path, given the set of ids in rules.json."""
+    try:
+        data = json.loads(pathlib.Path(path).read_text(encoding="utf8"))
+    except (OSError, json.JSONDecodeError) as e:
+        return [f"applicability: cannot read {path}: {e}"]
+    if not isinstance(data, dict):
+        return ["applicability: the file must be a JSON object"]
+    bad = []
+    if data.get("format") != APPLICABILITY_FORMAT:
+        bad.append(
+            f"applicability: format is {data.get('format')!r}, expected {APPLICABILITY_FORMAT!r}"
+        )
+    ids = data.get("rules")
+    if not isinstance(ids, list):
+        return bad + ["applicability: rules must be a list of rule ids"]
+    seen = set()
+    for rid in ids:
+        if not isinstance(rid, str):
+            bad.append(f"applicability: {rid!r} is not a rule id string")
+        elif rid not in rule_ids:
+            bad.append(f"applicability: {rid} is not a rule id in standards/rules.json")
+        elif rid in seen:
+            bad.append(f"applicability: {rid} is listed twice")
+        else:
+            seen.add(rid)
     return bad
 
 
@@ -201,6 +235,7 @@ def main():
         if ref not in refs:
             bad.append(f"script_lint {lid} names {ref!r}, which is not a registered rule")
     bad += job_name_problems()
+    bad += applicability_problems(APPLICABILITY, seen)
     for b in bad:
         print(f"::error::check-rules: {b}")
     all_docs = sorted(p.stem for p in (ROOT / "standards").glob("*.md"))
