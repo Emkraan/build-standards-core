@@ -28,23 +28,15 @@ allowed). A custom accent block printed by `tokens-core/build.py --accent` is re
 header and may set accent tokens.
 
 `data_palettes` lists globs of files that hold data colours (a chart theme, a table of category colours)
-rather than theme colours. It only feeds the advisory notes below.
+rather than theme colours. Colour literals in those files are exempt from UI003. Every other rule still
+applies to them, and a colour literal anywhere else still fails.
 
-## Advisory notes
+## Neutral dividers
 
-Some findings are probably data, not theme. The lint says so without changing anything: the finding, its
-`::error` annotation and the exit code are exactly what they were, and the note is an extra `::notice`
-line, a count in the summary (`N advisory`) and, with `--json`, an `advisories` list
-(`rule`, `file`, `line`, `advisory`). A note never hides or adds a finding and never fails a build.
-
-| Note | When |
-|---|---|
-| `data-palette` | A UI003 colour literal in a file matching `data_palettes` |
-| `neutral-divider` | A UI001 one-sided border under 2px whose colour is a neutral grey (equal channels, or saturation of 10% or less): a hairline divider, not an accent bar |
-
-A coloured hairline, a 2px or thicker border and every other rule carry no note. Use the notes to decide
-which findings to fix, and the real fix stays the same: a token for the colour, a `--border-*` token for
-the divider, or a named exception.
+A one-sided border under 2px in a neutral grey (equal channels, or saturation of 10% or less) is a hairline
+divider, so UI001 does not flag it. A coloured hairline, a 2px or thicker one-sided border, an accent edge
+bar and every other UI001 shape still fail. A literal grey in that border is still a colour literal (UI003)
+unless the file is a data palette: the fix is a `--border-*` token.
 
 ## Suppression is traceable
 
