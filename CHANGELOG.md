@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-26 (v1.14.0, sanitised and consumer-neutral checks gain a diff mode)
+
+- `check-sanitised.py` and `check-consumer-neutral.py` take `--diff BASE` (the lines `git diff BASE...HEAD`
+  adds) and `--staged` (the lines staged for commit). Only added lines are checked, so a hit that already sits
+  in a historical file such as this changelog no longer fails a change, and a new hit on an added line does.
+  With no argument both still check the whole tree exactly as before.
+- The pre-commit hook uses `--staged` and now also runs the consumer-neutral check. The pull request CI job
+  runs both checks as `--diff` against the base commit, so a commit made with `--no-verify` is caught there.
+  A new `sweep.yml` runs the two full-tree checks weekly.
+- Tests cover a pre-existing hit passing in diff mode, a new hit failing, and a `--no-verify` commit caught by
+  the CI invocation. Ops center prerequisite P1.
+
 ## 2026-10-26 (v1.13.4, release.yml runs on ubuntu-24.04)
 
 - `release.yml` set up Python 3.9 on `ubuntu-latest`, which is Ubuntu 26.04 and has no Python 3.9, so the

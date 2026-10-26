@@ -15,7 +15,12 @@
   the merge commit back and, on a leak, prints the exact recovery (an owner-approved history rewrite)
   and exits non-zero.
 - Commit with a GitHub noreply email (`check-authors.py` fails anything else) and enable the hook:
-  `git config core.hooksPath checks/hooks`.
+  `git config core.hooksPath checks/hooks`. The hook runs `check-sanitised.py` and
+  `check-consumer-neutral.py` in diff mode (`--staged`: only the lines the commit adds). CI runs the same
+  two checks as `--diff <base commit>` over the pull request's added lines, so a commit made with
+  `--no-verify` is caught there; a hit already in a historical file (a changelog entry) is not the
+  change's to fix. Run with no argument they check the whole tree, which is what the weekly sweep
+  (`sweep.yml`) does.
 - Every change to a standard needs a `CHANGELOG.md` entry dated that day; `check-changelog.py`
   fails a pull request that touches shipped content without one. Issue references in the
   changelog are bare numbers (`#101`), never owner-qualified URLs: consumers mirror the

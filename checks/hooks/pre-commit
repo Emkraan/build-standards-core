@@ -2,7 +2,10 @@
 # Runs the core checks before every commit, including any private denylist kept outside the repo.
 # Enable once per clone: git config core.hooksPath checks/hooks
 set -e
-python3 checks/check-sanitised.py >/dev/null || { python3 checks/check-sanitised.py | grep -v '^check-'; echo "pre-commit: sanitisation failed"; exit 1; }
+# Diff mode: only the lines this commit adds, so a historical hit is not the commit's to fix. CI re-runs the
+# same checks over the pull request's added lines, so skipping this hook with --no-verify does not get a hit in.
+python3 checks/check-sanitised.py --staged >/dev/null || { python3 checks/check-sanitised.py --staged | grep -v '^check-'; echo "pre-commit: sanitisation failed"; exit 1; }
+python3 checks/check-consumer-neutral.py --staged >/dev/null || { python3 checks/check-consumer-neutral.py --staged | grep -v '^check-'; echo "pre-commit: consumer neutrality failed"; exit 1; }
 python3 checks/check-ascii.py >/dev/null || { python3 checks/check-ascii.py; exit 1; }
 python3 checks/check-links.py >/dev/null || { python3 checks/check-links.py; exit 1; }
 email=$(git config user.email || true)

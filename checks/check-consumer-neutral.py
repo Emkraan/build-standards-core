@@ -12,6 +12,12 @@ File mode: `check-consumer-neutral.py --file PATH ...` checks the given files (a
 shipped ones) against the same terms, so a text can be checked before it is posted. Terms match whole
 words only, so a term never hits inside an ordinary word.
 
+Diff mode: `check-consumer-neutral.py --diff BASE` checks only the lines `git diff BASE...HEAD` adds to
+shipped paths, and `--staged` only the staged ones. A hit already in a shipped file is not the change's to
+fix; a new hit on an added line fails. The pre-commit hook uses `--staged`; CI runs `--diff` against the
+pull request's base commit, so a commit made with `--no-verify` is caught there. With no argument the
+whole shipped tree is checked (the default, and what the periodic sweep runs); that mode is unchanged.
+
 Report screenshots and moved tables: in file mode only, the account login inside a raw gist URL
 of an image or a markdown file
 (`https://gist.githubusercontent.com/<login>/<gist id>/raw/<file>.png` or `.../raw/<file>.md`)
@@ -29,6 +35,9 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import diffadded  # noqa: E402
+
 SHIPPED = (
     "standards/",
     "tokens/",
@@ -78,6 +87,23 @@ def mask_gist_logins(text):
 def main():
     terms = owner_terms()
     hits = []
+    base, staged, _rest = diffadded.parse_args(sys.argv[1:])
+    if base is not None or staged:
+        added = diffadded.added_lines(ROOT, base, staged)
+        for rel, lines in sorted(added.items()):
+            if not rel.startswith(SHIPPED):
+                continue
+            for n, line in lines:
+                low = line.lower()
+                for t in terms:
+                    if re.search(r"(?<![a-z0-9-])" + re.escape(t) + r"(?![a-z0-9-])", low):
+                        hits.append(f"{rel}:{n}: names the core source ({t})")
+        print("\n".join(hits))
+        print(
+            f"check-consumer-neutral: {len(hits)} hit(s), {len(terms)} term(s) checked"
+            " (diff mode: added lines only)"
+        )
+        sys.exit(1 if hits else 0)
     if sys.argv[1:2] == ["--file"]:
         paths = sys.argv[2:]
         if not paths:

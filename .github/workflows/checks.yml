@@ -37,7 +37,13 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.9'
-      - run: python3 checks/check-sanitised.py
+      # Diff mode over the change's added lines, against the base commit: a hit already in a historical file
+      # is not this change's to fix, a new one fails, and a commit made with --no-verify is caught here. The
+      # full-tree run is the weekly sweep (sweep.yml).
+      - name: Sanitised (added lines)
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+        run: python3 checks/check-sanitised.py --diff "$BASE"
       - run: python3 checks/check-ascii.py
       - run: python3 checks/check-placeholders.py
       - run: python3 checks/check-links.py
@@ -53,7 +59,10 @@ jobs:
       - run: python3 checks/check-hermes-skills.py
       - run: python3 checks/check-hermes-tools.py
       - run: python3 checks/check-changelog.py "origin/${GITHUB_BASE_REF:-main}"
-      - run: python3 checks/check-consumer-neutral.py
+      - name: Consumer neutral (added lines)
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+        run: python3 checks/check-consumer-neutral.py --diff "$BASE"
       - run: python3 checks/check-kit-comments.py
       - run: python3 templates/overlay/scripts/triage_marker.py --self-test
       - run: python3 templates/overlay/scripts/core-ci.py kit-peers kit/src
