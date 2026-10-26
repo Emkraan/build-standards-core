@@ -229,7 +229,7 @@ The repo runs the standard [CI/CD and Release Standard](ci-cd-release.md) minimu
   that edits the auto-merge workflow itself, or any workflow file that GitHub refuses to merge
   with `GITHUB_TOKEN`, is not merged by it. Merge those with an admin squash:
   `gh pr merge <n> --squash --admin --delete-branch`.
-- The runner pool for this repo (`colima-opscenter`, `-2`) is registered with the runner
+- The runner pool for this repo (`runner-opscenter`, `-2`) is registered with the runner
   registration script, which accepts full `owner/name` repo names for repos that do not follow the
   hub's naming prefix.
 - PR titles are Conventional Commits; green PRs squash-merge automatically; the `no-automerge`

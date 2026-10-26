@@ -2950,7 +2950,7 @@
     {
       "id": "wpf-powershell-gui.16",
       "ref": "wpf-powershell-gui.md 16",
-      "title": "Toolbox conventions hold for every tool",
+      "title": "Sibling tool conventions hold for every tool",
       "statement": "Results grids scroll horizontally, sort by default and have a click-row detail panel, and every tool carries the standard footer, version and description.",
       "level": "should",
       "applies_to": [

@@ -28,7 +28,7 @@ on:
   workflow_call:
     inputs:
       runs-on:
-        description: 'JSON runs-on value, for example ["self-hosted", "linux"]. Empty: the repository variable CORE_CI_RUNNER, else ubuntu-latest.'
+        description: 'JSON runs-on value, for example ["self-hosted", "linux"]. Empty: the repository variable CORE_CI_RUNNER, else ubuntu-24.04.'
         type: string
         default: ""
       overlay:
@@ -58,7 +58,7 @@ env:
 jobs:
   core-checks:
     name: core-checks
-    runs-on: ${{ fromJSON(inputs.runs-on || vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
+    runs-on: ${{ fromJSON(inputs.runs-on || vars.CORE_CI_RUNNER || '"ubuntu-24.04"') }}
     concurrency:
       group: core-ci-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}

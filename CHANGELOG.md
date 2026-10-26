@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-26 (v1.13.1, automatic releases)
+## 2026-10-26 (v1.13.2, automatic releases)
 
 - New `.github/workflows/release.yml` and `checks/auto-release.py`: a push to main whose top CHANGELOG entry
   is a version with no tag now gets an annotated `vX.Y.Z` tag on that commit and a GitHub Release whose notes
@@ -13,6 +13,47 @@
   tag by hand still triggers it as before.
 - CONTRIBUTING.md no longer asks for a hand-made tag. `python3 checks/auto-release.py --dry-run` prints the
   decision for any commit (`--sha`, repeatable `--ignore-tag`) without changing anything.
+
+## 2026-10-26 (v1.13.1, private-list terms removed)
+
+- A consumer account's private list flagged 16 terms on 176 lines of the public tree (hashes only were
+  reported). Twelve of the hashes were removed from the current tree by hash: organisation, product and
+  vendor names in examples became neutral placeholders, and a sample person name in the kit gallery and
+  combobox test changed (the `marks` gallery visual baselines were regenerated). Those twelve hashes are now
+  in `checks/denylist.sha256`, so any reintroduction fails the sanitiser. A new test pins them.
+- Four hashes were left in place and are NOT in the shared list, because renaming them would break code or
+  consumers: two are the core's own feature name (a consumption mode value and a design directory), one is a
+  vendor domain used in XAML namespaces and a container registry image, and one is a deploy action name.
+  No terms are listed here.
+- Earlier commits of the public history still contain the old text; this release changes the current tree
+  only.
+
+## 2026-10-26 (v1.13.0, core-update for private repos: App token, dispatch trigger)
+
+- `core-update.yml` (template): when the repository variable `CORE_APP_ID` is set, the job mints a short-lived
+  GitHub App installation token with `actions/create-github-app-token` (SHA pinned), scoped to contents,
+  pull-requests and workflows write on the repo, and uses it to check out, push and open the pull request,
+  so a private repo needs no personal access token. The App's private key is the secret `CORE_APP_PRIVATE_KEY`,
+  or any existing secret named by the variable `CORE_APP_KEY_SECRET`. `CORE_TOKEN` stays supported and is used
+  only while `CORE_APP_ID` is unset. A missing token now fails the job with one clear message.
+- `workflow_dispatch` is now the only default trigger. The template no longer ships a `schedule:` cron:
+  GitHub drops scheduled runs of private repositories, so a consumer dispatches the workflow from its own
+  scheduler (or adds a cron itself). A sync keeps a `schedule:` block the repo added (`corehash.merge_workflow`).
+- The job is serialised with a `core-update` concurrency group so two dispatches never race on one branch.
+- CONSUMING.md, README.md, the overlay README and `standards/ci-cd-release.md` describe both token lanes and
+  the dispatch trigger. New tests in `tests/test_core_update_app_token.py`.
+
+## 2026-10-26 (v1.12.2, core CI runs on ubuntu-24.04)
+
+- GitHub moved `ubuntu-latest` to Ubuntu 26.04, which has no prebuilt Python 3.9, so every job that sets up the
+  Python floor (3.9, the oldest interpreter the core supports for consumers) failed with "version 3.9 was not
+  found for Ubuntu 26.04". That broke the core's own `ci` check on every pull request and would break a consumer
+  on the default runner.
+- The core's `checks.yml`, the `core-ci.yml` template and the reusable `core-ci-reusable.yml` now default to
+  `ubuntu-24.04` (still supported by GitHub for years). `CORE_RUNNER` and `CORE_CI_RUNNER` still override it.
+  A consumer that sets neither variable gets the fix from `sync-core.py` (template path) or by moving the pin
+  (reusable path); one that sets a runner variable was never affected.
+- Raising the Python floor is the other fix and is a separate decision (3.9 reached end of life in October 2025).
 
 ## 2026-10-25 (v1.12.1, an edit runs every check)
 

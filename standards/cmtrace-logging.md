@@ -25,7 +25,7 @@ One log entry is one line (a message may contain line breaks; CMTrace shows them
 | Field | Meaning | Rule |
 |---|---|---|
 | `LOG[...]` | The message | Plain ASCII. Never contains the sequence `]LOG]!>`. |
-| `time` | Local time, `HH:mm:ss.fff`, then the UTC offset in minutes with a sign | Written from the local clock. The toolbox writes the real offset (for Eastern daylight time `-240`); older copies write a fixed `+000`. Both open in CMTrace. |
+| `time` | Local time, `HH:mm:ss.fff`, then the UTC offset in minutes with a sign | Written from the local clock. The sibling tool writes the real offset (for Eastern daylight time `-240`); older copies write a fixed `+000`. Both open in CMTrace. |
 | `date` | `MM-dd-yyyy` | Local date, US order. CMTrace parses this exact shape. |
 | `component` | Short noun for the part of the script | Filterable in CMTrace and OneTrace. See section 5. |
 | `context` | Who ran it | `DOMAIN\user` from the current Windows identity. May be empty. |
@@ -98,7 +98,7 @@ CI recognises the logger by the line `function Write-CMTraceLog` (section 10), s
 name. Parameters are `-Message`, `-Severity`, `-Component`, `-LogFile`. Do not rename them: tools
 and shared snippets call them by name.
 
-The `Information` / `Warning` / `Error` severity names are the standard. Two toolbox scripts
+The `Information` / `Warning` / `Error` severity names are the standard. Two sibling tool scripts
 (`Pull-JobCode.ps1` and `the device-management system Collection Manager.ps1`) use `Info`; that is tolerated, not copied.
 
 ## 3. Log paths by execution context
@@ -116,9 +116,9 @@ catch { Write-Warning "Could not create the log folder: $($_.Exception.Message)"
 
 | Context | Path | Notes |
 |---|---|---|
-| Technician GUI or interactive script (user context) | `$env:LOCALAPPDATA\Logs\Software\ToolName_<yyyyMMdd_HHmmss>.log` | What every toolbox GUI does today. |
+| Technician GUI or interactive script (user context) | `$env:LOCALAPPDATA\Logs\Software\ToolName_<yyyyMMdd_HHmmss>.log` | What every sibling tool GUI does today. |
 | Unattended task on a server (scheduled task, service account) | `C:\ProgramData\<ToolName>\<ToolName>.log` | What `Pull-JobCode.ps1` does. Fixed name, so rotation (section 4) applies. |
-| SYSTEM: the device-management system or Intune deployment, CI discovery, remediation | `C:\Windows\Logs\Software\ToolName_<yyyyMMdd_HHmmss>.log` | Writable by SYSTEM. From the original logging skill; no toolbox script uses it yet. |
+| SYSTEM: the device-management system or ExampleMDM deployment, CI discovery, remediation | `C:\Windows\Logs\Software\ToolName_<yyyyMMdd_HHmmss>.log` | Writable by SYSTEM. From the original logging skill; no sibling tool script uses it yet. |
 | Tool launched from a network share | Per-user local path above | Never log to the share or next to the script. See the share rule in the [WPF standard](wpf-powershell-gui.md#share-hosted-tools-per-user-log-path-only). |
 
 Rules:
@@ -154,7 +154,7 @@ The user is already in the `context` field of every line, so the header does not
   ```
 
 - **Fixed-name logs** (unattended tasks that run daily or hourly) set `$script:MaxLogSizeBytes`
-  (5 MB is the toolbox value). The function moves the full file to `<name>.lo_` (one generation,
+  (5 MB is the sibling tool value). The function moves the full file to `<name>.lo_` (one generation,
   the old `.lo_` is replaced) and starts a new one, the same convention the device-management system uses, so CMTrace
   opens both.
 - A script that does not set `$script:MaxLogSizeBytes` never rotates. Per-run files only.
@@ -170,7 +170,7 @@ The user is already in the `context` field of every line, so the header does not
 
 - Log the exception message (`$_.Exception.Message`), not the whole error record or a stack dump,
   unless debugging. Include the identifier of the thing that failed.
-- Every swallowed `catch` around an AD, Graph, the device-management system/WMI/CIM, Intune, Imprivata, file-share or
+- Every swallowed `catch` around an AD, Graph, the device-management system/WMI/CIM, ExampleMDM, ExampleSSO, file-share or
   registry call logs a Warning or Error. The full rule and the allowed empty catches are in the
   [WPF standard](wpf-powershell-gui.md#log-every-swallowed-error-around-an-external-call).
 - Do not log an Error for something the script handled and recovered from; that is a Warning.
@@ -224,7 +224,7 @@ Write-CMTraceLog -Message "Compliant: $Compliant (installed $Version, required $
 return $Compliant
 ```
 
-The toolbox CI enforces the boolean rule (section 10). It cannot see a function from another
+The sibling tool CI enforces the boolean rule (section 10). It cannot see a function from another
 module that writes to the pipeline, so test a discovery script by running it and checking that the
 output is exactly one boolean.
 
@@ -263,7 +263,7 @@ exit $ExitCode
   secret.
 - PHI, and anything that identifies a patient: names, MRNs, encounter or account numbers, dates
   of birth. Device names, group names, UPNs and counts are fine and are the useful content.
-- Whole request or response bodies from Graph, REST or Imprivata calls. Log the status, the
+- Whole request or response bodies from Graph, REST or ExampleSSO calls. Log the status, the
   identifier and the exception message; a body can carry personal data, and a URL can carry a
   token in its query string.
 - Anything the log is not allowed to hold because the folder is broader than the data: a log under
@@ -273,7 +273,7 @@ exit $ExitCode
 If a message might contain user-supplied text, log a bounded excerpt, and never rely on the
 ASCII filter in the function to remove sensitive data (it only replaces non-ASCII characters).
 
-## 10. Reading the logs, and how the toolbox CI enforces this
+## 10. Reading the logs, and how the sibling tool CI enforces this
 
 ### Reading
 
@@ -286,7 +286,7 @@ ASCII filter in the function to remove sensitive data (it only replaces non-ASCI
   time when a run spans a rolled log or several runspaces.
 - From PowerShell, without CMTrace: `Get-Content -Path <log> -Tail 50 -Wait` shows raw lines.
 
-### Enforcement (device-solutions-toolbox)
+### Enforcement (example-org-tool)
 
 `pwsh ./ci/Invoke-CI.ps1 -Task All` runs the same checks locally and in CI. Which rules touch
 logging:
@@ -304,12 +304,12 @@ What CI does not check: the line format, the severity names, the log path, rotat
 messages, or that a discovery script's called functions stay off the pipeline. Those are review
 items against this standard.
 
-## 11. Where the original skill and the toolbox code differ
+## 11. Where the original skill and the sibling tool code differ
 
-The logging guidance began as an internal how-to. Where it and the toolbox code differed, this
+The logging guidance began as an internal how-to. Where it and the sibling tool code differed, this
 standard chose as follows:
 
-| Topic | Original how-to | Toolbox code | This standard |
+| Topic | Original how-to | Sibling tool code | This standard |
 |---|---|---|---|
 | Time field | Fixed `+000` | `Pull-JobCode.ps1` writes the real UTC offset in minutes; the WPF tools and the [WPF standard](wpf-powershell-gui.md) write `+000` | Real offset; `+000` copies stay valid |
 | `context` field | Empty | `Pull-JobCode.ps1` fills it with the Windows identity; the rest leave it empty | Windows identity |
@@ -323,9 +323,9 @@ standard chose as follows:
 | Runspace registration | `Invoke-Expression` of `.Definition` | The WPF standard documents that this crashes the runspace; use `New-Item Function:\` | WPF standard |
 | Header | Includes user and OS | The WPF standard omits OS | Without user (it is in `context`) |
 
-The CI/CD standard and the code agree on PSADT: `LoggingPatterns` in the toolbox `ci/Policy.psd1`
+The CI/CD standard and the code agree on the deployment toolkit: `LoggingPatterns` in the sibling tool `ci/Policy.psd1`
 also accepts a call to `Open-ADTSession` or `Write-ADTLogEntry` (on a non-comment line), so a
-script that logs only through PSADT passes the logger check.
+script that logs only through the deployment toolkit passes the logger check.
 
 ## 12. Checklist
 

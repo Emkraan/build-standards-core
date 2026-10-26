@@ -1,13 +1,25 @@
 name: core-update
 # Opens a pull request when the core has a newer release than standards.lock. Needs a repository
-# variable CORE_REPO (OWNER/NAME of the core; a variable so no file in the repo names it) and a repository
-# secret, CORE_TOKEN: a fine-grained token (or an App token) with contents and pull-requests write on THIS
-# repo; the core is public, so reading it needs no permission. A token is required because pull requests
-# opened with the default GITHUB_TOKEN do not start CI. The sync also refreshes the repo's core
-# template workflows, so the token needs workflows write too (classic: the workflow scope). Adjust
-# OVERLAY if the overlay is in a subfolder; a sync keeps the repo's OVERLAY value and every line marked
-# core-sync: keep. When core-ci.yml's job names change, the pull request body lists the old -> new
-# required-check names for the merge gate.
+# variable CORE_REPO (OWNER/NAME of the core; a variable so no file in the repo names it) and one token
+# that can open pull requests on THIS repo that start CI, and push the refreshed workflow files. The core
+# is public, so reading it needs no permission. A token is required because pull requests opened with
+# the default GITHUB_TOKEN do not start CI. Two ways to supply it, the App first:
+#   - A GitHub App: set the repository variable CORE_APP_ID (the App's client ID) and store the App's
+#     private key as the repository secret CORE_APP_PRIVATE_KEY. The job mints a short-lived installation
+#     token with contents, pull-requests and workflows write on this repo only. No personal token exists.
+#     A repo that already has an App secret under another name sets the variable CORE_APP_KEY_SECRET to
+#     that secret's name instead of copying it.
+#   - A token: the repository secret CORE_TOKEN, a fine-grained token with contents, pull-requests and
+#     workflows write on THIS repo (classic: repo and workflow scopes). Used only when CORE_APP_ID is unset.
+# The sync also refreshes the repo's core template workflows, so the token needs workflows write.
+# Adjust OVERLAY if the overlay is in a subfolder; a sync keeps the repo's OVERLAY value, every line
+# marked core-sync: keep, and a schedule block the repo added. When core-ci.yml's job names change, the
+# pull request body lists the old -> new required-check names for the merge gate.
+#
+# Trigger. workflow_dispatch is the trigger: whatever scheduler the repo uses dispatches it (a fleet
+# scheduler, an external cron service, or a person). A GitHub cron is optional and never required: GitHub
+# drops scheduled runs of private repositories, so a repo that wants one adds a schedule block under on:
+# (a sync keeps it) and accepts that a run may not fire.
 #
 # Merging. An app other than an ops center never changes without the owner's approval (core README,
 # "Direction"), so by default (repository variable CORE_UPDATE_MERGE unset or "approve") the job only
@@ -24,15 +36,15 @@ name: core-update
 # (CORE_UPDATE_WAIT_MINUTES, default 60) leaves the pull request open. "gate" leaves the merge to the
 # repo's own merge gate (a ruleset with required checks, or a merge gate workflow).
 on:
-  schedule:
-    - cron: "23 5 * * *"  # core-sync: keep
   workflow_dispatch:
 permissions:
   contents: write
   pull-requests: write
+concurrency:
+  group: core-update
+  cancel-in-progress: false
 env:
   OVERLAY: .
-  GH_TOKEN: ${{ secrets.CORE_TOKEN }}
   CORE_REPO: ${{ vars.CORE_REPO }}
 jobs:
   update:
@@ -40,15 +52,34 @@ jobs:
     # example where hosted minutes are not available; unset, the job runs on ubuntu-latest.
     runs-on: ${{ fromJSON(vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
     steps:
+      - id: app
+        if: vars.CORE_APP_ID != ''
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.CORE_APP_ID }}
+          private-key: ${{ secrets[vars.CORE_APP_KEY_SECRET || 'CORE_APP_PRIVATE_KEY'] }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
+      - name: Require a token
+        env:
+          TOKEN: ${{ steps.app.outputs.token || secrets.CORE_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::core-update: set the variable CORE_APP_ID and the secret CORE_APP_PRIVATE_KEY (a GitHub App), or the secret CORE_TOKEN"
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          token: ${{ secrets.CORE_TOKEN }}
+          token: ${{ steps.app.outputs.token || secrets.CORE_TOKEN }}
       - id: sync
         env:
+          GH_TOKEN: ${{ steps.app.outputs.token || secrets.CORE_TOKEN }}
           CORE_SYNC_NOTES: ${{ runner.temp }}/core-sync-notes.txt
         run: echo "tag=$(python3 $OVERLAY/scripts/update-core.py)" >> "$GITHUB_OUTPUT"
       - if: steps.sync.outputs.tag != ''
         env:
+          GH_TOKEN: ${{ steps.app.outputs.token || secrets.CORE_TOKEN }}
           TAG: ${{ steps.sync.outputs.tag }}
           MERGE: ${{ vars.CORE_UPDATE_MERGE || 'approve' }}
           WAIT_MINUTES: ${{ vars.CORE_UPDATE_WAIT_MINUTES || '60' }}

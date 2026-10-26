@@ -1,10 +1,10 @@
-# Telegram Message Standard
+# Chat Message Standard
 
 Version: 1.0 | Last reviewed: 2026-10-08 | Status: current | Scope: all
 
-Every Telegram message that reaches the owner follows this standard. The shared formatter is
+Every chat message that reaches the owner follows this standard. The shared formatter is
 `<agent-home>/scripts/tgfmt.py` (stdlib only, importable, with a CLI for shell wrappers). Scheduled
-scripts are wrapped by `tgfmt_guard.py`. Do not hand-write Telegram text in a script.
+scripts are wrapped by `tgfmt_guard.py`. Do not hand-write chat text in a script.
 
 ## 1. Principles
 
@@ -17,7 +17,7 @@ scripts are wrapped by `tgfmt_guard.py`. Do not hand-write Telegram text in a sc
 
 ## 2. Format
 
-HTML parse mode. HTML and MarkdownV2 render identically in Telegram; HTML needs only `<`, `>` and
+HTML parse mode. HTML and MarkdownV2 render identically in chat; HTML needs only `<`, `>` and
 `&` escaped, MarkdownV2 needs 18 characters escaped and rejects the whole message on a miss.
 Never use em or en dashes, curly quotes or other banned characters in message text; the formatter
 strips them.
