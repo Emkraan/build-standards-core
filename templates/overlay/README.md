@@ -31,8 +31,8 @@ scripts. `standards-local/` is the one consumer-owned folder in the overlay.
 
 ## Lint sweep
 
-`.github/workflows/lint-sweep.yml` is copied like `core-ci.yml` (consumer-held, `OVERLAY` at its
-top). Every Monday, and on demand, it runs the overlay's UI lint and script lint over the configured
+`.github/workflows/lint-sweep.yml` is copied like `core-ci.yml` (a sync refreshes it and keeps
+its `OVERLAY` value at the top). Every Monday, and on demand, it runs the overlay's UI lint and script lint over the configured
 paths and the repo's own full-tree lint from the parameters row `Lint sweep command` (empty: only the
 overlay lints). While it fails it keeps one issue labelled `lint-sweep` open: it creates the issue
 the first time, then edits that issue's body and comments on it, and never opens a second one; the
@@ -51,15 +51,21 @@ exceptions").
 
 `.github/workflows/core-ci.yml` is copied with the overlay, like `core-drift.yml`: put it in the
 repo's root `.github/workflows/` and set `OVERLAY` at its top when the overlay is a subfolder. The
-workflow file is consumer-held (a sync does not rewrite it); its checks live in `scripts/core-ci.py`,
-which every sync refreshes, so a fix to a check reaches the repo with the next release. When a
-release changes the workflow file itself, its changelog entry says so; copy it again.
+workflow file is refreshed by every sync (`scripts/sync-core.py`, the nightly, `core-update.yml`) like
+`core-drift.yml`, `core-update.yml` and `lint-sweep.yml`, so a fix to a check or to the workflow reaches the
+repo with the next release. The sync keeps what is the repo's own: the `OVERLAY` value, the overlay path
+prefix in front of relative paths, every line marked `core-sync: keep` and a `schedule:` block the repo
+added; nothing else in the file is customised by editing it. The runner is set without editing the file:
+the repository variable `CORE_CI_RUNNER`, a JSON `runs-on` value, overrides the default `ubuntu-24.04`. A
+workflow the repo does not have is not added, and a `core-ci.yml` that calls the reusable workflow is left
+as it is (see below). When a release changes the job names, the sync prints the old -> new required
+checks so the merge gate can be updated.
 
 Every `uses:` is pinned to a full commit sha with its version in a comment, and the scanner
 (gitleaks), PSScriptAnalyzer and ruff are pinned by version and sha256 in `core-ci.py`. The workflow
 is ONE job, `core-checks` (the one check name the merge gate requires); each check is a named step
 of it, and a failed step does not stop the others. A pull request runs every step, a title or body
-edit runs only `core-pr-title` and `core-attribution`, a merge queue entry runs every step that does
+edit is a pull request event and runs every step too, a merge queue entry runs every step that does
 not read the pull request, and a push to the default branch runs only `core-secret-scan`. Steps:
 
 | Step | Proves | Runs |
@@ -91,12 +97,12 @@ the head of the last merged pull request with the same tree.
 caller instead of copying this file; the check is then `core-checks / core-checks`. A sync leaves such a
 caller alone. See CONSUMING.md, "Alternative: call the reusable `core-ci` workflow".
 
-The workflow file gained the `kit-peers` job and the setup output `kit` in v0.57.0: copy it again.
+The workflow file gained the `kit-peers` job and the setup output `kit` in v0.57.0; a sync refreshes it.
 
 **Job names (v0.77.0).** Every job id and check name starts with `core-` (`core-python`,
 `core-identity`; `core-setup` is the helper no gate requires). Before, the template's `python` job and
 a repo's own `python` job had the same check name, so a merge gate keyed on check names read the two
-as one. Migration, once per repo: copy `core-ci.yml` from the template again (keep your `OVERLAY`
+as one. Migration, once per repo: run a sync (it refreshes `core-ci.yml` and keeps your `OVERLAY`
 value), then run `python3 scripts/core-ci.py required-checks --fix`: it lists the new names the gate
 does not require yet and, under "Replace each", every old core-ci name still listed (`python ->
 core-python`). Update the gate's required checks (ruleset, branch protection or `REQUIRED_CHECKS`)
@@ -166,7 +172,7 @@ for one repo, set by the owner only: `wait` waits for every check on the pull re
 timeout of `CORE_UPDATE_WAIT_MINUTES`, default 60, with a progress line of checks done, pending and
 failed at most every 5 minutes, `--progress MIN` to change it) and then squash merges that commit with
 `merge-pr.py --match-head-commit`, and `gate` leaves the merge to the repo's own merge gate. The
-workflow file changed in v0.59.0 (the `approve` default): copy it again. `targets.map` keeps generated files in your code equal to
+workflow file changed in v0.59.0 (the `approve` default); a sync refreshes it. `targets.map` keeps generated files in your code equal to
 the synced copies. See the core README, "Staying in lockstep".
 
 ## Updating
