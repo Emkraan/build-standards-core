@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-26 (v1.22.0, proof batch 2: security, secrets and release rules)
+
+- Three more `repo-check` rules: `secrets-and-credentials.1.4` (RC011, a checkout of another repository carries an
+  ssh-key), `scripting-python.1.2` (RC012, every import outside the standard library is in a pinned requirements
+  file with a reason comment, or in a declared dependency list with a lock file) and `ci-cd-release.6` (RC013, a
+  stateful deploy workflow re-runs CI or waits on a CI job, and checks health afterwards; a static-site or Vercel-only
+  deploy is carved out). Each has a failing and a passing fixture; the shipped overlay and the core pass them.
+- Two rules bind to a job of the template workflow the repo already runs: `pr-review-and-merge.1.3` to
+  `core-changelog` and `secrets-and-credentials.1.6` to `core-secret-scan`, both in `core-ci.yml`. Their acceptance
+  lines now say what that job proves.
+- Acceptance lines narrowed to what the check proves: the five rules above. Statements are unchanged.
+
 ## 2026-10-26 (v1.21.0, proof batch 1: ten rules get a static check, five a core test)
 
 - New rule check kind `repo-check` and `scripts/repo_checks.py` (synced to every overlay). A repo check reads the

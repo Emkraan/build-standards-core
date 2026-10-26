@@ -622,6 +622,177 @@ def rc010(repo):
     ]
 
 
+# ---------------------------------------------------------------- RC011 cross-repo CI reads use a deploy key
+
+STEP_START = re.compile(r"^\s*-\s+(?:name|uses|run|id|if|env|with)\s*:")
+
+
+def rc011(repo):
+    out = []
+    for p in repo.workflows():
+        lines = repo.text(p).splitlines()
+        for i, ln in enumerate(lines):
+            if is_comment(ln) or "actions/checkout" not in ln or not re.search(r"\buses\s*:", ln):
+                continue
+            end = i + 1
+            while end < len(lines) and not STEP_START.match(lines[end]):
+                end += 1
+            block = "\n".join(lines[i:end])
+            m = re.search(r"(?m)^\s*repository\s*:\s*(.+)$", block)
+            cross = m and "github.repository" not in m.group(1) and "ssh-key" not in block
+            if cross and not skipped(lines, i):
+                out.append(
+                    (
+                        p,
+                        i + 1,
+                        "a checkout of another repository has no ssh-key (a read-only deploy key)",
+                    )
+                )
+    return out
+
+
+# ---------------------------------------------------------------- RC012 standard library first
+
+IMPORT_ALIASES = {
+    "yaml": "pyyaml",
+    "pil": "pillow",
+    "dateutil": "python-dateutil",
+    "cv2": "opencv-python",
+    "bs4": "beautifulsoup4",
+    "sklearn": "scikit-learn",
+    "jwt": "pyjwt",
+    "dotenv": "python-dotenv",
+    "attr": "attrs",
+    "openssl": "pyopenssl",
+    "serial": "pyserial",
+    "git": "gitpython",
+    "multipart": "python-multipart",
+    "jose": "python-jose",
+}
+
+
+def stdlib_names():
+    names = getattr(sys, "stdlib_module_names", None)
+    if names:
+        return set(names)
+    import sysconfig
+
+    out = set(sys.builtin_module_names)
+    std = pathlib.Path(sysconfig.get_paths()["stdlib"])
+    for e in std.iterdir():
+        if e.name in ("site-packages", "dist-packages"):
+            continue
+        out.add(e.name.split(".")[0])
+    dyn = std / "lib-dynload"
+    if dyn.is_dir():
+        out.update(e.name.split(".")[0] for e in dyn.iterdir())
+    return out
+
+
+def norm_dist(name):
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def declared_deps(repo):
+    """(names, unpinned or reasonless requirement lines) from requirements*.txt and pyproject.toml."""
+    names, problems = set(), []
+    locked = any(
+        p.rsplit("/", 1)[-1] in ("uv.lock", "poetry.lock", "pylock.toml", "Pipfile.lock")
+        for p in repo.paths
+    )
+    for p in repo.paths:
+        base = p.rsplit("/", 1)[-1]
+        if re.match(r"requirements.*\.txt$", base):
+            lines = repo.text(p).splitlines()
+            for i, ln in enumerate(lines):
+                t = ln.split("#")[0].strip()
+                if not t or t.startswith(("-", "git+", "http")):
+                    continue
+                m = re.match(r"([A-Za-z0-9][A-Za-z0-9._-]*)", t)
+                if not m:
+                    continue
+                names.add(norm_dist(m.group(1)))
+                if "==" not in t and "--hash" not in t:
+                    problems.append((p, i + 1, f"{m.group(1)} is not pinned with =="))
+                elif "#" not in ln and not (i > 0 and lines[i - 1].lstrip().startswith("#")):
+                    problems.append((p, i + 1, f"{m.group(1)} has no reason comment"))
+        elif base == "pyproject.toml":
+            text = repo.text(p)
+            for blk in re.findall(
+                r"(?ms)^\s*(?:dependencies|[A-Za-z0-9_-]+)\s*=\s*\[(.*?)\]", text
+            ):
+                for m in re.finditer(r"[\"']([A-Za-z0-9][A-Za-z0-9._-]*)", blk):
+                    names.add(norm_dist(m.group(1)))
+            if not locked and re.search(r"(?m)^\s*dependencies\s*=", text):
+                problems.append((p, 1, "dependencies are declared with no lock file to pin them"))
+    return names, problems
+
+
+def rc012(repo):
+    files = repo.select(exts=(".py",), tests=False)
+    if not files:
+        return []
+    import ast
+
+    local = set()
+    for p in repo.paths:
+        parts = p.split("/")
+        local.update(parts[:-1])
+        if p.endswith(".py"):
+            local.add(parts[-1][:-3])
+    std = stdlib_names()
+    declared, out = declared_deps(repo)
+    seen = {}
+    for p in files:
+        try:
+            tree = ast.parse(repo.text(p))
+        except (SyntaxError, ValueError):
+            continue
+        for node in ast.walk(tree):
+            mods = []
+            if isinstance(node, ast.Import):
+                mods = [a.name.split(".")[0] for a in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                mods = [node.module.split(".")[0]]
+            for m in mods:
+                if m in std or m in local or m == "__future__":
+                    continue
+                dist = norm_dist(IMPORT_ALIASES.get(m.lower(), m))
+                if dist not in declared and norm_dist(m) not in declared:
+                    seen.setdefault(m, (p, node.lineno))
+    for m, (p, n) in sorted(seen.items()):
+        out.append(
+            (p, n, f"import {m} is outside the standard library and in no pinned requirements file")
+        )
+    return out
+
+
+# ---------------------------------------------------------------- RC013 deploys re-run CI and are health gated
+
+CI_GATE = re.compile(
+    r"workflow_run|workflow_call|(?m:^\s+needs\s*:)|\bnpm\s+(?:run\s+)?(?:test|ci|check|verify)\b|\bpnpm\s+(?:run\s+)?(?:test|check|verify)\b"
+    r"|\bpytest\b|unittest|\bvitest\b|\bmake\s+(?:test|check|verify)\b|scripts/verify|uses\s*:\s*\./\.github/workflows/",
+)
+
+
+def rc013(repo):
+    out = []
+    for p in repo.workflows():
+        base = p.rsplit("/", 1)[-1].lower()
+        if not re.match(r"deploy", base) or "/actions/" in p:
+            continue
+        text = repo.text(p)
+        if static_only_deploy(text):
+            continue
+        if not CI_GATE.search(text):
+            out.append(
+                (p, 1, "a deploy workflow does not re-run CI or wait on a CI job before it deploys")
+            )
+        if not re.search(r"health", text, re.I):
+            out.append((p, 1, "a deploy workflow has no health check after the deploy"))
+    return out
+
+
 # id -> (title, doc rule ref, function)
 CHECKS = {
     "RC001": ("kill by name or pattern", "automation-safety.md 1.9", rc001),
@@ -634,6 +805,9 @@ CHECKS = {
     "RC008": ("real-looking fixture address", "identity-and-people-data.md 1.7", rc008),
     "RC009": ("auth redirect handled outside one module", "web-client-runtime.md 1.2", rc009),
     "RC010": ("undocumented secret", "ci-cd-release.md 9", rc010),
+    "RC011": ("cross-repo checkout without a deploy key", "secrets-and-credentials.md 1.4", rc011),
+    "RC012": ("import outside the standard library not pinned", "scripting-python.md 1.2", rc012),
+    "RC013": ("deploy without CI or health gate", "ci-cd-release.md 6", rc013),
 }
 
 

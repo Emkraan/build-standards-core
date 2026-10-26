@@ -242,6 +242,56 @@ class TestChecks(Tree):
         )
 
 
+class TestBatch2(Tree):
+    def test_rc011_cross_repo_checkout_needs_ssh_key(self):
+        bad = "jobs:\n  a:\n    steps:\n      - uses: actions/checkout@abc\n        with:\n          repository: o/other\n      - run: x\n"
+        self.fails("RC011", {".github/workflows/a.yml": bad})
+
+    def test_rc011_clean(self):
+        ok = (
+            "jobs:\n  a:\n    steps:\n      - uses: actions/checkout@abc\n        with:\n          repository: o/other\n          ssh-key: ${{ secrets.K }}\n"
+            "      - uses: actions/checkout@abc\n        with:\n          repository: ${{ github.repository }}\n"
+        )
+        self.passes("RC011", {".github/workflows/a.yml": ok})
+
+    def test_rc012_unlisted_third_party_import(self):
+        self.fails("RC012", {"app/main.py": "import requests\nimport os\n"})
+
+    def test_rc012_unpinned_and_reasonless(self):
+        self.put({"app/main.py": "import requests\n", "requirements.txt": "requests\n"})
+        self.assertIn("not pinned", self.run_check("RC012")[0][2])
+        self.put({"requirements.txt": "requests==2.0\n"})
+        self.assertIn("no reason", self.run_check("RC012")[0][2])
+
+    def test_rc012_clean(self):
+        self.passes(
+            "RC012",
+            {
+                "app/main.py": "import os, yaml\nfrom app import util\nfrom . import x\n",
+                "app/util.py": "",
+                "requirements.txt": "# config files\nPyYAML==6.0\n",
+            },
+        )
+
+    def test_rc013_deploy_needs_ci_and_health(self):
+        self.fails(
+            "RC013",
+            {
+                ".github/workflows/deploy-api.yml": "name: deploy\njobs:\n  a:\n    steps:\n      - run: docker compose up -d\n"
+            },
+        )
+
+    def test_rc013_clean_and_static(self):
+        ok = "name: deploy\njobs:\n  t:\n    steps:\n      - run: npm test\n  d:\n    needs: t\n    steps:\n      - run: docker compose up -d && curl health\n"
+        self.passes(
+            "RC013",
+            {
+                ".github/workflows/deploy-api.yml": ok,
+                ".github/workflows/deploy-site.yml": "jobs:\n  a:\n    steps:\n      - run: npx vercel deploy\n",
+            },
+        )
+
+
 class TestWiring(Tree):
     def test_every_check_is_registered_once_with_a_matching_ref(self):
         reg = json.loads((ROOT / "standards/rules.json").read_text(encoding="utf8"))["rules"]
