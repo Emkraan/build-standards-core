@@ -237,7 +237,7 @@ How to use it:
 |---|---|---|---|---|
 | `scripting-python.1.1` Code runs on the interpreter floor | must | python | overlay-ci | The floor is the oldest interpreter that runs the code (parameter, default 3.9 where the OS python is the runtime). Every module with annotations starts with from __future__ import annotations, no newer syntax is used, and CI runs on the floor. |
 | `scripting-python.1.2` Standard library first | must | python | repo-check | Use a third-party package only when the standard library cannot do the job, pin it with hashes, and never install packages from inside a script at run time. |
-| `scripting-python.1.3` No secrets in argv, environment dumps or logs | must | python | review | Pass secrets on stdin, in a mode 0600 file or by reading the secret store in process. Never log a command line, environment or response body that can carry one, and redact secret-shaped values in errors. |
+| `scripting-python.1.3` No secrets in argv, environment dumps or logs | must | python | repo-check | Pass secrets on stdin, in a mode 0600 file or by reading the secret store in process. Never log a command line, environment or response body that can carry one, and redact secret-shaped values in errors. |
 | `scripting-python.1.4` State files are written atomically | must | python | test | Write to a temp file in the same directory, flush and fsync, then os.replace over the target. Sensitive files are created with mode 0600. Each file has exactly one named writer. |
 | `scripting-python.1.5` Scheduled runs cannot overlap | must | python | test | A job that a scheduler starts takes a non-blocking exclusive lock on a lock file and exits 0 with one skip line when another run holds it. The lock is released by process exit. |
 | `scripting-python.1.6` Every external path is overridable for tests | must | python | test | State directories, binaries (gh, cloud CLIs) and endpoints come from environment overrides with production defaults. Tests set them inline per command, never exported into a shared shell. |
@@ -299,7 +299,7 @@ How to use it:
 |---|---|---|---|---|
 | `web-build.4` One auth model per app type, dev bypass development or test only | must | web | test | An app behind the platform uses platform-level auth; the dev bypass is honoured only in development or test, and a boot preflight refuses a production start while it is set. |
 | `web-build.7` One tools manifest drives every navigation surface | must | web | test | A single manifest feeds the hub, sidebars and palette; visibility combines the view permissions, accessPrefixes (never narrower than the server), hiddenWithPermission, visibleTo for scoped grants, and previewFlag for nav items. |
-| `web-build.8.1` One local gate runs what CI runs | should | web | review | One script (pnpm run verify) runs typecheck, lint, every check guard, the build, the bundle-size check, the tests and the pinned static analysis scan, failing on the first non-zero step. |
+| `web-build.8.1` One local gate runs what CI runs | should | web | repo-check | One script (pnpm run verify) runs typecheck, lint, every check guard, the build, the bundle-size check, the tests and the pinned static analysis scan, failing on the first non-zero step. |
 | `web-build.10` One global search, access-filtered, with index health | must | web | test | Global search covers every record the user can see, filters by the record access rules on the server, indexes up to 100,000 characters of file text with a highlighted passage, and reports stale, skipped and broken-link counts from a health endpoint. |
 
 ## web-client-runtime.md
@@ -323,7 +323,7 @@ How to use it:
 | `web-client-runtime.3.7` Background polls never navigate | must | web | test | A poll passes its own on-401 handler that throws, so only a user-started call may send the user to sign in. |
 | `web-client-runtime.3.8` Polls pause while the tab is hidden | should | web | test | Polling stops on visibility hidden and resumes, with one immediate refresh, when the tab is visible again. |
 | `web-client-runtime.4.1` Lazy routes, first page started at boot, the rest prefetched on idle | should | web | review | Every route is a lazy chunk. The route the user landed on starts loading during boot, and the other routes prefetch when the browser is idle. |
-| `web-client-runtime.4.2` Long-lived vendor chunks | should | web | review | The framework and the auth library build into their own named chunks so an app release does not change their hashes. |
+| `web-client-runtime.4.2` Long-lived vendor chunks | should | web | repo-check | The framework and the auth library build into their own named chunks so an app release does not change their hashes. |
 | `web-client-runtime.4.3` Large inline assets become hashed files | should | web | review | Images, fonts and data above a few kilobytes are emitted as hashed files, not inlined into the script. |
 | `web-client-runtime.5.1` One client package for every app on the origin | should | web | review | Auth boot, token renewal, the API client and polling live in one package that every app imports. |
 | `web-client-runtime.5.2` One token cache across apps on the same origin | must | web | test | Apps on one origin share the auth library's cache location and client configuration, so signing in to one signs in to all. |
@@ -367,7 +367,7 @@ How to use it:
 | `web-ui.2` Colours come from tokens | must | web | lint | Every colour in app code is a token from the synced token sheet. No hex, rgb, hsl, oklch or named colour literal outside the token files. |
 | `web-ui.4` ASCII punctuation in source | must | web | lint | UI source uses ASCII punctuation: no em or en dash, curly quote, NBSP, zero-width or ellipsis character. |
 | `web-ui.5` Stacking comes from the z scale | must | web | lint | Every z-index is a --z-* token. Only 0 and -1 are allowed as literals, for local stacking inside a component. |
-| `web-ui.9` Verify in both themes before done | must | web | test | A surface is verified in the browser in dark and light with no console errors, and axe reports no critical or serious violation. |
+| `web-ui.9` Verify in both themes before done | must | web | repo-check | A surface is verified in the browser in dark and light with no console errors, and axe reports no critical or serious violation. |
 | `web-ui.14` Motion comes from the duration scale | must | web | lint | Every transition and animation time is a --dur-* or --stagger-step token, and every animation honours prefers-reduced-motion. Decorative assets may declare their own timing variables once at the asset root. |
 | `web-ui.16` One accent token per app | must | web | lint | The accent is set once, with data-app-accent on the root element. App CSS never sets accent tokens, except a certified accent block printed by the token builder. |
 | `web-ui.17` Categorical order and tone | must | web | review | Data uses the six categorical hues in their fixed order, minus the withheld hue. Tone and selection follow the recipes in this section. |
@@ -377,7 +377,7 @@ How to use it:
 | `web-ui.21` System health request analytics | should | web | test | The health page summarises requests into fixed buckets per range. |
 | `web-ui.22` Build card and release notes | must | web | core-ci | Every app with a sidebar shows the build card with its version and release notes parsed from the changelog. |
 | `web-ui.24` Shell chrome is accessible | must | web | test | The chrome the behavioural layer adds (rail, palette, feed, toasts) passes axe with zero violations. |
-| `web-ui.25` Required chrome is mounted | must | web | review | Every app with a sidebar mounts the required chrome listed in section 25. |
+| `web-ui.25` Required chrome is mounted | must | web | repo-check | Every app with a sidebar mounts the required chrome listed in section 25. |
 | `web-ui.12` The theme script is injected from the kit | must | web | core-ci | The pre-paint theme script is the kit themeInitScript, injected at build by the kit HTML transform (kitThemeInit), never pasted; a build that cannot inject it tests the inline script against the kit byte for byte (hasCurrentThemeInit). |
 | `web-ui.26.1` Each mounted app has an appId | must | web | test | Several apps on one origin pass their own appId to the shell, so seen and dismissed state stays per app while theme and rail pin stay shared. |
 | `web-ui.26.2` Each tool owns one path prefix behind a guard | must | web | review | A tool on a shared origin keeps its routes under /<id>/*, wrapped in a route guard that admits no one the server would refuse. |

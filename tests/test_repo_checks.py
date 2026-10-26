@@ -292,6 +292,86 @@ class TestBatch2(Tree):
         )
 
 
+class TestBatch3(Tree):
+    UI = {"src/App.tsx": "export const A = () => <AppShell rail={<BuildCard />} />;\n"}
+
+    def test_rc014_needs_axe_and_both_themes(self):
+        self.put(self.UI)
+        self.assertTrue(self.run_check("RC014"))
+        self.fails("RC014", {"e2e/a.spec.ts": "test('x', () => { page.goto('/') })\n"})
+        self.put(
+            {"e2e/a.spec.ts": "import AxeBuilder from '@axe-core/playwright';\nconst t = 'dark';\n"}
+        )
+        self.assertIn("both", self.run_check("RC014")[0][2])
+
+    def test_rc014_clean_and_no_ui(self):
+        self.passes(
+            "RC014",
+            {
+                **self.UI,
+                "e2e/a.spec.ts": "import AxeBuilder from 'x/axe-core';\nfor (const t of ['light', 'dark']) {}\n",
+            },
+        )
+        shutil.rmtree(self.dir / "src")
+        shutil.rmtree(self.dir / "e2e")
+        self.assertEqual(self.run_check("RC014"), [])
+
+    def test_rc015_shell_without_build_card(self):
+        self.fails("RC015", {"src/App.tsx": "export const A = () => <AppShell />;\n"})
+
+    def test_rc015_clean(self):
+        self.passes("RC015", {**self.UI})
+
+    def test_rc016_verify_script(self):
+        self.fails("RC016", {"package.json": json.dumps({"scripts": {"build": "x"}})})
+        self.put(
+            {
+                "package.json": json.dumps(
+                    {"scripts": {"verify": "npm run build", "check:unicode": "x", "test": "y"}}
+                )
+            }
+        )
+        found = self.run_check("RC016")
+        self.assertEqual(
+            sorted(f[2] for f in found),
+            ["the verify script does not run check:unicode", "the verify script does not run test"],
+        )
+
+    def test_rc016_clean_with_script_file(self):
+        self.passes(
+            "RC016",
+            {
+                "package.json": json.dumps(
+                    {"scripts": {"verify": "node scripts/verify.mjs", "check:a": "x", "build": "y"}}
+                ),
+                "scripts/verify.mjs": "run('pnpm run check:a'); run('pnpm run build');\n",
+            },
+        )
+
+    def test_rc017_secret_in_argv(self):
+        self.fails(
+            "RC017", {"t.py": "import subprocess\nsubprocess.run(['tool', '--password', pw])\n"}
+        )
+        self.fails("RC017", {"t.py": "import subprocess\nsubprocess.run(['tool', api_token])\n"})
+
+    def test_rc017_clean(self):
+        self.passes(
+            "RC017",
+            {
+                "t.py": "import subprocess\nsubprocess.run(['tool', '--password-stdin'], input=pw)\nsubprocess.run(['tool', '--token-file', path])\nsubprocess.run(['ls', name])\n"
+            },
+        )
+
+    def test_rc018_vendor_chunks(self):
+        self.fails("RC018", {"vite.config.ts": "export default {};\n"})
+        self.passes(
+            "RC018",
+            {
+                "vite.config.ts": "export default { build: { rollupOptions: { output: { manualChunks: {} } } } };\n"
+            },
+        )
+
+
 class TestWiring(Tree):
     def test_every_check_is_registered_once_with_a_matching_ref(self):
         reg = json.loads((ROOT / "standards/rules.json").read_text(encoding="utf8"))["rules"]
