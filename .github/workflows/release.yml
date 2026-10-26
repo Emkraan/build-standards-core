@@ -1,0 +1,59 @@
+name: release
+# Tags and publishes a release when a push to main introduces a new top CHANGELOG entry
+# (checks/auto-release.py). A tag or release made with the workflow token starts no other
+# workflow, so the gallery build is called explicitly after the release exists.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Commit to release (default: the head of the selected ref)
+        required: false
+        default: ''
+concurrency:
+  group: release
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ${{ fromJSON(vars.CORE_RUNNER || '"ubuntu-latest"') }}
+    timeout-minutes: 10
+    outputs:
+      tag: ${{ steps.decide.outputs.tag }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.9'
+      - id: decide
+        env:
+          SHA: ${{ inputs.sha || github.sha }}
+        run: python3 checks/auto-release.py --sha "$SHA"
+      - name: Tag and publish the release
+        if: steps.decide.outputs.action == 'tag'
+        env:
+          TAG: ${{ steps.decide.outputs.tag }}
+          SHA: ${{ steps.decide.outputs.sha }}
+          NOTES: ${{ steps.decide.outputs.notes_file }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" "$SHA" -m "$TAG"
+          git push origin "refs/tags/$TAG"
+          if ! gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" --verify-tag --title "$TAG" --notes-file "$NOTES" -R "$GITHUB_REPOSITORY"
+          fi
+  gallery:
+    needs: release
+    if: needs.release.outputs.tag != ''
+    permissions:
+      contents: write
+    uses: ./.github/workflows/gallery-release.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}
