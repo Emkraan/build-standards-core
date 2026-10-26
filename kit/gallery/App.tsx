@@ -488,6 +488,23 @@ function LaneBoardSpecimen() {
   return <LaneBoard lanes={lanes} onMove={move} label="Example board" />;
 }
 
+function ScrollSpecimen() {
+  const lanes = [
+    { id: 'a', label: 'Backlog', cards: Array.from({ length: 14 }, (_, i) => ({ id: `a${i}`, label: `Task ${i + 1}` })) },
+    { id: 'b', label: 'Active', cards: [{ id: 'b1', label: 'Patch window plan' }] },
+    { id: 'c', label: 'Review', cards: [] as { id: string; label: string }[] },
+    { id: 'd', label: 'Shipped', cards: [] as { id: string; label: string }[] },
+  ];
+  return (
+    <>
+      <span className="gallery-note">Table capped: at most the window height less 15rem, never under 16rem, with its own scrollbars:</span>
+      <Table caption="Device groups, capped" capped columns={COLUMNS} rows={ROWS} rowKey={(r) => r.id} />
+      <span className="gallery-note">LaneBoard fit: the window height less 6rem, never under 360px; each lane scrolls on its own:</span>
+      <LaneBoard lanes={lanes} onMove={() => {}} label="Fitted board" fit />
+    </>
+  );
+}
+
 function StatSpecimen() {
   return (
     <div className="stat-grid">
@@ -2546,6 +2563,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="lane-board" title="Lane board">
           <LaneBoardSpecimen />
+        </Specimen>
+        <Specimen id="scroll-fit" title="Boards and tables that keep their scrollbars">
+          <ScrollSpecimen />
         </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">

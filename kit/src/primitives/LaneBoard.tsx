@@ -29,6 +29,11 @@ export interface LaneBoardProps<T extends LaneBoardCard = LaneBoardCard> {
   /** Shown in a lane with no cards. */
   emptyText?: string;
   label?: string;
+  /** Sizes the board to the window with a floor (UI standard rule 12): the board is the window height
+      less room for the page header, never shorter than 360px, scrolls sideways on its own edge and each
+      lane scrolls vertically on its own. Use it inside a page that is one vertical scroll container
+      (`page-scroll`). Default false: the board is as tall as its tallest lane. */
+  fit?: boolean;
 }
 
 interface Pick {
@@ -50,6 +55,7 @@ export function LaneBoard<T extends LaneBoardCard = LaneBoardCard>({
   renderCard,
   emptyText = 'No cards',
   label = 'Board',
+  fit = false,
 }: LaneBoardProps<T>) {
   const [drag, setDrag] = useState<string | null>(null);
   const [over, setOver] = useState<{ lane: string; index: number } | null>(null);
@@ -123,7 +129,7 @@ export function LaneBoard<T extends LaneBoardCard = LaneBoardCard>({
   };
 
   return (
-    <div className="lane-board" role="group" aria-label={label}>
+    <div className="lane-board" role="group" aria-label={label} data-fit={fit ? '' : undefined}>
       {lanes.map((lane) => {
         const dropIdx = (over?.lane === lane.id ? over.index : pick?.to === lane.id ? pick.index : -1);
         const others = lane.cards.filter((c) => !(pick && c.id === pick.cardId)).length;

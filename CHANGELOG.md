@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-26 (v1.15.0, boards and wide tables keep their own scrollbars)
+
+- New UI rule 0.12 (`web-ui.md`, registered as `web-ui.0.12`, a review rule): the page body is one vertical
+  scroll container, a board is sized to the window with a floor, a wide table has a capped scroll area with a
+  floor, a page header is never capped with a viewport fraction, and `overflow: hidden` is never put on a flex
+  parent to fit a board. The proof is loading every route with a board or wide table at a window about 700px
+  tall. A row in the gates table records it as a hand-reviewed gate.
+- Kit: `page-scroll` class (full height, vertical scroll), `Table` `capped` prop (at most the window height less
+  15rem, never under 16rem, a named focusable region so the keyboard can scroll it) and `LaneBoard` `fit` prop
+  (the window height less 6rem, never under 360px, sideways scroll on the board edge, each lane scrolls on its
+  own). Both props default to off, so existing uses are unchanged. Gallery specimen and tests added.
+
 ## 2026-10-26 (v1.14.1, lint-sweep sets up Node for web repos)
 
 - `lint-sweep.yml` ran the repo's "Lint sweep command" on whatever the runner carried, so on a self-hosted
