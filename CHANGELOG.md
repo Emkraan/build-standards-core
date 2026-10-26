@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-26 (v1.27.0, proof batch 7: attested reviews and waivers)
+
+- `core-status.py` reports two new statuses, counted apart in the summary and the human line: `attested` (a review
+  rule with a valid dated `review` proof: a person looked, the record expires after `$max_review_age_days`) and
+  `waived` (a valid `waiver` proof: `ref` to a record file, `date`, `reason` and `reviewed_by`; it sets a rule aside
+  for that repo and expires like a review). `proved` now means a `ci` or `test` proof only. A waiver is never
+  counted as proof and a broken, stale or reason-less one proves nothing. A review proof without `reviewed_by`
+  adds a warning.
+- Tests cover attested, waived and each way a waiver is rejected. `standards-local/proofs.json` and CONSUMING.md
+  describe the four kinds.
+
 ## 2026-10-26 (v1.26.0, proof batch 6: a test proof must name its rule)
 
 - `core-status.py` now checks that the test file a `standards-local/proofs.json` test proof points at carries the
