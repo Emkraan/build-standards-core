@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-26 (v1.27.4, four doc contradictions fixed)
+
+- Docs only. `CONTRIBUTING.md`: the rebase instruction is replaced by the core's rule (never rebase; merge
+  `FETCH_HEAD` after `git fetch origin main`, and renumber the changelog top entry above the latest tag when
+  another change took the number); the references to a provenance directory that does not exist are removed
+  (provenance stays with the contributing account and the pull request description states adopt, adapt or
+  reject); the pre-commit hook description now lists everything the hook runs; `--force-with-lease` advice
+  removed. `hermes/README.md` follows ("merge rule").
+- `templates/overlay/README.md` and `standards/ci-cd-release.md`: a pull request title or body edit runs every
+  check (it is a pull request event), not two. `templates/overlay/README.md`: `core-ci.yml` and
+  `lint-sweep.yml` are refreshed by every sync, which keeps the `OVERLAY` value, the overlay path prefix,
+  lines marked `core-sync: keep` and a `schedule:` block; the runner is set with the `CORE_CI_RUNNER`
+  repository variable; the "copy it again" notes for older workflow changes now say a sync refreshes the file.
+
 ## 2026-10-26 (v1.27.3, README and CONSUMING brought current)
 
 - Docs only. `README.md` stays the overview and `CONSUMING.md` is the how-to for every channel; nothing is

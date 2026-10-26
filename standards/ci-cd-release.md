@@ -59,9 +59,9 @@ so no core-ci check shares a name with a job of the repo's own workflows: a gate
 names would read two jobs called `python` as one. A repo lists `core-checks` next to its own checks.
 
 Why one job: each core check is a short script, so a job's cost is mostly runner start and checkout.
-One job per pull request run, a push to the default branch that runs only the secret scan, and a
-title or body edit that runs only the two text checks keep the shared runner pool free (twelve jobs
-per run used to be most of a busy consumer's queue).
+One job per pull request run and a push to the default branch that runs only the secret scan keep
+the shared runner pool free (twelve jobs per run used to be most of a busy consumer's queue). A title or
+body edit is a pull request event, so it runs every check.
 
 **Reusable workflow (opt in, v1.12.0).** A repo can call the core's reusable workflow
 (`.github/workflows/core-ci-reusable.yml`, pinned to a release sha) from a caller `core-ci.yml` instead of

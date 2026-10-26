@@ -84,7 +84,7 @@ instead (the core is public, so no key or token is involved):
 Every consumer account belongs to the same owner, who is the final say on the standard. That makes
 every consumer account a full contributor: it may open a pull request here, and it may merge its own
 pull request once `ci` and `visual` pass. No second reviewer is needed, because the approval would be
-the same person. The checks and the rebase rule in [CONTRIBUTING.md](../CONTRIBUTING.md) are what
+the same person. The checks and the merge rule in [CONTRIBUTING.md](../CONTRIBUTING.md) are what
 stand in for review.
 
 - Any shareable improvement found while working in a consumer comes back here in the same piece of
