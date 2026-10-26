@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-26 (v1.12.2, core CI runs on ubuntu-24.04)
+
+- GitHub moved `ubuntu-latest` to Ubuntu 26.04, which has no prebuilt Python 3.9, so every job that sets up the
+  Python floor (3.9, the oldest interpreter the core supports for consumers) failed with "version 3.9 was not
+  found for Ubuntu 26.04". That broke the core's own `ci` check on every pull request and would break a consumer
+  on the default runner.
+- The core's `checks.yml`, the `core-ci.yml` template and the reusable `core-ci-reusable.yml` now default to
+  `ubuntu-24.04` (still supported by GitHub for years). `CORE_RUNNER` and `CORE_CI_RUNNER` still override it.
+  A consumer that sets neither variable gets the fix from `sync-core.py` (template path) or by moving the pin
+  (reusable path); one that sets a runner variable was never affected.
+- Raising the Python floor is the other fix and is a separate decision (3.9 reached end of life in October 2025).
+
 ## 2026-10-25 (v1.12.1, an edit runs every check)
 
 - `core-ci.yml` (template) and `core-ci-reusable.yml`: a pull request `edited` run (title or body) now runs

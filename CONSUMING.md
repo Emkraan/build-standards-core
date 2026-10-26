@@ -121,7 +121,7 @@ a lighter edit run would report green for a commit whose full checks never compl
 trigger list so a fixed title or body is re-validated.
 
 - Inputs, all optional: `runs-on` (a JSON `runs-on` value; empty means the repository variable
-  `CORE_CI_RUNNER`, else `ubuntu-latest`), `overlay` (the overlay folder, `.` by default), `core-ref` and
+  `CORE_CI_RUNNER`, else `ubuntu-24.04`), `overlay` (the overlay folder, `.` by default), `core-ref` and
   `core-repository` (override where the scripts come from; by default the exact commit the workflow was
   called at, read from `job.workflow_sha`, so the scripts always match the pinned workflow). No `secrets:`
   line is needed: no step reads a secret and the core is fetched anonymously.
