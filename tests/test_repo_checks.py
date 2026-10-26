@@ -273,6 +273,70 @@ class TestBatch2(Tree):
             },
         )
 
+    def test_rc012_httpx_is_declared(self):
+        self.passes(
+            "RC012",
+            {"app/main.py": "import httpx\n", "requirements.txt": "# http client\nhttpx==0.27.0\n"},
+        )
+
+    def test_rc012_url_lines_skipped_not_names(self):
+        self.put(
+            {
+                "app/main.py": "import httpx\n",
+                "requirements.txt": "https://example.test/x.whl\n-r other.txt\ngit+https://example.test/r.git\n",
+            }
+        )
+        self.assertIn("import httpx", self.run_check("RC012")[0][2])
+
+    def test_rc012_pyproject_extras_bracket(self):
+        pyproject = (
+            "[project]\nname = 'x'\ndependencies = [\n"
+            '  "uvicorn[standard]>=0.30",  # server\n  "httpx>=0.27",\n  \'pydantic[email]>=2\',\n]\n'
+            '[project.optional-dependencies]\ndev = ["pytest>=8"]\n'
+            '[dependency-groups]\nlint = ["ruff"]\n'
+        )
+        self.passes(
+            "RC012",
+            {
+                "app/main.py": "import uvicorn, httpx, pydantic, pytest, ruff\n",
+                "pyproject.toml": pyproject,
+                "uv.lock": "",
+            },
+        )
+
+    def test_rc012_pyproject_fallback_parser(self):
+        text = (
+            '[project]\ndependencies = [\n  "uvicorn[standard]>=0.30",\n  "httpx>=0.27", # c\n]\n'
+            '[project.optional-dependencies]\nx = ["aaa[b,c]"]\n[dependency-groups]\ng = ["ggg"]\n'
+        )
+        data = rc._pyproject_fallback(text)
+        self.assertEqual(
+            data["project"]["dependencies"], ["uvicorn[standard]>=0.30", "httpx>=0.27"]
+        )
+        self.assertEqual(data["project.optional-dependencies"]["x"], ["aaa[b,c]"])
+        self.assertEqual(data["dependency-groups"]["g"], ["ggg"])
+
+    def test_rc012_pywin32_alias(self):
+        self.passes(
+            "RC012",
+            {
+                "svc/run.py": "import win32serviceutil, win32api, win32con, pythoncom\n",
+                "requirements.txt": "# windows service\nPyWin32==306\n",
+            },
+        )
+
+    def test_rc012_alias_needs_the_distribution(self):
+        self.fails("RC012", {"svc/run.py": "import win32api\nimport yaml\n"})
+
+    def test_rc012_google_family_alias(self):
+        self.passes(
+            "RC012",
+            {
+                "a/m.py": "from google.cloud import storage\n",
+                "requirements.txt": "# gcs\ngoogle-cloud-storage==2.0\n",
+            },
+        )
+
     def test_rc013_deploy_needs_ci_and_health(self):
         self.fails(
             "RC013",

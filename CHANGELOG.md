@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-26 (v1.27.1, RC012 false positives)
+
+- `repo_checks.py` RC012 (every import outside the standard library is pinned) no longer reports a declared
+  dependency as missing in three cases. A requirements line is skipped only when it is a real URL, `git+`, `-e`,
+  `-r` or option line, so a package whose name starts with those letters (`httpx`) counts as declared. The
+  `pyproject.toml` dependency arrays are parsed properly (`tomllib` on Python 3.11+, a Python 3.9 compatible
+  fallback that handles extras brackets, quotes, comments and multiline arrays), so an entry such as
+  `uvicorn[standard]>=0.30` no longer hides every dependency after it; `project.optional-dependencies` and
+  `dependency-groups` are read too. The import-to-distribution alias table gains the `pywin32` modules, `usb`
+  to `pyusb` and the `google-*` family, matched case-insensitively with `-`, `_` and `.` normalised. An import
+  whose distribution is not declared still fails.
+- Tests cover each case and a genuinely undeclared import.
+
 ## 2026-10-26 (v1.27.0, proof batch 7: attested reviews and waivers)
 
 - `core-status.py` reports two new statuses, counted apart in the summary and the human line: `attested` (a review
