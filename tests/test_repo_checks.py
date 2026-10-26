@@ -465,6 +465,22 @@ class TestWiring(Tree):
         self.assertEqual(len(kit), 9)
         self.assertTrue(all(r["check"]["kind"] == "core-ci" for r in kit))
 
+    def test_enforced_tag_drops_an_untagged_test_proof(self):
+        st = load("core_status_tag", "templates/overlay/scripts/core-status.py")
+        (self.dir / "t.py").write_text("# nothing\n")
+        (self.dir / "standards-local").mkdir()
+        (self.dir / "standards-local" / "proofs.json").write_text(
+            json.dumps({"a.1": {"kind": "test", "ref": "t.py"}})
+        )
+        st.repo_root = lambda: self.dir
+        st.PROOFS = self.dir / "standards-local" / "proofs.json"
+        reg = {"rules": [{"id": "a.1", "check": {"kind": "test"}}]}
+        good, problems = st.load_proofs(reg)
+        self.assertEqual((sorted(good), problems, len(st.PROOF_WARNINGS)), (["a.1"], [], 1))
+        st.PROOF_TAG_ENFORCED = True
+        good, problems = st.load_proofs(reg)
+        self.assertEqual((good, len(problems)), ({}, 1))
+
     def test_unknown_check_is_unverified_not_pass(self):
         st = load("core_status_rc2", "templates/overlay/scripts/core-status.py")
         rule = {"ref": "a.md 1", "check": {"kind": "repo-check", "id": "RC999"}}

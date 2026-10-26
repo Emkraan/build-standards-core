@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-26 (v1.26.0, proof batch 6: a test proof must name its rule)
+
+- `core-status.py` now checks that the test file a `standards-local/proofs.json` test proof points at carries the
+  rule id (a comment such as `core-rule: web-ui.0.8`). Without it the proof still counts and the report gains a
+  `warnings` entry (printed as WARNING); from the next release `PROOF_TAG_ENFORCED` turns the warning into a
+  problem and the proof stops counting. A tag that is removed, or a test file that is replaced, now makes a proof
+  fail instead of passing on file existence alone.
+- Tests cover the warning, the tagged case and the enforced mode.
+
 ## 2026-10-26 (v1.25.0, proof batch 5: four more rules proved by kit tests)
 
 - Four rules whose behaviour the kit already tests move to `core-ci` with that test as the command, each with
