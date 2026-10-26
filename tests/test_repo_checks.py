@@ -163,6 +163,13 @@ class TestChecks(Tree):
         (self.dir / ".github/workflows/deploy.yml").write_text("name: deploy\n")
         self.assertEqual(self.run_check("RC006"), [])
 
+    def test_rc006_static_vercel_deploy_is_carved_out_but_a_stateful_one_is_not(self):
+        self.put({"app/db.py": "import sqlite3\n"})
+        static = "name: deploy\njobs:\n  a:\n    steps:\n      - run: npx vercel deploy --prod\n"
+        stateful = static + "      - run: docker compose up -d\n"
+        self.passes("RC006", {".github/workflows/deploy-site.yml": static})
+        self.fails("RC006", {".github/workflows/deploy-api.yml": stateful})
+
     def test_rc007_destructive_migrations(self):
         for sql in (
             "DROP TABLE users;",
@@ -277,6 +284,12 @@ class TestWiring(Tree):
         self.assertEqual(st.repo_check_status(rule, {rule["ref"]: ["EXC-001"]})[0], "excepted")
         (root / "x.sh").write_text('kill "$PID"\n')
         self.assertEqual(st.repo_check_status(rule, {})[0], "pass")
+
+    def test_registry_marks_the_kit_proofs_as_needing_adoption(self):
+        reg = json.loads((ROOT / "standards/rules.json").read_text(encoding="utf8"))["rules"]
+        kit = [r for r in reg if r["check"].get("requires") == "ui-adoption"]
+        self.assertEqual(len(kit), 5)
+        self.assertTrue(all(r["check"]["kind"] == "core-ci" for r in kit))
 
     def test_unknown_check_is_unverified_not_pass(self):
         st = load("core_status_rc2", "templates/overlay/scripts/core-status.py")

@@ -1,5 +1,5 @@
 {
-  "$description": "Every enforceable rule in the standards, one entry per rule. id is the stable slug, ref is the doc and section an exception names. check.kind says how a consumer proves it: lint (a ui_lint or script_lint rule), core-ci (proved in the core), overlay-ci (a job of the overlay's template workflow: check.workflow names the file under templates/overlay/.github/workflows and check.jobs the jobs whose success proves the rule), repo-check (a static check of the repo's own files in scripts/repo_checks.py, run by core-status: no finding is pass), test (a test the app carries), review (design review, no automated check yet). applies_to lists the stacks a rule covers (web, wpf, local-ops, powershell, python, iac) or all. core-status reports a rule to a consumer that declares its stacks only when one of them matches or the rule is all. Tooling diffs this file between releases to raise new and changed rules.",
+  "$description": "Every enforceable rule in the standards, one entry per rule. id is the stable slug, ref is the doc and section an exception names. check.kind says how a consumer proves it: lint (a ui_lint or script_lint rule), core-ci (proved in the core; check.requires ui-adoption makes it not_applicable for an app that has not adopted the kit), overlay-ci (a job of the overlay's template workflow: check.workflow names the file under templates/overlay/.github/workflows and check.jobs the jobs whose success proves the rule), repo-check (a static check of the repo's own files in scripts/repo_checks.py, run by core-status: no finding is pass), test (a test the app carries), review (design review, no automated check yet). applies_to lists the stacks a rule covers (web, wpf, local-ops, powershell, python, iac) or all. core-status reports a rule to a consumer that declares its stacks only when one of them matches or the rule is all. Tooling diffs this file between releases to raise new and changed rules.",
   "format": "build-standards-rules/1",
   "rules": [
     {
@@ -114,7 +114,8 @@
       ],
       "check": {
         "kind": "core-ci",
-        "command": "npm --prefix kit test -- tests/toast.test.tsx"
+        "command": "npm --prefix kit test -- tests/toast.test.tsx",
+        "requires": "ui-adoption"
       },
       "acceptance": "A unit test mounts the toast provider, clicks Undo and asserts the callback ran (section 23)."
     },
@@ -305,7 +306,8 @@
       ],
       "check": {
         "kind": "core-ci",
-        "command": "npm --prefix kit test -- tests/stat-tile.test.tsx"
+        "command": "npm --prefix kit test -- tests/stat-tile.test.tsx",
+        "requires": "ui-adoption"
       },
       "acceptance": "A unit test drives requestAnimationFrame with a fake clock and asserts an intermediate and the exact final value, and the reduced-motion path renders the final value at once."
     },
@@ -362,7 +364,8 @@
       ],
       "check": {
         "kind": "core-ci",
-        "command": "npm --prefix kit test -- tests/gen-changelog.test.ts"
+        "command": "npm --prefix kit test -- tests/gen-changelog.test.ts",
+        "requires": "ui-adoption"
       },
       "acceptance": "A unit test asserts the parser keeps the three change types and strips references."
     },
@@ -405,7 +408,8 @@
       ],
       "check": {
         "kind": "core-ci",
-        "command": "npm --prefix kit test -- tests/theme-init.test.ts"
+        "command": "npm --prefix kit test -- tests/theme-init.test.ts",
+        "requires": "ui-adoption"
       },
       "acceptance": "The built index.html carries the kit script, or a test with hasCurrentThemeInit passes."
     },
@@ -2455,7 +2459,7 @@
         "kind": "repo-check",
         "id": "RC006"
       },
-      "acceptance": "repo check RC006 reports every deploy workflow of a SQLite repo with a concurrency group that queues and a health step that names the sha."
+      "acceptance": "repo check RC006 reports every deploy workflow of a SQLite repo, other than a static-site or Vercel-only deploy, with a concurrency group that queues and a health step that names the sha."
     },
     {
       "id": "data-safety-sqlite.2.11",
@@ -4008,7 +4012,8 @@
       ],
       "check": {
         "kind": "core-ci",
-        "command": "npm --prefix kit test -- tests/build-registry.test.ts"
+        "command": "npm --prefix kit test -- tests/build-registry.test.ts",
+        "requires": "ui-adoption"
       },
       "acceptance": "A manifest added without regenerating fails CI; a module with no icon gets the fallback."
     },

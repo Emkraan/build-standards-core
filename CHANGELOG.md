@@ -14,12 +14,13 @@
   the head sha), `ci-cd-release.4` (RC003, no major auto-merge in a renovate config), `ci-cd-release.5` (RC004, a
   trusted-trigger workflow never checks out or runs pull request code), `web-api-runtime.3.3` (RC005, no platform
   CORS list in hosting or infrastructure config), `data-safety-sqlite.2.10` (RC006, a SQLite repo's deploy
-  workflows queue and wait for a health endpoint that names the sha), `data-safety-sqlite.2.12` (RC007, no
+  workflows queue and wait for a health endpoint that names the sha; a workflow that only publishes a static site or a Vercel app is carved out), `data-safety-sqlite.2.12` (RC007, no
   destructive migration and no NOT NULL column without a default), `identity-and-people-data.1.7` (RC008, fixture
   emails only on reserved test domains), `web-client-runtime.1.2` (RC009, the auth redirect handled in at most one
   non-test file), `ci-cd-release.9` (RC010, every secret a workflow reads is named in a documentation page).
 - Five rules whose acceptance is a test the kit already ships move to `core-ci`, proved in the core before release
-  by that test: `web-ui.0.8` (toast Undo), `web-ui.12` (theme init), `web-ui.18` (count-up), `web-ui.22`
+  by that test, and count as pass only for an app whose UI adoption is adopted (`check.requires` is `ui-adoption`);
+  any other app reports `not_applicable`, a new status counted apart in the summary: `web-ui.0.8` (toast Undo), `web-ui.12` (theme init), `web-ui.18` (count-up), `web-ui.22`
   (changelog parser) and `web-shell.3` (generated registry). `check-rules.py` fails a `core-ci` command that
   names a kit test file that does not exist.
 - The ops-center sync lane now merges its sync pull request with `--match-head-commit` on the commit it pushed.

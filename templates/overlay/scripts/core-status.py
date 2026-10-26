@@ -44,6 +44,7 @@ Each registered rule gets a status:
               tracked files: no finding is pass, a finding is fail, an active exception makes it excepted
   proved      a test or review rule (or an overlay-ci rule with no result read) that a valid entry in
               standards-local/proofs.json proves; counted apart from pass
+  not_applicable  a core-ci rule that needs the kit (check.requires ui-adoption) in an app whose UI is not adopted
   unverified  a test or review rule with no proof record, an overlay-ci rule whose workflow is installed
               but whose result was not read, or a script lint rule while the overlay has no
               standards-local/script-lint.json; prove it in the app
@@ -817,6 +818,7 @@ def main(argv):
     ui_gap = "web" in gap_stacks
     script_gap = bool(gap_stacks & {"powershell", "python", "iac"})
     rules, out_of_scope = [], []
+    ui = ui_with_exceptions(ui_adoption(lint, scopes), by_ref)
     for r in registry.get("rules", []):
         if not in_scope(r, scopes):
             out_of_scope.append(r["id"])
@@ -861,7 +863,12 @@ def main(argv):
                 else "excepted"
             )
         elif kind == "core-ci":
-            status = "pass"
+            # A proof the core runs on the kit holds for an app only when the app uses the kit whole.
+            status = (
+                "pass"
+                if r["check"].get("requires") != "ui-adoption" or ui["status"] == "adopted"
+                else "not_applicable"
+            )
         elif kind == "repo-check":
             status, n, note = repo_check_status(r, by_ref)
             n_over = n if status == "fail" else 0
@@ -906,10 +913,10 @@ def main(argv):
         },
         "scopes": sorted(scopes) if scopes is not None else None,
         "out_of_scope": out_of_scope,
-        "ui_adoption": ui_with_exceptions(ui_adoption(lint, scopes), by_ref),
+        "ui_adoption": ui,
         "summary": {
             s: sum(1 for x in rules if x["status"] == s)
-            for s in ("pass", "proved", "excepted", "fail", "unverified", "error")
+            for s in ("pass", "proved", "excepted", "fail", "unverified", "not_applicable", "error")
         },
         "rules": rules,
         "exceptions": [
@@ -964,7 +971,7 @@ def main(argv):
     )
     print(
         f"  rules: {s['pass']} pass, {s['proved']} proved, {s['excepted']} excepted, {s['fail']} fail, "
-        f"{s['unverified']} unverified"
+        f"{s['unverified']} unverified, {s['not_applicable']} not applicable"
     )
     if report["scopes"] is not None:
         print(

@@ -387,6 +387,22 @@ def uses_sqlite(repo):
     return False
 
 
+STATIC_DEPLOY = re.compile(
+    r"\bvercel\b|actions/deploy-pages|pages-action|wrangler\s+pages|\bnetlify\b|surge\.sh|gh-pages",
+    re.I,
+)
+STATEFUL_DEPLOY = re.compile(
+    r"\bdocker\b|portainer|\bssh\b|rsync|webhook|webapps-deploy|az\s+webapp|kubectl|\bhelm\b|fly\s+deploy"
+    r"|compose|systemctl|ecs\b|app\s*service",
+    re.I,
+)
+
+
+def static_only_deploy(text):
+    """A workflow that only publishes a static site or a Vercel app holds no state to serialise or probe."""
+    return bool(STATIC_DEPLOY.search(text)) and not STATEFUL_DEPLOY.search(text)
+
+
 def rc006(repo):
     out = []
     if not uses_sqlite(repo):
@@ -396,6 +412,8 @@ def rc006(repo):
         if not re.match(r"(deploy|rollback)", base) or "/actions/" in p:
             continue
         text = repo.text(p)
+        if static_only_deploy(text):
+            continue
         top = re.search(r"(?m)^concurrency:\s*(.*)$", text)
         if not top:
             out.append(
