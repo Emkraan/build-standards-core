@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-26 (v1.25.0, proof batch 5: four more rules proved by kit tests)
+
+- Four rules whose behaviour the kit already tests move to `core-ci` with that test as the command, each with
+  `requires: ui-adoption` (pass for an app that adopts the kit whole, `not_applicable` otherwise): `web-ui.19`
+  (rail state and pin persistence, `tests/shell.test.tsx`), `web-ui.24` (axe on the composite shell and each overlay
+  in both themes, `tests/a11y.test.tsx`), `web-ui.26.1` (per-app dismissal keys, `tests/review-fixes.test.tsx`) and
+  `web-shell.5` (module CSS scope, `tests/scope-css.test.ts`).
+- Acceptance lines narrowed to what the kit test proves (statements unchanged): `web-ui.19` drops the browser
+  check, `web-ui.24` covers the kit's composite and overlays rather than an app's routes, `web-ui.26.1` covers the
+  storage key rather than the theme sharing, `web-shell.5` covers the selector scope.
+
 ## 2026-10-26 (v1.24.0, proof batch 4: web runtime and access rules)
 
 - Four more `repo-check` rules: `web-client-runtime.4.1` (RC019, a bundled app has a bundle size budget check),
