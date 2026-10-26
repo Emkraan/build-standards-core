@@ -63,6 +63,9 @@ workflow) and lists every core-ci job nothing requires as a problem: a job that 
 not gate the merge, so its rule holds only by luck. `scripts/core-ci.py required-checks --fix` prints
 the command that adds them.
 
+A test proof's file must carry the rule id (core-rule: <id>); until PROOF_TAG_ENFORCED is set a missing tag is a
+warning, then it is a problem and proves nothing.
+
 standards-local/proofs.json (consumer-owned, optional) records how the app proves a rule the script
 cannot see: {"<rule id>": {"kind": "ci|test|review", "ref": "...", "date": "YYYY-MM-DD",
 "reviewed_by": "..."}}. ref is "<workflow file>#<job>" for ci, a test file path for test, and the
@@ -520,12 +523,18 @@ STRENGTH = {
     "repo-check": 2,
 }
 REVIEW_MAX_DAYS = 180
+# A test proof must name its rule: the referenced file carries the rule id (a comment such as
+# "core-rule: <id>"), so a proof can fail when the tag or the test goes. A missing tag is a warning for one
+# release; set True to make it a problem that drops the proof.
+PROOF_TAG_ENFORCED = False
+PROOF_WARNINGS: list = []
 
 
 def load_proofs(registry, today=None) -> tuple[dict, list[str]]:
     """Valid proof records by rule id, and a problem line for every broken or stale one."""
     import datetime
 
+    PROOF_WARNINGS.clear()
     if not PROOFS.is_file():
         return {}, []
     try:
@@ -571,6 +580,16 @@ def load_proofs(registry, today=None) -> tuple[dict, list[str]]:
             if not (root / ref).is_file():
                 problems.append(f"{where}: test file {ref} does not exist")
                 continue
+            try:
+                tagged = rid in (root / ref).read_text(encoding="utf8", errors="replace")
+            except OSError:
+                tagged = False
+            if not tagged:
+                msg = f"{where}: test file {ref} does not name the rule; add the comment core-rule: {rid}"
+                if PROOF_TAG_ENFORCED:
+                    problems.append(msg)
+                    continue
+                PROOF_WARNINGS.append(msg)
         else:
             doc = root / ref
             if not doc.is_file():
@@ -923,6 +942,7 @@ def main(argv):
             dict(e, expiring=e.get("days_left") is not None and e["days_left"] <= EXPIRING_DAYS)
             for e in exceptions
         ],
+        "warnings": list(PROOF_WARNINGS),
         "problems": (
             exc.get("problems", [])
             + ([lint["error"]] if "error" in lint else [])
@@ -989,6 +1009,8 @@ def main(argv):
     for e in report["exceptions"]:
         if e["expiring"]:
             print(f"  EXPIRING {e['id']} ({e['rule']}) in {e['days_left']} day(s)")
+    for w in report["warnings"]:
+        print(f"  WARNING {w}")
     for p in report["problems"]:
         print(f"  PROBLEM {p}")
     for r in report["new_rules"]:

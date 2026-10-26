@@ -709,6 +709,20 @@ class CoreStatus(Overlay):
         ):
             self.assertIn(want, text)
 
+    def test_test_proof_without_the_rule_tag_warns_and_a_tagged_one_does_not(self):
+        (self.repo / "tests").mkdir()
+        (self.repo / "tests" / "t.py").write_text("# nothing\n")
+        (self.repo / "tests" / "u.py").write_text("# core-rule: a.3\n")
+        proofs = {"a.3": {"kind": "test", "ref": "tests/t.py"}}
+        (self.repo / "standards-local" / "proofs.json").write_text(json.dumps(proofs))
+        _, rep = self.status()
+        self.assertEqual(self.by_id(rep)["a.3"]["status"], "proved")
+        self.assertIn("core-rule: a.3", "\n".join(rep["warnings"]))
+        proofs["a.3"]["ref"] = "tests/u.py"
+        (self.repo / "standards-local" / "proofs.json").write_text(json.dumps(proofs))
+        _, rep = self.status()
+        self.assertEqual(rep["warnings"], [])
+
     def test_missing_stacks_row_is_a_problem(self):
         (self.repo / "standards-local" / "parameters.md").write_text(
             "| Parameter | Value |\n|---|---|\n"
