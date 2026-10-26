@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-26 (v1.13.2, automatic releases)
+
+- New `.github/workflows/release.yml` and `checks/auto-release.py`: a push to main whose top CHANGELOG entry
+  is a version with no tag now gets an annotated `vX.Y.Z` tag on that commit and a GitHub Release whose notes
+  are exactly that entry body. Same commit already tagged is a no-op; a tag on another commit, or a top
+  version not greater than the latest tag, fails the run and no tag is ever moved. A push with no new entry
+  does nothing. `workflow_dispatch` takes an optional commit. Permissions are `contents: write` on a hosted
+  runner (`CORE_RUNNER` honoured).
+- `gallery-release.yml` gains a `workflow_call` trigger with a `tag` input; `release.yml` calls it after the
+  release exists, because a tag or release made with the workflow token starts no other workflow. Pushing a
+  tag by hand still triggers it as before.
+- CONTRIBUTING.md no longer asks for a hand-made tag. `python3 checks/auto-release.py --dry-run` prints the
+  decision for any commit (`--sha`, repeatable `--ignore-tag`) without changing anything.
+
 ## 2026-10-26 (v1.13.1, private-list terms removed)
 
 - A consumer account's private list flagged 16 terms on 176 lines of the public tree (hashes only were

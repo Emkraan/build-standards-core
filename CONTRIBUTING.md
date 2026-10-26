@@ -19,8 +19,12 @@
 - Every change to a standard needs a `CHANGELOG.md` entry dated that day; `check-changelog.py`
   fails a pull request that touches shipped content without one. Issue references in the
   changelog are bare numbers (`#101`), never owner-qualified URLs: consumers mirror the
-  changelog, and a URL carries this repo's owner into theirs. After merge, tag the merge
-  commit (`git tag vX.Y.Z <merge-sha> && git push origin vX.Y.Z`) so consumers can pin a release.
+  changelog, and a URL carries this repo's owner into theirs. Never tag by hand:
+  when a pull request that adds a new top entry merges, `release.yml` creates the annotated tag
+  `vX.Y.Z` on the merge commit and a GitHub Release whose notes are that entry, then calls
+  `gallery-release.yml` for the same tag (a tag or release made with the workflow token starts no
+  other workflow, so the call is explicit) to attach the kit gallery. The version must be greater
+  than the latest tag; an existing tag is never moved, and a mismatch fails the run.
 - Rewrite documents in full. Never leave placeholder prose that stands in for removed content
   (a parenthesised claim that the other sections are unchanged, wrapped in ellipses); that is how
   a fuzzy edit silently clobbers a document. `check-placeholders.py` fails the build on it.
