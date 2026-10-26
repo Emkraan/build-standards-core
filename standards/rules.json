@@ -163,6 +163,20 @@
       "acceptance": "lint-core/ui_lint.py reports no UI010 finding and standards-local/ui-lint.json sets no baseline, and core-status.py reports the UI as adopted."
     },
     {
+      "id": "web-ui.0.12",
+      "ref": "web-ui.md 0.12",
+      "title": "Boards and wide tables keep their own scrollbars",
+      "statement": "The page body is one vertical scroll container. A board is sized to the window with a floor and scrolls on its own edge, and a wide table has a capped scroll area with a floor. A page header is never capped with a viewport fraction, and overflow hidden is never put on a flex parent to fit a board.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Every route with a board or wide table, loaded at a window about 700px tall, scrolls the page, shows the board's sideways scrollbar with each lane scrolling on its own, and shows the table's own scrollbars with its header in view."
+    },
+    {
       "id": "web-ui.1",
       "ref": "web-ui.md 1",
       "title": "A theme is a token swap",
