@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-26 (v1.13.1, private-list terms removed)
+
+- A consumer account's private list flagged 16 terms on 176 lines of the public tree (hashes only were
+  reported). Twelve of the hashes were removed from the current tree by hash: organisation, product and
+  vendor names in examples became neutral placeholders, and a sample person name in the kit gallery and
+  combobox test changed (the `marks` gallery visual baselines were regenerated). Those twelve hashes are now
+  in `checks/denylist.sha256`, so any reintroduction fails the sanitiser. A new test pins them.
+- Four hashes were left in place and are NOT in the shared list, because renaming them would break code or
+  consumers: two are the core's own feature name (a consumption mode value and a design directory), one is a
+  vendor domain used in XAML namespaces and a container registry image, and one is a deploy action name.
+  No terms are listed here.
+- Earlier commits of the public history still contain the old text; this release changes the current tree
+  only.
+
 ## 2026-10-26 (v1.13.0, core-update for private repos: App token, dispatch trigger)
 
 - `core-update.yml` (template): when the repository variable `CORE_APP_ID` is set, the job mints a short-lived

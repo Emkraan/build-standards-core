@@ -411,7 +411,7 @@ function MarksSpecimen() {
       </div>
       <div className="gallery-row">
         <Avatar name="Avery Stone" />
-        <Avatar name="Jordan Lee" size="lg" />
+        <Avatar name="Josie Lee" size="lg" />
         <Avatar name="Sam Rivera" size="sm" />
         <Avatar name="Ops group" icon={<IconInfo />} hue="teal" />
       </div>
@@ -884,7 +884,7 @@ interface LookupPerson {
 const LOOKUP_PEOPLE: readonly LookupPerson[] = [
   { id: 'u1', name: 'Avery Stone', team: 'Platform team', title: 'Designer' },
   { id: 'u2', name: 'Avery Lin', team: 'Support team' },
-  { id: 'u3', name: 'Jordan Lee', team: 'Field team', title: 'Lead' },
+  { id: 'u3', name: 'Josie Lee', team: 'Field team', title: 'Lead' },
   { id: 'u4', name: 'Sam Rivera', team: 'Data team', title: 'Analyst' },
 ];
 

@@ -251,7 +251,7 @@ Three styles: default, AccentButton, DangerButton. All use `CornerRadius="5"`.
 
 ## 6. Script Encoding - HARD RULE
 
-PowerShell 5.1 on Windows reads `.ps1` files in system ANSI encoding unless a UTF-8 BOM is present. Scripts in this toolbox are deployed without a BOM.
+PowerShell 5.1 on Windows reads `.ps1` files in system ANSI encoding unless a UTF-8 BOM is present. Scripts in this sibling tool are deployed without a BOM.
 
 **Any non-ASCII character in a string literal or XAML attribute will silently break parsing when the script is launched with `-WindowStyle Hidden`. The script will not run and no error will be visible.**
 
@@ -378,7 +378,7 @@ Allow an optional `-LogFile` parameter to point the log at a dummy path for test
 ### Log every swallowed error around an external call
 
 A `catch` that swallows an error from an AD, Graph (Mg*, `Invoke-MgGraphRequest`, REST, MSAL),
-the device-management system/WMI/CIM (SMS Provider, CM cmdlets), Intune, Imprivata, file-share or registry call must log it,
+the device-management system/WMI/CIM (SMS Provider, CM cmdlets), ExampleMDM, ExampleSSO, file-share or registry call must log it,
 even when control flow deliberately continues:
 
 ```powershell
@@ -773,7 +773,7 @@ if ($containerItem) {
 
 ## 13. tool.ini Format
 
-Every tool folder must include a `tool.ini` for automatic discovery by the toolbox folder scan.
+Every tool folder must include a `tool.ini` for automatic discovery by the sibling tool folder scan.
 
 ```ini
 [Data]
@@ -945,9 +945,9 @@ $LogTimer.Stop()
 
 ---
 
-## 16. Toolbox Standardization (applies to every tool + the launcher)
+## 16. Sibling tool Standardization (applies to every tool + the launcher)
 
-These conventions are mandatory for all the owning team Toolbox tools. They keep the catalog consistent and were established 2026-06-26.
+These conventions are mandatory for all the owning team Sibling tool tools. They keep the catalog consistent and were established 2026-06-26.
 
 ### Results tables: horizontal scroll + sorting + click-row detail panel
 
@@ -1001,16 +1001,16 @@ The card and sidebar icons derive from the tool's **Category**, so a family is v
 |---|---|---|
 | Active Directory | `M 8 1 L 8 5 M 3 9 L 3 12 M 13 9 L 13 12 M 3 5 L 13 5 L 13 9 M 3 5 L 3 9 M 8 5 L 8 9` (hierarchy) | blue `#3B82F6` |
 | the device-management system | `M 8 8 m -6 0 a 6 6 0 1 0 12 0 a 6 6 0 1 0 -12 0 M 8 8 m -3 0 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0 M 8 2 L 8 5` (rings) | orange `#E06420` |
-| Imprivata | `M 8 1 L 14 3 V 8 C 14 11 11 13 8 14 C 5 13 2 11 2 8 V 3 Z M 5 8 L 7 10 L 11 6` (shield + check) | cyan `#22D3EE` |
+| ExampleSSO | `M 8 1 L 14 3 V 8 C 14 11 11 13 8 14 C 5 13 2 11 2 8 V 3 Z M 5 8 L 7 10 L 11 6` (shield + check) | cyan `#22D3EE` |
 | General (fallback) | `M 1 4 H 6 L 7 6 H 14 V 13 H 1 Z` (folder) | gray `#6E6E6E` |
 
-Match the category case-insensitively on family keywords (`Active Directory`/`AD`, `the device-management system`/`MECM`/`Endpoint`/`Device`, `Imprivata`, else General).
+Match the category case-insensitively on family keywords (`Active Directory`/`AD`, `the device-management system`/`ExampleCM`/`Endpoint`/`Device`, `ExampleSSO`, else General).
 
 ### How-to button + HTML guide + Steps Recorder capture
 
 - **Top-right of every tool: a `How to use` button** (it replaces the redundant in-tool version badge - the version still shows in the window title, footer, and launcher card). On click it opens the tool's guide in the **default browser**: `Start-Process (Join-Path $PSScriptRoot 'guide.html')`.
 - **Guides are self-contained, Hub-themed HTML** (`guide.html` in the tool folder) with section navigation - rich and printable, no Office dependency.
-- **Guides are USER-facing only - never expose backend internals.** Do not name credential/secret files (`svc_key.bin`, `svc_pass.enc`) or where they live, file paths, service accounts, module/RSAT names, or log formats. For any systemy failure (won't open, missing module/credentials, access errors), tell the user to *contact the owner* rather than naming components. Same rule as the UI: Service Desk users do not need to know how the toolbox works under the hood.
+- **Guides are USER-facing only - never expose backend internals.** Do not name credential/secret files (`svc_key.bin`, `svc_pass.enc`) or where they live, file paths, service accounts, module/RSAT names, or log formats. For any systemy failure (won't open, missing module/credentials, access errors), tell the user to *contact the owner* rather than naming components. Same rule as the UI: Service Desk users do not need to know how the sibling tool works under the hood.
 - **Capturing usage for a tool that has no guide yet:** gate strictly to the owner account. On launch, if `guide.html` is absent **and** `$env:USERNAME -ieq $OwnerAccount` (a constant set to the owner's account name at the top of the script), prompt *"Capture usage to build the how-to guide?"*; on yes, `Start-Process psr.exe` (Windows Steps Recorder, native). The maintainer walks the workflow, saves the recording, and hands it off to author the HTML. The plain `How to use` button (open guide) is available to everyone; only the capture prompt is gated.
 
 ---
