@@ -639,15 +639,15 @@ def rc011(repo):
                 end += 1
             block = "\n".join(lines[i:end])
             m = re.search(r"(?m)^\s*repository\s*:\s*(.+)$", block)
-            if m and "github.repository" not in m.group(1) and "ssh-key" not in block:
-                if not skipped(lines, i):
-                    out.append(
-                        (
-                            p,
-                            i + 1,
-                            "a checkout of another repository has no ssh-key (a read-only deploy key)",
-                        )
+            cross = m and "github.repository" not in m.group(1) and "ssh-key" not in block
+            if cross and not skipped(lines, i):
+                out.append(
+                    (
+                        p,
+                        i + 1,
+                        "a checkout of another repository has no ssh-key (a read-only deploy key)",
                     )
+                )
     return out
 
 
@@ -682,7 +682,10 @@ def stdlib_names():
     for e in std.iterdir():
         if e.name in ("site-packages", "dist-packages"):
             continue
-        out.add(e.name[:-3] if e.name.endswith(".py") else e.name)
+        out.add(e.name.split(".")[0])
+    dyn = std / "lib-dynload"
+    if dyn.is_dir():
+        out.update(e.name.split(".")[0] for e in dyn.iterdir())
     return out
 
 
