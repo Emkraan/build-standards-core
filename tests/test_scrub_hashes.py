@@ -1,4 +1,4 @@
-"""The shared hash list carries the private-list hashes removed in v1.12.3 (hashes only, no terms)."""
+"""The shared hash list carries the private-list hashes removed in v1.13.1 (hashes only, no terms)."""
 
 import unittest
 

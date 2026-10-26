@@ -76,7 +76,7 @@ not read the pull request, and a push to the default branch runs only `core-secr
 
 Values come from `standards-local/parameters.md`: Stacks, Python floor and test command, commit
 emails, changelog file, version files, ASCII patterns, Node major. The repository variable
-`CORE_CI_RUNNER` sets `runs-on` as JSON; unset, the job runs on `ubuntu-latest`. Require `core-checks`
+`CORE_CI_RUNNER` sets `runs-on` as JSON; unset, the job runs on `ubuntu-24.04` (the Python floor, 3.9, has no build on newer images). Require `core-checks`
 in the merge gate (section "Required checks"). Exclude the vendored copies (`standards-core/`, `lint-core/`,
 `tokens-core/`, `kit-core/`) in the ruff config, as for any formatter.
 
@@ -153,7 +153,7 @@ wpf-design-system.md 6.1. The core runs the same selection over its own files
 ## Staying current
 
 `scripts/check-core-sync.py --latest` reports a newer release. `.github/workflows/core-update.yml` automates
-the pull request (needs a `CORE_TOKEN` secret). An app other than an ops center never changes without
+the pull request (needs a GitHub App token, `CORE_APP_ID` plus `CORE_APP_PRIVATE_KEY`, or a `CORE_TOKEN` secret, and a dispatch from the repo's scheduler). An app other than an ops center never changes without
 the owner's approval (core README, "Direction"), so with the repository variable `CORE_UPDATE_MERGE`
 unset (or `approve`) the job only opens the pull request, as a draft so no merge gate that merges green
 pull requests picks it up, and leaves it for the owner. The owner approves it in one action from the
@@ -182,8 +182,8 @@ the synced copies. See the core README, "Staying in lockstep".
    lines). It never touches another workflow and never adds one the repo does not have. When
    `core-ci.yml`'s job names change it prints the old -> new required-check names; update the merge
    gate (`python3 scripts/core-ci.py required-checks --fix` prints the commands). The ops center's sync
-   pull request and the `core-update.yml` pull request body carry those lines, and the CORE_TOKEN
-   needs workflows write to push the refreshed files.
+   pull request and the `core-update.yml` pull request body carry those lines, and the token
+   (App or CORE_TOKEN) needs workflows write to push the refreshed files.
 2. Read the core `CHANGELOG.md` entries since the old pin.
 3. Open a pull request with the diff of `standards-core/`, the refreshed workflows and the new
    `standards.lock`.

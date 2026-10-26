@@ -522,7 +522,7 @@ two classes, and the way it is registered with (`consumer.json` `mode`) decides 
 
 1. **Nothing is applied to an approval-gated app directly.** No direct push to its default branch,
    no merge of a sync or adoption pull request the owner did not approve, no tool that writes the
-   app's files outside a pull request. The template `core-update.yml` opens the sync pull request
+   app's files outside a pull request. The template `core-update.yml` (triggered by `workflow_dispatch`, with an App token from `CORE_APP_ID` or the `CORE_TOKEN` fallback) opens the sync pull request
    as a draft by default (`CORE_UPDATE_MERGE=approve`), so the repo's merge gate (section 5) does
    not merge it; the owner's approval is marking it ready. `CORE_UPDATE_MERGE=wait` or `gate` is
    the owner's standing approval for one repo, set by the owner only.

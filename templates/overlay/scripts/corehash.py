@@ -419,6 +419,23 @@ def _keyed_lines(text):
     return out
 
 
+_SCHEDULE = re.compile(r"^  schedule:[ \t]*\n(?:(?:    |  #).*\n|[ \t]*\n)*", re.M)
+_DISPATCH = re.compile(r"^  workflow_dispatch:", re.M)
+
+
+def keep_schedule(out, local_text):
+    """A schedule block the repo added under `on:` survives a sync that ships none: the template's
+    trigger is workflow_dispatch and a cron is optional, so the repo's own cron is its setting."""
+    if re.search(r"^  schedule:", out, re.M):
+        return out
+    m = _SCHEDULE.search(local_text)
+    d = _DISPATCH.search(out)
+    if not m or not d:
+        return out
+    block = m.group(0).rstrip("\n") + "\n"
+    return out[: d.start()] + block + out[d.start() :]
+
+
 def merge_workflow(template_text, local_text):
     """The template workflow with the repo's per-repo settings kept: the value of every KEEP_KEYS key and
     of every template line marked KEEP_MARK, taken from the repo's copy by key path, and the overlay path
@@ -440,6 +457,7 @@ def merge_workflow(template_text, local_text):
         at = rest.index(value) if value else len(rest) - len(rest.lstrip())
         lines[i] = head + (rest[:at] or " ") + local[path] + rest[at + len(value) :]
     out = "\n".join(lines) + ("\n" if template_text.endswith("\n") else "")
+    out = keep_schedule(out, local_text)
     code = "\n".join(ln for ln in local_text.splitlines() if not ln.lstrip().startswith("#"))
     m = re.search(r"python3 ([A-Za-z0-9_.][A-Za-z0-9_./-]*/)?(?:scripts|lint-core)/", code)
     prefix = (m.group(1) or "") if m else ""
