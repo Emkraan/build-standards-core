@@ -1,14 +1,15 @@
 # Changelog
 
-## 2026-10-26 (v1.16.0, UI lint advisory notes for data palettes and neutral dividers)
+## 2026-10-26 (v1.16.0, UI lint exempts data palettes and neutral hairline dividers)
 
-- `ui_lint.py` adds advisory notes. A finding that probably is data rather than theme keeps its finding, its
-  `::error` annotation and the exit code exactly as before, and gains a `::notice` line, an `N advisory` count
-  in the summary and, with `--json`, an `advisories` list. Two notes: `data-palette` (a UI003 colour literal in a
-  file matched by the new optional `data_palettes` globs in `ui-lint.json`) and `neutral-divider` (a UI001
-  one-sided border under 2px in a neutral grey). A note never hides or adds a finding and never fails a build.
-- Self-test fixtures and `tests/test_ui_lint_advisory.py` cover both notes, the coloured and thick cases that
-  carry none, and an unchanged exit code. `lint/README.md` documents the config key and the notes.
+- `ui-lint.json` gains an optional `data_palettes` list of globs. Colour literals in a matching file (a chart
+  theme, a table of category colours) no longer fail UI003, since those colours are data. Every other rule
+  still applies to the file, and a colour literal in any other file still fails.
+- The edge-bar rule (UI001) is narrowed: a one-sided border under 2px in a neutral grey is a hairline divider
+  and is no longer flagged. A coloured hairline, a 2px or thicker one-sided border and every accent edge bar
+  still fail, and the exit code for real violations is unchanged.
+- Self-test fixtures and `tests/test_ui_lint_data_palettes.py` cover the exemption, the divider, and that real
+  edge bars and colour literals outside a data palette still fail. `lint/README.md` documents both.
 
 ## 2026-10-26 (v1.14.1, lint-sweep sets up Node for web repos)
 
