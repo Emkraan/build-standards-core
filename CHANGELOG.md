@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-26 (v1.14.1, lint-sweep sets up Node for web repos)
+
+- `lint-sweep.yml` ran the repo's "Lint sweep command" on whatever the runner carried, so on a self-hosted
+  runner without Node a web repo's sweep failed with `pnpm: command not found` and was filed as a lint issue.
+  When `core-ci.py params` reports `web=true` and a sweep command is set, the job now sets up Node
+  (`actions/setup-node`, SHA-pinned) at the repo's Node major, runs `corepack enable` so `package.json`
+  "packageManager" picks the package manager, and installs from the lockfile (pnpm, yarn, bun or npm; no
+  lockfile is a `toolchain missing` error). A Python-only repo runs no extra step.
+- A sweep command that exits 127 now fails the run with `::error::toolchain missing` instead of opening or
+  updating the `lint-sweep` issue.
+- `core-ci.py params` gains a `node` output: the parameters row "Node major version", else `.nvmrc`,
+  `.node-version` or `package.json` engines.node; empty means `lts/*`. Tests cover the output and the template.
+
 ## 2026-10-26 (v1.14.0, sanitised and consumer-neutral checks gain a diff mode)
 
 - `check-sanitised.py` and `check-consumer-neutral.py` take `--diff BASE` (the lines `git diff BASE...HEAD`

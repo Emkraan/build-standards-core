@@ -210,7 +210,29 @@ def params() -> dict:
         "python_test": parameter("Python test command") or "python -m unittest discover",
         # The repo's own full-tree lint for lint-sweep.yml (empty: only the overlay lints run).
         "lint_sweep": parameter("Lint sweep command"),
+        # Node major for jobs that set up Node (lint-sweep.yml); empty: the workflow takes lts/*.
+        "node": node_major(),
     }
+
+
+def node_major() -> str:
+    """The Node major: the parameters row, else .nvmrc, .node-version or package.json engines.node."""
+    want = major(parameter("Node major"))
+    if want:
+        return want
+    for name in (".nvmrc", ".node-version"):
+        p = ROOT / name
+        if p.is_file() and major(p.read_text(encoding="utf8")):
+            return major(p.read_text(encoding="utf8"))
+    pkg = ROOT / "package.json"
+    if pkg.is_file():
+        try:
+            eng = (json.loads(pkg.read_text(encoding="utf8")).get("engines") or {}).get("node")
+        except ValueError:
+            eng = None
+        if major(eng or ""):
+            return major(eng)
+    return ""
 
 
 def cmd_params(argv: list) -> int:

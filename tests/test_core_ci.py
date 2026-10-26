@@ -310,6 +310,16 @@ class AsciiNodePython(Overlay):
         self.assertIn("python_floor=3.11", out)
         self.assertIn("powershell=false", out)
 
+    def test_params_node_major(self):
+        rc, out = self.ci("params")
+        self.assertIn("node=\n", out + "\n")
+        self.commit("chore: pin", {"package.json": '{"engines": {"node": ">=22"}}\n'})
+        self.assertIn("node=22", self.ci("params")[1])
+        self.commit("chore: pin", {".nvmrc": "24.1.0\n"})
+        self.assertIn("node=24", self.ci("params")[1])
+        self.params("web", "| Node major version | 20 | x |\n")
+        self.assertIn("node=20", self.ci("params")[1])
+
     def test_python_config_monorepo(self):
         self.params("python", "| Python interpreter floor | 3.12 | x |\n")
         self.commit(
