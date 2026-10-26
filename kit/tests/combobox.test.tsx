@@ -12,7 +12,7 @@ interface Person extends PersonOptionData {
 const PEOPLE: Person[] = [
   { id: 'p1', name: 'Avery Stone', detail: 'Platform team', meta: 'Designer' },
   { id: 'p2', name: 'Avery Lin', detail: 'Support team' },
-  { id: 'p3', name: 'Sam Lee', detail: 'Field team', meta: 'Lead' },
+  { id: 'p3', name: 'Josie Lee', detail: 'Field team', meta: 'Lead' },
 ];
 
 /** A lookup over PEOPLE that honours the abort signal like fetch does. */
@@ -114,7 +114,7 @@ describe('Combobox', () => {
     await act(async () => {
       resolvers[0]?.([PEOPLE[0] as Person]);
     });
-    expect(screen.getAllByRole('option').map((r) => r.getAttribute('aria-label'))).toEqual(['Sam Lee']);
+    expect(screen.getAllByRole('option').map((r) => r.getAttribute('aria-label'))).toEqual(['Josie Lee']);
   });
 
   it('shows loading, then empty, then an error whose retry runs the lookup again', async () => {
@@ -177,7 +177,7 @@ describe('Combobox', () => {
     const onSelect = vi.fn();
     render(<PersonPicker search={lookup()} onSelect={onSelect} clearOnSelect />);
     await user.type(screen.getByRole('combobox'), 'jo');
-    await user.click(await screen.findByRole('option', { name: 'Sam Lee' }));
+    await user.click(await screen.findByRole('option', { name: 'Josie Lee' }));
     expect(onSelect).toHaveBeenCalledWith(PEOPLE[2]);
     expect((screen.getByRole('combobox') as HTMLInputElement).value).toBe('');
   });
@@ -192,8 +192,8 @@ describe('Combobox', () => {
   it('renders the row slot as a person: Avatar, detail and meta', async () => {
     const user = userEvent.setup();
     render(<PersonPicker search={lookup()} />);
-    await user.type(screen.getByRole('combobox'), 'Sam');
-    const row = await screen.findByRole('option', { name: 'Sam Lee' });
+    await user.type(screen.getByRole('combobox'), 'Josie');
+    const row = await screen.findByRole('option', { name: 'Josie Lee' });
     expect(row.querySelector('.avatar')).not.toBeNull();
     expect(row.textContent).toContain('Field team');
     expect(row.textContent).toContain('Lead');
