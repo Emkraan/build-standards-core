@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-26 (v1.15.0, proof batch 1: ten rules get a static check, five a core test)
+## 2026-10-26 (v1.17.0, proof batch 1: ten rules get a static check, five a core test)
 
 - New rule check kind `repo-check` and `scripts/repo_checks.py` (synced to every overlay). A repo check reads the
   repo's tracked files and returns findings; `core-status.py` runs the check of every `repo-check` rule and reports
@@ -24,6 +24,16 @@
   names a kit test file that does not exist.
 - The ops-center sync lane now merges its sync pull request with `--match-head-commit` on the commit it pushed.
   CONTRIBUTING documents the one repository secret the workflows read.
+
+## 2026-10-26 (v1.16.0, UI lint advisory notes for data palettes and neutral dividers)
+
+- `ui_lint.py` adds advisory notes. A finding that probably is data rather than theme keeps its finding, its
+  `::error` annotation and the exit code exactly as before, and gains a `::notice` line, an `N advisory` count
+  in the summary and, with `--json`, an `advisories` list. Two notes: `data-palette` (a UI003 colour literal in a
+  file matched by the new optional `data_palettes` globs in `ui-lint.json`) and `neutral-divider` (a UI001
+  one-sided border under 2px in a neutral grey). A note never hides or adds a finding and never fails a build.
+- Self-test fixtures and `tests/test_ui_lint_advisory.py` cover both notes, the coloured and thick cases that
+  carry none, and an unchanged exit code. `lint/README.md` documents the config key and the notes.
 
 ## 2026-10-26 (v1.14.1, lint-sweep sets up Node for web repos)
 
