@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-26 (v1.24.0, proof batch 4: web runtime and access rules)
+
+- Four more `repo-check` rules: `web-client-runtime.4.1` (RC019, a bundled app has a bundle size budget check),
+  `web-client-runtime.4.3` (RC020, a vite config sets `assetsInlineLimit`), `web-client-runtime.5.1` (RC021, an
+  app's client code builds the bearer header in one file) and `rbac.3` (RC022, an app compares permissions by hand
+  in one module only). RC021 and RC022 group files per app (`apps/<name>`, `packages/<name>`, `services/<name>`).
+  Each has a failing and a passing fixture.
+- Acceptance lines narrowed to what each check proves (statements unchanged): the entry chunk size itself
+  (`4.1`) and the inline asset size in the built chunk (`4.3`) need a build and stay with the consumer's own
+  build step; the checks prove the budget and the limit are configured.
+
 ## 2026-10-26 (v1.23.0, proof batch 3: web UI and build rules)
 
 - Five more `repo-check` rules: `web-ui.9` (RC014, test suites run axe and cover both themes), `web-ui.25`

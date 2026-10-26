@@ -935,6 +935,106 @@ def rc018(repo):
     return out
 
 
+# ---------------------------------------------------------------- RC019 entry chunk budget
+
+BUNDLER = re.compile(r"(^|/)(vite|webpack|rollup|rspack)\.config\.[a-z]+$")
+BUDGET_FILE = re.compile(
+    r"(^|/)(\.size-limit|size-limit\.config|bundlewatch\.config|\.bundlewatch)"
+)
+BUDGET_WORD = re.compile(
+    r"size-limit|bundlewatch|bundlesize|bundle-size|check:size|check:bundle|budget", re.I
+)
+
+
+def rc019(repo):
+    bundled = [p for p in repo.paths if BUNDLER.search(p)]
+    if not bundled:
+        return []
+    if any(BUDGET_FILE.search(p) for p in repo.paths):
+        return []
+    for p in repo.paths:
+        if p.rsplit("/", 1)[-1] == "package.json":
+            try:
+                scripts = json.loads(repo.text(p)).get("scripts", {})
+            except ValueError:
+                continue
+            if isinstance(scripts, dict) and any(
+                BUDGET_WORD.search(k) or BUDGET_WORD.search(str(v)) for k, v in scripts.items()
+            ):
+                return []
+    return [(bundled[0], 1, "a bundled app has no bundle size budget check")]
+
+
+# ---------------------------------------------------------------- RC020 large inline assets become files
+
+
+def rc020(repo):
+    out = []
+    for p in repo.paths:
+        if re.search(r"(^|/)vite\.config\.[a-z]+$", p) and "assetsInlineLimit" not in repo.text(p):
+            out.append((p, 1, "the build config sets no assetsInlineLimit"))
+    return out
+
+
+# ---------------------------------------------------------------- RC021 one client package
+
+BEARER = re.compile(r"[\"'`]Bearer\s|Authorization[\"']?\s*[:=]")
+
+
+SERVER_PART = re.compile(r"(^|/)(server|backend|api|scripts|tools|functions|workers?|cli)/")
+
+
+def app_root(path):
+    """The app a file belongs to: apps/<name>, packages/<name>, services/<name>, else the top folder."""
+    parts = path.split("/")
+    return (
+        "/".join(parts[:2])
+        if parts[0] in ("apps", "packages", "services") and len(parts) > 2
+        else parts[0]
+    )
+
+
+def many_files_per_app(hits, what):
+    by_app = {}
+    for p, n in sorted(hits.items()):
+        by_app.setdefault(app_root(p), []).append((p, n))
+    return [
+        (p, n, f"{what} (seen in {len(files)} files of one app)")
+        for files in by_app.values()
+        if len(files) > 1
+        for p, n in files
+    ]
+
+
+def rc021(repo):
+    hits = {}
+    for p in repo.select(exts=JS_EXTS, tests=False):
+        if SERVER_PART.search(p):
+            continue
+        lines = repo.text(p).splitlines()
+        for i, ln in enumerate(lines):
+            if not is_comment(ln) and not skipped(lines, i) and BEARER.search(ln):
+                hits.setdefault(p, i + 1)
+    return many_files_per_app(hits, "the bearer header is built; one client package owns it")
+
+
+# ---------------------------------------------------------------- RC022 guards come from one module
+
+PERMISSION_TEST = re.compile(
+    r"\b(?:permissions?|roles?|scopes?)\s*(?:\?\.|\.)\s*(?:includes|has|some|indexOf)\s*\(|\bhasPermission\s*\("
+)
+
+
+def rc022(repo):
+    hits = {}
+    for p in repo.select(exts=JS_EXTS + (".py",), tests=False):
+        lines = repo.text(p).splitlines()
+        for i, ln in enumerate(lines):
+            if not is_comment(ln) and not skipped(lines, i) and PERMISSION_TEST.search(ln):
+                hits.setdefault(p, i + 1)
+    return many_files_per_app(hits, "permissions are compared by hand; one guard module owns it")
+
+
 # id -> (title, doc rule ref, function)
 CHECKS = {
     "RC001": ("kill by name or pattern", "automation-safety.md 1.9", rc001),
@@ -955,6 +1055,10 @@ CHECKS = {
     "RC016": ("no complete verify script", "web-build.md 8.1", rc016),
     "RC017": ("secret in a subprocess argument", "scripting-python.md 1.3", rc017),
     "RC018": ("no vendor chunks", "web-client-runtime.md 4.2", rc018),
+    "RC019": ("no bundle size budget", "web-client-runtime.md 4.1", rc019),
+    "RC020": ("no inline asset limit", "web-client-runtime.md 4.3", rc020),
+    "RC021": ("bearer header built in many files", "web-client-runtime.md 5.1", rc021),
+    "RC022": ("permissions compared by hand in many files", "rbac.md 3", rc022),
 }
 
 

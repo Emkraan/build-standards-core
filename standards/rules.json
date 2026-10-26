@@ -2273,9 +2273,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC022"
       },
-      "acceptance": "Review: no hand-written permission comparison in handlers."
+      "acceptance": "repo check RC022 reports no app that compares permissions or roles by hand in more than one non-test file."
     },
     {
       "id": "rbac.4",
@@ -3604,9 +3605,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC019"
       },
-      "acceptance": "The build reports an entry chunk under the budget the consumer sets."
+      "acceptance": "repo check RC019 reports a bundled app with no bundle size budget check (a size-limit or bundlewatch config, or a budget script)."
     },
     {
       "id": "web-client-runtime.4.2",
@@ -3633,9 +3635,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC020"
       },
-      "acceptance": "No inline asset above the bundler's inline limit is in the entry chunk."
+      "acceptance": "repo check RC020 reports no vite config without assetsInlineLimit."
     },
     {
       "id": "web-client-runtime.5.1",
@@ -3647,9 +3650,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC021"
       },
-      "acceptance": "No app carries its own token or fetch wrapper."
+      "acceptance": "repo check RC021 reports no app whose client code builds the bearer header in more than one file."
     },
     {
       "id": "web-client-runtime.5.2",

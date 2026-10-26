@@ -372,6 +372,50 @@ class TestBatch3(Tree):
         )
 
 
+class TestBatch4(Tree):
+    def test_rc019_budget(self):
+        self.fails("RC019", {"vite.config.ts": "export default {};\n"})
+        self.passes(
+            "RC019",
+            {
+                "vite.config.ts": "x\n",
+                "package.json": json.dumps({"scripts": {"check:size": "size-limit"}}),
+            },
+        )
+        shutil.rmtree(self.dir / "package.json", ignore_errors=True)
+
+    def test_rc019_no_bundler(self):
+        self.passes("RC019", {"package.json": "{}"})
+
+    def test_rc020_inline_limit(self):
+        self.fails("RC020", {"vite.config.ts": "export default {};\n"})
+        self.passes(
+            "RC020", {"vite.config.ts": "export default { build: { assetsInlineLimit: 0 } };\n"}
+        )
+
+    def test_rc021_bearer_in_many_client_files(self):
+        h = "fetch(u, { headers: { Authorization: `Bearer ${t}` } });\n"
+        self.fails("RC021", {"apps/a/src/api.ts": h, "apps/a/src/other.ts": h})
+
+    def test_rc021_clean(self):
+        h = "fetch(u, { headers: { Authorization: `Bearer ${t}` } });\n"
+        self.passes(
+            "RC021",
+            {
+                "apps/a/src/api.ts": h,
+                "apps/b/src/api.ts": h,
+                "apps/a/server/x.ts": h,
+                "apps/a/server/y.ts": h,
+            },
+        )
+
+    def test_rc022_permissions_by_hand(self):
+        h = "if (user.permissions.includes('x')) {}\n"
+        self.fails("RC022", {"apps/a/src/a.ts": h, "apps/a/src/b.ts": h})
+        shutil.rmtree(self.dir / "apps")
+        self.passes("RC022", {"apps/a/src/a.ts": h, "apps/b/src/b.ts": h})
+
+
 class TestWiring(Tree):
     def test_every_check_is_registered_once_with_a_matching_ref(self):
         reg = json.loads((ROOT / "standards/rules.json").read_text(encoding="utf8"))["rules"]
