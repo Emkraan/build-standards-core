@@ -210,6 +210,21 @@ class WorkflowLint(Overlay):
         )
         self.assertEqual(mod.yaml_colon_scalars(text), [5])
 
+    def test_setup_python_on_ubuntu_latest_is_found(self):
+        mod = load("core_ci_py", "templates/overlay/scripts/core-ci.py")
+        wf = self.repo / ".github" / "workflows" / "y.yml"
+        wf.parent.mkdir(parents=True)
+        wf.write_text(
+            "permissions:\n  contents: read\non: push\njobs:\n  a:\n"
+            "    runs-on: ubuntu-latest\n    steps:\n"
+            "      - uses: actions/setup-python@" + "a" * 40 + " # v7\n        with:\n"
+            "          python-version: '3.9'\n"
+        )
+        kinds = [k for _, k in mod.lint_workflow(wf)]
+        self.assertTrue(any("pin ubuntu-24.04" in k for k in kinds), kinds)
+        wf.write_text(wf.read_text().replace("ubuntu-latest", "ubuntu-24.04"))
+        self.assertFalse(any("pin ubuntu-24.04" in k for _, k in mod.lint_workflow(wf)))
+
     def test_quoted_block_and_comment_values_are_not_flagged(self):
         mod = load("core_ci_yaml3", "templates/overlay/scripts/core-ci.py")
         text = (

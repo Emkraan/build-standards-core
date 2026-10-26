@@ -577,6 +577,16 @@ def lint_workflow(path: pathlib.Path) -> list:
     text = path.read_text(encoding="utf8")
     if not re.search(r"^permissions:", text, re.M):
         bad.append((0, "no top-level permissions block"))
+    if "actions/setup-python@" in text:
+        for i, line in enumerate(text.splitlines(), 1):
+            if "ubuntu-latest" in line and not line.lstrip().startswith("#"):
+                bad.append(
+                    (
+                        i,
+                        "ubuntu-latest in a workflow that sets up Python: newer images lack old Pythons "
+                        "(no 3.9 on 26.04); pin ubuntu-24.04",
+                    )
+                )
     for i in yaml_colon_scalars(text):
         bad.append(
             (i, "unquoted value contains ': ' (invalid YAML, GitHub rejects the file); quote it")

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-26 (v1.13.4, release.yml runs on ubuntu-24.04)
+
+- `release.yml` set up Python 3.9 on `ubuntu-latest`, which is Ubuntu 26.04 and has no Python 3.9, so the
+  first automatic release (v1.13.3) failed at `setup-python`. It now defaults to `ubuntu-24.04` like the other
+  workflows that need the Python floor.
+- `core-ci.py workflow-lint` flags `ubuntu-latest` in any workflow that sets up Python, so the combination cannot
+  come back. A test covers it.
+
 ## 2026-10-26 (v1.13.3, release.yml was invalid YAML; the lint now catches it)
 
 - `release.yml` (v1.13.2) was never valid: an unquoted `description:` value contained `default: ...`, which YAML
