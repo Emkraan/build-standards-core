@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-26 (v1.19.0, boards and wide tables keep their own scrollbars)
+## 2026-10-26 (v1.20.0, boards and wide tables keep their own scrollbars)
 
 - New UI rule 0.12 (`web-ui.md`, registered as `web-ui.0.12`, a review rule): the page body is one vertical
   scroll container, a board is sized to the window with a floor, a wide table has a capped scroll area with a
@@ -11,6 +11,19 @@
   15rem, never under 16rem, a named focusable region so the keyboard can scroll it) and `LaneBoard` `fit` prop
   (the window height less 6rem, never under 360px, sideways scroll on the board edge, each lane scrolls on its
   own). Both props default to off, so existing uses are unchanged. Gallery specimen and tests added.
+
+## 2026-10-26 (v1.18.0, fix: UI lint exempts data palettes and no longer flags neutral hairline dividers)
+
+- Fix, replacing the advisory notes of the previous release: the notes only labelled findings and left them
+  failing. `ui_lint.py` now exempts files matched by the optional `data_palettes` globs in `ui-lint.json` from
+  the colour-literal rule (UI003), since a chart theme or category colour table holds data colours. Every other
+  rule still applies to those files, and a colour literal in any other file still fails.
+- The edge-bar rule (UI001) no longer flags a one-sided border under 2px in a neutral grey (a hairline
+  divider). A coloured hairline, a 2px or thicker one-sided border and every accent edge bar still fail, and
+  the exit code for real violations is unchanged.
+- The `::notice` lines, the `N advisory` summary count and the `advisories` key of `--json` are removed.
+  `tests/test_ui_lint_advisory.py` is replaced by `tests/test_ui_lint_data_palettes.py`; fixtures and
+  `lint/README.md` follow.
 
 ## 2026-10-26 (v1.16.0, UI lint advisory notes for data palettes and neutral dividers)
 
