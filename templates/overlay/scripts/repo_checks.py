@@ -668,10 +668,65 @@ IMPORT_ALIASES = {
     "git": "gitpython",
     "multipart": "python-multipart",
     "jose": "python-jose",
+    "usb": "pyusb",
 }
+# modules provided by pywin32 (the distribution name differs from every import name)
+for _m in [
+    "win32serviceutil",
+    "win32service",
+    "win32api",
+    "win32con",
+    "win32event",
+    "win32file",
+    "win32gui",
+    "win32pipe",
+    "win32process",
+    "win32security",
+    "win32print",
+    "win32ui",
+    "win32clipboard",
+    "win32com",
+    "win32comext",
+    "win32crypt",
+    "win32net",
+    "win32pdh",
+    "win32evtlog",
+    "win32evtlogutil",
+    "win32console",
+    "win32job",
+    "win32profile",
+    "win32ts",
+    "win32timezone",
+    "win32pdhutil",
+    "win32uiole",
+    "pythoncom",
+    "pywintypes",
+    "servicemanager",
+    "winerror",
+    "pythonwin",
+    "win32typing",
+    "win32trace",
+    "win32wnet",
+    "win32cred",
+    "win32inet",
+    "win32lz",
+    "win32ras",
+    "win32gui_struct",
+]:
+    IMPORT_ALIASES[_m] = "pywin32"
+# import names whose distribution is any of a family sharing a prefix
+IMPORT_PREFIX_ALIASES = {"google": "google-"}
+
+
+# standard library on newer Pythons than the one running the check (tomllib arrived in 3.11)
+NEWER_STDLIB = {"tomllib"}
 
 
 def stdlib_names():
+    return _stdlib_names() | NEWER_STDLIB
+
+
+def _stdlib_names():
     names = getattr(sys, "stdlib_module_names", None)
     if names:
         return set(names)
@@ -693,6 +748,106 @@ def norm_dist(name):
     return re.sub(r"[-_.]+", "-", name).lower()
 
 
+def _toml_strip(line):
+    """Drop a trailing comment from a TOML line, respecting quotes."""
+    q = None
+    for i, ch in enumerate(line):
+        if q:
+            if ch == q:
+                q = None
+        elif ch in "\"'":
+            q = ch
+        elif ch == "#":
+            return line[:i]
+    return line
+
+
+def _toml_array_strings(body):
+    """The quoted strings at the top level of a TOML array body (extras brackets stay inside)."""
+    out, i, n = [], 0, len(body)
+    while i < n:
+        ch = body[i]
+        if ch in "\"'":
+            j = body.find(ch, i + 1)
+            if j < 0:
+                break
+            out.append(body[i + 1 : j])
+            i = j + 1
+        elif ch == "#":
+            j = body.find("\n", i)
+            i = n if j < 0 else j
+        else:
+            i += 1
+    return out
+
+
+def _pyproject_fallback(text):
+    """Minimal parse (Python 3.9, no tomllib): {section: {key: [strings]}} for array values."""
+    data, section, lines, i = {}, "", text.splitlines(), 0
+    while i < len(lines):
+        ln = _toml_strip(lines[i]).strip()
+        i += 1
+        m = re.match(r"\[\[?\s*([^\]]+?)\s*\]\]?$", ln)
+        if m:
+            section = m.group(1).replace('"', "").replace("'", "")
+            continue
+        m = re.match(r"([A-Za-z0-9_.\"'-]+)\s*=\s*(.*)$", ln)
+        if not m or not m.group(2).lstrip().startswith("["):
+            continue
+        buf = m.group(2).lstrip()
+        while True:
+            depth, q = 0, None
+            for ch in buf:
+                if q:
+                    if ch == q:
+                        q = None
+                elif ch in "\"'":
+                    q = ch
+                elif ch == "[":
+                    depth += 1
+                elif ch == "]":
+                    depth -= 1
+            if depth <= 0 or i >= len(lines):
+                break
+            buf += "\n" + _toml_strip(lines[i])
+            i += 1
+        buf = buf.lstrip()[1:]
+        end = buf.rfind("]")
+        data.setdefault(section, {})[m.group(1).strip("\"'")] = _toml_array_strings(
+            buf[:end] if end >= 0 else buf
+        )
+    return data
+
+
+def pyproject_requirements(text):
+    """Requirement strings from project dependencies, optional-dependencies and dependency-groups."""
+    reqs = []
+    try:
+        import tomllib  # Python 3.11+
+    except ImportError:
+        tomllib = None
+    if tomllib is not None:
+        try:
+            d = tomllib.loads(text)
+        except ValueError:
+            d = None
+        if d is not None:
+            proj = d.get("project", {})
+            reqs += [r for r in proj.get("dependencies", []) if isinstance(r, str)]
+            for v in proj.get("optional-dependencies", {}).values():
+                reqs += [r for r in v if isinstance(r, str)]
+            for v in d.get("dependency-groups", {}).values():
+                reqs += [r for r in v if isinstance(r, str)]
+            return reqs
+    data = _pyproject_fallback(text)
+    reqs += data.get("project", {}).get("dependencies", [])
+    for sec, kv in data.items():
+        if sec == "project.optional-dependencies" or sec == "dependency-groups":
+            for v in kv.values():
+                reqs += v
+    return reqs
+
+
 def declared_deps(repo):
     """(names, unpinned or reasonless requirement lines) from requirements*.txt and pyproject.toml."""
     names, problems = set(), []
@@ -706,7 +861,11 @@ def declared_deps(repo):
             lines = repo.text(p).splitlines()
             for i, ln in enumerate(lines):
                 t = ln.split("#")[0].strip()
-                if not t or t.startswith(("-", "git+", "http")):
+                if (
+                    not t
+                    or t.startswith(("-", "git+"))
+                    or re.match(r"[A-Za-z][A-Za-z0-9+.-]*://", t)
+                ):
                     continue
                 m = re.match(r"([A-Za-z0-9][A-Za-z0-9._-]*)", t)
                 if not m:
@@ -718,14 +877,21 @@ def declared_deps(repo):
                     problems.append((p, i + 1, f"{m.group(1)} has no reason comment"))
         elif base == "pyproject.toml":
             text = repo.text(p)
-            for blk in re.findall(
-                r"(?ms)^\s*(?:dependencies|[A-Za-z0-9_-]+)\s*=\s*\[(.*?)\]", text
-            ):
-                for m in re.finditer(r"[\"']([A-Za-z0-9][A-Za-z0-9._-]*)", blk):
+            for req in pyproject_requirements(text):
+                m = re.match(r"\s*([A-Za-z0-9][A-Za-z0-9._-]*)", req)
+                if m:
                     names.add(norm_dist(m.group(1)))
             if not locked and re.search(r"(?m)^\s*dependencies\s*=", text):
                 problems.append((p, 1, "dependencies are declared with no lock file to pin them"))
     return names, problems
+
+
+def import_declared(mod, declared):
+    """True when an import name maps to a declared distribution (PEP 503 normalised)."""
+    if norm_dist(mod) in declared or norm_dist(IMPORT_ALIASES.get(mod.lower(), mod)) in declared:
+        return True
+    pre = IMPORT_PREFIX_ALIASES.get(mod.lower())
+    return bool(pre) and any(d.startswith(pre) for d in declared)
 
 
 def rc012(repo):
@@ -757,8 +923,7 @@ def rc012(repo):
             for m in mods:
                 if m in std or m in local or m == "__future__":
                     continue
-                dist = norm_dist(IMPORT_ALIASES.get(m.lower(), m))
-                if dist not in declared and norm_dist(m) not in declared:
+                if not import_declared(m, declared):
                     seen.setdefault(m, (p, node.lineno))
     for m, (p, n) in sorted(seen.items()):
         out.append(
