@@ -279,6 +279,9 @@ class TestBatch2(Tree):
             {"app/main.py": "import httpx\n", "requirements.txt": "# http client\nhttpx==0.27.0\n"},
         )
 
+    def test_rc012_tomllib_is_standard_library_on_any_interpreter(self):
+        self.passes("RC012", {"app/main.py": "import tomllib\n"})
+
     def test_rc012_url_lines_skipped_not_names(self):
         self.put(
             {

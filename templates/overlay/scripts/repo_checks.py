@@ -718,7 +718,15 @@ for _m in [
 IMPORT_PREFIX_ALIASES = {"google": "google-"}
 
 
+# standard library on newer Pythons than the one running the check (tomllib arrived in 3.11)
+NEWER_STDLIB = {"tomllib"}
+
+
 def stdlib_names():
+    return _stdlib_names() | NEWER_STDLIB
+
+
+def _stdlib_names():
     names = getattr(sys, "stdlib_module_names", None)
     if names:
         return set(names)
