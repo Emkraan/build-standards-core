@@ -539,11 +539,48 @@ INSTALLS = (
 )
 
 
+KEYLINE = re.compile(r"^(\s*)(?:-\s+)?[A-Za-z0-9_.\"'-]+:\s+(\S.*)$")
+
+
+def yaml_colon_scalars(text: str) -> list:
+    """Line numbers of `key: value` lines whose unquoted (plain) value contains ': '. YAML cannot parse
+    that ("mapping values are not allowed here"), and GitHub then rejects the whole workflow file and
+    reports a failed run on every push, so a text rule is not enough to catch it. Block scalars
+    (`run: |`), quoted values, flow collections and comments are skipped."""
+    bad = []
+    skip_col = None
+    for i, line in enumerate(text.splitlines(), 1):
+        stripped = line.strip()
+        indent = len(line) - len(line.lstrip())
+        if skip_col is not None:
+            if not stripped or indent > skip_col:
+                continue
+            skip_col = None
+        if not stripped or stripped.startswith("#"):
+            continue
+        m = KEYLINE.match(line)
+        if not m:
+            continue
+        value = re.sub(r"\s+#.*$", "", m.group(2)).strip()
+        if value[:1] in "|>":
+            skip_col = indent + (2 if stripped.startswith("- ") else 0)
+            continue
+        if value[:1] in "\"'[{&*!%@`":
+            continue
+        if re.search(r":(\s|$)", value):
+            bad.append(i)
+    return bad
+
+
 def lint_workflow(path: pathlib.Path) -> list:
     bad = []
     text = path.read_text(encoding="utf8")
     if not re.search(r"^permissions:", text, re.M):
         bad.append((0, "no top-level permissions block"))
+    for i in yaml_colon_scalars(text):
+        bad.append(
+            (i, "unquoted value contains ': ' (invalid YAML, GitHub rejects the file); quote it")
+        )
     for i, line in enumerate(text.splitlines(), 1):
         if line.lstrip().startswith("#"):
             continue

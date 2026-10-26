@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-26 (v1.13.3, release.yml was invalid YAML; the lint now catches it)
+
+- `release.yml` (v1.13.2) was never valid: an unquoted `description:` value contained `default: ...`, which YAML
+  reads as a nested mapping. GitHub rejected the file and reported a failed run on every push (including the
+  merge queue's), so the first automatic release did not run and v1.13.2 was tagged by hand. The value is quoted.
+- `core-ci.py workflow-lint` (and so the template CI) now flags any `key: value` line whose unquoted value contains
+  `: `; block scalars (`run: |`), quoted values, flow collections and comments are skipped. It reports the line
+  that broke `release.yml` and nothing in the other workflows. Tests cover the finding, the skips and every core
+  workflow file.
+
 ## 2026-10-26 (v1.13.2, automatic releases)
 
 - New `.github/workflows/release.yml` and `checks/auto-release.py`: a push to main whose top CHANGELOG entry
