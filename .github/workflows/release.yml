@@ -18,7 +18,7 @@ permissions:
   contents: write
 jobs:
   release:
-    runs-on: ${{ fromJSON(vars.CORE_RUNNER || '"ubuntu-latest"') }}
+    runs-on: ${{ fromJSON(vars.CORE_RUNNER || '"ubuntu-24.04"') }}
     timeout-minutes: 10
     outputs:
       tag: ${{ steps.decide.outputs.tag }}
