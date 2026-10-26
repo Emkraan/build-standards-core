@@ -682,9 +682,9 @@ class CoreStatus(Overlay):
         (self.repo / "standards-local" / "proofs.json").write_text(json.dumps(proofs))
         _, rep = self.status()
         ids = self.by_id(rep)
-        self.assertEqual(ids["a.2"]["status"], "proved")
+        self.assertEqual(ids["a.2"]["status"], "attested")
         self.assertEqual(ids["a.3"]["status"], "proved")
-        self.assertEqual(rep["summary"]["proved"], 2)
+        self.assertEqual((rep["summary"]["proved"], rep["summary"]["attested"]), (1, 1))
         self.assertEqual(rep["summary"]["pass"], 0)
         old = (datetime.date.today() - datetime.timedelta(days=400)).isoformat()
         proofs = {
@@ -708,6 +708,32 @@ class CoreStatus(Overlay):
             "a.9: no such rule",
         ):
             self.assertIn(want, text)
+
+    def test_waiver_needs_a_reason_a_record_and_a_date_and_never_counts_as_proof(self):
+        (self.repo / "docs").mkdir()
+        (self.repo / "docs" / "waiver.md").write_text("not applicable here\n")
+        today = datetime.date.today().isoformat()
+        good = {
+            "kind": "waiver",
+            "ref": "docs/waiver.md",
+            "date": today,
+            "reason": "no database in this repo",
+            "reviewed_by": "owner",
+        }
+        write = lambda d: (self.repo / "standards-local" / "proofs.json").write_text(json.dumps(d))  # noqa: E731
+        write({"a.3": good})
+        _, rep = self.status()
+        self.assertEqual(self.by_id(rep)["a.3"]["status"], "waived")
+        self.assertEqual((rep["summary"]["waived"], rep["summary"]["proved"]), (1, 0))
+        for bad, want in (
+            (dict(good, reason=""), "needs a reason"),
+            (dict(good, date="2020-01-01"), "days old"),
+            (dict(good, ref="docs/none.md"), "does not exist"),
+        ):
+            write({"a.3": bad})
+            _, rep = self.status()
+            self.assertEqual(self.by_id(rep)["a.3"]["status"], "unverified", want)
+            self.assertIn(want, "\n".join(rep["problems"]))
 
     def test_test_proof_without_the_rule_tag_warns_and_a_tagged_one_does_not(self):
         (self.repo / "tests").mkdir()

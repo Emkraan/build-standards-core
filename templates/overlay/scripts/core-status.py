@@ -42,7 +42,10 @@ Each registered rule gets a status:
   fail        findings above the baseline
   pass (repo-check)  a rule whose check is a scripts/repo_checks.py check (RC0nn) is run here against the repo's
               tracked files: no finding is pass, a finding is fail, an active exception makes it excepted
-  proved      a test or review rule (or an overlay-ci rule with no result read) that a valid entry in
+  attested    a review rule that a valid review entry proves: a person looked, the record is dated and expires
+  waived      a rule a valid waiver entry sets aside for this repo: kind waiver with ref (the record), date, reason
+              and reviewed_by; it expires like a review and is never counted as proof
+  proved      a test or review rule (or an overlay-ci rule with no result read) that a valid ci or test entry in
               standards-local/proofs.json proves; counted apart from pass
   not_applicable  a core-ci rule that needs the kit (check.requires ui-adoption) in an app whose UI is not adopted
   unverified  a test or review rule with no proof record, an overlay-ci rule whose workflow is installed
@@ -511,9 +514,10 @@ def overlay_ci_status(rule, results) -> tuple[str, str]:
 # ---------------------------------------------------------------- proof records
 
 PROOFS = ch.ROOT / "standards-local" / "proofs.json"
-PROOF_KINDS = ("ci", "test", "review")
+PROOF_KINDS = ("ci", "test", "review", "waiver")
 # A proof may be the rule's own kind or stronger: ci beats test beats review.
 STRENGTH = {
+    "waiver": 0,
     "review": 0,
     "test": 1,
     "ci": 2,
@@ -560,10 +564,10 @@ def load_proofs(registry, today=None) -> tuple[dict, list[str]]:
             or not isinstance(p.get("ref"), str)
             or not p["ref"]
         ):
-            problems.append(f"{where}: needs kind (ci, test or review) and ref")
+            problems.append(f"{where}: needs kind (ci, test, review or waiver) and ref")
             continue
         kind, ref = p["kind"], p["ref"]
-        if STRENGTH[kind] < STRENGTH.get(rules[rid]["check"]["kind"], 0):
+        if kind != "waiver" and STRENGTH[kind] < STRENGTH.get(rules[rid]["check"]["kind"], 0):
             problems.append(
                 f"{where}: a {kind} proof is weaker than the rule's {rules[rid]['check']['kind']} check"
             )
@@ -593,12 +597,19 @@ def load_proofs(registry, today=None) -> tuple[dict, list[str]]:
         else:
             doc = root / ref
             if not doc.is_file():
-                problems.append(f"{where}: review record {ref} does not exist")
+                problems.append(f"{where}: {kind} record {ref} does not exist")
                 continue
+            if kind == "waiver" and not (
+                str(p.get("reason", "")).strip() and str(p.get("reviewed_by", "")).strip()
+            ):
+                problems.append(f"{where}: a waiver needs a reason and reviewed_by")
+                continue
+            if kind == "review" and not str(p.get("reviewed_by", "")).strip():
+                PROOF_WARNINGS.append(f"{where}: a review proof should name reviewed_by")
             try:
                 when = datetime.date.fromisoformat(str(p.get("date", "")))
             except ValueError:
-                problems.append(f"{where}: a review proof needs date YYYY-MM-DD")
+                problems.append(f"{where}: a {kind} proof needs date YYYY-MM-DD")
                 continue
             age = (today - when).days
             if age > max_days:
@@ -906,7 +917,8 @@ def main(argv):
                     status = "fail" if n_over else "excepted"
         proof = proofs.get(r["id"])
         if proof and status == "unverified":
-            status, note = "proved", f"{proof['kind']}: {proof['ref']}"
+            status = {"review": "attested", "waiver": "waived"}.get(proof["kind"], "proved")
+            note = f"{proof['kind']}: {proof['ref']}"
         rules.append(
             {
                 "id": r["id"],
@@ -935,7 +947,17 @@ def main(argv):
         "ui_adoption": ui,
         "summary": {
             s: sum(1 for x in rules if x["status"] == s)
-            for s in ("pass", "proved", "excepted", "fail", "unverified", "not_applicable", "error")
+            for s in (
+                "pass",
+                "proved",
+                "attested",
+                "waived",
+                "excepted",
+                "fail",
+                "unverified",
+                "not_applicable",
+                "error",
+            )
         },
         "rules": rules,
         "exceptions": [
@@ -990,7 +1012,7 @@ def main(argv):
         + (" (drift: synced copies were edited)" if drift else "")
     )
     print(
-        f"  rules: {s['pass']} pass, {s['proved']} proved, {s['excepted']} excepted, {s['fail']} fail, "
+        f"  rules: {s['pass']} pass, {s['proved']} proved, {s['attested']} attested, {s['waived']} waived, {s['excepted']} excepted, {s['fail']} fail, "
         f"{s['unverified']} unverified, {s['not_applicable']} not applicable"
     )
     if report["scopes"] is not None:

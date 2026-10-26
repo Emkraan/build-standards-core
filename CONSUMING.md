@@ -404,7 +404,8 @@ remote and never writes to another account's issue.
 - `standards-local/parameters.md` has a `Stacks` row (a missing row is a problem, and
   `--require-lint-config` fails on it).
 - Every rule still `unverified` either gets a proof record in `standards-local/proofs.json` (a
-  `ci` job, a `test` file or a dated `review` record; README "Source of truth and explicit
+  `ci` job, a `test` file that carries the rule id, a dated `review` record that reports as `attested`, or a dated
+  `waiver` with a reason that reports as `waived`; README "Source of truth and explicit
   exceptions") or stays on the operator's list. A stale or broken record is reported as a problem.
 - Tell the operator what changed, and that the app needs a restart if the run said RESTART.
 - If the nightly pull is blocked by local changes you did not make (generated files), run `git status`,

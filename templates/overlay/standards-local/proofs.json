@@ -1,4 +1,4 @@
 {
-  "$description": "How this repo proves rules core-status cannot see. rule id -> {kind: ci|test|review, ref, date, reviewed_by}. ref is <workflow file>#<job> for ci, a test file path for test, the review record path for review (paths from the repo root). A review needs date YYYY-MM-DD within $max_review_age_days. See scripts/core-status.py.",
+  "$description": "How this repo proves rules core-status cannot see. rule id -> {kind: ci|test|review|waiver, ref, date, reviewed_by, reason}. ref is <workflow file>#<job> for ci, a test file path for test (the file carries the rule id as core-rule: <id>), the record path for review and waiver (paths from the repo root). A review or waiver needs date YYYY-MM-DD within $max_review_age_days. A review reports as attested (a person looked, it expires). A waiver sets a rule aside for this repo, needs a reason and reviewed_by, reports as waived and is never counted as proof. See scripts/core-status.py.",
   "$max_review_age_days": 180
 }
