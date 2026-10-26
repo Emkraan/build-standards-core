@@ -462,7 +462,7 @@ class TestWiring(Tree):
     def test_registry_marks_the_kit_proofs_as_needing_adoption(self):
         reg = json.loads((ROOT / "standards/rules.json").read_text(encoding="utf8"))["rules"]
         kit = [r for r in reg if r["check"].get("requires") == "ui-adoption"]
-        self.assertEqual(len(kit), 5)
+        self.assertEqual(len(kit), 9)
         self.assertTrue(all(r["check"]["kind"] == "core-ci" for r in kit))
 
     def test_unknown_check_is_unverified_not_pass(self):
