@@ -340,7 +340,7 @@ How to use it:
 | `web-shell.2` Client-runtime sections apply per shape | must | web | review | Each client-runtime section applies as the shape table says; with platform sign-in there is no browser token, so auth boot, renewal and the token cache do not apply. |
 | `web-shell.3` The registry is generated from manifests | must | web | core-ci | A script generates the module list and one icon map with a fallback from per-module manifests, and CI fails a stale registry. |
 | `web-shell.4` One route table, standalone or hosted | must | web | test | A module exports one route table, a shared typed descriptor and a host hook; the standalone entry and the shell mount the same table. |
-| `web-shell.5` Per-module CSS scope | must | web | test | Module stylesheets are built inside :where([data-module="<id>"]), keyframes are named <id>-<name>, root selectors map onto the module root, and the token sheet loads once. |
+| `web-shell.5` Per-module CSS scope | must | web | core-ci | Module stylesheets are built inside :where([data-module="<id>"]), keyframes are named <id>-<name>, root selectors map onto the module root, and the token sheet loads once. |
 | `web-shell.6` Per-module storage scope | must | web | test | Each module has its own appId so seen versions, dismissed banners and saved filters stay per module. |
 | `web-shell.7` One accent per mounted module | must | web | test | Each module mounts in the kit AccentProvider with an accent name from the kit accents data. |
 | `web-shell.8` Safe return-target bounce | must | web | test | The shell validates the return target and accepts only a same-origin path, rejecting protocol-relative, backslash, control-character, over-2,048-character and other-origin targets. |
@@ -372,14 +372,14 @@ How to use it:
 | `web-ui.16` One accent token per app | must | web | lint | The accent is set once, with data-app-accent on the root element. App CSS never sets accent tokens, except a certified accent block printed by the token builder. |
 | `web-ui.17` Categorical order and tone | must | web | review | Data uses the six categorical hues in their fixed order, minus the withheld hue. Tone and selection follow the recipes in this section. |
 | `web-ui.18` Count-up is correct and skippable | must | web | core-ci | Hero numbers count up on --dur-chart with ease out, land on the exact final value, skip in hidden tabs and render statically under reduced motion. |
-| `web-ui.19` The desktop icon rail | must | web | test | The sidebar is a hover rail that can be pinned, and the state survives reloads. |
+| `web-ui.19` The desktop icon rail | must | web | core-ci | The sidebar is a hover rail that can be pinned, and the state survives reloads. |
 | `web-ui.20` Announcements, pulse feed and presenter | must | web | test | Announcements and the pulse feed follow section 20, with storage on every database dialect the app ships. |
 | `web-ui.21` System health request analytics | should | web | test | The health page summarises requests into fixed buckets per range. |
 | `web-ui.22` Build card and release notes | must | web | core-ci | Every app with a sidebar shows the build card with its version and release notes parsed from the changelog. |
-| `web-ui.24` Shell chrome is accessible | must | web | test | The chrome the behavioural layer adds (rail, palette, feed, toasts) passes axe with zero violations. |
+| `web-ui.24` Shell chrome is accessible | must | web | core-ci | The chrome the behavioural layer adds (rail, palette, feed, toasts) passes axe with zero violations. |
 | `web-ui.25` Required chrome is mounted | must | web | repo-check | Every app with a sidebar mounts the required chrome listed in section 25. |
 | `web-ui.12` The theme script is injected from the kit | must | web | core-ci | The pre-paint theme script is the kit themeInitScript, injected at build by the kit HTML transform (kitThemeInit), never pasted; a build that cannot inject it tests the inline script against the kit byte for byte (hasCurrentThemeInit). |
-| `web-ui.26.1` Each mounted app has an appId | must | web | test | Several apps on one origin pass their own appId to the shell, so seen and dismissed state stays per app while theme and rail pin stay shared. |
+| `web-ui.26.1` Each mounted app has an appId | must | web | core-ci | Several apps on one origin pass their own appId to the shell, so seen and dismissed state stays per app while theme and rail pin stay shared. |
 | `web-ui.26.2` Each tool owns one path prefix behind a guard | must | web | review | A tool on a shared origin keeps its routes under /<id>/*, wrapped in a route guard that admits no one the server would refuse. |
 | `web-ui.26.3` Switching tools goes through the hub or the rail | should | web | review | Moving between tools on one origin uses the hub or the tool rail, never a hand-built link. |
 

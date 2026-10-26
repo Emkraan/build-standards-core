@@ -322,9 +322,11 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "core-ci",
+        "command": "npm --prefix kit test -- tests/shell.test.tsx",
+        "requires": "ui-adoption"
       },
-      "acceptance": "A Playwright check asserts data-rail moves through collapsed, open and pinned and persists."
+      "acceptance": "A kit unit test asserts data-rail moves between collapsed and pinned, persists the pin and restores it."
     },
     {
       "id": "web-ui.20",
@@ -380,9 +382,11 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "core-ci",
+        "command": "npm --prefix kit test -- tests/a11y.test.tsx",
+        "requires": "ui-adoption"
       },
-      "acceptance": "axe-core reports zero violations on the home, health and announcements routes in both themes."
+      "acceptance": "A kit test runs axe on the composite shell and each overlay in both themes and finds zero violations."
     },
     {
       "id": "web-ui.25",
@@ -425,9 +429,11 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "core-ci",
+        "command": "npm --prefix kit test -- tests/review-fixes.test.tsx",
+        "requires": "ui-adoption"
       },
-      "acceptance": "Two apps with different appIds dismiss a banner in one and still show it in the other, while a theme change applies to both."
+      "acceptance": "A kit test asserts a banner dismissed in one app is stored under that app's own appId key and not the shared one."
     },
     {
       "id": "web-ui.26.2",
@@ -4061,9 +4067,11 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "core-ci",
+        "command": "npm --prefix kit test -- tests/scope-css.test.ts",
+        "requires": "ui-adoption"
       },
-      "acceptance": "A module rule does not match an element of another module."
+      "acceptance": "A kit test asserts module rules are prefixed inside :where([data-module=id]) at zero specificity and root selectors map onto the module root, so a module rule matches only its own module."
     },
     {
       "id": "web-shell.6",
