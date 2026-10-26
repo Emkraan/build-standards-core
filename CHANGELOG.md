@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-10-26 (v1.27.3, README and CONSUMING brought current)
+
+- Docs only. `README.md` stays the overview and `CONSUMING.md` is the how-to for every channel; nothing is
+  duplicated between them.
+- `CONSUMING.md`: a channels table (overlay sync with `core-update.yml` and `standards.lock`, the opt-in
+  reusable workflow `core-ci-reusable.yml` and its check `core-checks / core-checks`, agent skills through the
+  nightly); the `--ui OWNER/REPO[=MODE:PATH]` syntax fixed (it was written with colons); the `pin-file` way and
+  the `report_repo` key added; the `CORE_REPO` repository variable named; the reusable workflow's trigger
+  behaviour corrected (an edit runs every check); the hand-made tag step removed.
+- New sections 8 to 13: the eight statuses (pass, proved, attested, waived, not_applicable, excepted,
+  unverified, fail) and exactly how `standards-local/proofs.json` records each, the `core-rule: <id>` tag and
+  `PROOF_TAG_ENFORCED`, the nine kit-test rules that read `not_applicable` without UI adoption, RC001 to
+  RC022 with how to run `repo_checks.py`, the UI lint config (`data_palettes`, neutral hairlines), the
+  scrolling rule and its kit classes (`page-scroll`, `Table` `capped`, `LaneBoard` `fit`), automatic releases
+  and how the version is assigned at merge, reporting and contributing, the update flow for an account with
+  only the public docs, and what READY means with troubleshooting (a cancelled check, Python 3.9).
+- `README.md`: five ways (`pin-file` added) and the three channels; layout and standards tables brought in
+  line with the tree (`ingest/` removed, `opscenter/`, `claude/`, `skills/`, `tests/` and the workflows added;
+  `web-shell.md` and `hermes.md` listed); the status and proof text now points at CONSUMING; the day-one
+  steps name `CORE_REPO` and no longer require `gh` or an invitation; the version example reads from the
+  latest release; versioning describes automatic releases; the checks list matches `checks.yml`; the kit
+  gallery is no longer described as private.
+
 ## 2026-10-26 (v1.27.2, RC012 lock files and import aliases)
 
 - `repo_checks.py` RC012 accepts a pip-tools hashed file (`pip-compile --generate-hashes` output named
