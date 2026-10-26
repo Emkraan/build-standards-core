@@ -882,9 +882,10 @@
         "python"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC012"
       },
-      "acceptance": "Every import outside the standard library is listed in a pinned requirements file with a reason."
+      "acceptance": "repo check RC012 reports no import outside the standard library that is missing from a pinned requirements file with a reason comment (or a lock file)."
     },
     {
       "id": "scripting-python.1.3",
@@ -1055,9 +1056,10 @@
         "all"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC011"
       },
-      "acceptance": "The consumer workflow checks out with ssh-key and the key is listed read-only on the source repo."
+      "acceptance": "repo check RC011 reports no checkout of another repository without an ssh-key."
     },
     {
       "id": "secrets-and-credentials.1.5",
@@ -1083,9 +1085,13 @@
         "all"
       ],
       "check": {
-        "kind": "review"
+        "kind": "overlay-ci",
+        "workflow": "core-ci.yml",
+        "jobs": [
+          "core-secret-scan"
+        ]
       },
-      "acceptance": "The secret scan passes and the inventory names the store entry for every secret."
+      "acceptance": "core-ci.yml core-secret-scan passes: the secret scan finds no secret in the change."
     },
     {
       "id": "secrets-and-credentials.1.7",
@@ -1373,9 +1379,13 @@
         "all"
       ],
       "check": {
-        "kind": "review"
+        "kind": "overlay-ci",
+        "workflow": "core-ci.yml",
+        "jobs": [
+          "core-changelog"
+        ]
       },
-      "acceptance": "The PR links or contains the entry for its version."
+      "acceptance": "core-ci.yml core-changelog passes: the pull request touches the changelog."
     },
     {
       "id": "pr-review-and-merge.1.4",
@@ -2654,9 +2664,10 @@
         "all"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC013"
       },
-      "acceptance": "Review of the deploy workflow."
+      "acceptance": "repo check RC013 reports every stateful deploy workflow that does not re-run CI or wait on a CI job, or that has no health check."
     },
     {
       "id": "ci-cd-release.7",
