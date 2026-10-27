@@ -2,7 +2,8 @@
 """Merge a pull request so only a GitHub noreply author email lands in history, whatever the
 contributors' account settings are.
 
-Usage: python3 scripts/merge-pr.py <number> [-R OWNER/NAME] [--match-head-commit SHA] [--timeout MIN] [--dry-run]
+Usage: python3 scripts/merge-pr.py <number> [-R OWNER/NAME] [--match-head-commit SHA] [--timeout MIN]
+       [--attempts N] [--pause SECONDS] [--dry-run]
 
 A GitHub squash merge writes the opener's PRIMARY account email unless that account keeps its email
 private, and the merge API's author hint is then ignored. So this wrapper never lets GitHub pick the
@@ -32,9 +33,13 @@ checkout has it and no worktree has it checked out; otherwise one line says why 
 still exits non-zero, the PR state is read back, and a merged PR is never reported as refused.
 
 A merge call that fails with a transient code host error (a dropped connection, a timeout, a 5xx
-answer) is retried up to MERGE_ATTEMPTS times in all with MERGE_PAUSE seconds between them. Before
-every retry the PR is read again: a merged PR ends as success, and a closed PR, a head that is no
-longer the checked one, or a refusal that is not transient stops the retry and is reported as refused.
+answer) is retried up to --attempts times in all (default MERGE_ATTEMPTS) with --pause seconds
+(default MERGE_PAUSE) before each retry. Each retry sleeps, then reads the PR state and head, then
+merges. A merged PR ends as success, and a closed PR, a head that is no longer the checked one, or a
+refusal that is not transient stops the retry and is reported as refused. Every retry passes
+--match-head-commit with the head just read, even when the caller passed none. The required checks are
+not read again: the merge call itself is refused by the code host when one is not green, and that
+refusal is not transient.
 """
 
 import argparse
@@ -86,6 +91,20 @@ TRANSIENT = (
 # The final merge call is retried this many times in all, with this pause in seconds between them.
 MERGE_ATTEMPTS = 3
 MERGE_PAUSE = 10
+
+
+def pinned(cmd, head):
+    """cmd with --match-head-commit set to head, replacing any pin it already carries, so a retry can
+    only merge the head that was just read."""
+    out, skip = [], False
+    for part in cmd:
+        if skip:
+            skip = False
+        elif part == "--match-head-commit":
+            skip = True
+        else:
+            out.append(part)
+    return [*out, "--match-head-commit", head]
 
 
 def push(*args, attempts=3, pause=10):
@@ -261,6 +280,18 @@ def main():
     ap.add_argument(
         "--timeout", type=int, default=60, help="minutes to wait for the checks (rebase path)"
     )
+    ap.add_argument(
+        "--attempts",
+        type=int,
+        default=MERGE_ATTEMPTS,
+        help="merge calls in all, the first included (automerge.merge_attempts)",
+    )
+    ap.add_argument(
+        "--pause",
+        type=int,
+        default=MERGE_PAUSE,
+        help="seconds to wait before a retried merge call (automerge.merge_pause_s)",
+    )
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
     repo = ["-R", a.repo] if a.repo else []
@@ -375,35 +406,39 @@ def main():
             return 0
     rc, out, err = gh(*cmd)
     attempt = 1
+    expected = sha if rebase else pr["headRefOid"]
     while rc != 0:
-        src, state, _ = gh("pr", "view", a.number, *repo, "--json", "state", "--jq", ".state")
-        if src == 0 and state == "MERGED":
+        # Only a transient code host failure is retried. Anything else is a refusal, unless the
+        # failed call had in fact landed the merge.
+        retryable = attempt < a.attempts and any(t in f"{err} {out}".lower() for t in TRANSIENT)
+        failure = (err or out).splitlines()[-1] if (err or out) else "no output"
+        if retryable:
+            time.sleep(a.pause)
+        # Read the state and the head after the pause, then merge. A retry never runs on a state
+        # read before the pause.
+        src, view, _ = gh("pr", "view", a.number, *repo, "--json", "state,headRefOid")
+        try:
+            now = json.loads(view) if src == 0 else {}
+        except ValueError:
+            now = {}
+        if now.get("state") == "MERGED":
             break
-        # Only a transient code host failure is retried, and only while the PR is still open at the
-        # head that was checked. Anything else is a refusal and is reported as before.
-        if (
-            attempt >= MERGE_ATTEMPTS
-            or src != 0
-            or state != "OPEN"
-            or not any(t in f"{err} {out}".lower() for t in TRANSIENT)
-        ):
+        if not retryable or now.get("state") != "OPEN":
             print(f"merge-pr: merge refused: {err or out}", file=sys.stderr)
             return 2
-        hrc, head, _ = gh(
-            "pr", "view", a.number, *repo, "--json", "headRefOid", "--jq", ".headRefOid"
-        )
-        if hrc != 0 or head != (sha if rebase else pr["headRefOid"]):
+        head = now.get("headRefOid", "")
+        if head != expected:
             print(
                 f"merge-pr: merge refused: the head of #{a.number} moved or is unreadable, not retrying",
                 file=sys.stderr,
             )
             return 2
         print(
-            f"merge-pr: merge failed ({(err or out).splitlines()[-1]}), #{a.number} is still open at "
-            f"{head[:8]}; retrying ({attempt + 1} of {MERGE_ATTEMPTS})",
+            f"merge-pr: merge failed ({failure}), #{a.number} is still open at "
+            f"{head[:8]}; retrying ({attempt + 1} of {a.attempts})",
             file=sys.stderr,
         )
-        time.sleep(MERGE_PAUSE)
+        cmd = pinned(cmd, head)
         attempt += 1
         rc, out, err = gh(*cmd)
     if rc != 0:

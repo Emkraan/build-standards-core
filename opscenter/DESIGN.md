@@ -615,13 +615,17 @@ health check; on failure reset to the previous commit, rebuild, restart. Same he
 - Skips drafts and the hold label; never checks out PR code; never uses an admin override.
 - **Retrying merge.** A merge call can fail while the code host is briefly unreachable from a
   self hosted runner, and a single failed call then fails a gate whose checks are green. The merge
-  step retries only a transient failure (a dropped connection, a timeout, a 5xx answer), up to
-  `automerge.merge_attempts` times (default 3) with `automerge.merge_pause_s` between them
-  (default 10). Before every retry it reads the pull request again and stops, without retrying, when
-  the pull request is already merged (the outcome is success), is closed, has a head other than the
-  pinned one, or no longer has every newest required run green. A refusal that is not transient
-  (conflict, a failed match of the head, a branch rule) is never retried, and the pause is the only
-  wait. The retry keeps `--match-head-commit` and never adds an admin override.
+  step (`merge-pr.py`) retries only a transient failure (a dropped connection, a timeout, a 5xx
+  answer), up to `automerge.merge_attempts` calls in all (default 3) with `automerge.merge_pause_s`
+  seconds before each retry (default 10). The workflow passes the two parameters as the script's
+  `--attempts` and `--pause` flags. Each retry runs in this order: sleep, then read the pull request
+  state and head, then merge. It stops, without retrying, when the pull request is already merged
+  (the outcome is success), is closed, or has a head other than the one that was checked. Every retry
+  passes `--match-head-commit` with the head just read, even when the caller passed none, so a retry
+  can never merge a different head. The retry claims only an open state and an unchanged head. It
+  does not read the required runs again: the code host refuses a merge while a required check is not
+  green, and that refusal (like a conflict, a failed head match or a branch rule) is not transient
+  and is never retried. The pause is the only wait, and a retry never adds an admin override.
 - A gate job that waits on core checks (the shell consumer's shape) is accepted as one more
   required check, so its wait is an input, not a second mechanism.
 - Kill switch: `automerge.enabled` and a repo variable.

@@ -2,7 +2,7 @@
 
 ## 2026-10-27 (v1.27.6, retrying merge)
 
-- Section 7.2 of `opscenter/DESIGN.md` carries a retrying merge (parameters `automerge.merge_attempts` 3 and `automerge.merge_pause_s` 10, listed in section 6). `templates/overlay/scripts/merge-pr.py` implements it for the final merge call: a transient failure (dropped connection, timeout, 5xx) is retried, and before each retry the pull request is read again. An already merged pull request is a success, a closed one or one whose head moved from the pinned head stops the retry, and a refusal that is not transient is never retried. Tests in `tests/test_core_ci.py`.
+- Section 7.2 of `opscenter/DESIGN.md` carries a retrying merge (parameters `automerge.merge_attempts` 3 and `automerge.merge_pause_s` 10, listed in section 6). `templates/overlay/scripts/merge-pr.py` implements it for the final merge call and takes the two values as `--attempts` and `--pause`. A transient failure (dropped connection, timeout, 5xx) is retried in this order: sleep, read the pull request state and head, merge. Every retry passes `--match-head-commit` with the head just read, even when the caller passed none. An already merged pull request is a success, a closed one or one whose head moved stops the retry, and a refusal that is not transient is never retried. The retry claims only an open state and an unchanged head and does not read the required runs again, because the code host refuses a merge while a required check is not green. Tests in `tests/test_core_ci.py`.
 
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 
