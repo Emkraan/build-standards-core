@@ -344,7 +344,15 @@ shape). A ledger schema therefore declares either one `writer` or a pair:
 {"kind": "ledger", "schema": "approvals/1", "producer": "server.approvals", "drainer": "engine.writer", "updated_utc": "..."}
 ```
 
-- The producer appends. It never changes or removes a record once written.
+- The producer appends. It never changes a record once written. It is also the only role that
+  prunes: the drainer never removes a record, so something has to expire them, and that is the
+  producer's retention pass. The pass removes whole records only, under the same lock, through
+  `state.py`, and it stamps the producer's name. For the inbound spool the producer is the
+  collector step of the engine (`collect.py`), and it runs the pass at the start of every
+  collection. A record expires when its marker shows it was drained (a final `state`) and its
+  `at_utc` is older than `analyzer.spool_days` days. A record still marked `new` never expires,
+  so unprocessed work is never dropped by age. A ledger that is pruned names its retention
+  parameter in its schema (`spool_days` here), and a ledger that names none is never pruned.
 - The drainer never appends and never removes. It changes only the marker fields a record
   declares in the schema (`state`, `applied_utc`, `outcome` and the like), through a read modify
   write under the same lock. The `id`, `at_utc` and every content field stay as the producer
@@ -354,7 +362,9 @@ shape). A ledger schema therefore declares either one `writer` or a pair:
 - Only a `ledger` may declare a pair. Every other kind keeps exactly one writer.
 
 Acceptance (test): the producer cannot change a marked field of an existing record. The drainer
-cannot append, remove, or change a content field. A third name is refused. An append and a mark
+cannot append, remove, or change a content field. A third name is refused. The retention pass
+removes a drained record older than `analyzer.spool_days` and leaves a younger one and any record
+still `new`, and a prune by the drainer is refused. An append and a mark
 at the same moment lose neither. A schema that declares a pair on a kind other than `ledger` is
 refused by the conformance checker.
 
@@ -576,7 +586,7 @@ secret references name a store and a key, never a value.
 | host | `state_dir`, `runtime_dir`, `port` (8766), `service_label`, `service_manager` (`launchd` or `systemd`), `agent_home`, `workspace_root` | required except port | host layout |
 | server | `max_body` (1 MiB), `validate_responses` (false), `ttl.*` | as section 2.4 | |
 | writer | `live` (false), `rules[]` | three core approval rules, live | default deny |
-| analyzer | `min_gap_s` (1800), `retry_after_s` (1200), `daily_audit` (true), `alert_every_s` (14400), `spool_days` (14) | | B-13 |
+| analyzer | `min_gap_s` (1800), `retry_after_s` (1200), `daily_audit` (true), `alert_every_s` (14400), `spool_days` (14, the age after which a drained spool record is pruned) | | B-13 |
 | model | `cmd`, `timeout_s`, `price_table`, `outlier_threshold`, `plan_usage_cmd` | `cmd` null disables the analyzer and briefs | |
 | routing | `rules_file`, `ignore_senders[]`, `ignore_subject_regex[]`, `priority_senders[]` | | collectors |
 | notify | `channel`, `cmd`, `quiet_hours` (`22:00-07:00`), `dedupe_prefix` | | B-12, A-97 |
@@ -714,8 +724,7 @@ Release numbers are assigned at merge in a fixed merge order (D7-19).
 |---|---|---|---|
 | R1 Guard and route registry | `gate.py`, `registry.py`, `app.py` skeleton, `/api/health`, static files | registry walk (bad Host, foreign Origin, body cap, no wildcard CORS, unknown POST 404), traversal 403 | fixture consumer serves the SPA and health; every probe in the walk is refused as specified |
 | R2 Envelope | `envelope.py`, error codes, tolerant client reader for one release, response validation in tests | shape test on every route; error code to status map | fixture consumer and both tolerant and strict readers pass; R3 removes the tolerant reader |
-| R3 Schemas and checker | six envelope kinds, all core state and API schemas, `state.py`, `conformance.py` with `extends` and JSON lines, `migrate.py`, params schema, the estate-literal check | conformance on fixture state, producer and drainer ledger (roles enforced, marks leave content
-unchanged), migrate plan and apply on a copy (idempotent, backup, failure report) | fixture state passes; a seeded bad record is reported and not converted |
+| R3 Schemas and checker | six envelope kinds, all core state and API schemas, `state.py`, `conformance.py` with `extends` and JSON lines, `migrate.py`, params schema, the estate-literal check | conformance on fixture state, producer and drainer ledger (roles enforced, marks leave content unchanged, retention pass by the producer only), migrate plan and apply on a copy (idempotent, backup, failure report) | fixture state passes; a seeded bad record is reported and not converted |
 | R4 Writer and inbox | `writer.py`, `approvals.py`, tombstones, applied ledger, `testing/fixtures.py`, `check-opscenter-writer`, the three core approvals and the consumption panel server module | the writer acceptance in 2.5; panel tests from local-ops-app 19 | fixture flows write only through the writer; the consumption panel's three approvals pass against a fake code host |
 | R5 Live reads and engine | `swr.py`, `run.py`, core server modules, collector and analyzer engine with the gate, routing, heartbeats, sign-in loop, notice discipline; the app shell and every core screen in 4.2 | swr single flight and last-good; gate order; heartbeat raise and clear; app unit and e2e smoke on fixture state in both themes | fixture consumer runs every core screen live with no bundle step |
 | R6 Slots | slot loader, interfaces, null adapters, reference adapters (code host, work tracker, docs home), slot UI mounts, claim token protocol, optional modules | per-slot conformance on fixtures; null adapter hides UI; claim token states | fixture consumer runs with all null, then with the three reference adapters against fakes |
