@@ -2,7 +2,7 @@
 
 ## 2026-10-27 (v1.27.6, adopt with a linked path)
 
-- Design only. `opscenter/DESIGN.md` section 8.1 step 2: `--ops-center PATH` accepts the repo root, the app folder or a symbolic link to either. `adopt` resolves the link to the git top level, refuses a path outside any git repo or without an ops center app (the message names the resolved path), records the resolved top level as the consumer entry's `path`, prints both paths in the dry run, never changes the link, and takes a live deployed checkout without switching its branch or editing its working tree (the sync lands in a separate worktree by pull request).
+- Design only. `opscenter/DESIGN.md` section 8.1 step 2: `--ops-center PATH` accepts the repo root, the app folder or a symbolic link to either. `adopt` resolves the link to the git top level, refuses a path outside any git repo or without an ops center app (the message names the resolved path), records the resolved top level as the consumer entry's `path`, prints both paths in the dry run, never changes the link, and takes a live deployed checkout without switching its branch or editing its working tree (the sync lands in a separate worktree by pull request). The R9 acceptance row in section 9.2 gains the linked path cases.
 
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 
