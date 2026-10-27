@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-27 (v1.27.6, ops center design, ledger producer and drainer)
+
+- `opscenter/DESIGN.md` sections 3.1, 3.2 and the R3 row: the `ledger` kind may declare one
+  producer and one drainer instead of a single writer. The producer appends and never changes a
+  record. The drainer changes only the marker fields a record declares and never appends or
+  removes. Every other kind keeps exactly one writer. The section gives the acceptance test and
+  the conformance rule.
+
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 
 - `repo_checks.py` RC012: the import-name to distribution map gains `docx` (`python-docx`), `pptx`, `fitz`,

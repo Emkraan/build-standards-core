@@ -328,28 +328,53 @@ starts with the same header:
 
 | Kind | Shape | Use |
 |---|---|---|
-| `ledger` | append-only records `{id, at_utc, ...}`; JSON array or JSON lines (`.jsonl`, header as line 1) | spool, activity, applied, alerts |
+| `ledger` | append-only records `{id, at_utc, ...}`, JSON array or JSON lines (`.jsonl`, header as line 1), one writer or a declared producer and drainer (below) | spool, activity, applied, alerts, approvals inbox |
 | `store` | `records: {<id>: {...}}` | backlog, projects, ideas, handled, tackle sessions |
 | `kv` | `values: {<key>: <scalar or small object>}` | publish modes, acks, small decisions |
 | `watch` | `targets: {<name>: {status, last_seen_utc, last_ok_utc, detail}}` | heartbeats, sign-in health, collector health |
 | `report` | `generated_utc` plus `sections: {...}` with per-section `error` | action center, awareness, docs queue, freshness |
 | `config` | a parameters-like object, read only at runtime | routing rules, alert sources, job card map |
 
-Markdown logs (plans tree, debt files, decision logs) stay outside the schemas; their front matter
+**Producer and drainer.** A ledger is not always written by one process. An inbox is appended by
+the process that receives the work (the server, under the lock) and later drained by a separate
+job that marks each record as handled (the approvals inbox and the inbound spool are both this
+shape). A ledger schema therefore declares either one `writer` or a pair:
+
+```json
+{"kind": "ledger", "schema": "approvals/1", "producer": "server.approvals", "drainer": "engine.writer", "updated_utc": "..."}
+```
+
+- The producer appends. It never changes or removes a record once written.
+- The drainer never appends and never removes. It changes only the marker fields a record
+  declares in the schema (`state`, `applied_utc`, `outcome` and the like), through a read modify
+  write under the same lock. The `id`, `at_utc` and every content field stay as the producer
+  wrote them, so the content hash of a record is the same before and after a mark.
+- Both go through `state.py` and stamp their own name in the header's `writer` field of the write
+  they make. A write by any other name is refused.
+- Only a `ledger` may declare a pair. Every other kind keeps exactly one writer.
+
+Acceptance (test): the producer cannot change a marked field of an existing record. The drainer
+cannot append, remove, or change a content field. A third name is refused. An append and a mark
+at the same moment lose neither. A schema that declares a pair on a kind other than `ledger` is
+refused by the conformance checker.
+
+Markdown logs (plans tree, debt files, decision logs) stay outside the schemas, their front matter
 is read by a parser that has its own fixture tests.
 
 ### 3.2 Per-file schemas
 
 - Each state file has one schema in `schemas/state/` that extends its envelope kind
-  (`"extends": "envelopes/store"`), names its one writer, and versions itself (`backlog/1`).
+  (`"extends": "envelopes/store"`), names its one writer (or, for a `ledger`, its producer and
+  drainer, section 3.1), and versions itself (`backlog/1`).
 - The core ships schemas for every core state file. The starting set is the hub consumer's 26
   schemas (12 state, 13 API sections, plus approvals), with the gaps it found filled: activity,
   collector health, sign-in health, analyzer state, plan limits history, docs state, suppressions,
   and the `identity` field typed as an object.
 - A slot ships a schema for every file and payload it produces, in its own `schemas/` folder; the
   slot loader refuses a slot without them.
-- Every state file has exactly one writer, and all writers go through `state.py` (atomic temp file
-  plus `os.replace`, a file lock for read-modify-write, the header stamped on write).
+- Every state file has exactly one writer, except a `ledger` that declares one producer and one
+  drainer (section 3.1). All writers go through `state.py` (atomic temp file plus `os.replace`, a
+  file lock for read-modify-write, the header stamped on write).
 
 ### 3.3 The conformance checker
 
@@ -689,7 +714,8 @@ Release numbers are assigned at merge in a fixed merge order (D7-19).
 |---|---|---|---|
 | R1 Guard and route registry | `gate.py`, `registry.py`, `app.py` skeleton, `/api/health`, static files | registry walk (bad Host, foreign Origin, body cap, no wildcard CORS, unknown POST 404), traversal 403 | fixture consumer serves the SPA and health; every probe in the walk is refused as specified |
 | R2 Envelope | `envelope.py`, error codes, tolerant client reader for one release, response validation in tests | shape test on every route; error code to status map | fixture consumer and both tolerant and strict readers pass; R3 removes the tolerant reader |
-| R3 Schemas and checker | six envelope kinds, all core state and API schemas, `state.py`, `conformance.py` with `extends` and JSON lines, `migrate.py`, params schema, the estate-literal check | conformance on fixture state; migrate plan and apply on a copy (idempotent, backup, failure report) | fixture state passes; a seeded bad record is reported and not converted |
+| R3 Schemas and checker | six envelope kinds, all core state and API schemas, `state.py`, `conformance.py` with `extends` and JSON lines, `migrate.py`, params schema, the estate-literal check | conformance on fixture state, producer and drainer ledger (roles enforced, marks leave content
+unchanged), migrate plan and apply on a copy (idempotent, backup, failure report) | fixture state passes; a seeded bad record is reported and not converted |
 | R4 Writer and inbox | `writer.py`, `approvals.py`, tombstones, applied ledger, `testing/fixtures.py`, `check-opscenter-writer`, the three core approvals and the consumption panel server module | the writer acceptance in 2.5; panel tests from local-ops-app 19 | fixture flows write only through the writer; the consumption panel's three approvals pass against a fake code host |
 | R5 Live reads and engine | `swr.py`, `run.py`, core server modules, collector and analyzer engine with the gate, routing, heartbeats, sign-in loop, notice discipline; the app shell and every core screen in 4.2 | swr single flight and last-good; gate order; heartbeat raise and clear; app unit and e2e smoke on fixture state in both themes | fixture consumer runs every core screen live with no bundle step |
 | R6 Slots | slot loader, interfaces, null adapters, reference adapters (code host, work tracker, docs home), slot UI mounts, claim token protocol, optional modules | per-slot conformance on fixtures; null adapter hides UI; claim token states | fixture consumer runs with all null, then with the three reference adapters against fakes |
