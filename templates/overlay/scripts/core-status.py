@@ -235,6 +235,7 @@ CORE_CI_STEPS = (
     "core-powershell",
     "core-node-pin",
     "core-kit-peers",
+    "core-required-checks",
 )
 
 

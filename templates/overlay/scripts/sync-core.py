@@ -21,7 +21,9 @@ the repo's own settings: the OVERLAY env value, the overlay path prefix of core-
 paths, and every value the template marks `# core-sync: keep`. No other workflow is touched, and a
 template workflow the repo does not have is not added. When core-ci.yml's job names change, the old ->
 new required-check names are printed (and appended to the file CORE_SYNC_NOTES names, when set, for a
-pull request body): the merge gate must require the new names.
+pull request body): the merge gate must require the new names. A REQUIRED_CHECKS list in a gate workflow
+is rewritten in the same sync (core-ci.py required-checks --lists-only --fix); one it cannot edit safely
+is named with its file, line and replacement.
 """
 
 import hashlib
@@ -92,6 +94,29 @@ try:
     refreshed, notes = ch.sync_workflows(tmp / "core")
     if refreshed:
         print("workflows: refreshed " + ", ".join(refreshed) + " (per-repo settings kept)")
+    if any(n.startswith("required checks:") for n in notes):
+        notes.append(
+            "order: a newly required job must already exist on the default branch before the gate lists "
+            "it; merge the pull request that adds the job first, then the gate change (or let the gate "
+            "read core-ci.yml: templates/overlay/.github/workflows/automerge.yml)"
+        )
+    cc = ch.ROOT / "scripts" / "core-ci.py"
+    if cc.is_file():
+        # A merge gate kept as a REQUIRED_CHECKS list in a workflow (a plan with no rulesets) is
+        # rewritten in this same sync, so the pull request carries the matching gate; a list the
+        # script cannot edit safely is printed with its file, line and replacement.
+        r = subprocess.run(
+            [sys.executable, str(cc), "required-checks", "--lists-only", "--fix"],
+            cwd=str(ch.ROOT),
+            capture_output=True,
+            text=True,
+        )
+        fixed = [
+            ln
+            for ln in (r.stdout + r.stderr).splitlines()
+            if ln.startswith(("required-checks: rewrote", "required-checks: cannot"))
+        ]
+        notes += fixed
     for line in notes:
         print(line)
     if notes and os.environ.get("CORE_SYNC_NOTES"):

@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-27 (v1.27.6, ops center design, ledger producer and drainer)
+## 2026-10-27 (v1.27.8, ops center design, ledger producer and drainer)
 
 - `opscenter/DESIGN.md` sections 3.1, 3.2 and the R3 row: the `ledger` kind may declare one
   producer and one drainer instead of a single writer. The producer appends and never changes a
@@ -9,6 +9,43 @@
   record older than `analyzer.spool_days` and never one still `new`. The R3 row is repaired as a
   single line. Every other kind keeps exactly one writer. The section gives the acceptance test and
   the conformance rule.
+
+## 2026-10-27 (v1.27.7, checker precision: secret names in argv, merge prose)
+
+- `scripting-python.1.3` (RC017): a secret NAME is not the secret. An argument after `-n`, `--name`,
+  `--secret-name` or `--secret_name`, or one ending `.name`, `_name` or `_id`, no longer fails. An f-string is
+  tested per interpolated expression, so `f"origin/main:{SECRETS_PATH}"` passes while `str(api_token)` and
+  `f"{api_token}"` still fail.
+- `pr-review-and-merge.1.6` (RC002): prose is not a merge command. Python docstrings and standalone string
+  statements are skipped (read with `ast`), and adjacent string literals count as one string. A real
+  `["gh", "pr", "merge", ...]` argv or `gh pr merge` line without a head pin still fails.
+
+## 2026-10-27 (v1.27.6, consumer report fixes: gate rename, sweep lockfile, merge sha, report issue)
+
+- Gate rename deadlock: `core-ci.py required-checks --fix` now rewrites a `REQUIRED_CHECKS` list in a gate
+  workflow (one-line and block forms; quoting, separator and own checks kept) and, when it cannot edit the
+  value safely, prints the exact replacement line with its file and line number. `--lists-only` checks only
+  a workflow list, needs no remote read and skips a ruleset-gated repo. `sync-core.py` applies the rewrite in
+  the sync pull request and prints the ordering rule (a newly required job must exist on the default branch
+  before the gate lists it). `core-ci.yml` (template and reusable) gains the step `core-required-checks`,
+  which exits non-zero on a mismatch so a sync pull request fails before merge.
+- New `core-ci.py required-names` and the template `templates/overlay/.github/workflows/automerge.yml`: the
+  gate reads the required core job names from the synced `core-ci.yml`, so a rename reaches it in the same
+  sync. A workflow that calls `required-names` counts as requiring every core-ci job. The template is
+  copied once, not synced. CONSUMING.md section 13 documents the bootstrap (merge the fix pull request once
+  by hand, squash, pinned to the reviewed head sha) and the ordering rule.
+- `ci-cd-release.2.1` weekly lint sweep: the install step looks for a lockfile in the app directory: the new
+  parameters row "App directory", else the root, else the first folder one level down that tracks one. The
+  install and the sweep command run there (`app_dir` and `sweep_web` params). `lint-sweep.yml` stays
+  core-managed, so a consumer needs no local edit.
+- `pr-review-and-merge.1.6` (RC002): the checker reads the whole merge call statement (continuation lines
+  and the neighbouring body construction), so a head sha passed through a jq-built body on another line is
+  accepted. The rule text now says the sha must be in the merge call statement.
+- Docs: `hermes/sync_skills.py` steps now show the required `--dest` argument.
+- Hermes nightly report: the report issue is found by the configured number (`report_issue` in
+  `consumer.json` or `CORE_REPORT_ISSUE`), then the search, then the REST issues listing (no search index)
+  filtered to this account, so a search lag or a missed filter no longer opens a second "Consumer report:
+  candidates for the core" issue next to the existing one.
 
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 
