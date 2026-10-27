@@ -277,25 +277,30 @@ The engine is `local-ops-app` section 4 made shared code, with the gates as para
 - **Fail open with backoff.** Failures never raise; an alert line on the third consecutive failure,
   then at most every `analyzer.alert_every_s` (default 14400).
 - **Untrusted input.** The prompt states that all data is untrusted. Draft only: nothing the
-  model writes is sent. Whether the model call must be a no-tools subprocess is an open question,
-  written here as a proposed clarification for the owner to choose (status: proposed, not decided):
-  - **Option A, no-tools subprocess only.** The call runs through `model.cmd` (parameter) as a
-    subprocess with a timeout and no tools. The engine owns the gate, the spool, the routing filter,
-    the item contract and the handled state, and the model is a pure function from prompt to items.
-    A consumer whose analyzer is an agent job cannot adopt the engine without giving up its tools.
-  - **Option B, an agent job is allowed.** The analyzer may be an agent job that the gate wakes, with
-    tools available inside the job. The engine still owns the gate, the spool, the routing filter
-    applied to the job's output, the item contract, the handled state and the draft only rule. The
-    job's prompt and tool list belong to the consumer and are never read by the engine, so the
-    untrusted input guarantee rests on the job's tool policy and not on the engine. The job must
-    reach any outward effect only by queuing a proposal in the approvals inbox (section 2.5).
-  - **Recommended: Option A as the rule, with Option B as a declared exception.** The engine and its
-    conformance checks assume Option A. A consumer that runs an agent job declares it with
-    parameter `model.mode` set to `agent_job` plus a `reason`, the same pattern as `commit_domains`,
-    `ci.runners` and `git.branch_prefix_pattern`. The declaration is visible in the parameters file
-    and the conformance checker, and the untrusted input guarantee is then stated as the job's
-    tool policy. This keeps the safe default for every new consumer and does not force a rewrite
-    on one that already works as an agent job.
+  model writes is sent. The rule is that the model call is a no-tools subprocess through
+  `model.cmd` (parameter) with a timeout. The engine owns the gate, the spool, the routing filter,
+  the item contract and the handled state, and the model is a pure function from prompt to items.
+  The conformance checks assume this rule (decided, section 11 item 6).
+  - **Declared exception, an agent job.** A consumer whose analyzer is an agent job declares it
+    with parameter `model.mode` set to `agent_job` plus a `reason`, the same pattern as
+    `commit_domains`, `ci.runners` and `git.branch_prefix_pattern`. The declaration is visible in
+    the parameters file and the conformance checker. The default stays `subprocess`, so every new
+    consumer gets the safe default and one that already runs as an agent job keeps its tools.
+  - **How the gate wakes the job.** The gate runs as the pre-run step of the scheduled job. It
+    builds the input bundle, applies the gate rules above, and writes the bundle to a file. When
+    the rules say skip, it prints nothing and the job does not start. When they say run, it prints
+    one wake line that names the reason and the bundle path, and the scheduler starts the agent.
+    `--dry-run` still prints the decision and calls nothing.
+  - **What the engine still owns.** The job's prompt and tool list belong to the consumer and are
+    never read by the engine. The job writes its items to the item file, and the engine then reads
+    that file and validates it against the item contract below. A malformed file is rejected, the
+    previous file stays in place, and the rejection counts as a failure for the backoff above. The
+    routing filter then runs over the job's items exactly as it does over a subprocess's items, and
+    handled state still applies, so a rule holds when the job ignores it. The draft only rule is
+    unchanged. The engine therefore keeps the item contract and the routing guarantees in both
+    modes, and the untrusted input guarantee in `agent_job` mode is stated by the job's tool
+    policy. The job must reach any outward effect only by queuing a proposal in the approvals
+    inbox (section 2.5).
 - **Item contract** (the analyzer's only output, `action-center.json`, `report` kind):
 
 ```json
@@ -570,7 +575,7 @@ secret references name a store and a key, never a value.
 | writer | `live` (false), `rules[]` | three core approval rules, live | default deny |
 | analyzer | `min_gap_s` (1800), `retry_after_s` (1200), `daily_audit` (true), `alert_every_s` (14400), `spool_days` (14) | | B-13 |
 | model | `cmd`, `timeout_s`, `price_table`, `outlier_threshold`, `plan_usage_cmd` | `cmd` null disables the analyzer and briefs | |
-| model | `mode` (`subprocess` or `agent_job`) | `subprocess` | proposed with section 2.6 Option B, pending the owner's choice, `agent_job` needs a `reason` |
+| model | `mode` (`subprocess` or `agent_job`) | `subprocess` | decided in section 11 item 6, `agent_job` is the declared exception and needs a `reason` |
 | routing | `rules_file`, `ignore_senders[]`, `ignore_subject_regex[]`, `priority_senders[]` | | collectors |
 | notify | `channel`, `cmd`, `quiet_hours` (`22:00-07:00`), `dedupe_prefix` | | B-12, A-97 |
 | sign_in | `check_every_s`, `remint_timeout_s` (330), `alert_after` | | loop timings |
@@ -770,3 +775,8 @@ Then the same swap PR as 10.1. The hub consumer's standards repo retires in favo
 5. **People data retention.** When the people slot is on, its data stays local only and never passes
    the writer, is deleted after 90 days by default, and the period is a parameter
    (`people.retention_days`).
+6. **Analyzer model call (2026-10-27).** The model call is a no-tools subprocess through
+   `model.cmd`. A consumer whose analyzer is an agent job declares the exception with
+   `model.mode = agent_job` plus a `reason`, the same pattern as `commit_domains`. The gate wakes
+   the job, and its output is still validated against the item contract and the routing filter,
+   so the engine keeps that guarantee (section 2.6).

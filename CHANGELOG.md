@@ -2,7 +2,7 @@
 
 ## 2026-10-27 (v1.27.6, model call clarification)
 
-- Design only. `opscenter/DESIGN.md` section 2.6 (untrusted input) is rewritten as a proposed clarification for the owner to choose. Option A keeps the model call a no-tools subprocess through `model.cmd`. Option B admits an agent job woken by the gate and names what the engine still owns (gate, spool, routing filter, item contract, handled state, draft only rule). The recommendation is Option A as the rule with Option B as a declared exception through a proposed parameter `model.mode` plus a `reason`, listed in section 6. Nothing is decided until the owner chooses.
+- Design only. `opscenter/DESIGN.md` section 2.6 (untrusted input) now states the owner's decision on the analyzer model call. The rule is a no-tools subprocess through `model.cmd`. A consumer whose analyzer is an agent job declares the exception with `model.mode = agent_job` plus a `reason`. The section says how the gate wakes the job and that the engine still validates the job's output against the item contract and the routing filter. Section 6 lists `model.mode` as decided, and section 11 records the decision as item 6.
 
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 
