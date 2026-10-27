@@ -302,10 +302,24 @@ The engine is `local-ops-app` section 4 made shared code, with the gates as para
 
 - Jobs are declared in the job manifest (parameter `jobs`, section 6): `name`, `schedule`,
   `expected_every_s`, `grace_s`, `feeds` (which screen), `quiet` (silent unless it fails).
-- Each job writes one heartbeat line (`watch` kind, `heartbeats.json`) on start and finish with its
-  exit status. The core nightly registers manifest jobs with the runtime slot (`jobs.register`).
+- A job reports liveness in one of two ways, and a manifest job may use either. The first is a
+  heartbeat line the job writes itself (`watch` kind, `heartbeats.json`) on start and finish with
+  its exit status. The second is the runtime slot's own record of each run: the slot method
+  `jobs.last_runs()` returns, per job, `{name, last_start_utc, last_end_utc, exit_status,
+  output_tail}`, where `output_tail` is a bounded tail of the run's output with the redaction the
+  `ci_host` runner log uses (section 5.3). It is read only, goes through `swr`, and needs no change
+  to the job. The core nightly registers manifest jobs with the runtime slot (`jobs.register`).
 - `heartbeats.py` raises one board item per job past `expected_every_s + grace_s` or failing, keyed
-  by job; it clears itself on the next success (local-ops-app section 17).
+  by job, and it clears itself on the next success (local-ops-app section 17). Its sources are
+  parameter `heartbeats.sources` (default `["lines"]`, so nothing changes until a consumer adds
+  `"runtime"`). With both sources on, the entry with the newer end time wins for each job, and
+  the failing output tail goes into the board item's detail. A runtime slot that is null or
+  unavailable leaves the heartbeat lines as the only source, with no error.
+
+  Acceptance (test, against a fake runtime slot): a failed last run raises one item keyed by the
+  job, and the next successful run clears it. A run older than `expected_every_s + grace_s`
+  raises one item. With both sources the newer entry wins. A null runtime slot falls back to the
+  lines. With `sources` left at its default the slot is never called.
 - Runner lost: a run queued with no runner past `ci.queued_alert_s` raises one item; cancelled and
   timed-out runs count as failures (section 18).
 - Sign-in heal loop (B-11): check, proactive remint, paired failure and recovery notices sharing one
@@ -503,7 +517,7 @@ Every other slot ships an interface and the null adapter.
 | Slot | Table A | Interface summary | Shipped |
 |---|---|---|---|
 | `people` | 7, 27, 67, 68, 69 | roster from parameter; list 1:1 topics, team read, member profiles, yearly records; act: schedule, save; chip "next 1:1", strip "team away" | null, off by default |
-| `runtime` | 12, 24, 51, 52, 80, 89, 90 | jobs list and run now, register manifest jobs, sessions (tackle launch with claim token protocol, B-09), discuss session, restart, spend ledgers, account pool, fallback watch, banners | null |
+| `runtime` | 12, 24, 51, 52, 80, 89, 90 | jobs list, last runs (`jobs.last_runs()`, section 2.7) and run now, register manifest jobs, sessions (tackle launch with claim token protocol, B-09), discuss session, restart, spend ledgers, account pool, fallback watch, banners | null |
 | `freeze_source` | 26 | list windows `{name, start_utc, end_utc, exception}` | null (strip is core) |
 | `collector` (one per source: mail, chat, tickets) | 31, 32 | `collect(since)` returns candidates; rules from parameters | null |
 | `meetings` | 33 | list meetings, read transcript, produce digest items; privacy scrub and private file modes are core rules | null |
@@ -563,7 +577,7 @@ secret references name a store and a key, never a value.
 | docs | `naming_scheme`, `topic_folders`, `template_path`, `header_label`, `export_folders`, `publish_mode` per class | | B-14, B-15 |
 | work | `classification_sets`, `project_defaults`, `debt_files[]`, `plans_root`, `plans_format` | | A-42, A-77, A-78 |
 | jobs | manifest `[{name, schedule, expected_every_s, grace_s, feeds, quiet}]` | the core jobs | A-98 |
-| heartbeats | `names[]`, `sync_from_tags` (false) | from the job manifest | A-87 |
+| heartbeats | `names[]`, `sync_from_tags` (false), `sources` (`["lines"]`, or add `"runtime"`) | from the job manifest | A-87, section 2.7 |
 | freeze | `source` | null | slot name |
 | deploy | `strategy` (`copy` or `checkout`), `keep_releases` (3), `health_timeout_s` (30) | `copy` | B-07 |
 | automerge | `enabled` (true), `hold_label`, `method` | repo's declared method | B-08 |
@@ -691,7 +705,7 @@ Release numbers are assigned at merge in a fixed merge order (D7-19).
 | R2 Envelope | `envelope.py`, error codes, tolerant client reader for one release, response validation in tests | shape test on every route; error code to status map | fixture consumer and both tolerant and strict readers pass; R3 removes the tolerant reader |
 | R3 Schemas and checker | six envelope kinds, all core state and API schemas, `state.py`, `conformance.py` with `extends` and JSON lines, `migrate.py`, params schema, the estate-literal check | conformance on fixture state; migrate plan and apply on a copy (idempotent, backup, failure report) | fixture state passes; a seeded bad record is reported and not converted |
 | R4 Writer and inbox | `writer.py`, `approvals.py`, tombstones, applied ledger, `testing/fixtures.py`, `check-opscenter-writer`, the three core approvals and the consumption panel server module | the writer acceptance in 2.5; panel tests from local-ops-app 19 | fixture flows write only through the writer; the consumption panel's three approvals pass against a fake code host |
-| R5 Live reads and engine | `swr.py`, `run.py`, core server modules, collector and analyzer engine with the gate, routing, heartbeats, sign-in loop, notice discipline; the app shell and every core screen in 4.2 | swr single flight and last-good; gate order; heartbeat raise and clear; app unit and e2e smoke on fixture state in both themes | fixture consumer runs every core screen live with no bundle step |
+| R5 Live reads and engine | `swr.py`, `run.py`, core server modules, collector and analyzer engine with the gate, routing, heartbeats, sign-in loop, notice discipline; the app shell and every core screen in 4.2 | swr single flight and last-good; gate order, heartbeat raise and clear (from lines and from the runtime slot's last runs); app unit and e2e smoke on fixture state in both themes | fixture consumer runs every core screen live with no bundle step |
 | R6 Slots | slot loader, interfaces, null adapters, reference adapters (code host, work tracker, docs home), slot UI mounts, claim token protocol, optional modules | per-slot conformance on fixtures; null adapter hides UI; claim token states | fixture consumer runs with all null, then with the three reference adapters against fakes |
 | R7 Automerge | `automerge.yml` template, overlay install step | newest run per check, rerun unblocks, hold label, draft skip, head pin | merges a test PR on one repo; a failing then rerun check behaves as specified |
 | R8 Deploy | `deploy.py` with both strategies, rollback, drift check, service definitions | failed health rolls back; drift raises one item; keep_releases prunes | fixture consumer deploys, fails a seeded health check and rolls back |

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-27 (v1.27.6, ops center design, heartbeats from the runtime job list)
+
+- `opscenter/DESIGN.md` sections 2.7, 5.3, 6 and the R5 row: job liveness can be read from the
+  runtime slot's own record of each run through a read only `jobs.last_runs()` method (last start,
+  last end, exit status, bounded output tail), as well as from a heartbeat line the job writes.
+  Parameter `heartbeats.sources` picks the sources and defaults to the lines only. The newer entry
+  wins when both are on. The section gives the acceptance test.
+
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 
 - `repo_checks.py` RC012: the import-name to distribution map gains `docx` (`python-docx`), `pptx`, `fitz`,
