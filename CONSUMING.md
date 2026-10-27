@@ -544,6 +544,10 @@ repo root, dates are `YYYY-MM-DD`.
 | `review` | the review record | `date` within `$max_review_age_days` (default 180); `reviewed_by` (a missing one is a warning) | `attested` |
 | `waiver` | the waiver record | `date` (same expiry), `reason` and `reviewed_by`, all required | `waived` |
 
+A rule whose proof tests only check that a risk owner and decision record are named (for example
+`secrets-and-credentials.1.9` and `scripting-powershell.1.10`) must also carry a dated `review` record from
+the accountable owner.
+
 A proof's kind must be the rule's own check kind or stronger (`ci`, then `test`, then `review`), so a
 `review` record cannot prove a `test` rule; a `waiver` can set aside any rule that would read `unverified`.
 A missing file, an unknown rule id, a weaker kind, a stale date or a waiver without a reason is listed
