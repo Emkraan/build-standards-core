@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { fireEvent, render, screen } from '@testing-library/react';
 import axe from 'axe-core';
 import { describe, expect, it, vi } from 'vitest';
-import { CardHead, InfoTip, Stat, StatTile } from '../src';
+import { CardHead, InfoTip, Stat, StatTile, TooltipLayer } from '../src';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const kitCss = readFileSync(resolve(here, '../src/styles/kit.css'), 'utf8');
@@ -21,7 +21,12 @@ describe('StatTile help icon', () => {
   });
 
   it('shows one focusable icon named About <label> beside the label', () => {
-    const { container } = render(<StatTile label="Open" value="12" tip="Items waiting for a reply." />);
+    const { container } = render(
+      <>
+        <TooltipLayer />
+        <StatTile label="Open" value="12" tip="Items waiting for a reply." />
+      </>,
+    );
     const icon = screen.getByRole('button', { name: 'About Open' });
     expect(icon.getAttribute('data-tip')).toBe('Items waiting for a reply.');
     expect(icon.tabIndex).toBe(0);
@@ -31,7 +36,12 @@ describe('StatTile help icon', () => {
 
   it('puts the icon in the corner of a clickable tile, outside the button', () => {
     const onClick = vi.fn();
-    const { container } = render(<StatTile label="Open" value="12" tip="Items waiting." onClick={onClick} />);
+    const { container } = render(
+      <>
+        <TooltipLayer />
+        <StatTile label="Open" value="12" tip="Items waiting." onClick={onClick} />
+      </>,
+    );
     const icon = screen.getByRole('button', { name: 'About Open' });
     const tile = container.querySelector('.kpi-tile') as HTMLElement;
     expect(tile.contains(icon)).toBe(false);
@@ -47,6 +57,7 @@ describe('StatTile help icon', () => {
   it('has no axe violations with a tip, clickable or not', async () => {
     const { container } = render(
       <>
+        <TooltipLayer />
         <StatTile label="Open" value="12" tip="Items waiting." />
         <StatTile label="Review" value="3" tip="Items older than two days." onClick={() => undefined} />
       </>,

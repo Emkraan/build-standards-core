@@ -1618,7 +1618,7 @@ is provisional: the core assigns the final numbers when it merges.
    value, a step, a link or a warning that a person needs is text on the page or in the help drawer. Tips
    do not show on touch and hide on scroll and pointer down. The reason of a disabled control is a tip by
    design (rule 2), so when it is the next step, say the step in the page text too.
-8. **A tip is one or two short plain sentences.** About 200 characters at most, with no markup and no
+8. **A tip is one or two short plain sentences.** Never over 200 characters, with no markup and no
    list. Anything longer goes into the `InfoTip` popover, the page help or the page itself. The UI lint
    reports UI013 for a literal `data-tip`, `tip` or `disabledReason` over 200 characters or in three or
    more sentences.

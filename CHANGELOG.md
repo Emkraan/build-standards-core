@@ -41,8 +41,9 @@ renders exactly as before. The version and the final standards section number ar
   title. The icon is an `InfoTip`: the tip on hover or focus, the same text in a popover on click. With no `tip` or
   `info` the markup is the same as before. A `StatTile` or `Stat` that has `onClick` keeps the icon in its corner,
   outside the button, so a button never holds a button. The glossary underline at rest is 2px dotted in
-  `--text-secondary`, and goes to `--text-primary` on hover and focus. One named visible change: a `StatTile` that
-  already passed `tip` now shows the icon and no longer puts `data-tip` on the tile itself.
+  `--text-secondary`, and goes to `--text-primary` on hover and focus. `StatTile` already took `tip`, so it shows the icon
+  only where a tip layer is mounted (new `useTipLayerMounted`). Without one a `StatTile` that passes `tip` keeps its
+  `data-tip` and shows no icon, as before.
 - Standards: new `web-ui.md` section 27, "The help layer", with eight rules registered as `web-ui.27.1` to
   `web-ui.27.8` (an icon-only control has a name and a tip, a disabled control says why, a status says what it
   means, the first use of a domain term is a `Term`, a timestamp is relative with the absolute time in the tip, a

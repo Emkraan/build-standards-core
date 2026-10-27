@@ -521,7 +521,7 @@ function StatSpecimen() {
       <StatTile label="Managed devices" value={4218} hint="Up 3% this week" icon={<IconCheck />} />
       <StatTile label="Compliance" value="98.5%" tone="success" hint="Target 97%" />
       <StatTile label="Pending updates" value={37} tone="warning" />
-      <StatTile label="Open tickets" value={128} tone="info" delta={{ text: "12 fewer than last week", direction: "down" }} selected tip="Open tickets in the queue" onClick={() => undefined} />
+      <StatTile label="Open tickets" value={128} tone="info" delta={{ text: "12 fewer than last week", direction: "down" }} selected onClick={() => undefined} />
       <StatTile label="Enrolled" value={4218} tone="success" delta={{ text: "3% this week", direction: "up" }} />
       <StatTile label="Failed jobs" value={2} tone="danger" onClick={() => undefined} hint="Open the job list" />
       <StatTile label="Spend" value="$12,480" hue="violet" />

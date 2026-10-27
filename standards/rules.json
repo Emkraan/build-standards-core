@@ -567,7 +567,7 @@
       "id": "web-ui.27.8",
       "ref": "web-ui.md 27.8",
       "title": "A tip is one or two short plain sentences",
-      "statement": "A tip is one or two short plain sentences, about 200 characters at most, with no markup. Longer text goes in an InfoTip popover, the page help or the page.",
+      "statement": "A tip is one or two short plain sentences, never over 200 characters, with no markup. Longer text goes in an InfoTip popover, the page help or the page.",
       "level": "must",
       "applies_to": [
         "web"

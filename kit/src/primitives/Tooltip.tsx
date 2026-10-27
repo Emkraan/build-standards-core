@@ -64,6 +64,16 @@ function subscribeLayers(listener: () => void): () => void {
   };
 }
 
+/** True while a TooltipLayer is mounted on the page. A control that adds a visible cue for a tip checks it,
+    so a page without the layer keeps the previous markup. False on the server and on the first client pass. */
+export function useTipLayerMounted(): boolean {
+  return useSyncExternalStore(
+    subscribeLayers,
+    () => layerOrder.length > 0,
+    () => false,
+  );
+}
+
 interface TipState {
   text: string;
   kbd: string | null;

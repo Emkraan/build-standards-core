@@ -389,7 +389,7 @@ How to use it:
 | `web-ui.27.5` A timestamp is relative, with the absolute time in the tip | should | web | review | A timestamp shows as relative time (When), with the absolute date, time and zone in its tip. A date that is the subject of the page, such as a schedule or a due date, shows in full with its zone. |
 | `web-ui.27.6` A person is shown by name | should | web | review | A person is shown by name, with the email or login in the tip. A login or an id is never the only label. |
 | `web-ui.27.7` A tip never holds the only copy of something needed to act | must | web | review | A tip explains and the page acts. A value, a step, a link or a warning a person needs in order to act is text on the page or in the help drawer, because tips do not show on touch and hide on scroll. |
-| `web-ui.27.8` A tip is one or two short plain sentences | must | web | lint | A tip is one or two short plain sentences, about 200 characters at most, with no markup. Longer text goes in an InfoTip popover, the page help or the page. |
+| `web-ui.27.8` A tip is one or two short plain sentences | must | web | lint | A tip is one or two short plain sentences, never over 200 characters, with no markup. Longer text goes in an InfoTip popover, the page help or the page. |
 
 ## wpf-design-system.md
 
