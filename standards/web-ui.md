@@ -1599,7 +1599,7 @@ final numbers when it merges.
    raw value, the raw value ("The scaling plan turned it off because nobody needed it. Not a problem.").
    Use `Badge tip` and `StatusDot tip`. The label and the tone carry the state as well, because colour is
    never the only signal.
-4. **A tip is one or two short plain sentences.** About 200 characters at most, with no markup and no
+4. **A tip is one or two short plain sentences.** Never over 200 characters, with no markup and no
    list. Anything longer goes into the `InfoTip` popover or the page itself. A tip never holds the only
    copy of something needed to act, because tips do not show on touch and hide on scroll and pointer
    down. The UI lint reports UI013 for a literal `data-tip`, `tip` or `disabledReason` over 200

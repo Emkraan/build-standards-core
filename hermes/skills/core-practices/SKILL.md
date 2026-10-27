@@ -385,7 +385,7 @@ How to use it:
 | `web-ui.27.1` An icon-only control has a name and a tip | must | web | lint | A control that holds only an icon carries an accessible name and a tip that says its verb (Remove host, not Trash). IconButton requires a label and uses it for both. |
 | `web-ui.27.2` A disabled control says why | must | web | lint | A kit Button that cannot be used now takes disabledReason instead of disabled: it renders aria-disabled, stays focusable, ignores clicks and shows the reason as its tip. The reason names what is missing and how to enable it. |
 | `web-ui.27.3` A status says what it means and whether it is normal | should | web | review | A status badge or dot says in its tip what the state means and whether anyone has to act, with the raw value when the label translates one. Colour is never the only signal. |
-| `web-ui.27.4` A tip is one or two short plain sentences | must | web | lint | A tip is one or two short plain sentences, about 200 characters at most, with no markup. Longer text goes in an InfoTip popover or the page. |
+| `web-ui.27.4` A tip is one or two short plain sentences | must | web | lint | A tip is one or two short plain sentences, never over 200 characters, with no markup. Longer text goes in an InfoTip popover or the page. |
 
 ## wpf-design-system.md
 
