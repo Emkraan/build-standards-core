@@ -1,8 +1,36 @@
 # Changelog
 
-## Pending release (the help layer: tip layer, glossary terms, When, page help, Stepper and Timeline)
+## Pending release (page help, Stepper and Timeline)
 
-Unreleased. This entry carries both pull requests of the help layer, the tip layer first and page help, Stepper and Timeline second. Every part below is off by default or inert until an app uses it, so a consumer that uses none of them
+Unreleased, and stacked on the tip layer entry below, which merges first. Every part here is off by default or inert
+until an app uses it, so a consumer that uses none of them renders exactly as before. The version and the final
+standards section number are assigned when the core merges.
+
+- Kit, page help: `usePageHelp({ title, summary, steps, terms, links })`, `HelpProvider`, `useHelp`, `HelpButton`
+  (the `Header` shows it while a page has help and the shell mounts the drawer, `help={false}` hides it) and
+  `HelpDrawer`. `AppShell` mounts the state and the drawer when given `helpDrawer` (default false, so without it
+  `usePageHelp` registers nothing and no Help button shows). `useHelpPaletteItems()` returns the page and its
+  words as `CommandPalette` items. A palette mounted outside the shell needs `GlossaryProvider` and
+  `HelpProvider pathname` above both.
+- Kit, process and history: `Stepper` (steps in the state `done`, `current`, `upcoming`, `failed` or `waiting`,
+  each with `detail`, `meta`, an `actions` slot and a `waitingOn` line, the state said by the marker shape and a
+  screen reader word) and `Timeline` (time, actor with `actorTip`, one sentence, a source chip and a link). Both
+  connector lines are marked `edge-ok`: they are data (an order), not an accent. Neither has a transition or an
+  animation, so nothing in them ignores `prefers-reduced-motion`.
+- Standards: `web-ui.md` section 27 grows to eight rules, with `web-ui.27.4` to `web-ui.27.7` new: the first use of a domain
+  term is a `Term`, a timestamp is relative with the absolute time in the tip, a person is shown by name, and a tip
+  never holds the only copy of something needed to act. The tip length rule moves from `27.4` to `web-ui.27.8` and
+  says a tip is never over 200 characters. The Header section points at the section. The section and rule numbers are
+  provisional. The shared core-practices skill is regenerated.
+- UI lint: UI013 now cites rule 27.8 and flags a literal `data-tip`, `tip` or `disabledReason` over 200 characters
+  or in three or more sentences.
+- Tests and gallery: kit tests `help-drawer` and `help-process` (with a check that the Stepper and Timeline styles hold no
+  transition or animation), the page help case in the axe composite, and gallery specimens `page-help`, `stepper`
+  and `timeline` with visual baselines.
+
+## Pending release (the tip layer: tips that show, disabled reasons, glossary terms, InfoTip and When)
+
+Unreleased. Every part below is off by default or inert until an app uses it, so a consumer that uses none of them
 renders exactly as before. The version and the final standards section number are assigned when the core merges.
 
 - Kit, the tip layer: `AppShell` takes `tooltipLayer` (default false). When set it mounts `TooltipLayer`, so
@@ -23,16 +51,6 @@ renders exactly as before. The version and the final standards section number ar
   with the long text and a link, on `HelpLink`), `When` (relative text with the absolute date, time and zone as the
   tip, a `timeZone` prop, one shared interval on `CLOCK_TICK` through `lib/clock`) with `formatWhen` and
   `formatWhenAbsolute`. `RelativeTime` stays.
-- Kit, page help: `usePageHelp({ title, summary, steps, terms, links })`, `HelpProvider`, `useHelp`, `HelpButton`
-  (the `Header` shows it while a page has help and the shell mounts the drawer, `help={false}` hides it) and
-  `HelpDrawer`. `AppShell` mounts the state and the drawer when given `helpDrawer` (default false, so without it
-  `usePageHelp` registers nothing and no Help button shows). `useHelpPaletteItems()` returns the page and its
-  words as `CommandPalette` items. A palette mounted outside the shell needs `GlossaryProvider` and
-  `HelpProvider pathname` above both.
-- Kit, process and history: `Stepper` (steps in the state `done`, `current`, `upcoming`, `failed` or `waiting`,
-  each with `detail`, `meta`, an `actions` slot and a `waitingOn` line, the state said by the marker shape and a
-  screen reader word) and `Timeline` (time, actor with `actorTip`, one sentence, a source chip and a link). Both
-  connector lines are marked `edge-ok`: they are data (an order), not an accent.
 - Kit, existing parts: the kit's own icon-only buttons (announcement close, build card, toast close, search clear,
   header menu) carry `data-tip` as well as `aria-label`. The tip shows only where a tip layer is mounted, so nothing
   changes for an app without one.
@@ -44,17 +62,16 @@ renders exactly as before. The version and the final standards section number ar
   `--text-secondary`, and goes to `--text-primary` on hover and focus. `StatTile` already took `tip`, so it shows the icon
   only where a tip layer is mounted (new `useTipLayerMounted`). Without one a `StatTile` that passes `tip` keeps its
   `data-tip` and shows no icon, as before.
-- Standards: new `web-ui.md` section 27, "The help layer", with eight rules registered as `web-ui.27.1` to
-  `web-ui.27.8` (an icon-only control has a name and a tip, a disabled control says why, a status says what it
-  means, the first use of a domain term is a `Term`, a timestamp is relative with the absolute time in the tip, a
-  person is shown by name, a tip never holds the only copy, a tip is one or two short sentences). The Tooltips, Buttons, Badges, Header and Shell sections point at it. The
+- Standards: new `web-ui.md` section 27, "The help layer", with four rules registered as `web-ui.27.1` to
+  `web-ui.27.4` (an icon-only control has a name and a tip, a disabled control says why, a status says what it
+  means, a tip is one or two short sentences). The Tooltips, Buttons, Badges and Shell sections point at it. The
   section and rule numbers are provisional. The shared core-practices skill is regenerated.
 - UI lint: three new rules. UI011 flags a kit `Button` or `IconButton` with `disabled` and no `disabledReason`
   (27.2), UI012 flags a `button`, an `a` or a kit `Button` that holds only an icon and lacks `aria-label` or a tip
   (27.1), UI013 flags a literal `data-tip`, `tip` or `disabledReason` over 200 characters or in three or more
-  sentences (27.8).
-- Tests and gallery: kit tests `tooltip-shell`, `help-tips`, `help-time`, `help-cues`, `help-drawer` and `help-process`, the python lint tests in
-  `tests/test_ui_lint_help_layer.py`, the lint fixtures, and gallery specimens `tips` (with the cues), `when`, `page-help`, `stepper` and `timeline` with visual
+  sentences (27.4).
+- Tests and gallery: kit tests `tooltip-shell`, `help-tips`, `help-time` and `help-cues`, the python lint tests in
+  `tests/test_ui_lint_help_layer.py`, the lint fixtures, and gallery specimens `tips` (with the cues) and `when` with visual
   baselines.
 
 ## 2026-10-27 (v1.27.7, checker precision: secret names in argv, merge prose)

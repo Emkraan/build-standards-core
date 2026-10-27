@@ -1,5 +1,8 @@
 /* Stepper and Timeline: the states and what they say to a screen reader, the per-step actions and the
    "waiting on" line, and the entries of a timeline with their time, actor, source and link. */
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
@@ -234,5 +237,14 @@ describe('Timeline', () => {
     vi.useRealTimers();
     const { container } = render(<Timeline label="Activity" entries={ENTRIES} timeZone="UTC" />);
     expect(await violations(container)).toEqual([]);
+  });
+});
+
+describe('Stepper and Timeline motion', () => {
+  it('has no transition or animation of its own, so nothing ignores prefers-reduced-motion', () => {
+    const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../src/styles/kit.css'), 'utf8');
+    const rules = css.split('}').filter((rule) => /(^|[\s,{])\.(stepper|timeline)[\w-]*/.test(rule.split('{')[0] ?? ''));
+    expect(rules.length).toBeGreaterThan(10);
+    for (const rule of rules) expect(rule, rule.trim().slice(0, 60)).not.toMatch(/transition|animation/);
   });
 });
