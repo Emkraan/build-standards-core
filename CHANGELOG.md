@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-27 (v1.27.8, four narrow rule amendments)
+
+- `web-ui.20`: announcements are required only for an app with more than one audience; a single-audience
+  app does not owe them (rule text, acceptance and section 20).
+- `identity-and-people-data.1.2`: the team table is keyed by any stable key the directory supplies; a rename
+  or reorganisation never orphaning history stays the acceptance.
+- `identity-and-people-data.1.1`: a fallback copy of the last directory pull is allowed when read only on a
+  failed pull and marked stale on screen; the directory pull wins on success and no copy is hand-edited.
+- `web-client-runtime.3.3`: a page poll interval meets the rule when every cached read is refreshed at least
+  that often; no cached value lives forever.
+- `CONSUMING.md`: a rule whose proof only checks that a risk owner and decision record are named also needs
+  a dated `review` record from the accountable owner.
+
 ## 2026-10-27 (v1.27.7, checker precision: secret names in argv, merge prose)
 
 - `scripting-python.1.3` (RC017): a secret NAME is not the secret. An argument after `-n`, `--name`,
