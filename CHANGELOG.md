@@ -3,7 +3,7 @@
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 
 - `repo_checks.py` RC012: the import-name to distribution map gains `docx` (`python-docx`), `pptx`, `fitz`,
-  `zmq`, `nacl`, `dns`, `grpc`, `slugify`, `websocket`, `telegram`, `socketio`, `engineio`, `bson`, `mysqldb`,
+  `zmq`, `nacl`, `dns`, `grpc`, `slugify`, `websocket`, `socketio`, `engineio`, `bson`, `mysqldb`,
   `faiss`, `gi`, `cairo`, `bluetooth`, `jenkins`, `ruamel`, `snappy`, `wx`, `xlib` and `pythonjsonlogger`.
 - RC017 (`scripting-python.1.3`): simple wrapper calls (`str()`, `Path()`, `os.fspath()`, `os.path.join()`) are
   unwrapped before the safe-suffix test, so `str(SECRETS_SRC)` passes; `src` is a safe suffix. A wrapped bare

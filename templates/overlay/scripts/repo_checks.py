@@ -696,7 +696,6 @@ IMPORT_ALIASES = {
     "slugify": "python-slugify",
     "grpc": "grpcio",
     "websocket": "websocket-client",
-    "telegram": "python-telegram-bot",
     "socketio": "python-socketio",
     "engineio": "python-engineio",
     "xlib": "python-xlib",
