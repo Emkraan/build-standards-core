@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-27 (v1.27.8, four narrow rule amendments)
+## 2026-10-27 (v1.27.9, four narrow rule amendments)
 
 - `web-ui.20`: announcements are required only for an app with more than one audience; a single-audience
   app does not owe them (rule text, acceptance and section 20).
@@ -12,6 +12,16 @@
   that often; no cached value lives forever.
 - `CONSUMING.md`: a rule whose proof only checks that a risk owner and decision record are named also needs
   a dated `review` record from the accountable owner.
+## 2026-10-27 (v1.27.8, ops center design, ledger producer and drainer)
+
+- `opscenter/DESIGN.md` sections 3.1, 3.2 and the R3 row: the `ledger` kind may declare one
+  producer and one drainer instead of a single writer. The producer appends and never changes a
+  record. The drainer changes only the marker fields a record declares and never appends or
+  removes. The producer is the only role that prunes, by a retention pass that expires a drained
+  record older than `analyzer.spool_days` and never one still `new`. The R3 row is repaired as a
+  single line. Every other kind keeps exactly one writer. The section gives the acceptance test and
+  the conformance rule.
+>>>>>>> c7d5b71ccba600f7713744620683042103879cb9
 
 ## 2026-10-27 (v1.27.7, checker precision: secret names in argv, merge prose)
 
