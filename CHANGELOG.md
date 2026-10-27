@@ -2,7 +2,7 @@
 
 ## 2026-10-27 (v1.27.6, model call clarification)
 
-- Design only. `opscenter/DESIGN.md` section 2.6 (untrusted input) now states the owner's decision on the analyzer model call. The rule is a no-tools subprocess through `model.cmd`. A consumer whose analyzer is an agent job declares the exception with `model.mode = agent_job` plus a `reason`. The section says how the gate wakes the job and that the engine still validates the job's output against the item contract and the routing filter. Section 6 lists `model.mode` as decided, and section 11 records the decision as item 6.
+- Design only. `opscenter/DESIGN.md` section 2.6 (untrusted input) now states the owner's decision on the analyzer model call. The rule is a no-tools subprocess through `model.cmd`. A consumer whose analyzer is an agent job declares the exception with `model.mode = agent_job` plus a `reason`, under four conditions: post-validation steps (a board refresh) run outside the job, the gate is the only builder of the job's input with no rebuild fallback, the engine validates the item file against the item contract before the routing filter runs, and the `reason` states that the tool policy is the prompt and not a technical limit. The job reads one file and writes one file. Section 6 lists `model.mode` as decided, and section 11 records the decision as item 6.
 
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 

@@ -286,6 +286,18 @@ The engine is `local-ops-app` section 4 made shared code, with the gates as para
     `commit_domains`, `ci.runners` and `git.branch_prefix_pattern`. The declaration is visible in
     the parameters file and the conformance checker. The default stays `subprocess`, so every new
     consumer gets the safe default and one that already runs as an agent job keeps its tools.
+  - **Conditions of the exception.** `agent_job` is allowed only under four conditions, and the
+    conformance checker reads them from the declaration:
+    1. Post-validation steps, such as a board refresh, never run inside the job. The scheduler or
+       the engine runs them after validation.
+    2. The gate is the only builder of the job's input. The job has no fallback that rebuilds the
+       bundle when the file is missing or stale, it stops instead.
+    3. The engine validates the item file against the item contract below (required fields,
+       priority values, every must-consider candidate covered or dropped) before the routing filter
+       runs.
+    4. The declared `reason` states that the tool policy is the prompt and not a technical limit.
+    The result is that the job reads one file (the bundle the gate wrote) and writes one file (the
+    item file).
   - **How the gate wakes the job.** The gate runs as the pre-run step of the scheduled job. It
     builds the input bundle, applies the gate rules above, and writes the bundle to a file. When
     the rules say skip, it prints nothing and the job does not start. When they say run, it prints
@@ -293,14 +305,14 @@ The engine is `local-ops-app` section 4 made shared code, with the gates as para
     `--dry-run` still prints the decision and calls nothing.
   - **What the engine still owns.** The job's prompt and tool list belong to the consumer and are
     never read by the engine. The job writes its items to the item file, and the engine then reads
-    that file and validates it against the item contract below. A malformed file is rejected, the
-    previous file stays in place, and the rejection counts as a failure for the backoff above. The
-    routing filter then runs over the job's items exactly as it does over a subprocess's items, and
-    handled state still applies, so a rule holds when the job ignores it. The draft only rule is
-    unchanged. The engine therefore keeps the item contract and the routing guarantees in both
-    modes, and the untrusted input guarantee in `agent_job` mode is stated by the job's tool
-    policy. The job must reach any outward effect only by queuing a proposal in the approvals
-    inbox (section 2.5).
+    that file and validates it against the item contract below (condition 3). A malformed file is
+    rejected, the previous file stays in place, and the rejection counts as a failure for the
+    backoff above. The routing filter then runs over the job's items exactly as it does over a
+    subprocess's items, and handled state still applies, so a rule holds when the job ignores it.
+    The draft only rule is unchanged. The engine therefore keeps the item contract and the routing
+    guarantees in both modes, and the untrusted input guarantee in `agent_job` mode is stated by
+    the job's tool policy (condition 4). The job must reach any outward effect only by queuing a
+    proposal in the approvals inbox (section 2.5).
 - **Item contract** (the analyzer's only output, `action-center.json`, `report` kind):
 
 ```json
@@ -575,7 +587,7 @@ secret references name a store and a key, never a value.
 | writer | `live` (false), `rules[]` | three core approval rules, live | default deny |
 | analyzer | `min_gap_s` (1800), `retry_after_s` (1200), `daily_audit` (true), `alert_every_s` (14400), `spool_days` (14) | | B-13 |
 | model | `cmd`, `timeout_s`, `price_table`, `outlier_threshold`, `plan_usage_cmd` | `cmd` null disables the analyzer and briefs | |
-| model | `mode` (`subprocess` or `agent_job`) | `subprocess` | decided in section 11 item 6, `agent_job` is the declared exception and needs a `reason` |
+| model | `mode` (`subprocess` or `agent_job`) | `subprocess` | decided in section 11 item 6, `agent_job` is the declared exception and needs a `reason` plus the four conditions in section 2.6 |
 | routing | `rules_file`, `ignore_senders[]`, `ignore_subject_regex[]`, `priority_senders[]` | | collectors |
 | notify | `channel`, `cmd`, `quiet_hours` (`22:00-07:00`), `dedupe_prefix` | | B-12, A-97 |
 | sign_in | `check_every_s`, `remint_timeout_s` (330), `alert_after` | | loop timings |
@@ -777,6 +789,10 @@ Then the same swap PR as 10.1. The hub consumer's standards repo retires in favo
    (`people.retention_days`).
 6. **Analyzer model call (2026-10-27).** The model call is a no-tools subprocess through
    `model.cmd`. A consumer whose analyzer is an agent job declares the exception with
-   `model.mode = agent_job` plus a `reason`, the same pattern as `commit_domains`. The gate wakes
-   the job, and its output is still validated against the item contract and the routing filter,
-   so the engine keeps that guarantee (section 2.6).
+   `model.mode = agent_job` plus a `reason`, the same pattern as `commit_domains`, under four
+   conditions: post-validation steps run outside the job, the gate is the only builder of the
+   job's input with no rebuild fallback, the engine validates the item file against the item
+   contract before the routing filter runs, and the `reason` states that the tool policy is the
+   prompt and not a technical limit. The job then reads one file and writes one file. Its output
+   is still validated against the item contract and the routing filter, so the engine keeps that
+   guarantee (section 2.6).
