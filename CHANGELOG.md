@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27 (v1.27.6, retrying merge)
+
+- Section 7.2 of `opscenter/DESIGN.md` carries a retrying merge (parameters `automerge.merge_attempts` 3 and `automerge.merge_pause_s` 10, listed in section 6). `templates/overlay/scripts/merge-pr.py` implements it for the final merge call: a transient failure (dropped connection, timeout, 5xx) is retried, and before each retry the pull request is read again. An already merged pull request is a success, a closed one or one whose head moved from the pinned head stops the retry, and a refusal that is not transient is never retried. Tests in `tests/test_core_ci.py`.
+
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 
 - `repo_checks.py` RC012: the import-name to distribution map gains `docx` (`python-docx`), `pptx`, `fitz`,

@@ -769,7 +769,10 @@ class MergePr(Work):
         super().setUp()
         self.mod = load("merge_pr_t", "templates/overlay/scripts/merge-pr.py")
 
-    def fake_gh(self, merge_rc, state="MERGED", calls=None):
+    def fake_gh(self, merge_rc, state="MERGED", calls=None, merges=None, head="a" * 40):
+        """merges, when given, is a list of (rc, stderr) answers for successive merge calls."""
+        queue = list(merges or [])
+
         def gh(*args):
             if calls is not None:
                 calls.append(args)
@@ -795,6 +798,9 @@ class MergePr(Work):
                     "",
                 )
             if args[:2] == ("pr", "merge"):
+                if queue:
+                    rc, err = queue.pop(0) if len(queue) > 1 else queue[0]
+                    return rc, "", err
                 return (
                     merge_rc,
                     "",
@@ -802,6 +808,8 @@ class MergePr(Work):
                 )
             if args[:2] == ("pr", "view") and "state" in args:
                 return 0, state, ""
+            if args[:2] == ("pr", "view") and "headRefOid" in args:
+                return 0, head, ""
             if args[:2] == ("pr", "view") and "mergeCommit" in args:
                 return 0, "f" * 40, ""
             if args[:2] == ("api", "-X"):
@@ -874,6 +882,79 @@ class MergePr(Work):
         rc, out, _ = self.run_main(self.fake_gh(0), self.dir)
         self.assertEqual(rc, 0)
         self.assertIn("local branch:", out)
+
+    def merge_calls(self, calls):
+        return [c for c in calls if c[:2] == ("pr", "merge")]
+
+    def run_retry(self, repo, calls, **kw):
+        with mock.patch.object(self.mod, "MERGE_PAUSE", 0):
+            return self.run_main(self.fake_gh(1, calls=calls, **kw), repo)
+
+    # Design section 7.2: a retrying merge reads the pull request before each retry.
+    def test_transient_merge_failure_is_retried_after_reading_the_pr(self):
+        repo = self.repo_with_branch()
+        calls = []
+        rc, out, err = self.run_retry(
+            repo, calls, state="OPEN", merges=[(1, "HTTP 502: bad gateway"), (0, "")]
+        )
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(self.merge_calls(calls)), 2)
+        self.assertIn("retrying (2 of 3)", err)
+        merges = [i for i, c in enumerate(calls) if c[:2] == ("pr", "merge")]
+        reads = [i for i, c in enumerate(calls) if c[:2] == ("pr", "view") and "headRefOid" in c]
+        self.assertTrue(any(merges[0] < i < merges[1] for i in reads), "no read between the tries")
+
+    def test_merge_that_failed_but_landed_is_not_retried(self):
+        repo = self.repo_with_branch()
+        calls = []
+        rc, out, err = self.run_retry(
+            repo, calls, state="MERGED", merges=[(1, "HTTP 503: unavailable")]
+        )
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(self.merge_calls(calls)), 1)
+        self.assertIn("the PR is merged", err)
+
+    def test_refusal_that_is_not_transient_is_never_retried(self):
+        repo = self.repo_with_branch()
+        calls = []
+        rc, out, err = self.run_retry(
+            repo, calls, state="OPEN", merges=[(1, "Pull request is not mergeable")]
+        )
+        self.assertEqual(rc, 2)
+        self.assertEqual(len(self.merge_calls(calls)), 1)
+        self.assertIn("merge refused", err)
+
+    def test_closed_pr_is_not_retried(self):
+        repo = self.repo_with_branch()
+        calls = []
+        rc, out, err = self.run_retry(
+            repo, calls, state="CLOSED", merges=[(1, "connection reset by peer")]
+        )
+        self.assertEqual(rc, 2)
+        self.assertEqual(len(self.merge_calls(calls)), 1)
+
+    def test_moved_head_stops_the_retry(self):
+        repo = self.repo_with_branch()
+        calls = []
+        rc, out, err = self.run_retry(
+            repo,
+            calls,
+            state="OPEN",
+            head="b" * 40,
+            merges=[(1, "HTTP 502: bad gateway"), (0, "")],
+        )
+        self.assertEqual(rc, 2)
+        self.assertEqual(len(self.merge_calls(calls)), 1)
+        self.assertIn("moved", err)
+
+    def test_retries_stop_after_the_attempt_limit(self):
+        repo = self.repo_with_branch()
+        calls = []
+        rc, out, err = self.run_retry(
+            repo, calls, state="OPEN", merges=[(1, "HTTP 502: bad gateway")]
+        )
+        self.assertEqual(rc, 2)
+        self.assertEqual(len(self.merge_calls(calls)), self.mod.MERGE_ATTEMPTS)
 
 
 class Fetch(unittest.TestCase):

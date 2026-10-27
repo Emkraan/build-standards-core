@@ -30,6 +30,11 @@ checked out elsewhere or from a detached HEAD, and gh then exits non-zero after 
 landed. The remote branch is deleted through the API, and the local branch is deleted only when this
 checkout has it and no worktree has it checked out; otherwise one line says why it was left. If gh
 still exits non-zero, the PR state is read back, and a merged PR is never reported as refused.
+
+A merge call that fails with a transient code host error (a dropped connection, a timeout, a 5xx
+answer) is retried up to MERGE_ATTEMPTS times in all with MERGE_PAUSE seconds between them. Before
+every retry the PR is read again: a merged PR ends as success, and a closed PR, a head that is no
+longer the checked one, or a refusal that is not transient stops the retry and is reported as refused.
 """
 
 import argparse
@@ -37,6 +42,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 OK_SUFFIX = "@users.noreply.github.com"
@@ -77,12 +83,15 @@ TRANSIENT = (
 )
 
 
+# The final merge call is retried this many times in all, with this pause in seconds between them.
+MERGE_ATTEMPTS = 3
+MERGE_PAUSE = 10
+
+
 def push(*args, attempts=3, pause=10):
     """git push with a large HTTP buffer, retried on a transient network failure (a large binary such
     as a screenshot baseline can drop the connection). A rejection, such as a failed lease, is never
     retried. Returns (rc, out, err) of the last attempt."""
-    import time
-
     for i in range(attempts):
         rc, out, err = git("-c", "http.postBuffer=524288000", "push", *args)
         if rc == 0 or not any(t in (err or "").lower() for t in TRANSIENT) or i == attempts - 1:
@@ -365,11 +374,39 @@ def main():
             print("would run: gh " + " ".join(cmd))
             return 0
     rc, out, err = gh(*cmd)
-    if rc != 0:
+    attempt = 1
+    while rc != 0:
         src, state, _ = gh("pr", "view", a.number, *repo, "--json", "state", "--jq", ".state")
-        if src != 0 or state != "MERGED":
+        if src == 0 and state == "MERGED":
+            break
+        # Only a transient code host failure is retried, and only while the PR is still open at the
+        # head that was checked. Anything else is a refusal and is reported as before.
+        if (
+            attempt >= MERGE_ATTEMPTS
+            or src != 0
+            or state != "OPEN"
+            or not any(t in f"{err} {out}".lower() for t in TRANSIENT)
+        ):
             print(f"merge-pr: merge refused: {err or out}", file=sys.stderr)
             return 2
+        hrc, head, _ = gh(
+            "pr", "view", a.number, *repo, "--json", "headRefOid", "--jq", ".headRefOid"
+        )
+        if hrc != 0 or head != (sha if rebase else pr["headRefOid"]):
+            print(
+                f"merge-pr: merge refused: the head of #{a.number} moved or is unreadable, not retrying",
+                file=sys.stderr,
+            )
+            return 2
+        print(
+            f"merge-pr: merge failed ({(err or out).splitlines()[-1]}), #{a.number} is still open at "
+            f"{head[:8]}; retrying ({attempt + 1} of {MERGE_ATTEMPTS})",
+            file=sys.stderr,
+        )
+        time.sleep(MERGE_PAUSE)
+        attempt += 1
+        rc, out, err = gh(*cmd)
+    if rc != 0:
         print(
             f"merge-pr: gh exited {rc} but the PR is merged; continuing ({err or out})",
             file=sys.stderr,
