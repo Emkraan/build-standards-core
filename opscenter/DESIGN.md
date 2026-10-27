@@ -369,9 +369,11 @@ is read by a parser that has its own fixture tests.
 
   - The state directory is `--state-dir`, else parameter `host.state_dir`. A record, document or
     patch is JSON text, `@<path>` or `-` for standard input.
-  - A write command needs `--writer`. The value must equal the writer the file's schema declares
-    (a script that owns a file is declared as its writer in that schema, for example
-    `script.<name>`). Any other value is refused with `denied` and the file is untouched.
+  - A write command needs `--writer`. The value must equal the writer the file's schema declares.
+    For a ledger that declares a producer and a drainer, the declared writer means
+    either of the two, so the producer's name and the drainer's name are both accepted and any
+    other value is not. A script that owns a file is declared as its writer in that schema, for
+    example `script.<name>`. Any other value is refused with `denied` and the file is untouched.
   - The document is validated against the file's schema before the write. A violation is refused
     with `bad_request` and the file is untouched. The header (`kind`, `schema`, `writer`,
     `updated_utc`) is stamped by the command and never taken from the caller.
@@ -383,8 +385,8 @@ is read by a parser that has its own fixture tests.
   - Reads take the same lock in shared mode and never write.
 
 Acceptance (test): two processes appending to one ledger at the same moment lose no record. A
-replace keeps the header and stamps `updated_utc`. A `--writer` that is not the declared writer is
-refused and the file is byte for byte unchanged. A schema violation is refused and the file is
+replace keeps the header and stamps `updated_utc`. A `--writer` that is not the declared writer (for a
+ledger, its producer or its drainer) is refused and the file is byte for byte unchanged. A schema violation is refused and the file is
 unchanged. A held lock past the timeout exits 1 with `conflict`. A read never changes the file.
 
 ### 3.3 The conformance checker
@@ -725,8 +727,7 @@ Release numbers are assigned at merge in a fixed merge order (D7-19).
 |---|---|---|---|
 | R1 Guard and route registry | `gate.py`, `registry.py`, `app.py` skeleton, `/api/health`, static files | registry walk (bad Host, foreign Origin, body cap, no wildcard CORS, unknown POST 404), traversal 403 | fixture consumer serves the SPA and health; every probe in the walk is refused as specified |
 | R2 Envelope | `envelope.py`, error codes, tolerant client reader for one release, response validation in tests | shape test on every route; error code to status map | fixture consumer and both tolerant and strict readers pass; R3 removes the tolerant reader |
-| R3 Schemas and checker | six envelope kinds, all core state and API schemas, `state.py` with its command line entry, `conformance.py` with `extends` and JSON lines, `migrate.py`, params schema, the estate-literal check | conformance on fixture state; migrate plan and apply on a copy (idempotent, backup, failure report), state.py command line (concurrent appends, header kept, undeclared writer
-refused, schema violation refused) | fixture state passes; a seeded bad record is reported and not converted |
+| R3 Schemas and checker | six envelope kinds, all core state and API schemas, `state.py` with its command line entry, `conformance.py` with `extends` and JSON lines, `migrate.py`, params schema, the estate-literal check | conformance on fixture state; migrate plan and apply on a copy (idempotent, backup, failure report), state.py command line (concurrent appends, header kept, undeclared writer refused, schema violation refused) | fixture state passes; a seeded bad record is reported and not converted |
 | R4 Writer and inbox | `writer.py`, `approvals.py`, tombstones, applied ledger, `testing/fixtures.py`, `check-opscenter-writer`, the three core approvals and the consumption panel server module | the writer acceptance in 2.5; panel tests from local-ops-app 19 | fixture flows write only through the writer; the consumption panel's three approvals pass against a fake code host |
 | R5 Live reads and engine | `swr.py`, `run.py`, core server modules, collector and analyzer engine with the gate, routing, heartbeats, sign-in loop, notice discipline; the app shell and every core screen in 4.2 | swr single flight and last-good; gate order; heartbeat raise and clear; app unit and e2e smoke on fixture state in both themes | fixture consumer runs every core screen live with no bundle step |
 | R6 Slots | slot loader, interfaces, null adapters, reference adapters (code host, work tracker, docs home), slot UI mounts, claim token protocol, optional modules | per-slot conformance on fixtures; null adapter hides UI; claim token states | fixture consumer runs with all null, then with the three reference adapters against fakes |
