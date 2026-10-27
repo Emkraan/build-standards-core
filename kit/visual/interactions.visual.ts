@@ -90,7 +90,9 @@ test('the shell mounts one tip layer: a disabled reason and a term meaning show 
   await expect(scale).not.toHaveAttribute('disabled', /.*/);
 
   // The page above the specimen can still settle on a slow runner, and a scroll hides a tip, so hover again until it holds.
+  // The pointer leaves between tries, because a hover over an element the pointer already rests on raises no event.
   await expect(async () => {
+    await page.mouse.move(1, 1);
     await scale.hover({ force: true });
     await expect(tip).toHaveCount(1, { timeout: 2000 });
   }).toPass({ timeout: 20000 });
