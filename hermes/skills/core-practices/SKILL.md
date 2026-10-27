@@ -109,8 +109,8 @@ How to use it:
 
 | Rule | Level | Applies to | Check | Statement |
 |---|---|---|---|---|
-| `identity-and-people-data.1.1` The directory is the source of truth for identity | must | web | review | The identity provider directory owns object id, display name, email and job title. The app stores a cached copy, never a competing one. |
-| `identity-and-people-data.1.2` One roster | must | web | review | A single team_members table is the only list of people and every feature links to it by member_id. |
+| `identity-and-people-data.1.1` The directory is the source of truth for identity | must | web | review | The identity provider directory owns object id, display name, email and job title. The app stores a cached copy, never a competing one. A fallback copy of the last directory pull is allowed when it is read only if the directory pull fails and is marked stale on screen; the directory pull wins whenever it succeeds and no copy is edited by hand. |
+| `identity-and-people-data.1.2` One roster | must | web | review | A single team_members table is the only list of people and every feature links to it by member id, any stable key the directory supplies. |
 | `identity-and-people-data.1.3` Directory-only adds | must | web | test | New members are added only by picking a user from the directory, and adding is refused when the directory is unavailable. |
 | `identity-and-people-data.1.4` Never fabricate people from name-only data | must | web | test | A seed, import or migration with only a name does not create a member. |
 | `identity-and-people-data.1.5` Nightly sync with confident matching | must | web | test | A scheduled sync matches by object id, then exact email, then exact display name when safe, and an ambiguous match is marked unmatched and changes nothing. |
@@ -316,7 +316,7 @@ How to use it:
 | `web-client-runtime.2.6` Match errors by name and code too | must | web | test | Error checks compare the error name and code as well as instanceof. |
 | `web-client-runtime.3.1` The bearer token goes only to the configured API base | must | web | test | The client attaches the token only to paths under the configured base, and rejects absolute URLs, protocol-relative paths, backslashes, path traversal and encoded dot segments. |
 | `web-client-runtime.3.2` Identical GETs in flight share one request | must | web | test | A GET for a key that is already in flight returns the same promise. |
-| `web-client-runtime.3.3` Stale-while-revalidate with a per-key TTL | must | web | test | Cached reads return at once and refresh in the background when older than their TTL, and each key may set its own TTL. |
+| `web-client-runtime.3.3` Stale-while-revalidate with a per-key TTL | must | web | test | Cached reads return at once and refresh in the background when older than their TTL, and each key may set its own TTL. A poll interval on the page counts as meeting this when every cached read is refreshed at least that often; no cached value lives forever. |
 | `web-client-runtime.3.4` Persist only identity reads, and always as stale | must | web | test | Only identity reads (who am I, my permissions) persist to sessionStorage so the shell paints at once on load. They are always treated as stale, and cleared on sign-out and on an account change. |
 | `web-client-runtime.3.5` Invalidate drops in-flight GETs | must | web | test | Invalidating a key also forgets any in-flight GET for it, so the next read starts fresh. |
 | `web-client-runtime.3.6` A rejected refresh leaves no stuck entry | must | web | test | A failed or superseded request removes its in-flight entry, and a stale rejection never overwrites newer data. |
@@ -373,7 +373,7 @@ How to use it:
 | `web-ui.17` Categorical order and tone | must | web | review | Data uses the six categorical hues in their fixed order, minus the withheld hue. Tone and selection follow the recipes in this section. |
 | `web-ui.18` Count-up is correct and skippable | must | web | core-ci | Hero numbers count up on --dur-chart with ease out, land on the exact final value, skip in hidden tabs and render statically under reduced motion. |
 | `web-ui.19` The desktop icon rail | must | web | core-ci | The sidebar is a hover rail that can be pinned, and the state survives reloads. |
-| `web-ui.20` Announcements, pulse feed and presenter | must | web | test | Announcements and the pulse feed follow section 20, with storage on every database dialect the app ships. |
+| `web-ui.20` Announcements, pulse feed and presenter | must | web | test | An app with more than one audience ships announcements and the pulse feed per section 20, with storage on every database dialect the app ships. An app with a single audience does not owe them. |
 | `web-ui.21` System health request analytics | should | web | test | The health page summarises requests into fixed buckets per range. |
 | `web-ui.22` Build card and release notes | must | web | core-ci | Every app with a sidebar shows the build card with its version and release notes parsed from the changelog. |
 | `web-ui.24` Shell chrome is accessible | must | web | core-ci | The chrome the behavioural layer adds (rail, palette, feed, toasts) passes axe with zero violations. |
