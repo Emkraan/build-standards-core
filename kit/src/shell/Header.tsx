@@ -8,6 +8,7 @@ import { IconHome, IconMenu, IconRefresh } from '../icons/icons';
 import { cx } from '../lib/env';
 import { CLOCK_TICK } from '../lib/timing';
 import { DefaultLink, GuardedLink, useShell } from './context';
+import { HelpButton } from './HelpButton';
 
 export interface HeaderProps {
   /** The current tool or area name. Plain text, never a link. */
@@ -20,9 +21,12 @@ export interface HeaderProps {
   /** Right slot: copy link, theme toggle. */
   actions?: ReactNode;
   menuLabel?: string | undefined;
+  /** Shows the Help button while the page on screen registered help with usePageHelp. Default true. */
+  help?: boolean | undefined;
+  helpLabel?: string | undefined;
 }
 
-export function Header({ title, subtitle, home, children, actions, menuLabel = 'Open navigation' }: HeaderProps) {
+export function Header({ title, subtitle, home, children, actions, menuLabel = 'Open navigation', help = true, helpLabel }: HeaderProps) {
   const shell = useShell();
   const Link = shell?.Link ?? DefaultLink;
   return (
@@ -55,6 +59,7 @@ export function Header({ title, subtitle, home, children, actions, menuLabel = '
             <span>{home.label ?? 'Home'}</span>
           </GuardedLink>
         ) : null}
+        {help ? <HelpButton label={helpLabel} /> : null}
         {actions}
       </div>
     </header>

@@ -356,6 +356,9 @@ A bar of height `--topbar-h`. Left to right:
 3. **Search trigger** (`SearchTrigger`): opens the command palette of
    [section 13](#13-global-search-palette).
 4. The **home button** (`.hub-btn`): the only route home (rule 9).
+4a. The **Help button** (`HelpButton`), present while the page on screen registered help with
+   `usePageHelp` and the shell mounts the help drawer (`helpDrawer`): it opens the help drawer of
+   [section 27](#27-the-help-layer). `help={false}` hides it. A page that registers no help shows no button.
 5. Copy-link and the theme toggle (`ThemeToggle`). The theme switch is revealed as a circle growing
    from the click (View Transitions API, instant where unsupported or under reduced motion). Where
    the header has no account menu offering System, use `ThemeToggle withSystem` (Light, System,
@@ -1095,8 +1098,9 @@ AppShell (.shell, data-rail, data-mobile-nav)
   padding) and keyboard hints are hidden. The presenter is hidden on phones, and the home page
   carries the same information in its cards.
 - Every icon a nav item names must resolve. A missing icon is a defect, never a silent fallback.
-- `AppShell` mounts the tip layer when given `tooltipLayer` ([Tooltips](#tooltips-tooltiplayer-data-tip))
-  and registers the app's glossary when given `glossary`. Both are off by default.
+- `AppShell` mounts the tip layer when given `tooltipLayer` ([Tooltips](#tooltips-tooltiplayer-data-tip)),
+  the help drawer with the page help state when given `helpDrawer` ([section 27](#27-the-help-layer))
+  and registers the app's glossary when given `glossary`. All three are off by default.
 
 ### z-index stack
 
@@ -1570,10 +1574,10 @@ still show it in the other, while a theme change in one applies to both.
 ## 27. The help layer
 
 A console explains itself where the person is looking: a short tip on the thing, a plain word list for
-the domain, and times and states that say what they mean. The kit has a part for each and the four
-rules below say when to use them. A tip is an aid for the pointer and the keyboard. It is never the only
-place a fact lives. The number of this section and of its rules is provisional: the core assigns the
-final numbers when it merges.
+the domain, a help drawer for the page, and times and states that say what they mean. The kit has a part
+for each and the eight rules below say when to use them. A tip is an aid for the pointer and the
+keyboard. It is never the only place a fact lives (rule 7). The number of this section and of its rules
+is provisional: the core assigns the final numbers when it merges.
 
 | Need | Part | What it does |
 |---|---|---|
@@ -1583,6 +1587,8 @@ final numbers when it merges.
 | A status | `Badge tip`, `StatusDot tip` | A mark with a tip is focusable and reads the tip as its description |
 | A domain word | `GlossaryProvider` (or `AppShell glossary`), `Term`, `InfoTip` | The app registers `{ id: { term, short, long?, href? } }` once. `<Term id>` shows the word with a dotted underline, focusable, with the short text as its tip. `InfoTip` is an info icon button with an accessible name whose click opens a popover with the long text and the link. An unknown id renders plain text and warns in development only |
 | A time | `When` | Relative text ("2 h ago"), the absolute date, time and zone as the tip, a `timeZone` prop, and one shared clock for the page (`CLOCK_TICK`) |
+| What this page is for | `usePageHelp`, `HelpDrawer`, the Header Help button | A page registers `{ title, summary, steps, terms, links }`. `AppShell helpDrawer` mounts the state and the drawer (off by default). The Help button shows while a page has help and opens the drawer. `useHelpPaletteItems()` lists the topics in the command palette |
+| A process or a history | `Stepper`, `Timeline` | `Stepper`: steps in the state done, current, upcoming, failed or waiting, each with a detail, a meta, a "waiting on" line and an actions slot. `Timeline`: time, actor, one sentence, a source chip and a link. The connector line is a data mark (an order), not an accent |
 
 1. **An icon-only control has an accessible name and a tip that says its verb.** "Remove host", not
    "Trash". `IconButton` requires `label` and uses it for both. A control that holds only an icon (a
@@ -1592,19 +1598,32 @@ final numbers when it merges.
    kit `Button` or `IconButton`, in one or two sentences that name what is missing and how to get it
    ("Choose a pool first. The size applies to that pool."). The UI lint reports UI011 for a kit button
    with `disabled` and no `disabledReason`. A button that is `loading` is busy, not blocked, and is
-   left alone. The reason is a tip by design, so when it is the next step, say the step in the page
-   text too.
+   left alone.
 3. **A status badge or dot says what the state means and whether it is normal.** The label is the short
    plain word. The tip says what it means, whether anyone has to act and, when the label translates a
    raw value, the raw value ("The scaling plan turned it off because nobody needed it. Not a problem.").
    Use `Badge tip` and `StatusDot tip`. The label and the tone carry the state as well, because colour is
    never the only signal.
-4. **A tip is one or two short plain sentences.** About 200 characters at most, with no markup and no
-   list. Anything longer goes into the `InfoTip` popover or the page itself. A tip never holds the only
-   copy of something needed to act, because tips do not show on touch and hide on scroll and pointer
-   down. The UI lint reports UI013 for a literal `data-tip`, `tip` or `disabledReason` over 200
-   characters or in three or more sentences.
+4. **The first use of a domain term on a page is a glossary `Term`.** The app registers its glossary
+   once. The page lists the ids it uses in `usePageHelp({ terms })`, so the drawer explains them in full.
+   One `Term` per word per page, on its first use, is enough.
+5. **A timestamp is relative, with the absolute date, time and zone in the tip.** Use `When`, and
+   `Timeline` for a history. Pass `timeZone` when the people who read the page work in one zone, otherwise
+   the viewer's zone is used. A date that is the subject of the page (a schedule, a due date) shows in
+   full with its zone instead.
+6. **A person is shown by name, with the email or login in the tip.** A login or an id is never the only
+   label. `Timeline` takes `actor` and `actorTip`. Elsewhere put the address in the tip of the name
+   through `useTip` on a focusable element.
+7. **A tip never holds the only copy of something needed to act.** A tip explains and the page acts: a
+   value, a step, a link or a warning that a person needs is text on the page or in the help drawer. Tips
+   do not show on touch and hide on scroll and pointer down. The reason of a disabled control is a tip by
+   design (rule 2), so when it is the next step, say the step in the page text too.
+8. **A tip is one or two short plain sentences.** About 200 characters at most, with no markup and no
+   list. Anything longer goes into the `InfoTip` popover, the page help or the page itself. The UI lint
+   reports UI013 for a literal `data-tip`, `tip` or `disabledReason` over 200 characters or in three or
+   more sentences.
 
-**Acceptance:** `lint/ui_lint.py` reports no UI011, UI012 or UI013 finding in the app. Rule 3 is checked
-in design review of each page. The kit tests `help-tips`, `help-time` and `tooltip-shell` prove the
-parts, and every part has a gallery specimen with visual baselines.
+**Acceptance:** `lint/ui_lint.py` reports no UI011, UI012 or UI013 finding in the app. Rules 3 to 7 are
+checked in design review of each page. The kit tests `help-tips`, `help-time`, `help-drawer`,
+`help-process` and `tooltip-shell` prove the parts, and `a11y.test.tsx` runs axe with the Help drawer
+open.

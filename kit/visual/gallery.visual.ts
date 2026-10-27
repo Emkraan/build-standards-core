@@ -92,7 +92,7 @@ for (const theme of THEMES) {
       await openGallery(page, theme, false);
       expect(await axeViolations(page)).toEqual([]);
       // Overlays render on their own surfaces, so contrast is checked with each one open too.
-      for (const name of ['Open dialog', 'Open sheet']) {
+      for (const name of ['Open dialog', 'Open sheet', 'Show help for this page']) {
         await page.getByRole('button', { name, exact: true }).click();
         await expect(page.getByRole('dialog')).toBeVisible();
         expect(await axeViolations(page), `with ${name.toLowerCase()} open`).toEqual([]);

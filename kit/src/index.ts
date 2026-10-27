@@ -18,6 +18,12 @@ export { Header, PageHeader, Toolbar, formatUpdated, useNow } from './shell/Head
 export type { HeaderProps, PageHeaderProps, ToolbarProps } from './shell/Header';
 export { DefaultLink, useShell } from './shell/context';
 export type { KitLinkProps, LinkComponent, RailState, ShellContextValue } from './shell/context';
+export { HelpButton } from './shell/HelpButton';
+export type { HelpButtonProps } from './shell/HelpButton';
+export { HelpDrawer, useHelpPaletteItems } from './shell/HelpDrawer';
+export type { HelpDrawerProps, HelpPaletteOptions } from './shell/HelpDrawer';
+export { HelpProvider, useHelp, usePageHelp } from './shell/help';
+export type { HelpContextValue, HelpLinkItem, HelpProviderProps, PageHelp } from './shell/help';
 
 // Primitives
 export { Button, ButtonLink, IconButton } from './primitives/Button';
@@ -137,6 +143,10 @@ export { When, formatWhen, formatWhenAbsolute } from './primitives/When';
 export type { WhenProps } from './primitives/When';
 export { HelpLink } from './primitives/HelpLink';
 export type { HelpLinkProps } from './primitives/HelpLink';
+export { STEP_STATE_LABELS, Stepper } from './primitives/Stepper';
+export type { StepItem, StepState, StepperProps } from './primitives/Stepper';
+export { Timeline } from './primitives/Timeline';
+export type { TimelineEntry, TimelineProps, TimelineTone } from './primitives/Timeline';
 
 // Layout
 export {
@@ -267,6 +277,7 @@ export {
   IconEyeOff,
   IconFolder,
   IconGrid,
+  IconHelp,
   IconHome,
   IconInfo,
   IconList,

@@ -107,7 +107,7 @@ RULES = {
     ),
     "UI013": (
         "tip too long",
-        "web-ui.md 27.4",
+        "web-ui.md 27.8",
         "a tip or disabledReason written as a literal over 200 characters or in three or more sentences. "
         "A tip is one or two short plain sentences, and anything longer belongs on the page or in an "
         "InfoTip popover",
@@ -720,7 +720,7 @@ def icon_only_without_name(clean):
 
 
 def long_tips(clean):
-    """UI013: a tip or reason written as a literal that is not one or two short sentences (web-ui 27.4)."""
+    """UI013: a tip or reason written as a literal that is not one or two short sentences (web-ui 27.8)."""
     out = []
     for start, tag in jsx_tags(clean):
         attrs = jsx_attrs(tag)

@@ -1810,7 +1810,7 @@ button.breadcrumb-link { cursor: pointer; }
 .account-status:empty { display: none; }
 .account-foot { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
 .account-error { margin: 0; font-size: var(--fs-label); color: var(--danger); }
-/* ---- Help layer: Term, InfoTip, When and tip targets ---- */
+/* ---- Help layer: Term, InfoTip, When, tip targets, Help button and drawer, Stepper, Timeline ---- */
 /* Term: a glossary word. The dotted underline says "this has a meaning", the cursor says "ask". */
 .term { cursor: help; text-decoration: underline dotted; text-decoration-color: var(--text-tertiary); text-decoration-thickness: 1px; text-underline-offset: 3px; border-radius: var(--radius-xs); }
 @media (hover: hover) and (pointer: fine) { .term:hover { text-decoration-color: var(--text-primary); } }
@@ -1841,6 +1841,62 @@ button.breadcrumb-link { cursor: pointer; }
 .help-link { display: inline-flex; align-items: center; gap: 4px; color: var(--text-primary); font-weight: var(--fw-semibold); text-decoration: underline; text-underline-offset: 2px; }
 .help-link:hover { text-decoration-thickness: 2px; }
 .help-link:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-xs); }
+
+/* Help drawer: the page's help in a side sheet. */
+.help-drawer .modal-body { gap: var(--space-5); }
+.help-steps { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding-inline-start: var(--space-5); font-size: var(--fs-body); color: var(--text-primary); }
+.help-terms { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; }
+.help-term dt { font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--text-primary); }
+.help-term dd { margin: 2px 0 0; font-size: var(--fs-label); color: var(--text-secondary); }
+.help-links { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+
+/* Stepper: vertical steps. The marker's shape says the state (check, dot, ring, cross, clock), colour only backs it. */
+.stepper { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.stepper-step { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: var(--space-3); padding-bottom: var(--space-5); }
+.stepper-step:last-child { padding-bottom: 0; }
+/* edge-ok: the connector joins one step to the next, so it is data (the order of the steps), not an accent */
+.stepper-step:not(:last-child)::before { content: ""; position: absolute; left: 11px; top: 28px; bottom: 4px; width: 2px; background: var(--border-default); }
+/* A finished step colours the connector that leaves it. */
+.stepper-step[data-state="done"]:not(:last-child)::before { background: var(--success-border); }
+.stepper-marker {
+  display: grid; place-items: center; width: 24px; height: 24px; box-sizing: border-box; border-radius: var(--radius-pill);
+  border: 2px solid var(--border-strong); background: var(--surface-1); color: var(--text-secondary);
+}
+.stepper-step[data-state="done"] .stepper-marker { background: var(--success-dim); border-color: var(--success-border); color: var(--success); }
+.stepper-step[data-state="current"] .stepper-marker { background: var(--accent-soft); border-color: var(--border-accent-strong); color: var(--accent-bright); }
+.stepper-step[data-state="failed"] .stepper-marker { background: var(--danger-dim); border-color: var(--danger-border); color: var(--danger); }
+.stepper-step[data-state="waiting"] .stepper-marker { background: var(--warning-dim); border-color: var(--warning-border); color: var(--warning); }
+.stepper-step[data-state="upcoming"] .stepper-marker { border-style: dashed; color: var(--text-tertiary); }
+.stepper-dot { width: 8px; height: 8px; border-radius: var(--radius-pill); background: currentColor; }
+.stepper-body { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; padding-top: 2px; }
+.stepper-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-3); }
+.stepper-title { margin: 0; font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--text-primary); }
+.stepper-step[data-state="upcoming"] .stepper-title { color: var(--text-secondary); font-weight: var(--fw-medium); }
+.stepper-meta { font-size: var(--fs-caption); color: var(--text-secondary); }
+.stepper-detail { margin: 0; font-size: var(--fs-label); color: var(--text-secondary); }
+.stepper-waiting { display: flex; align-items: center; gap: var(--space-1); margin: 0; font-size: var(--fs-label); color: var(--text-primary); }
+.stepper-waiting svg { flex: none; color: var(--warning); }
+.stepper-waiting-label { color: var(--text-secondary); }
+.stepper-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-1); }
+
+/* Timeline: what happened, newest or oldest first as the caller orders it. */
+.timeline { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.timeline-item { position: relative; display: grid; grid-template-columns: 12px minmax(0, 1fr); column-gap: var(--space-3); padding-bottom: var(--space-4); }
+.timeline-item:last-child { padding-bottom: 0; }
+/* edge-ok: the connector joins one entry to the next, so it is data (the order in time), not an accent */
+.timeline-item:not(:last-child)::before { content: ""; position: absolute; left: 5px; top: 18px; bottom: 2px; width: 2px; background: var(--border-subtle); }
+.timeline-marker { width: 12px; height: 12px; margin-top: 5px; box-sizing: border-box; border-radius: var(--radius-pill); border: 2px solid var(--border-strong); background: var(--surface-1); }
+.timeline-item[data-tone="success"] .timeline-marker { border-color: var(--success); }
+.timeline-item[data-tone="warning"] .timeline-marker { border-color: var(--warning); }
+.timeline-item[data-tone="danger"] .timeline-marker { border-color: var(--danger); }
+.timeline-item[data-tone="info"] .timeline-marker { border-color: var(--info); }
+.timeline-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.timeline-line { margin: 0; font-size: var(--fs-body); color: var(--text-primary); overflow-wrap: anywhere; }
+.timeline-actor { font-weight: var(--fw-semibold); }
+.timeline-actor[data-tip] { cursor: help; border-radius: var(--radius-xs); }
+.timeline-actor[tabindex]:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.timeline-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); font-size: var(--fs-caption); color: var(--text-secondary); }
+.timeline-empty { margin: 0; font-size: var(--fs-label); color: var(--text-tertiary); }
 } /* end @layer core */
 
 /* ---- Page crash panel (ErrorBoundary variant page) and record preview ---- */
