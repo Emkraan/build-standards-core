@@ -23,7 +23,8 @@ Usage:
 A UI consumer also gets a ui_adoption verdict (web-ui.md 0.11): adopted when the kit is imported from
 kit-core, no local stylesheet redefines a token (UI007, UI008, UI010), the lint has zero findings and
 ui-lint.json sets no baseline. Otherwise partial, or excepted while an active exception names web-ui.md 0.11. An overlay with no UI lint config and no kit-core is
-not_applicable. --require-ui-adopted exits 1 on partial, for the drift workflow.
+not_applicable. --require-ui-adopted exits 1 on partial, for the drift workflow, unless the parameters sheet's "UI
+adoption stage" is none or partial (then it reports N/A and exits 0).
 
 A stack declared in the Stacks row needs its lint config: web needs standards-local/ui-lint.json,
 powershell, python and iac need standards-local/script-lint.json. A declared stack with no config is
@@ -210,6 +211,23 @@ def declared_scopes() -> tuple[set[str] | None, list[str]]:
             )
             return names & set(SCOPES), problems
     return None, [STACKS_MISSING]
+
+
+UI_STAGES = ("none", "partial", "adopted")
+
+
+def ui_stage() -> str:
+    """The "UI adoption stage" parameter: none, partial or adopted ("" when the row is absent, empty or
+    not one of those, which keeps the original behaviour: a partly adopted UI fails the drift gate).
+    none and partial mark a repo that has not finished adopting the UI yet, so the gate reports N/A."""
+    if not PARAMETERS.is_file():
+        return ""
+    for line in PARAMETERS.read_text(encoding="utf8").splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) >= 2 and cells[0].lower().startswith("ui adoption stage"):
+            v = cells[1].strip("`").strip().lower()
+            return v if v in UI_STAGES else ""
+    return ""
 
 
 # ---------------------------------------------------------------- overlay-ci results
@@ -1126,7 +1144,11 @@ def main(argv):
                 report["new_rules"], report["changed_rules"], report["removed_rules"] = a, c, rm
 
     require_ui = "--require-ui-adopted" in argv
-    ui_bad = report["ui_adoption"]["status"] == "partial"
+    stage = ui_stage()
+    report["ui_adoption_stage"] = stage or None
+    # none and partial: the repo is still on the way to the UI, so the adoption gate reports N/A, not red.
+    ui_pending = stage in ("none", "partial")
+    ui_bad = report["ui_adoption"]["status"] == "partial" and not ui_pending
     lint_bad = "--require-lint-config" in argv and (bool(gaps) or stacks_missing)
     na_bad = "--ci" in argv and bool(na_problems)
     if "--json" in argv:
@@ -1147,7 +1169,9 @@ def main(argv):
             f"  stacks: {', '.join(report['scopes']) or 'none'} ({len(out_of_scope)} rule(s) for other stacks not reported)"
         )
     ui = report["ui_adoption"]
-    if ui["status"] != "not_applicable":
+    if require_ui and ui_pending:
+        print(f"  ui: N/A (UI adoption stage: {stage}; the adoption gate is skipped until adopted)")
+    elif ui["status"] != "not_applicable":
         print(f"  ui: {ui['status']}" + (f" ({'; '.join(ui['reasons'])})" if ui["reasons"] else ""))
     for x in rules:
         if x["status"] in ("fail", "error"):

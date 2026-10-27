@@ -40,7 +40,7 @@ Usage (run from the consumer repo root; the overlay may sit in a subfolder):
                                                              the copy excludes an entry whose peer the
                                                              app does not declare, and tsc (when the
                                                              repo has it) passes with the peers blocked
-  python3 scripts/core-ci.py required-checks [--repo R] [--branch B] [--api-json FILE] [--fix]
+  python3 scripts/core-ci.py required-checks [--repo R] [--branch B] [--api-json FILE] [--fix [--no-write]]
                                                              which core-ci.yml jobs the merge gate does
                                                              not require (branch protection, rulesets,
                                                              or a REQUIRED_CHECKS list in a workflow);
@@ -874,13 +874,64 @@ def excepted_by(path: str, exceptions: list) -> str | None:
     return None
 
 
+def ascii_ignore_rows(path: pathlib.Path | None = None) -> tuple:
+    """([(path, reason)], [problem]) from the `ascii_ignore` section of standards-local/parameters.md: the
+    table under a heading that starts with ascii_ignore, columns Path and Reason. A row with no reason is
+    a problem and ignores nothing. Absent section: nothing ignored (the default)."""
+    f = path or PARAMETERS
+    if not f.is_file():
+        return [], []
+    rows, problems, inside = [], [], False
+    for line in f.read_text(encoding="utf8").splitlines():
+        if line.lstrip().startswith("#"):
+            inside = line.lstrip("# ").strip().lower().startswith("ascii_ignore")
+            continue
+        s = line.strip()
+        if not inside or not (s.startswith("|") and s.endswith("|")):
+            continue
+        cells = [c.strip().strip("`") for c in s.strip("|").split("|")]
+        if len(cells) < 2 or set(cells[0]) <= set("-: ") or cells[0].lower() == "path":
+            continue
+        if not cells[0]:
+            continue
+        if not cells[1] or cells[1].startswith("<!--"):
+            problems.append(f"ascii_ignore row {cells[0]!r} has no reason")
+        else:
+            rows.append((cells[0], cells[1]))
+    return rows, problems
+
+
+def ascii_ignored(path: str, rows: list) -> str | None:
+    """The reason a listed path is ignored, else None. A listed directory covers what is under it; a
+    script or XAML file is never ignorable (it stays under its own rule)."""
+    if matches(path, SCRIPT_PATTERNS):
+        return None
+    for pat, reason in rows:
+        pat = pat.rstrip("/")
+        if path == pat or path.startswith(pat + "/") or fnmatch.fnmatch(path, pat):
+            return reason
+    return None
+
+
 def cmd_ascii(argv: list) -> int:
     """Every tracked text file is plain ASCII (pr-review-and-merge.md 1.19). The ASCII patterns parameter
     narrows the files; a narrowed list is printed on every run so it is never silent."""
     patterns = listed(parameter("ASCII check patterns"))
     files, skipped = ascii_candidates(tracked(), patterns or None)
+    ignore, ignore_problems = ascii_ignore_rows()
+    for pr in ignore_problems:
+        say(f"::error::ascii: {pr} (an ascii_ignore row needs a reason)")
+    kept = []
+    for f in files:
+        why = ascii_ignored(f, ignore)
+        if why:
+            skipped += 1
+            say(f"ascii: {f} ignored by ascii_ignore ({why})")
+        else:
+            kept.append(f)
+    files = kept
     exceptions = ascii_exceptions()
-    n = excused = 0
+    n, excused = len(ignore_problems), 0
     for f, i in ascii_hits(files):
         eid = excepted_by(f, exceptions)
         if eid:
@@ -1882,6 +1933,18 @@ def cmd_required_checks(argv: list) -> int:
             "required-checks: --fix rewrites the REQUIRED_CHECKS list in a gate workflow and prints the "
             "commands that correct a ruleset or branch protection"
         )
+        return 1
+    if "--no-write" in args:
+        # Report only: the exact replacement line of each gate list, no file changed.
+        replace = dict(rep["stale"])
+        drop = (set(rep["obsolete"]) | set(replace)) - set(replace.values())
+        add = [j for j in rep["missing"] if j not in replace.values()]
+        for wf in rep["gates"]:
+            names = fix_names(rep["gates"][wf], replace, drop, add)
+            say(
+                f"required-checks: not rewritten ({wf}); replace the list with: REQUIRED_CHECKS: "
+                + " ".join(names)
+            )
         return 1
     written, manual = fix_gate_lists(root, rep) if rep["gates"] else ([], [])
     for wf in written:

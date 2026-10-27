@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-10-27 (v1.29.0, six consumer gaps: latest by semver, gate ordering, workflow collisions, UI stage, scanner allowlist, ASCII ignore)
+
+- `sync-core.py latest` and `update-core.py` resolve the highest strict `vX.Y.Z` tag by semantic version,
+  read with plain git (gh's tag listing only as the fallback). The tag gh flags as the latest release is no
+  longer used, because it follows creation order and an old release could win. A named `CORE_CHECKOUT`
+  lists its own tags. An explicit tag needs only `CORE_REPO`; `CORE_CHECKOUT` is optional and, when set alone,
+  the core's name is read from that clone's `origin`.
+- The `REQUIRED_CHECKS` rewrite runs only when the default branch already defines `core-checks`, or has no
+  gate workflow yet. Otherwise the sync prints the exact replacement line and the ordering rule and leaves
+  the file unchanged (`core-ci.py required-checks --fix --no-write`).
+- A workflow with a template's name that is not core-managed (no `# core-managed` marker, not an older synced
+  copy) is never overwritten: the template is written as `<name>.core-new` with a diff command, and
+  `sync-core.py --strict` (or `CORE_SYNC_STRICT=1`) exits 1. The templates carry the marker.
+- New parameter `UI adoption stage` (`none`, `partial`, `adopted`): with `none` or `partial` the drift
+  workflow's `core-status.py --require-ui-adopted` step reports N/A instead of failing. Empty keeps the
+  current behavior.
+- New `## ascii_ignore` table in `standards-local/parameters.md` (Path, Reason): listed paths are skipped by
+  the ASCII check and printed every run; a row without a reason fails; script and XAML files cannot be listed.
+  Nothing declared, nothing changes.
+- CONSUMING.md and the overlay README document the new-repo traps, the ASCII order (escapes, a time-boxed
+  exception, `ascii_ignore`) and a ready-to-paste gitleaks allowlist for token files, with notes for other
+  scanners. The core's own secret scan is unchanged.
+
 ## 2026-10-27 (v1.28.0, a consumer declares which rules do not apply, and opscenter/applicability.json)
 
 - `standards-local/proofs.json` takes a reserved `$not_applicable` list: `{rule, reason, date, reviewed_by,
