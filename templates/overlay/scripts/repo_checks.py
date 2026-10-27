@@ -211,10 +211,34 @@ def statement_of(raw, pos, span=8):
     return "\n".join(lines[a : b + 1])
 
 
+def prose_lines(text):
+    """Line indexes of Python module/function/class docstrings and standalone string statements:
+    prose, never a command. Implicitly concatenated literals are one node, so one span."""
+    import ast
+
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return set()
+    gone = set()
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Constant)
+            and isinstance(node.value.value, str)
+        ):
+            gone.update(range(node.lineno - 1, node.end_lineno))
+    return gone
+
+
 def rc002(repo):
     out = []
     for p in repo.select(exts=MERGE_EXTS, tests=False):
-        raw = "\n".join("" if is_comment(ln) else ln for ln in repo.text(p).splitlines())
+        gone = prose_lines(repo.text(p)) if p.endswith(".py") else set()
+        raw = "\n".join(
+            "" if (is_comment(ln) or i in gone) else ln
+            for i, ln in enumerate(repo.text(p).splitlines())
+        )
         if not re.search(r"merge", raw):
             continue
         lines = repo.text(p).splitlines()
@@ -1169,6 +1193,35 @@ def unwrap_arg(el):
     return ast.unparse(el)
 
 
+NAME_FLAGS = {"-n", "--name", "--secret-name", "--secret_name"}
+NAME_EXPR = re.compile(r"(\.name|_name|_id)$", re.I)
+
+
+def expr_hits(txt):
+    """True when a bare expression text names a secret that is not a safe path, file, name or id."""
+    return bool(
+        SECRET_NAME.search(txt)
+        and not all(SAFE_SUFFIX.search(t) or not SECRET_NAME.search(t) for t in txt.split())
+    )
+
+
+def arg_hits(el, prev):
+    """A secret value in one argv element. A secret NAME (after a name flag, or ending .name/_name/_id)
+    is not the secret; an f-string is tested per interpolated expression."""
+    import ast
+
+    if isinstance(prev, ast.Constant) and prev.value in NAME_FLAGS:
+        return False
+    if isinstance(el, ast.JoinedStr):
+        return any(
+            arg_hits(v.value, None) for v in el.values if isinstance(v, ast.FormattedValue)
+        )
+    txt = unwrap_arg(el)
+    if NAME_EXPR.search(txt.strip()):
+        return False
+    return expr_hits(txt)
+
+
 SUBPROCESS_CALLS = {"run", "Popen", "call", "check_call", "check_output"}
 
 
@@ -1203,13 +1256,7 @@ def rc017(repo):
                     )
                     hit = bool(flag and i + 1 < len(items) and "=" not in el.value)
                 else:
-                    txt = unwrap_arg(el)
-                    hit = bool(
-                        SECRET_NAME.search(txt)
-                        and not all(
-                            SAFE_SUFFIX.search(t) or not SECRET_NAME.search(t) for t in txt.split()
-                        )
-                    )
+                    hit = arg_hits(el, items[i - 1] if i else None)
                 if hit and not skipped(lines, el.lineno - 1):
                     out.append(
                         (
