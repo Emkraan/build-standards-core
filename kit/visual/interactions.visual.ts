@@ -89,7 +89,8 @@ test('the shell mounts one tip layer: a disabled reason and a term meaning show 
   await expect(scale).toHaveAttribute('aria-disabled', 'true');
   await expect(scale).not.toHaveAttribute('disabled', /.*/);
 
-  await scale.hover();
+  // Force skips the stability wait: the page above the specimen may still settle on a slow runner.
+  await scale.hover({ force: true });
   await expect(tip).toHaveCount(1);
   await expect(tip).toHaveText('Choose a host pool first. The size applies to that pool.');
   await page.keyboard.press('Escape');
