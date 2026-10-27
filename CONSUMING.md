@@ -385,6 +385,7 @@ Version 2 is the current shape:
 | `ui_consumers[].sync_head` | the head-branch prefix of the repo's sync pull request, for the consumption feed (default `chore/core-`; a vendoring tool names its own) | v0.59.0 |
 | `ui_consumers[].apply_via` | `ops-center` only: `pr` lands each release as a pull request through the repo's own CI gate and merges it at once; `direct` commits to the default branch; missing: detected (a remote whose default branch requires status checks, or the repo's own pre-push guard, means `pr`) | v0.64.0 |
 | `ui_consumers[].pr_timeout_min` | `ops-center` with `apply_via` `pr`: minutes to wait for the repo's own checks before the pull request is closed (default 60) | v0.64.0 |
+| `report_issue` | number of the open `consumer-report` issue in the intake that the nightly updates (also `CORE_REPORT_ISSUE`); when set and open it is used before any search, so a search lag or a changed label never opens a second issue; unset: the open `consumer-report` issues of this account are searched, by the search index and then by the REST listing | v1.27.6 |
 | `report_repo` | `OWNER/REPO` of the private intake that receives this account's consumer report (section 7); set it with `hermes/setup.py --report-repo OWNER/REPO` | v0.102.0 |
 | `ui_consumers[].pin` | `vendored` only: a file on this machine where the vendoring tool writes the release it copied (the first `vX.Y.Z` in it is read); optional when the tool records the source hash instead | v0.58.0 |
 
@@ -755,12 +756,32 @@ scripts/core-status.py --require-ui-adopted --require-lint-config` exits 0 (a UI
 | The pull request is `UNSTABLE` and nothing is running; one check shows cancelled | a non-required check was cancelled (an edit seconds after a push cancels the earlier run) and the merge workflow did not run again | `gh run rerun <run id>`, then `gh workflow run automerge.yml --repo OWNER/build-standards-core`. Check `gh pr view N --json state,mergeStateStatus` no more often than every 3 minutes |
 | The merge gate waits forever on `core-checks` after the move to the reusable workflow | the called job reports `core-checks / core-checks` | require the qualified name (section 3, migration recipe) |
 | `core-ci.yml has no job core-python` and the `overlay-ci` rules fail | the repo's `core-ci.yml` predates the `core-` job names | `python3 scripts/sync-core.py latest`, then `python3 scripts/core-ci.py required-checks --fix` |
+| A sync pull request fails `core-required-checks`, or the merge gate waits on a name that no longer exists | a core-ci job was renamed and the gate (a `REQUIRED_CHECKS` list in the auto-merge workflow, or a ruleset) still lists the old name | `python3 scripts/core-ci.py required-checks --fix` rewrites the list in the workflow (or prints the exact line, file and line number when it is not a plain list) and prints the ruleset commands; `sync-core.py` already applies the list rewrite in the sync pull request. See "Gate and workflow disagree" below |
 | `Could not read OWNER/build-standards-core at <ref>` | the ref does not exist, `CORE_REPO` is unset or wrong, or no route to github.com | check the tag and `CORE_REPO` (step 2 of section 12) |
 | `DRIFT` or `content hash ... does not match the lock` | someone edited a synced copy, or a formatter reflowed it | rerun `sync-core.py` and commit both; exclude the synced folders from formatters (README) |
 | `version 3.9 was not found` on a runner | a job set up Python 3.9 on an image that has none (`ubuntu-latest`) | run on `ubuntu-24.04`, which the template and reusable workflows default to; `CORE_RUNNER` and `CORE_CI_RUNNER` override |
 | A script fails with a syntax or import error on the system Python | a construct newer than 3.9 | Python 3.9 is the floor for every shipped script and for core CI: no `match`, no `X | Y` types at runtime without `from __future__ import annotations`, no `tomllib` without a fallback |
 | `check-closing-refs` fails | a closing keyword sits in front of a `consumer-report` reference | write `Refs #N` or `for #N` |
 | A proof reads `WARNING ... does not name the rule` | the test file lacks the rule id | add the comment `core-rule: <rule id>` |
+
+### Gate and workflow disagree (bootstrap)
+
+A merge gate kept as a list in the auto-merge workflow has a chicken and egg case: the workflow that runs
+is the copy on the default branch, so a pull request that renames a core-ci job and fixes the list is
+judged by the old list and can never merge itself. Break it once, by hand: review the fix pull request,
+confirm its `core-checks` and `core-required-checks` are green, then merge it with squash and pin the merge
+to the reviewed head, for example `gh pr merge N --squash --match-head-commit <reviewed head sha>`
+(or `python3 scripts/merge-pr.py N --match-head-commit <sha>`). Never merge with `--admin` without the sha.
+Afterwards the default branch holds both, and the gate agrees again.
+
+To avoid it for good, copy `templates/overlay/.github/workflows/automerge.yml`: it reads the required core
+job names from the synced `core-ci.yml` (`core-ci.py required-names`), so a rename reaches the gate in the
+same sync pull request, and `REQUIRED_CHECKS` lists only the repo's own checks.
+
+Ordering: a job the gate newly requires must already exist (run) on the default branch before the gate
+lists it, or every pull request waits on a check that never reports. Merge the pull request that adds the
+job first, then the gate change. `sync-core.py` and `required-checks --fix` print this order when core-ci
+job names change.
 
 ## What the job will not do
 

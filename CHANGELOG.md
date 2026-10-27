@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-10-27 (v1.27.6, consumer report fixes: gate rename, sweep lockfile, merge sha, report issue)
+
+- Gate rename deadlock: `core-ci.py required-checks --fix` now rewrites a `REQUIRED_CHECKS` list in a gate
+  workflow (one-line and block forms; quoting, separator and own checks kept) and, when it cannot edit the
+  value safely, prints the exact replacement line with its file and line number. `--lists-only` checks only
+  a workflow list, needs no remote read and skips a ruleset-gated repo. `sync-core.py` applies the rewrite in
+  the sync pull request and prints the ordering rule (a newly required job must exist on the default branch
+  before the gate lists it). `core-ci.yml` (template and reusable) gains the step `core-required-checks`,
+  which exits non-zero on a mismatch so a sync pull request fails before merge.
+- New `core-ci.py required-names` and the template `templates/overlay/.github/workflows/automerge.yml`: the
+  gate reads the required core job names from the synced `core-ci.yml`, so a rename reaches it in the same
+  sync. A workflow that calls `required-names` counts as requiring every core-ci job. The template is
+  copied once, not synced. CONSUMING.md section 13 documents the bootstrap (merge the fix pull request once
+  by hand, squash, pinned to the reviewed head sha) and the ordering rule.
+- `ci-cd-release.2.1` weekly lint sweep: the install step looks for a lockfile in the app directory: the new
+  parameters row "App directory", else the root, else the first folder one level down that tracks one. The
+  install and the sweep command run there (`app_dir` and `sweep_web` params). `lint-sweep.yml` stays
+  core-managed, so a consumer needs no local edit.
+- `pr-review-and-merge.1.6` (RC002): the checker reads the whole merge call statement (continuation lines
+  and the neighbouring body construction), so a head sha passed through a jq-built body on another line is
+  accepted. The rule text now says the sha must be in the merge call statement.
+- Docs: `hermes/sync_skills.py` steps now show the required `--dest` argument.
+- Hermes nightly report: the report issue is found by the configured number (`report_issue` in
+  `consumer.json` or `CORE_REPORT_ISSUE`), then the search, then the REST issues listing (no search index)
+  filtered to this account, so a search lag or a missed filter no longer opens a second "Consumer report:
+  candidates for the core" issue next to the existing one.
+
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 
 - `repo_checks.py` RC012: the import-name to distribution map gains `docx` (`python-docx`), `pptx`, `fitz`,

@@ -44,7 +44,14 @@ Usage (run from the consumer repo root; the overlay may sit in a subfolder):
                                                              which core-ci.yml jobs the merge gate does
                                                              not require (branch protection, rulesets,
                                                              or a REQUIRED_CHECKS list in a workflow);
-                                                             --fix prints the command, never runs it
+                                                             --fix rewrites a REQUIRED_CHECKS list in a
+                                                             gate workflow (or prints the exact line and
+                                                             file:line) and prints the ruleset commands;
+                                                             --lists-only checks only such a list; exits
+                                                             1 on any mismatch
+  python3 scripts/core-ci.py required-names [--github-output]
+                                                             the core-ci job names a merge gate requires,
+                                                             read from the synced core-ci.yml
   python3 scripts/core-ci.py wait-checks SHA [--repo R] [--timeout MIN] [--interval SEC] [--progress MIN]
                                                              wait until every check on SHA completed
                                                              green (exit 0) or one failed or the wait
@@ -185,6 +192,26 @@ def tracked() -> list:
 # ---------------------------------------------------------------- params
 
 
+JS_LOCKS = ("pnpm-lock.yaml", "yarn.lock", "bun.lockb", "bun.lock", "package-lock.json")
+
+
+def app_dir(files: list | None = None) -> str:
+    """The folder the web toolchain lives in, for lint-sweep.yml: the parameters row "App directory"
+    when set, else the repo root when it carries a JS lockfile, else the first folder one level down
+    (sorted) that tracks one, else the root. Always a relative path with no '..'."""
+    want = parameter("App directory").strip().strip("/")
+    if want and want != "." and ".." not in want.split("/") and not want.startswith("/"):
+        return want
+    files = tracked() if files is None else files
+    if any(f in JS_LOCKS for f in files):
+        return "."
+    for f in sorted(files):
+        parts = f.split("/")
+        if len(parts) == 2 and parts[1] in JS_LOCKS and not parts[0].startswith("."):
+            return parts[0]
+    return "."
+
+
 def params() -> dict:
     stacks = [s.lower() for s in listed(parameter("Stacks"))]
     stacks = [s for s in stacks if s in STACKS]
@@ -212,6 +239,13 @@ def params() -> dict:
         "lint_sweep": parameter("Lint sweep command"),
         # Node major for jobs that set up Node (lint-sweep.yml); empty: the workflow takes lts/*.
         "node": node_major(),
+        # Where lint-sweep.yml installs and runs the sweep command: the App directory row, else the
+        # root when it has a lockfile, else the first folder one level down that has one.
+        "app_dir": app_dir(files),
+        # true when a Node toolchain is needed: a web stack, or a package.json in the app directory.
+        "sweep_web": str(
+            on("web", probe="web") or (app_dir(files) + "/package.json").lstrip("./") in files
+        ).lower(),
     }
 
 
@@ -1531,6 +1565,93 @@ def gate_lists(repo_root: pathlib.Path) -> dict:
     return out
 
 
+GATE_LINE = re.compile(r"^(\s*)REQUIRED_CHECKS:\s*(.*?)\s*(#.*)?$")
+DYNAMIC_GATE = re.compile(r"core-ci\.py[\"']?\s+required-names")
+
+
+def dynamic_gates(repo_root: pathlib.Path) -> list:
+    """Workflows that read the required core job names from the synced core-ci.yml at run time
+    (`core-ci.py required-names`) instead of a copied list: such a gate follows a rename by itself."""
+    out = []
+    for wf in sorted((repo_root / ".github" / "workflows").glob("*.y*ml")):
+        if DYNAMIC_GATE.search(wf.read_text(encoding="utf8")):
+            out.append(wf.relative_to(repo_root).as_posix())
+    return out
+
+
+def fix_names(names: list, replace: dict, drop: set, add: list) -> list:
+    """names with each old name swapped in place for its new one, the dropped names removed and the
+    missing ones appended; order kept, no duplicates."""
+    out = []
+    for n in names:
+        n = replace.get(n, n)
+        if n not in drop and n not in out:
+            out.append(n)
+    return out + [a for a in add if a not in out]
+
+
+def wrap_names(names: list, indent: str, width: int = 100) -> list:
+    lines, cur = [], ""
+    for n in names:
+        if cur and len(indent) + len(cur) + 1 + len(n) > width:
+            lines.append(indent + cur)
+            cur = ""
+        cur = f"{cur} {n}" if cur else n
+    return lines + ([indent + cur] if cur else [])
+
+
+def rewrite_gates(text: str, replace: dict, drop: set, add: list) -> tuple:
+    """Rewrite every REQUIRED_CHECKS value in a workflow's text: (new text, [(line, replacement line)]
+    for the values it cannot edit safely, e.g. an expression). A one-line value keeps its quoting and
+    separator; a block scalar (| or >) keeps its indicator and indent."""
+    lines = text.splitlines()
+    out, manual, i = [], [], 0
+    while i < len(lines):
+        line = lines[i]
+        m = GATE_LINE.match(line)
+        if not m:
+            out.append(line)
+            i += 1
+            continue
+        pad, value, comment = m.group(1), m.group(2), m.group(3)
+        tail = f"  {comment}" if comment else ""
+        quote = value[0] if value[:1] in ("'", '"') and value[-1:] == value[:1] else ""
+        bare = value.strip("'\"")
+        if bare[:1] in ("|", ">"):
+            j = i + 1
+            while j < len(lines) and (
+                not lines[j].strip() or len(lines[j]) - len(lines[j].lstrip()) > len(pad)
+            ):
+                j += 1
+            body = lines[i + 1 : j]
+            while body and not body[-1].strip():
+                body.pop()
+            names = re.split(r"[\s,]+", " ".join(b.strip() for b in body).strip())
+            names = [n for n in names if n]
+            if "${{" in " ".join(body):
+                manual.append((i + 1, line))
+                out.extend(lines[i:j])
+            else:
+                new = fix_names(names, replace, drop, add)
+                ind = body[0][: len(body[0]) - len(body[0].lstrip())] if body else pad + "  "
+                out.append(line)
+                out.extend(wrap_names(new, ind))
+                out.extend(lines[i + 1 + len(body) : j])
+            i = j
+            continue
+        if "${{" in bare or "$(" in bare:
+            manual.append((i + 1, line))
+            out.append(line)
+            i += 1
+            continue
+        names = [n for n in re.split(r"[\s,]+", bare) if n]
+        sep = ", " if "," in bare else " "
+        new = fix_names(names, replace, drop, add)
+        out.append(f"{pad}REQUIRED_CHECKS: {quote}{sep.join(new)}{quote}{tail}")
+        i += 1
+    return "\n".join(out) + ("\n" if text.endswith("\n") else ""), manual
+
+
 def remote_gate_lists(repo: str) -> dict:
     """gate_lists for a repo read through gh (its default branch), for a machine with no clone."""
     import base64
@@ -1619,9 +1740,12 @@ def required_report(
         repo, branch = repo_and_branch(repo, branch)
     contexts, sources, notes = required_contexts(repo or "OWNER/REPO", branch or "main", api)
     gates = gate_lists(repo_root)
+    dynamic = dynamic_gates(repo_root)
     gated = set(contexts)
     for names in gates.values():
         gated |= set(names)
+    if dynamic:
+        gated |= set(jobs)  # a gate that reads core-ci.yml itself requires every job in it
     legacy = [
         j for j in jobs if not j.startswith(JOB_PREFIX) and not j.endswith(" / " + REUSABLE_JOB)
     ]
@@ -1656,7 +1780,8 @@ def required_report(
         "repo": repo or "OWNER/REPO",
         "branch": branch or "main",
         "jobs": jobs,
-        "sources": sources + sorted(gates),
+        "sources": sources + sorted(set(gates) | set(dynamic)),
+        "dynamic": dynamic,
         "notes": notes,
         "protected": "branch protection" in sources,
         "gates": gates,
@@ -1678,14 +1803,62 @@ def take(args: list, name: str, default: str = "") -> str:
     return value
 
 
+def cmd_required_names(argv: list) -> int:
+    """Print the check names a merge gate must require from the synced core-ci.yml, one line, space
+    separated; --github-output also writes names=... for a workflow step. A gate that reads them here
+    follows a core-ci job rename with no edit of its own."""
+    root = pathlib.Path(git("rev-parse", "--show-toplevel").strip() or ".")
+    jobs = core_ci_jobs(root)
+    if jobs is None:
+        say("::error::required-names: .github/workflows/core-ci.yml is not installed")
+        return 1
+    line = " ".join(jobs)
+    out = os.environ.get("GITHUB_OUTPUT")
+    if "--github-output" in argv and out:
+        with open(out, "a", encoding="utf8") as fh:
+            fh.write(f"names={line}\n")
+    sys.stdout.write(line + "\n")
+    return 0
+
+
+def fix_gate_lists(root: pathlib.Path, rep: dict) -> tuple:
+    """Rewrite the REQUIRED_CHECKS list of every gate workflow to the current core-ci jobs. Returns
+    (files rewritten, [(file, line, replacement line)] the script could not safely edit)."""
+    replace = dict(rep["stale"])
+    drop = set(rep["obsolete"]) | set(replace)
+    drop -= set(replace.values())
+    add = [j for j in rep["missing"] if j not in replace.values()]
+    written, manual = [], []
+    for wf in rep["gates"]:
+        path = root / wf
+        text = path.read_text(encoding="utf8")
+        new, hard = rewrite_gates(text, replace, drop, add)
+        if new != text:
+            path.write_text(new, encoding="utf8")
+            written.append(wf)
+        for lineno, _ in hard:
+            names = fix_names(rep["gates"][wf], replace, drop, add)
+            manual.append((wf, lineno, "REQUIRED_CHECKS: " + " ".join(names)))
+    return written, manual
+
+
 def cmd_required_checks(argv: list) -> int:
+    """Exit 0 only when every core-ci job is required. --fix rewrites a REQUIRED_CHECKS list in a
+    workflow (the gate of a repo whose plan has no rulesets) and prints the branch-ruleset commands;
+    --lists-only reads no remote gate and checks only a workflow list, for the offline CI step."""
     args = list(argv)
     repo, branch, api_file = take(args, "--repo"), take(args, "--branch"), take(args, "--api-json")
+    lists_only = "--lists-only" in args
     api = json.loads(pathlib.Path(api_file).read_text(encoding="utf8")) if api_file else None
+    if lists_only and api is None:
+        api = {"protection": None, "rules": []}
     root = pathlib.Path(git("rev-parse", "--show-toplevel").strip() or ".")
     rep = required_report(root, repo, branch, api)
     if rep is None:
         say("skip required-checks: .github/workflows/core-ci.yml is not installed")
+        return 0
+    if lists_only and not rep["gates"] and not rep["dynamic"]:
+        say("skip required-checks: no REQUIRED_CHECKS list in a workflow (the gate is a ruleset)")
         return 0
     for n in rep["notes"]:
         say(f"required-checks: note: {n}")
@@ -1705,16 +1878,29 @@ def cmd_required_checks(argv: list) -> int:
             f"check names that no longer exist: {', '.join(rep['obsolete'])}"
         )
     if "--fix" not in args:
-        say("required-checks: --fix prints the commands that correct the gate")
+        say(
+            "required-checks: --fix rewrites the REQUIRED_CHECKS list in a gate workflow and prints the "
+            "commands that correct a ruleset or branch protection"
+        )
         return 1
-    say("Run one of these yourself; this script never changes the repo.")
+    written, manual = fix_gate_lists(root, rep) if rep["gates"] else ([], [])
+    for wf in written:
+        say(f"required-checks: rewrote REQUIRED_CHECKS in {wf} (review the diff and commit it)")
+    for wf, lineno, line in manual:
+        say(
+            f"required-checks: cannot safely edit REQUIRED_CHECKS at {wf}:{lineno} (not a plain list); "
+            f"replace it with: {line}"
+        )
+    if lists_only:
+        return 1 if manual else 0
+    say("Run the rest yourself; this script never changes a ruleset or branch protection.")
     if rep["obsolete"] and rep["protected"]:
         for n in rep["obsolete"]:
             say(
                 f"gh api -X DELETE repos/{rep['repo']}/branches/{rep['branch']}/protection/required_status_checks/contexts "
                 f"-f 'contexts[]={n}'"
             )
-    if rep["stale"]:
+    if rep["stale"] and not written:
         say(
             "The gate still requires the old core-ci job names. Replace each, and remove the old one once no "
             "open pull request needs it (a repo job with the same name keeps its own entry):"
@@ -1726,14 +1912,16 @@ def cmd_required_checks(argv: list) -> int:
             f"gh api -X POST repos/{rep['repo']}/branches/{rep['branch']}/protection/required_status_checks/contexts "
             + " ".join(f"-f 'contexts[]={n}'" for n in rep["missing"])
         )
-    for wf in rep["gates"]:
-        say(
-            f"Or set REQUIRED_CHECKS in {wf} to include {' '.join(rep['jobs'])}"
-            + (f" and drop {' '.join(rep['obsolete'])}" if rep["obsolete"] else "")
-        )
-    say("Or a ruleset that requires every core-ci job:")
-    say(ruleset_command(rep["repo"], rep["jobs"]))
-    return 1
+    if not rep["gates"] or not written:
+        say("Or a ruleset that requires every core-ci job:")
+        say(ruleset_command(rep["repo"], rep["jobs"]))
+    say(
+        "Order: a job the gate newly requires must already run on the default branch, or every pull "
+        "request waits on a check that never reports. Merge the workflow that adds the job first, then "
+        "the gate change."
+    )
+    after = required_report(root, repo, branch, api)
+    return 1 if manual or (after and (after["missing"] or after["obsolete"])) else 0
 
 
 GREEN = {"success", "skipped", "neutral"}
@@ -1950,6 +2138,7 @@ COMMANDS = {
     "powershell": cmd_powershell,
     "kit-peers": cmd_kit_peers,
     "required-checks": cmd_required_checks,
+    "required-names": cmd_required_names,
     "wait-checks": cmd_wait_checks,
 }
 

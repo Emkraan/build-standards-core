@@ -68,6 +68,24 @@ class TestChecks(Tree):
     def test_rc002_continuation_and_api(self):
         self.fails("RC002", {"ops/m.sh": "gh api repos/o/r/pulls/1/merge -X PUT\n"})
 
+    def test_rc002_sha_in_body_built_on_neighbouring_line(self):
+        self.passes(
+            "RC002",
+            {
+                "ops/m.sh": 'body=$(jq -n --arg sha "$HEAD" \'{merge_method:"squash",sha:$sha}\')\n'
+                'gh api -X PUT repos/o/r/pulls/1/merge --input - <<< "$body"\n',
+                "ops/n.sh": "gh api -X PUT repos/o/r/pulls/1/merge \\\n  --input <(jq -n --arg sha \"$H\" '{sha:$sha}')\n",
+            },
+        )
+
+    def test_rc002_sha_not_adjacent_is_still_flagged(self):
+        self.fails(
+            "RC002",
+            {
+                "ops/m.sh": "sha=abc\n\ngh api -X PUT repos/o/r/pulls/1/merge -f merge_method=squash\n"
+            },
+        )
+
     def test_rc002_python_list(self):
         self.fails("RC002", {"tools/m.py": 'run(["gh", "pr", "merge", "1", "--squash"])\n'})
 

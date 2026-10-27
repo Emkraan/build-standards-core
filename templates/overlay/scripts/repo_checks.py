@@ -191,6 +191,26 @@ REST_MERGE = re.compile(r"/pulls/[^\"'\s`]*/merge\b")
 MERGE_EXTS = (".yml", ".yaml", ".sh", ".bash", ".py", ".js", ".mjs", ".cjs", ".ts")
 
 
+SHA_KEY = re.compile(r"\bsha\b\s*[=:]|[\"']sha[\"']|--arg\s+sha\b|--match-head-commit")
+
+
+def statement_of(raw, pos, span=8):
+    """The whole merge call statement around pos: its own line with continuation lines, plus the
+    contiguous non-blank lines around it (at most span each way), so a head sha passed through a body
+    built on a neighbouring line (jq -n --arg sha ..., a heredoc, a dict) belongs to the call."""
+    lines = raw.splitlines()
+    if not lines:
+        return ""
+    i = min(line_of(raw, min(pos, len(raw))) - 1, len(lines) - 1)
+    a = i
+    while a > 0 and i - a < span and lines[a - 1].strip():
+        a -= 1
+    b = i
+    while b + 1 < len(lines) and b - i < span and lines[b + 1].strip():
+        b += 1
+    return "\n".join(lines[a : b + 1])
+
+
 def rc002(repo):
     out = []
     for p in repo.select(exts=MERGE_EXTS, tests=False):
@@ -204,10 +224,14 @@ def rc002(repo):
             return i < len(lines) and skipped(lines, i)
 
         for m in GH_MERGE.finditer(raw):
-            if "--match-head-commit" not in m.group(0) and not ok_at(m.start()):
+            if (
+                "--match-head-commit" not in m.group(0)
+                and not SHA_KEY.search(statement_of(raw, m.start()))
+                and not ok_at(m.start())
+            ):
                 out.append((p, line_of(raw, m.start()), "gh pr merge without --match-head-commit"))
         for m in GH_API_MERGE.finditer(raw):
-            if not re.search(r"\bsha\b\s*[=:]|\"sha\"", m.group(0)) and not ok_at(m.start()):
+            if not SHA_KEY.search(statement_of(raw, m.start())) and not ok_at(m.start()):
                 out.append((p, line_of(raw, m.start()), "merge endpoint call without the head sha"))
         for rx, need, what in (
             (LIST_MERGE, "match-head-commit", "merge command list without --match-head-commit"),
@@ -216,7 +240,11 @@ def rc002(repo):
             if rx is REST_MERGE and p.endswith((".yml", ".yaml", ".sh", ".bash")):
                 continue
             for m in rx.finditer(raw):
-                if need not in raw[m.start() : m.end() + 400] and not ok_at(m.start()):
+                if (
+                    need not in raw[m.start() : m.end() + 400]
+                    and not SHA_KEY.search(statement_of(raw, m.start()))
+                    and not ok_at(m.start())
+                ):
                     out.append((p, line_of(raw, m.start()), what))
     return out
 

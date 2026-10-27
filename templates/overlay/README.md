@@ -224,7 +224,7 @@ values, and any contrast annotations, in the same pull request as the sync.
 ## Hermes content in the overlay
 
 The overlay may carry `core-` skills only as installed copies, placed by the core's
-`hermes/sync_skills.py` run. Never hand-edit an installed core skill and never give a business
+`python3 hermes/sync_skills.py --dest <profile home>/skills/core` run. Never hand-edit an installed core skill and never give a business
 skill the `core-` prefix; shareable improvements come back to the core by pull request. Plugin
 source may be shared, but no plugin configuration, keys, MCP config, gateway tokens, cron or
 board config, vault contents, or `config.yaml` ever leaves the instance. The full split, failure

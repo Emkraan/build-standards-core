@@ -615,7 +615,7 @@ best-practice patterns.
 3. Validate zero leaks of instance context, secrets, or board references.
 4. Run the checks; a nonconformant submission is fixed or rejected. Any consumer account may merge
    its own pull request once `ci` and `visual` pass, since every consumer is the same owner.
-5. On acceptance, every consumer picks the skill up on its next `hermes/sync_skills.py` run.
+5. On acceptance, every consumer picks the skill up on its next `python3 hermes/sync_skills.py --dest <profile home>/skills/core` run (the nightly passes it).
 
 ## Contributing back
 
