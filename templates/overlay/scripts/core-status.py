@@ -48,6 +48,9 @@ Each registered rule gets a status:
   proved      a test or review rule (or an overlay-ci rule with no result read) that a valid ci or test entry in
               standards-local/proofs.json proves; counted apart from pass
   not_applicable  a core-ci rule that needs the kit (check.requires ui-adoption) in an app whose UI is not adopted
+              Also a rule a consumer declares not applicable in proofs.json under "$not_applicable" (a rule id or
+              group prefix, with reason, date, reviewed_by, optional until): shown with its reason, and only for
+              a rule that would otherwise be unverified. --ci fails on an entry with no reason or one expired.
   unverified  a test or review rule with no proof record, an overlay-ci rule whose workflow is installed
               but whose result was not read, or a script lint rule while the overlay has no
               standards-local/script-lint.json; prove it in the app
@@ -550,6 +553,7 @@ def load_proofs(registry, today=None) -> tuple[dict, list[str]]:
         return {}, ["proofs.json: the top level must be an object of rule id -> proof"]
     max_days = data.pop("$max_review_age_days", REVIEW_MAX_DAYS)
     data.pop("$description", None)
+    data.pop(NA_KEY, None)
     rules = {r["id"]: r for r in registry.get("rules", [])}
     today = today or datetime.date.today()
     root = repo_root()
@@ -619,6 +623,108 @@ def load_proofs(registry, today=None) -> tuple[dict, list[str]]:
                 )
                 continue
         good[rid] = p
+    return good, problems
+
+
+# Rules a consumer declares do not apply to it (no real surface), in the same proofs.json under one reserved key:
+# "$not_applicable": [{"rule": "<rule id or group prefix>", "reason", "date", "reviewed_by", "until" (optional)}].
+# A prefix matches whole dotted segments ("rbac" covers rbac and rbac.1.2, "web-api-runtime.1" does not cover
+# web-api-runtime.10). Guard: no entry may cover a rule of a protected doc (secrets and automation safety)
+# unless the registry marks that rule "applicable_optional": true. Only a rule that would otherwise be
+# unverified is set aside; a rule with a result or a proof keeps it.
+NA_KEY = "$not_applicable"
+NA_PROTECTED_DOCS = ("secrets-and-credentials", "automation-safety")
+NA_EXPIRING_DAYS = 30
+
+
+def na_matches(prefix, rid) -> bool:
+    return rid == prefix or rid.startswith(prefix + ".")
+
+
+def na_protected(rule) -> bool:
+    return rule["id"].split(".")[0] in NA_PROTECTED_DOCS and not rule.get("applicable_optional")
+
+
+def na_applies(status, rid, na_by_id) -> bool:
+    """Only a rule that is still unverified (no result, no proof) is set aside; anything else keeps its status."""
+    return status == "unverified" and rid in na_by_id
+
+
+def load_not_applicable(registry, today=None) -> tuple[list, list[str]]:
+    """Valid applicability entries (each with the rule ids it covers) and a problem line for each broken,
+    expired, unmatched or guarded one. A problem entry applies to nothing."""
+    import datetime
+
+    if not PROOFS.is_file():
+        return [], []
+    try:
+        data = json.loads(PROOFS.read_text(encoding="utf8"))
+    except (OSError, ValueError):
+        return [], []  # load_proofs already reports an unreadable file
+    entries = data.get(NA_KEY) if isinstance(data, dict) else None
+    if entries is None:
+        return [], []
+    if not isinstance(entries, list):
+        return [], [f"proofs.json {NA_KEY}: must be a list of entries"]
+    today = today or datetime.date.today()
+    rules = registry.get("rules", [])
+    good, problems = [], []
+    for i, e in enumerate(entries):
+        pre = e.get("rule") if isinstance(e, dict) else None
+        where = f"proofs.json {NA_KEY} [{pre or i}]"
+        if (
+            not isinstance(e, dict)
+            or not isinstance(pre, str)
+            or not re.fullmatch(r"[A-Za-z0-9._-]+", pre)
+        ):
+            problems.append(f"{where}: needs rule, a rule id or group prefix such as rbac")
+            continue
+        if not str(e.get("reason", "")).strip():
+            problems.append(f"{where}: needs a reason")
+            continue
+        if not str(e.get("reviewed_by", "")).strip():
+            problems.append(f"{where}: needs reviewed_by")
+            continue
+        try:
+            when = datetime.date.fromisoformat(str(e.get("date", "")))
+        except ValueError:
+            problems.append(f"{where}: needs date YYYY-MM-DD")
+            continue
+        until = None
+        if e.get("until") not in (None, ""):
+            try:
+                until = datetime.date.fromisoformat(str(e["until"]))
+            except ValueError:
+                problems.append(f"{where}: until must be YYYY-MM-DD")
+                continue
+            if until < today:
+                problems.append(
+                    f"{where}: expired on {until}; renew it with a new review or remove it"
+                )
+                continue
+        covered = [r for r in rules if na_matches(pre, r["id"])]
+        if not covered:
+            problems.append(f"{where}: matches no rule in the registry")
+            continue
+        guarded = [r["id"] for r in covered if na_protected(r)]
+        if guarded:
+            problems.append(
+                f"{where}: covers protected rule(s) {', '.join(guarded[:3])}"
+                f"{' ...' if len(guarded) > 3 else ''}; secrets and automation safety rules cannot be "
+                "declared not applicable unless the registry marks them applicable_optional"
+            )
+            continue
+        good.append(
+            {
+                "rule": pre,
+                "reason": str(e["reason"]).strip(),
+                "date": str(when),
+                "reviewed_by": str(e["reviewed_by"]).strip(),
+                "until": str(until) if until else None,
+                "days_left": (until - today).days if until else None,
+                "ids": {r["id"] for r in covered},
+            }
+        )
     return good, problems
 
 
@@ -843,6 +949,12 @@ def main(argv):
     results, ci_problems = ci_results(argv)
     ci_problems = ci_problems + required_problems(argv)
     proofs, proof_problems = load_proofs(registry)
+    na_entries, na_problems = load_not_applicable(registry)
+    na_by_id = {}
+    for e in na_entries:
+        for rid in e["ids"]:
+            na_by_id.setdefault(rid, e)
+    na_hits = {id(e): 0 for e in na_entries}
     gaps = missing_lint_config(scopes)
     scope_problems = scope_problems + gaps
     gap_stacks = {g.split()[1] for g in gaps}
@@ -920,6 +1032,10 @@ def main(argv):
         if proof and status == "unverified":
             status = {"review": "attested", "waiver": "waived"}.get(proof["kind"], "proved")
             note = f"{proof['kind']}: {proof['ref']}"
+        elif na_applies(status, r["id"], na_by_id):
+            na = na_by_id[r["id"]]
+            status, note = "not_applicable", f"not applicable: {na['reason']}"
+            na_hits[id(na)] += 1
         rules.append(
             {
                 "id": r["id"],
@@ -965,6 +1081,14 @@ def main(argv):
             dict(e, expiring=e.get("days_left") is not None and e["days_left"] <= EXPIRING_DAYS)
             for e in exceptions
         ],
+        "not_applicable_declared": [
+            {k: v for k, v in e.items() if k != "ids"}
+            | {
+                "covers": na_hits[id(e)],
+                "expiring": e["days_left"] is not None and e["days_left"] <= NA_EXPIRING_DAYS,
+            }
+            for e in na_entries
+        ],
         "warnings": list(PROOF_WARNINGS),
         "problems": (
             exc.get("problems", [])
@@ -974,6 +1098,7 @@ def main(argv):
             + scope_problems
             + ci_problems
             + proof_problems
+            + na_problems
         ),
         "fixed_since_baseline": lint.get("fixed_since_baseline", 0)
         + slint.get("fixed_since_baseline", 0),
@@ -1003,9 +1128,10 @@ def main(argv):
     require_ui = "--require-ui-adopted" in argv
     ui_bad = report["ui_adoption"]["status"] == "partial"
     lint_bad = "--require-lint-config" in argv and (bool(gaps) or stacks_missing)
+    na_bad = "--ci" in argv and bool(na_problems)
     if "--json" in argv:
         print(json.dumps(report, indent=2))
-        return 1 if (require_ui and ui_bad) or lint_bad else 0
+        return 1 if (require_ui and ui_bad) or lint_bad or na_bad else 0
     c, s = report["core"], report["summary"]
     print(
         f"core-status: core pinned at {c['pinned_ref']}"
@@ -1032,6 +1158,14 @@ def main(argv):
     for e in report["exceptions"]:
         if e["expiring"]:
             print(f"  EXPIRING {e['id']} ({e['rule']}) in {e['days_left']} day(s)")
+    for e in report["not_applicable_declared"]:
+        print(
+            f"  N/A {e['rule']} ({e['covers']} rule(s)): {e['reason']}"
+            f" [{e['reviewed_by']}, {e['date']}"
+            + (f", until {e['until']}" if e["until"] else "")
+            + "]"
+            + (" EXPIRING" if e["expiring"] else "")
+        )
     for w in report["warnings"]:
         print(f"  WARNING {w}")
     for p in report["problems"]:
@@ -1047,7 +1181,7 @@ def main(argv):
             "::error::the UI is only partly adopted (web-ui.md 0.11): " + "; ".join(ui["reasons"])
         )
         return 1
-    return 1 if lint_bad else 0
+    return 1 if lint_bad or na_bad else 0
 
 
 if __name__ == "__main__":

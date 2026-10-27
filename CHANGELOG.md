@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-10-27 (v1.28.0, a consumer declares which rules do not apply, and opscenter/applicability.json)
+
+- `standards-local/proofs.json` takes a reserved `$not_applicable` list: `{rule, reason, date, reviewed_by,
+  until?}`, where `rule` is a rule id or a group prefix (whole dotted segments, so `rbac` covers `rbac.*`). A
+  covered rule that would read `unverified` reads `not_applicable` with the reason, apart from `waived` and
+  `excepted`; a rule with a result or a proof keeps its status. The report lists every entry (`N/A` lines,
+  `not_applicable_declared` in `--json`). `core-status.py --ci` exits 1 for an entry with no reason,
+  `reviewed_by` or date, one that has expired, one matching no rule, or one covering a protected rule. A
+  consumer that declares nothing sees no change.
+- Guard: no entry may cover `secrets-and-credentials` or `automation-safety` rules unless the registry marks
+  the rule `applicable_optional: true`. CONSUMING.md section 8 has the format and how it differs from a
+  waiver and an exception.
+- `opscenter/applicability.json` is the published list of `standards/rules.json` rule ids that apply to an ops
+  center, so both consumers' ops center reports compute against the same applicable set. It ships empty: a rule
+  is added when the owner decides it applies, and none has been decided yet.
+- `check-rules.py` reads it and fails when the file is missing or malformed, or lists an id that is not in
+  `rules.json` (or lists one twice). Ops center prerequisite P3.
+
 ## 2026-10-27 (v1.27.7, checker precision: secret names in argv, merge prose)
 
 - `scripting-python.1.3` (RC017): a secret NAME is not the secret. An argument after `-n`, `--name`,

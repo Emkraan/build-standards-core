@@ -514,7 +514,7 @@ workflow, and `--vendored OWNER/REPO` reads a vendored repo's record. It never c
 | `proved` | a `ci` or `test` proof record is valid; counted apart from `pass`, because the script did not watch it pass | a `ci` or `test` record in `standards-local/proofs.json` |
 | `attested` | a person looked: a dated `review` record that expires | a `review` record |
 | `waived` | the rule is set aside for this repo with a reason; never counted as proof and it expires | a `waiver` record |
-| `not_applicable` | a rule the core proves on the kit, in an app that does not adopt the kit whole (below) | nothing; adopt the UI or leave it |
+| `not_applicable` | a rule the core proves on the kit, in an app that does not adopt the kit whole (below); or a rule or group the repo declares has no surface here, with a reason ("Declaring rules that do not apply") | nothing for the kit case; a `$not_applicable` entry for the declared case |
 | `excepted` | findings sit inside a ratchet baseline or an active exception | a row in `standards-local/exceptions.md` that names the rule (README "Source of truth and explicit exceptions") |
 | `unverified` | nothing proves it yet: a `test` or `review` rule with no record, or an `overlay-ci` result that was not read | record a proof, or leave it on the operator's list |
 | `fail` | a finding above the baseline, a `core-ci.yml` or `lint-sweep.yml` job the rule needs is not installed, or a declared stack has no lint config | fix it; no record can turn a `fail` into anything else |
@@ -565,6 +565,45 @@ and overlays in both themes), `web-ui.26.1` (per-app dismissal keys), `web-shell
 `web-shell.5` (module CSS scope). An app that adopts the kit whole (the UI verdict `adopted`) reads `pass`
 for them; any other app reads `not_applicable`, counted apart in the summary. A proof record does not
 change a `not_applicable` rule: the way to a `pass` is to adopt the UI (`kit/MIGRATION.md`).
+
+### Declaring rules that do not apply: `$not_applicable`
+
+Scope by stack (the `Stacks` row of `parameters.md`) is coarse: a single-operator local app is `web` and
+still has no role model, no directory surface and no shell. Such a repo lists the rules or groups that have
+no real surface in it, in the same `standards-local/proofs.json`, under one reserved key:
+
+```json
+{
+  "$not_applicable": [
+    {"rule": "rbac", "reason": "one operator, no roles or permissions in the app", "date": "2026-10-27", "reviewed_by": "owner"},
+    {"rule": "web-shell", "reason": "single page, no shell or module registry", "date": "2026-10-27", "reviewed_by": "owner", "until": "2027-04-27"},
+    {"rule": "web-api-runtime.5.3", "reason": "no directory lookups", "date": "2026-10-27", "reviewed_by": "owner"}
+  ]
+}
+```
+
+- `rule` is a rule id or a group prefix. A prefix matches whole dotted segments: `rbac` covers `rbac` and
+  every `rbac.*`; `web-api-runtime.1` covers `web-api-runtime.1` and `web-api-runtime.1.4`, never
+  `web-api-runtime.10`.
+- `reason`, `date` (`YYYY-MM-DD`) and `reviewed_by` are required. `until` is optional; from the day after it
+  the entry is expired.
+- A covered rule that would read `unverified` reads `not_applicable` with the reason beside it, counted apart
+  from `waived`. A rule that has a result (`pass`, `fail`, `excepted`) or a proof (`proved`, `attested`,
+  `waived`) keeps that status: the declaration never hides a finding or replaces a proof.
+- Every entry is listed under `N/A` in the report and as `not_applicable_declared` in `--json`, with how
+  many rules it covers. `core-status.py --ci` exits 1 if an entry lacks a reason, `reviewed_by` or `date`,
+  is expired, matches no rule, or covers a protected rule; an entry with a problem applies to nothing, so
+  its rules go back to `unverified`. Without `--ci` the same lines are `PROBLEM`s and the exit code is
+  unchanged.
+- Guard: no entry may cover a rule of `secrets-and-credentials` or `automation-safety`, whatever the
+  prefix, unless the registry marks that rule `"applicable_optional": true`. Use it only for a rule with no
+  surface at all; a rule the app breaks is an exception, not a declaration.
+
+How it differs: a **waiver** sets aside a rule that applies but the repo will not meet, needs a record file
+and expires like a review. An **exception** (`exceptions.md`) accepts a known finding for a rule that
+applies, with an expiry. A **declaration** says the rule has nothing to apply to; no record file, and it
+is the only one of the three that covers a whole group. A kit rule's `not_applicable` (above) comes from
+the UI verdict, not from a declaration.
 
 ### The `repo-check` kind: RC001 to RC022
 
