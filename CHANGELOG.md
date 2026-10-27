@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-27 (v1.27.8, ops center design, ledger producer and drainer)
+
+- `opscenter/DESIGN.md` sections 3.1, 3.2 and the R3 row: the `ledger` kind may declare one
+  producer and one drainer instead of a single writer. The producer appends and never changes a
+  record. The drainer changes only the marker fields a record declares and never appends or
+  removes. The producer is the only role that prunes, by a retention pass that expires a drained
+  record older than `analyzer.spool_days` and never one still `new`. The R3 row is repaired as a
+  single line. Every other kind keeps exactly one writer. The section gives the acceptance test and
+  the conformance rule.
+
 ## 2026-10-27 (v1.27.7, checker precision: secret names in argv, merge prose)
 
 - `scripting-python.1.3` (RC017): a secret NAME is not the secret. An argument after `-n`, `--name`,
