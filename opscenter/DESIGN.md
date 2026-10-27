@@ -288,16 +288,20 @@ The engine is `local-ops-app` section 4 made shared code, with the gates as para
     consumer gets the safe default and one that already runs as an agent job keeps its tools.
   - **Conditions of the exception.** `agent_job` is allowed only under four conditions, and the
     conformance checker reads them from the declaration:
-    1. Post-validation steps, such as a board refresh, never run inside the job. The scheduler or
-       the engine runs them after validation.
-    2. The gate is the only builder of the job's input. The job has no fallback that rebuilds the
-       bundle when the file is missing or stale, it stops instead.
+    1. A post-validation step, such as a board refresh, may run at the end of the job only through
+       the engine's validation entry point, so the item file is validated before anything
+       publishes it, whoever runs the step. The step never reads or publishes the item file by
+       any other path.
+    2. A rebuild fallback inside the job, for a bundle that is missing or invalid, is allowed only
+       when it calls the same builder the gate uses (one build path with two callers). The job
+       never carries a second implementation of the builder.
     3. The engine validates the item file against the item contract below (required fields,
        priority values, every must-consider candidate covered or dropped) before the routing filter
        runs.
     4. The declared `reason` states that the tool policy is the prompt and not a technical limit.
-    The result is that the job reads one file (the bundle the gate wrote) and writes one file (the
-    item file).
+    The result is that the job reads the bundle the gate wrote (or rebuilds it through the gate's
+    own builder) and writes the item file, and nothing it runs afterwards reaches the board except
+    through the engine's validation.
   - **How the gate wakes the job.** The gate runs as the pre-run step of the scheduled job. It
     builds the input bundle, applies the gate rules above, and writes the bundle to a file. When
     the rules say skip, it prints nothing and the job does not start. When they say run, it prints
@@ -587,7 +591,7 @@ secret references name a store and a key, never a value.
 | writer | `live` (false), `rules[]` | three core approval rules, live | default deny |
 | analyzer | `min_gap_s` (1800), `retry_after_s` (1200), `daily_audit` (true), `alert_every_s` (14400), `spool_days` (14) | | B-13 |
 | model | `cmd`, `timeout_s`, `price_table`, `outlier_threshold`, `plan_usage_cmd` | `cmd` null disables the analyzer and briefs | |
-| model | `mode` (`subprocess` or `agent_job`) | `subprocess` | decided in section 11 item 6, `agent_job` is the declared exception and needs a `reason` plus the four conditions in section 2.6 |
+| model | `mode` (`subprocess` or `agent_job`) | `subprocess` | decided in section 11 item 6, `agent_job` is the declared exception and needs a `reason` plus the four conditions in section 2.6 (a post-validation step only through the engine's validation entry point, a rebuild fallback only through the gate's builder) |
 | routing | `rules_file`, `ignore_senders[]`, `ignore_subject_regex[]`, `priority_senders[]` | | collectors |
 | notify | `channel`, `cmd`, `quiet_hours` (`22:00-07:00`), `dedupe_prefix` | | B-12, A-97 |
 | sign_in | `check_every_s`, `remint_timeout_s` (330), `alert_after` | | loop timings |
@@ -790,9 +794,11 @@ Then the same swap PR as 10.1. The hub consumer's standards repo retires in favo
 6. **Analyzer model call (2026-10-27).** The model call is a no-tools subprocess through
    `model.cmd`. A consumer whose analyzer is an agent job declares the exception with
    `model.mode = agent_job` plus a `reason`, the same pattern as `commit_domains`, under four
-   conditions: post-validation steps run outside the job, the gate is the only builder of the
-   job's input with no rebuild fallback, the engine validates the item file against the item
+   conditions: a post-validation step (a board refresh) may run at the end of the job only through
+   the engine's validation entry point, a rebuild fallback inside the job is allowed only when it
+   calls the same builder the gate uses, the engine validates the item file against the item
    contract before the routing filter runs, and the `reason` states that the tool policy is the
-   prompt and not a technical limit. The job then reads one file and writes one file. Its output
-   is still validated against the item contract and the routing filter, so the engine keeps that
+   prompt and not a technical limit. The job reads the bundle the gate wrote and writes the item
+   file, and nothing it runs afterwards reaches the board except through the engine's
+   validation. Its output is still validated against the item contract and the routing filter, so the engine keeps that
    guarantee (section 2.6).
