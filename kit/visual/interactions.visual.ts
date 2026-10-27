@@ -91,6 +91,22 @@ test('the shell mounts one tip layer: a disabled reason and a term meaning show 
 
   // The page above the specimen can still settle on a slow runner, and a scroll hides a tip, so hover again until it holds.
   // The pointer leaves between tries, because a hover over an element the pointer already rests on raises no event.
+  const diag = await page.evaluate(
+    () =>
+      new Promise<string>((resolve) => {
+        let scrolls = 0;
+        let moves = 0;
+        window.addEventListener('scroll', () => (scrolls += 1), true);
+        document.addEventListener('pointerover', () => (moves += 1), true);
+        const y0 = window.scrollY;
+        setTimeout(() => resolve(`scrollY ${y0} -> ${window.scrollY}, scroll events ${scrolls}, tips ${document.querySelectorAll('[data-tip]').length}`), 1500);
+      }),
+  );
+  await page.mouse.move(5, 5);
+  await scale.hover({ force: true });
+  await page.waitForTimeout(1500);
+  const after = await page.evaluate(() => `tooltips ${document.querySelectorAll('.tooltip').length}, hovered ${document.querySelector('#specimen-tips .btn:hover')?.textContent ?? 'none'}`);
+  expect(`${diag} | ${after}`, 'DIAG').toBe('x');
   await expect(async () => {
     await page.mouse.move(1, 1);
     await scale.hover({ force: true });
