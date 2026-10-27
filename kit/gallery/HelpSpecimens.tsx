@@ -78,7 +78,7 @@ export function TipsSpecimen() {
       <StatRow label="Summary">
         <Stat label="Online" value={4} tip="Checked in within 15 minutes." />
         <Stat label="Offline" value={1} tone="danger" tip="No check-in for a day." onClick={() => undefined} />
-        <Stat label="Pools" value={2} info={<InfoTip id="pool" />} />
+        <Stat label="Draining" value={2} info={<InfoTip id="drain" />} />
       </StatRow>
       <Card>
         <CardHead title="Hosts" info="Every host in the pool, with its current state." level={3} />
