@@ -111,6 +111,8 @@ test('the shell mounts one tip layer: a disabled reason and a term meaning show 
   await page.mouse.move(1100, 450);
   await expect(async () => {
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await scale.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    await page.waitForTimeout(300);
     await page.keyboard.press('Shift');
     await scale.focus();
     await expect(scale).toBeFocused();
@@ -120,6 +122,9 @@ test('the shell mounts one tip layer: a disabled reason and a term meaning show 
 
   const term = specimen.locator('.term').first();
   await expect(async () => {
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await term.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    await page.waitForTimeout(300);
     await page.keyboard.press('Shift');
     await term.focus();
     await expect(tip).toHaveCount(1, { timeout: 2000 });
