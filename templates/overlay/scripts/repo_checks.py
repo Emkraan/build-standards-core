@@ -40,7 +40,11 @@ SKIP_DIRS = {
     ".turbo",
 }
 MARK = "core-exception:"
-TEST_PART = re.compile(r"(^|/)(tests?|__tests__|e2e|spec)(/|$)|\.(test|spec)\.[A-Za-z]+$")
+TEST_PART = re.compile(
+    r"(^|/)(tests?|__tests__|e2e|spec)(/|$)"
+    r"|\.(test|spec)\.[A-Za-z]+$"
+    r"|(^|/)(test_[^/]*|[^/]*_test|conftest)\.py$"
+)
 
 
 class Repo:
@@ -682,6 +686,31 @@ IMPORT_ALIASES = {
     "pkg_resources": "setuptools",
     "mpl_toolkits": "matplotlib",
     "skimage": "scikit-image",
+    "docx": "python-docx",
+    "pptx": "python-pptx",
+    "fitz": "pymupdf",
+    "zmq": "pyzmq",
+    "nacl": "pynacl",
+    "dns": "dnspython",
+    "socks": "pysocks",
+    "slugify": "python-slugify",
+    "grpc": "grpcio",
+    "websocket": "websocket-client",
+    "telegram": "python-telegram-bot",
+    "socketio": "python-socketio",
+    "engineio": "python-engineio",
+    "xlib": "python-xlib",
+    "bson": "pymongo",
+    "mysqldb": "mysqlclient",
+    "faiss": "faiss-cpu",
+    "gi": "pygobject",
+    "cairo": "pycairo",
+    "bluetooth": "pybluez",
+    "jenkins": "python-jenkins",
+    "pythonjsonlogger": "python-json-logger",
+    "ruamel": "ruamel.yaml",
+    "snappy": "python-snappy",
+    "wx": "wxpython",
 }
 # modules provided by pywin32 (the distribution name differs from every import name)
 for _m in [
@@ -1097,7 +1126,20 @@ def rc016(repo):
 # ---------------------------------------------------------------- RC017 no secret in a subprocess argument
 
 SECRET_NAME = re.compile(r"password|passwd|secret|token|api[_-]?key|credential", re.I)
-SAFE_SUFFIX = re.compile(r"(stdin|file|path|env|name|id|url|dir)$", re.I)
+SAFE_SUFFIX = re.compile(r"(stdin|file|path|env|name|id|url|dir|src)$", re.I)
+WRAPPERS = {"str", "Path", "PurePath", "fspath", "join", "abspath", "realpath", "expanduser"}
+
+
+def unwrap_arg(el):
+    """Strip simple wrapper calls (str, Path, os.fspath, os.path.join of such names) to the bare names."""
+    import ast
+
+    if isinstance(el, ast.Call):
+        f = el.func
+        fn = f.attr if isinstance(f, ast.Attribute) else getattr(f, "id", "")
+        if fn in WRAPPERS and el.args and not el.keywords:
+            return " ".join(unwrap_arg(a) for a in el.args)
+    return ast.unparse(el)
 SUBPROCESS_CALLS = {"run", "Popen", "call", "check_call", "check_output"}
 
 
@@ -1132,9 +1174,12 @@ def rc017(repo):
                     )
                     hit = bool(flag and i + 1 < len(items) and "=" not in el.value)
                 else:
+                    txt = unwrap_arg(el)
                     hit = bool(
-                        SECRET_NAME.search(ast.unparse(el))
-                        and not SAFE_SUFFIX.search(ast.unparse(el))
+                        SECRET_NAME.search(txt)
+                        and not all(
+                            SAFE_SUFFIX.search(t) or not SECRET_NAME.search(t) for t in txt.split()
+                        )
                     )
                 if hit and not skipped(lines, el.lineno - 1):
                     out.append(

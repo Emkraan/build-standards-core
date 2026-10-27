@@ -374,6 +374,41 @@ class TestBatch2(Tree):
         )
         self.assertIn("no lock file", self.run_check("RC012")[0][2])
 
+    def test_rc012_docx_and_more_aliases(self):
+        pairs = {
+            "docx": "python-docx",
+            "pptx": "python-pptx",
+            "fitz": "pymupdf",
+            "zmq": "pyzmq",
+            "nacl": "pynacl",
+            "dns": "dnspython",
+            "grpc": "grpcio",
+            "slugify": "python-slugify",
+            "websocket": "websocket-client",
+            "PIL": "pillow",
+            "yaml": "pyyaml",
+        }
+        for mod, dist in pairs.items():
+            self.put(
+                {
+                    "app/main.py": f"import {mod}\n",
+                    "requirements.txt": f"# reason\n{dist}==1.0\n",
+                }
+            )
+            self.assertEqual(self.run_check("RC012"), [], mod)
+
+    def test_rc002_test_files_are_not_production(self):
+        bad = "import subprocess\nsubprocess.run(['gh', 'pr', 'merge', '1'])\n"
+        files = {
+            "pkg/foo_test.py": bad,
+            "pkg/test_foo.py": bad,
+            "pkg/conftest.py": bad,
+            "test/a.py": bad,
+            "tests/b.py": bad,
+        }
+        self.passes("RC002", files)
+        self.fails("RC002", {"pkg/prod.py": bad})
+
     def test_rc012_import_alias_gaps(self):
         pairs = {
             "googleapiclient": "google-api-python-client",
@@ -492,6 +527,17 @@ class TestBatch3(Tree):
             "RC017", {"t.py": "import subprocess\nsubprocess.run(['tool', '--password', pw])\n"}
         )
         self.fails("RC017", {"t.py": "import subprocess\nsubprocess.run(['tool', api_token])\n"})
+
+    def test_rc017_wrapped_safe_suffix_names_pass(self):
+        self.passes(
+            "RC017",
+            {
+                "t.py": "import subprocess, os\nfrom pathlib import Path\nsubprocess.run(['cp', str(SECRETS_SRC), Path(SECRETS_DIR), os.fspath(TOKEN_FILE), os.path.join(SECRETS_DIR, TOKEN_PATH)])\n"
+            },
+        )
+
+    def test_rc017_wrapped_secret_still_fails(self):
+        self.fails("RC017", {"t.py": "import subprocess\nsubprocess.run(['tool', str(api_token)])\n"})
 
     def test_rc017_clean(self):
         self.passes(

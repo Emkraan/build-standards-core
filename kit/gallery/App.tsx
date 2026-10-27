@@ -497,7 +497,7 @@ function ScrollSpecimen() {
   ];
   return (
     <>
-      <span className="gallery-note">Table capped: at most the window height less 15rem, never under 16rem, with its own scrollbars:</span>
+      <span className="gallery-note">Table capped: at most the window height less 15rem, shrinking to a short table, with its own scrollbars:</span>
       <Table caption="Device groups, capped" capped columns={COLUMNS} rows={ROWS} rowKey={(r) => r.id} />
       <span className="gallery-note">LaneBoard fit: the window height less 6rem, never under 360px; each lane scrolls on its own:</span>
       <LaneBoard lanes={lanes} onMove={() => {}} label="Fitted board" fit />

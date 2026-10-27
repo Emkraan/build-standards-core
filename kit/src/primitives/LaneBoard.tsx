@@ -29,7 +29,7 @@ export interface LaneBoardProps<T extends LaneBoardCard = LaneBoardCard> {
   /** Shown in a lane with no cards. */
   emptyText?: string;
   label?: string;
-  /** Sizes the board to the window with a floor (UI standard rule 12): the board is the window height
+  /** Sizes the board to the window with a floor (a short window never traps the page): the board is the window height
       less room for the page header, never shorter than 360px, scrolls sideways on its own edge and each
       lane scrolls vertically on its own. Use it inside a page that is one vertical scroll container
       (`page-scroll`). Default false: the board is as tall as its tallest lane. */

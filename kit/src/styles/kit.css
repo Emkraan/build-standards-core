@@ -682,7 +682,7 @@ button.md-link { padding: 0; border: 0; background: transparent; font: inherit; 
 .table th.table-select, .table td.table-select { width: 1%; padding: 0 var(--space-2) 0 var(--space-3); }
 .table th.table-select .choice, .table td.table-select .choice { vertical-align: middle; }
 /* stickyHead={false}: the head stays in place, for a short table inside a card. */
-.table-wrap[data-capped] { max-height: calc(100vh - 15rem); min-height: 16rem; }
+.table-wrap[data-capped] { max-height: calc(100vh - 15rem); }
 .table-wrap[data-sticky-head="false"] .table th { position: static; }
 /* mobile="cards": on a phone each row becomes a card of label and value pairs; the head is kept for
    assistive technology but visually hidden, and each cell shows its column header as its label. */
@@ -1871,7 +1871,7 @@ button.month-grid-chip { cursor: pointer; }
 .lane-board[data-fit] { height: calc(100vh - 6rem); min-height: 360px; }
 .lane-board[data-fit] .lane-board-lane { min-height: 0; overflow-y: auto; }
 /* page-scroll: the page is ONE vertical scroll container, so a header never has to be capped and a board
-   or table below it keeps its own scrollbars on a short window (UI standard rule 12). Never put
+   or table below it keeps its own scrollbars on a short window (a short window never traps the page). Never put
    overflow: hidden on a flex parent to fit a board. */
 .page-scroll { height: 100%; min-height: 0; overflow-y: auto; }
 .lane-board-lane { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; padding: var(--space-2); background: var(--surface-inset); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }

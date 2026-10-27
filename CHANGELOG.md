@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
+
+- `repo_checks.py` RC012: the import-name to distribution map gains `docx` (`python-docx`), `pptx`, `fitz`,
+  `zmq`, `nacl`, `dns`, `grpc`, `slugify`, `websocket`, `telegram`, `socketio`, `engineio`, `bson`, `mysqldb`,
+  `faiss`, `gi`, `cairo`, `bluetooth`, `jenkins`, `ruamel`, `snappy`, `wx`, `xlib` and `pythonjsonlogger`.
+- RC017 (`scripting-python.1.3`): simple wrapper calls (`str()`, `Path()`, `os.fspath()`, `os.path.join()`) are
+  unwrapped before the safe-suffix test, so `str(SECRETS_SRC)` passes; `src` is a safe suffix. A wrapped bare
+  secret name still fails.
+- RC002 (`pr-review-and-merge.1.6`) and every check that skips tests: the test-path classifier now treats
+  `test_*.py`, `*_test.py` and `conftest.py` as tests (it already covered `test/` and `tests/` folders).
+- Kit: `.table-wrap[data-capped]` no longer sets `min-height: 16rem`, so a short capped table has no blank
+  space under it; the cap stays through `max-height`. Docs and the gallery note follow. Comments no longer name
+  the UI standard by rule number.
+
 ## 2026-10-26 (v1.27.4, four doc contradictions fixed)
 
 - Docs only. `CONTRIBUTING.md`: the rebase instruction is replaced by the core's rule (never rebase; merge
