@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27 (v1.27.6, checkout health probe and companions)
+
+- Design only. `opscenter/DESIGN.md` section 7.1: strategy `checkout` defines its health probe (`deploy.health_path`, default `/api/health`, must report the target commit within `deploy.health_timeout_s` and pass the conformance check) and a list of companion paths (`deploy.companions`) installed into the agent home only after the probe passes. A companion whose destination differs from both the previous and the target commit's file is local drift, is left in place and raises one board item. Both parameters are listed in section 6.
+
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 
 - `repo_checks.py` RC012: the import-name to distribution map gains `docx` (`python-docx`), `pptx`, `fitz`,

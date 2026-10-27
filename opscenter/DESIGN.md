@@ -565,7 +565,7 @@ secret references name a store and a key, never a value.
 | jobs | manifest `[{name, schedule, expected_every_s, grace_s, feeds, quiet}]` | the core jobs | A-98 |
 | heartbeats | `names[]`, `sync_from_tags` (false) | from the job manifest | A-87 |
 | freeze | `source` | null | slot name |
-| deploy | `strategy` (`copy` or `checkout`), `keep_releases` (3), `health_timeout_s` (30) | `copy` | B-07 |
+| deploy | `strategy` (`copy` or `checkout`), `keep_releases` (3), `health_timeout_s` (30), `health_path` (`/api/health`), `companions[]` (`{from, to}`, default none) | `copy` | B-07, section 7.1 |
 | automerge | `enabled` (true), `hold_label`, `method` | repo's declared method | B-08 |
 | autofix | `own_sync_pr` (true) | | A-65, kill switch |
 | discovery | `roots[]`, `ignore[]` | `[workspace_root]` | section 8.2 |
@@ -594,7 +594,23 @@ Strategy `copy` (default):
    `deploy.keep_releases` releases.
 
 Strategy `checkout`: fast-forward a live checkout to the target commit, build in place, restart,
-health check; on failure reset to the previous commit, rebuild, restart. Same health gate.
+then run the health probe. On failure reset to the previous commit, rebuild, restart and probe
+again, and report once. Same health gate as `copy`, and a build failure alone is never the only
+trigger for the rollback.
+
+- **Health probe.** A `GET` of `deploy.health_path` (default `/api/health`) repeated until it reports
+  the target commit within `deploy.health_timeout_s`, then `conformance --server` passes. A probe
+  that never answers, answers with another commit or fails conformance is a failed deploy.
+- **Companion paths.** `deploy.companions[]` lists files the ops center ships for the agent home as
+  `{from: <path in the repo>, to: <path under host.agent_home>}`. They install only after the health
+  probe passes, so a failed deploy leaves the agent home as it was. For each companion that changed
+  between the previous and the target commit:
+  1. A destination that is absent, or whose content hash equals the previous commit's file, is
+     replaced with the target commit's file.
+  2. A destination whose content hash is neither is local drift. It is left in place, nothing is
+     overwritten, and one board item names the file and says the drift needs the owner's decision.
+  3. A companion that did not change between the two commits is not touched.
+  4. A destination outside `host.agent_home` is refused when the parameters file is read.
 
 - Drift check (B-28): `--check` compares `current/release.json` to the committed head and the
   content hash of the runtime tree; drift is one board item.
