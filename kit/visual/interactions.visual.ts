@@ -107,14 +107,23 @@ test('the shell mounts one tip layer: a disabled reason and a term meaning show 
   await expect(tip).toHaveCount(0);
 
   // The button is a tab stop, so the reason reaches a keyboard user as well.
-  await scale.focus();
-  await expect(scale).toBeFocused();
-  await expect(tip).toHaveCount(1);
+  // Park the pointer, and take the focus from the keyboard (a Tab reaches the button), so the layer sees keyboard focus.
+  await page.mouse.move(1100, 450);
+  await expect(async () => {
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.keyboard.press('Shift');
+    await scale.focus();
+    await expect(scale).toBeFocused();
+    await expect(tip).toHaveCount(1, { timeout: 2000 });
+  }).toPass({ timeout: 20000 });
   await expect(tip).toHaveText(/Choose a host pool first/);
 
   const term = specimen.locator('.term').first();
-  await term.focus();
-  await expect(tip).toHaveCount(1);
+  await expect(async () => {
+    await page.keyboard.press('Shift');
+    await term.focus();
+    await expect(tip).toHaveCount(1, { timeout: 2000 });
+  }).toPass({ timeout: 20000 });
   await expect(tip).toHaveText('A group of machines that share one image and settings.');
 });
 
