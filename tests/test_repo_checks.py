@@ -537,7 +537,9 @@ class TestBatch3(Tree):
         )
 
     def test_rc017_wrapped_secret_still_fails(self):
-        self.fails("RC017", {"t.py": "import subprocess\nsubprocess.run(['tool', str(api_token)])\n"})
+        self.fails(
+            "RC017", {"t.py": "import subprocess\nsubprocess.run(['tool', str(api_token)])\n"}
+        )
 
     def test_rc017_clean(self):
         self.passes(
