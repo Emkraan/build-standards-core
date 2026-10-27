@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-27 (v1.28.2, the kit drops the glow outside the four allowed uses)
+
+- Kit fix (web-ui.0.3, one glow recipe): consumers see the progress bar, the meter fill and the search field focus
+  ring lose the glow. The search field focus now uses the standard `--focus-ring`, and the progress and meter
+  fills are flat with the same hue and size. Flow graph nodes and node icons with a hue lose their idle glow
+  (the selected node keeps its ring). The stat tile, selected cards, the active nav marker and chart bars are
+  unchanged. The sidebar brand mark in the kit stylesheet never carried a glow.
+- New `tests/test_kit_glow.py` fails if a glow token, text-shadow or coloured blurred shadow appears in the kit
+  stylesheets outside the allowed selectors.
+- `standards/web-build.md` notes that two test files that each start a dev server need separate dependency caches
+  with the dependency scan disabled.
+
 ## 2026-10-27 (v1.28.1, ops center design, state writer command line)
 
 - `opscenter/DESIGN.md` sections 1.1, 2.1, 3.2 and the R3 row: `state.py` is callable outside the
