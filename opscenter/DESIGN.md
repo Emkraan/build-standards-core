@@ -628,7 +628,18 @@ only what differs.
 1. Checks: core clone present and current; `consumer.json` version; the code host CLI signed in.
 2. The ops center repo: creates it from the core template when absent, or takes an existing one
    (`--ops-center PATH`). Syncs `opscenter-core/`, `kit-core/`, `tokens-core/` and the overlay with
-   its lock.
+   its lock. `PATH` may be the repo root, the app folder inside it, or a symbolic link to either, for
+   example a deployed checkout that the state tree reaches through a link to its app folder:
+   - `adopt` resolves the link (real path), walks up to the git top level and takes that repo. A
+     path that resolves outside any git repository, or to a repo with no ops center app, is refused
+     with the resolved path in the message.
+   - The consumer entry's `path` records the resolved top level, so a later change of the link does
+     not move the registration. The dry run prints both the path given and the resolved one.
+   - `adopt` never replaces, removes or retargets the link, and never writes through it into any
+     repo other than the resolved one.
+   - A checkout that is also the live deployed copy (`deploy.strategy` `checkout`) is taken without
+     switching its branch or editing its working tree. The sync lands in a separate worktree by
+     pull request (`apply_via: pr`), and the deploy step then fast-forwards the live checkout.
 3. `local/params.json`: prompts for every required parameter row, fills discovered values
    (account, repos, report issue), writes and validates it. Includes the `Commit emails` row the hub
    consumer found missing.
