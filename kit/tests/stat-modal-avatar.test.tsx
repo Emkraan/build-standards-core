@@ -2,7 +2,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import axe from 'axe-core';
 import { describe, expect, it, vi } from 'vitest';
-import { Avatar, IconCheck, Modal, StatTile, initialsOf } from '../src';
+import { Avatar, IconCheck, Modal, StatTile, TooltipLayer, initialsOf } from '../src';
 
 describe('StatTile delta, selected and tip', () => {
   it('renders the delta with a hidden direction word and an aria-hidden arrow', () => {
@@ -40,10 +40,25 @@ describe('StatTile delta, selected and tip', () => {
     expect(container.querySelector('.kpi-tile')?.hasAttribute('aria-pressed')).toBe(false);
   });
 
-  it('serves the tip from a visible info icon, not from the tile', () => {
+  it('passes the tip to the shared tooltip layer', () => {
     const { container } = render(<StatTile label="x" value={1} tip="Why this number" />);
+    expect(container.querySelector('.kpi-tile')?.getAttribute('data-tip')).toBe('Why this number');
+  });
+
+  it('serves the tip from a visible info icon, not from the tile, once the tip layer is mounted', () => {
+    const { container } = render(
+      <>
+        <TooltipLayer />
+        <StatTile label="x" value={1} tip="Why this number" />
+      </>,
+    );
     expect(container.querySelector('.kpi-tile')?.hasAttribute('data-tip')).toBe(false);
     expect(container.querySelector('.kpi-tile .info-tip')?.getAttribute('data-tip')).toBe('Why this number');
+  });
+
+  it('shows no info icon without the tip layer', () => {
+    const { container } = render(<StatTile label="x" value={1} tip="Why this number" />);
+    expect(container.querySelector('.info-tip')).toBeNull();
   });
 
   it('keeps the click and key behaviour', () => {
