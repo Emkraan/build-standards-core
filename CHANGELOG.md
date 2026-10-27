@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-27 (v1.27.6, ops center design, analyzer ambient age and hash exclusion)
+
+- `opscenter/DESIGN.md` sections 2.6, 6 and the R5 row: two optional cuts on the analyzer's change
+  test. `analyzer.ambient_max_age_s` holds a wake caused only by ambient candidates (addressed
+  `none`) until the last run is that old. `analyzer.hash_exclude` leaves listed fields and
+  senders (including the owner's own messages) out of the bundle hash. Both are off by default, so
+  the gate is unchanged until a consumer sets them. The section gives the acceptance test.
+
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 
 - `repo_checks.py` RC012: the import-name to distribution map gains `docx` (`python-docx`), `pptx`, `fitz`,
