@@ -6,7 +6,7 @@
 - The standards here are the source of truth. Never write that an app's code outranks a doc.
 - One topic per doc. Link between docs with relative links; `check-links.py` verifies them.
 - Agnostic only. `checks/denylist.sha256` (hashed, so it names nothing) and each contributor's
-  private denylist hold terms that must never appear. Add a new source's names to your private denylist before ingesting it. No real email
+  private denylist hold terms that must never appear. Add a new source's names to your private denylist before contributing from it. No real email
   addresses in files.
 - Only noreply author emails land in history (pr-review-and-merge.md 1.18). No account setting is
   required: `merge-pr.py` builds the squash commit with the noreply author and merges it with `--rebase`.
@@ -15,9 +15,10 @@
   the merge commit back and, on a leak, prints the exact recovery (an owner-approved history rewrite)
   and exits non-zero.
 - Commit with a GitHub noreply email (`check-authors.py` fails anything else) and enable the hook:
-  `git config core.hooksPath checks/hooks`. The hook runs `check-sanitised.py` and
-  `check-consumer-neutral.py` in diff mode (`--staged`: only the lines the commit adds). CI runs the same
-  two checks as `--diff <base commit>` over the pull request's added lines, so a commit made with
+  `git config core.hooksPath checks/hooks`. The hook refuses a `user.email` that is not a noreply address,
+  runs `check-sanitised.py` and `check-consumer-neutral.py` in diff mode (`--staged`: only the lines the
+  commit adds), and runs `check-ascii.py` and `check-links.py`. CI runs the first two
+  as `--diff <base commit>` over the pull request's added lines, so a commit made with
   `--no-verify` is caught there; a hit already in a historical file (a changelog entry) is not the
   change's to fix. Run with no argument they check the whole tree, which is what the weekly sweep
   (`sweep.yml`) does.
@@ -36,6 +37,9 @@
 - Shared Hermes skills are named `core-<name>` and live in `hermes/skills/`. Any shareable improvement
   found in a consumer comes back here in the same piece of work (`hermes/README.md` section 4).
 - Do not force-push `main`. Changes land by pull request.
+- Repository secrets: `DEPLOY_APP_PRIVATE_KEY` (with the variable `DEPLOY_APP_ID`) is the private key of the
+  GitHub App the merge workflow `automerge.yml` signs in as. It is the only secret the workflows read; the
+  built-in `GITHUB_TOKEN` is the rest. `repo_checks.py` (RC010) fails a workflow secret named nowhere in the docs.
 - Never put a GitHub closing keyword (`close`, `closes`, `closed`, `fix`, `fixes`, `fixed`,
   `resolve`, `resolves`, `resolved`) in front of a reference to a `consumer-report` issue in a pull
   request title, body or commit message: merging would close that account's report. Link it with
@@ -44,21 +48,24 @@
 - Authority: the repo owner is the final say on every standard, and every consumer account is that
   same person. Pull requests here come from the upward path below: a build reports, the owner
   approves items, and the account that owns an approved item opens the pull request and merges it
-  once `ci` and `visual` pass; no second reviewer is required. The checks and the rebase rule
+  once `ci` and `visual` pass; no second reviewer is required. The checks and the merge rule
   below take the place of review. Do not wait for another account to act, and do not leave a
   shareable improvement in a consumer: bring it up through its report.
-- Rebase before you push and again before you merge: `git fetch origin && git rebase origin/main`,
-  then re-run the checks. Work from a branch cut from the current `origin/main`, in your own
-  worktree. Never resolve a conflict by taking your whole side of a file, and never overwrite a
-  file from a stale copy; read what landed on `main` since you branched and keep it. Use
-  `--force-with-lease` on your own branch only. Squash merge so one change is one commit.
-- Category survey: ingest is not only per source. When the Hermes docs, its plugin catalog, a
+- Never rebase. Work from a branch cut from the current `origin/main`, in your own worktree, and
+  bring in what landed since with a merge: `git fetch origin main` then `git merge FETCH_HEAD`, before
+  you push and again before you merge, then re-run the checks. Never resolve a conflict by taking your
+  whole side of a file, and never overwrite a file from a stale copy; read what landed on `main` since
+  you branched and keep it. The version is assigned at merge: when another change took your
+  `CHANGELOG.md` top entry's number, renumber that entry above the latest tag (`git ls-remote --tags
+  origin 'v*'`) and run the checks again. Never force-push. Squash merge so one change is one commit.
+- Category survey: contributions are not only per source. When the Hermes docs, its plugin catalog, a
   consumer's setup or an audit shows a class of tooling or setting that no doc covers, it gets a
   decision here (`hermes/tools.json` and `hermes/configurations.md` for Hermes) even if no source
-  wrote it up. `ingest/hermes-token-economy-gap.md` is the worked example.
-- Ingest rule: a source rule is adopted if it is generic, adapted if it is generic once a business
-  name or platform is parameterised, and rejected if it only makes sense inside one business.
-  Record each decision in `ingest/<source>.md`.
+  wrote it up.
+- Adoption rule: a source rule is adopted if it is generic, adapted if it is generic once a business
+  name or platform is parameterised, and rejected if it only makes sense inside one business. The
+  pull request description states the decision (adopt, adapt or reject) for each rule; provenance is
+  kept with the contributing account, never in this repo.
 
 ## Reporting from a consumer
 
@@ -153,10 +160,10 @@ author. The body has a hard limit of 65,536 characters; whole tables move to a m
 gist when it does not fit, linked by the same raw URL form (`.../raw/<file>.md`, the login allowed
 there too), and the items and nightly markers stay in the body.
 
-**When the core took something from your repo.** The record in `ingest/` is provenance, not
-a subscription. The core does not pull your repo's later changes, and your repo is not
-exempt from the core. Both directions run through this repo like any other consumer's: your
-repo's later changes arrive as report items the owner approves, then one pull request per
-change with its evidence; a wrong core copy of an ingested design is fixed by a report item,
-not a direct write.
+**When the core took something from your repo.** The provenance stays with your account, and the pull
+request description records what was adopted, adapted or rejected. It is not a subscription. The core
+does not pull your repo's later changes, and your repo is not exempt from the core. Both directions run
+through this repo like any other consumer's: your repo's later changes arrive as report items the owner
+approves, then one pull request per change with its evidence; a wrong core copy of a contributed design
+is fixed by a report item, not a direct write.
 

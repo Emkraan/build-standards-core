@@ -84,7 +84,7 @@ instead (the core is public, so no key or token is involved):
 Every consumer account belongs to the same owner, who is the final say on the standard. That makes
 every consumer account a full contributor: it may open a pull request here, and it may merge its own
 pull request once `ci` and `visual` pass. No second reviewer is needed, because the approval would be
-the same person. The checks and the rebase rule in [CONTRIBUTING.md](../CONTRIBUTING.md) are what
+the same person. The checks and the merge rule in [CONTRIBUTING.md](../CONTRIBUTING.md) are what
 stand in for review.
 
 - Any shareable improvement found while working in a consumer comes back here in the same piece of
@@ -107,7 +107,7 @@ which registers the Hermes cron job `core-nightly`. Each night it runs `hermes/n
 core clone:
 
 1. Pull the clone (four tries with backoff). If the job itself changed, the new copy takes over.
-2. `sync_skills.py`: install the `core-` skills.
+2. `sync_skills.py --dest <skills dir>`: install the `core-` skills (`--dest` is required; the nightly passes the profile's `skills/core` folder).
 3. `apply_setup.py`: for every required entry in `tools.json` install the binary (brew, then cargo),
    run the plugin's install command and enable it, install skills with `hermes skills install`
    (which runs the Hermes security scan), and apply the listed settings with `hermes config set`.
@@ -158,7 +158,7 @@ Consumption feed (`hermes/consumption.py`): every run writes `~/.config/build-st
 atomically, the one file every ops center's Core consumption panel renders (`standards/local-ops-app.md`
 section 19 holds the schema). Read-only on every remote, never posted, never writes to another account's issue.
 
-Upward report (`hermes/report.py`, needs `report_repo`, a PRIVATE intake, in `consumer.json` or
+Upward report (`hermes/report.py`, needs `report_repo`; `report_issue` pins the issue to update, a PRIVATE intake, in `consumer.json` or
 `CORE_REPORT_REPO`; never the core, which is public): each account has one open issue labelled
 `consumer-report` in that intake. The text between `<!-- nightly:candidates:start -->` and `...:end -->` lists local parts
 that duplicate or extend a kit role, local tokens or classes the UI lint flags, and new local additions.

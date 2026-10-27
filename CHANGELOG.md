@@ -1,13 +1,257 @@
 # Changelog
 
-## 2026-10-26 (v1.14.1, opscenter/applicability.json and its check)
+## 2026-10-27 (v1.27.7, checker precision: secret names in argv, merge prose)
 
-- `opscenter/applicability.json` is the published list of `standards/rules.json` rule ids that apply to an ops
-  center, so both consumers' ops center reports compute against the same applicable set. It ships empty: a rule
-  is added when the owner decides it applies, and none has been decided yet.
-- `check-rules.py` reads it and fails when the file is missing or malformed, or lists an id that is not in
-  `rules.json` (or lists one twice). Tests cover a passing and a failing fixture and the published file.
-  Ops center prerequisite P3.
+- `scripting-python.1.3` (RC017): a secret NAME is not the secret. An argument after `-n`, `--name`,
+  `--secret-name` or `--secret_name`, or one ending `.name`, `_name` or `_id`, no longer fails. An f-string is
+  tested per interpolated expression, so `f"origin/main:{SECRETS_PATH}"` passes while `str(api_token)` and
+  `f"{api_token}"` still fail.
+- `pr-review-and-merge.1.6` (RC002): prose is not a merge command. Python docstrings and standalone string
+  statements are skipped (read with `ast`), and adjacent string literals count as one string. A real
+  `["gh", "pr", "merge", ...]` argv or `gh pr merge` line without a head pin still fails.
+
+## 2026-10-27 (v1.27.6, consumer report fixes: gate rename, sweep lockfile, merge sha, report issue)
+
+- Gate rename deadlock: `core-ci.py required-checks --fix` now rewrites a `REQUIRED_CHECKS` list in a gate
+  workflow (one-line and block forms; quoting, separator and own checks kept) and, when it cannot edit the
+  value safely, prints the exact replacement line with its file and line number. `--lists-only` checks only
+  a workflow list, needs no remote read and skips a ruleset-gated repo. `sync-core.py` applies the rewrite in
+  the sync pull request and prints the ordering rule (a newly required job must exist on the default branch
+  before the gate lists it). `core-ci.yml` (template and reusable) gains the step `core-required-checks`,
+  which exits non-zero on a mismatch so a sync pull request fails before merge.
+- New `core-ci.py required-names` and the template `templates/overlay/.github/workflows/automerge.yml`: the
+  gate reads the required core job names from the synced `core-ci.yml`, so a rename reaches it in the same
+  sync. A workflow that calls `required-names` counts as requiring every core-ci job. The template is
+  copied once, not synced. CONSUMING.md section 13 documents the bootstrap (merge the fix pull request once
+  by hand, squash, pinned to the reviewed head sha) and the ordering rule.
+- `ci-cd-release.2.1` weekly lint sweep: the install step looks for a lockfile in the app directory: the new
+  parameters row "App directory", else the root, else the first folder one level down that tracks one. The
+  install and the sweep command run there (`app_dir` and `sweep_web` params). `lint-sweep.yml` stays
+  core-managed, so a consumer needs no local edit.
+- `pr-review-and-merge.1.6` (RC002): the checker reads the whole merge call statement (continuation lines
+  and the neighbouring body construction), so a head sha passed through a jq-built body on another line is
+  accepted. The rule text now says the sha must be in the merge call statement.
+- Docs: `hermes/sync_skills.py` steps now show the required `--dest` argument.
+- Hermes nightly report: the report issue is found by the configured number (`report_issue` in
+  `consumer.json` or `CORE_REPORT_ISSUE`), then the search, then the REST issues listing (no search index)
+  filtered to this account, so a search lag or a missed filter no longer opens a second "Consumer report:
+  candidates for the core" issue next to the existing one.
+
+## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
+
+- `repo_checks.py` RC012: the import-name to distribution map gains `docx` (`python-docx`), `pptx`, `fitz`,
+  `zmq`, `nacl`, `dns`, `grpc`, `slugify`, `websocket`, `socketio`, `engineio`, `bson`, `mysqldb`,
+  `faiss`, `gi`, `cairo`, `bluetooth`, `jenkins`, `ruamel`, `snappy`, `wx`, `xlib` and `pythonjsonlogger`.
+- RC017 (`scripting-python.1.3`): simple wrapper calls (`str()`, `Path()`, `os.fspath()`, `os.path.join()`) are
+  unwrapped before the safe-suffix test, so `str(SECRETS_SRC)` passes; `src` is a safe suffix. A wrapped bare
+  secret name still fails.
+- RC002 (`pr-review-and-merge.1.6`) and every check that skips tests: the test-path classifier now treats
+  `test_*.py`, `*_test.py` and `conftest.py` as tests (it already covered `test/` and `tests/` folders).
+- Kit: `.table-wrap[data-capped]` no longer sets `min-height: 16rem`, so a short capped table has no blank
+  space under it; the cap stays through `max-height`. Docs and the gallery note follow. Comments no longer name
+  the UI standard by rule number.
+
+## 2026-10-26 (v1.27.4, four doc contradictions fixed)
+
+- Docs only. `CONTRIBUTING.md`: the rebase instruction is replaced by the core's rule (never rebase; merge
+  `FETCH_HEAD` after `git fetch origin main`, and renumber the changelog top entry above the latest tag when
+  another change took the number); the references to a provenance directory that does not exist are removed
+  (provenance stays with the contributing account and the pull request description states adopt, adapt or
+  reject); the pre-commit hook description now lists everything the hook runs; `--force-with-lease` advice
+  removed. `hermes/README.md` follows ("merge rule").
+- `templates/overlay/README.md` and `standards/ci-cd-release.md`: a pull request title or body edit runs every
+  check (it is a pull request event), not two. `templates/overlay/README.md`: `core-ci.yml` and
+  `lint-sweep.yml` are refreshed by every sync, which keeps the `OVERLAY` value, the overlay path prefix,
+  lines marked `core-sync: keep` and a `schedule:` block; the runner is set with the `CORE_CI_RUNNER`
+  repository variable; the "copy it again" notes for older workflow changes now say a sync refreshes the file.
+
+## 2026-10-26 (v1.27.3, README and CONSUMING brought current)
+
+- Docs only. `README.md` stays the overview and `CONSUMING.md` is the how-to for every channel; nothing is
+  duplicated between them.
+- `CONSUMING.md`: a channels table (overlay sync with `core-update.yml` and `standards.lock`, the opt-in
+  reusable workflow `core-ci-reusable.yml` and its check `core-checks / core-checks`, agent skills through the
+  nightly); the `--ui OWNER/REPO[=MODE:PATH]` syntax fixed (it was written with colons); the `pin-file` way and
+  the `report_repo` key added; the `CORE_REPO` repository variable named; the reusable workflow's trigger
+  behaviour corrected (an edit runs every check); the hand-made tag step removed.
+- New sections 8 to 13: the eight statuses (pass, proved, attested, waived, not_applicable, excepted,
+  unverified, fail) and exactly how `standards-local/proofs.json` records each, the `core-rule: <id>` tag and
+  `PROOF_TAG_ENFORCED`, the nine kit-test rules that read `not_applicable` without UI adoption, RC001 to
+  RC022 with how to run `repo_checks.py`, the UI lint config (`data_palettes`, neutral hairlines), the
+  scrolling rule and its kit classes (`page-scroll`, `Table` `capped`, `LaneBoard` `fit`), automatic releases
+  and how the version is assigned at merge, reporting and contributing, the update flow for an account with
+  only the public docs, and what READY means with troubleshooting (a cancelled check, Python 3.9).
+- `README.md`: five ways (`pin-file` added) and the three channels; layout and standards tables brought in
+  line with the tree (`ingest/` removed, `opscenter/`, `claude/`, `skills/`, `tests/` and the workflows added;
+  `web-shell.md` and `hermes.md` listed); the status and proof text now points at CONSUMING; the day-one
+  steps name `CORE_REPO` and no longer require `gh` or an invitation; the version example reads from the
+  latest release; versioning describes automatic releases; the checks list matches `checks.yml`; the kit
+  gallery is no longer described as private.
+
+## 2026-10-26 (v1.27.2, RC012 lock files and import aliases)
+
+- `repo_checks.py` RC012 accepts a pip-tools hashed file (`pip-compile --generate-hashes` output named
+  `requirements*.txt`, `constraints*.txt` or `*.lock.txt`) as a lock file for the project it sits beside, or in its
+  `requirements/` or `locks/` subdirectory. Every requirement line in the file must carry a `--hash=sha256:`, so a
+  plain or partly hashed file is still not a lock. A generated hashed requirements file no longer needs reason
+  comments.
+- The import-to-distribution table gains `googleapiclient`, `google_auth_oauthlib`, `google_auth_httplib2`,
+  `oauth2client`, `httplib2`, `google.protobuf` (to `protobuf`), `markdown`, `magic`, `Crypto`, `ldap`,
+  `pkg_resources`, `mpl_toolkits` and `skimage`; the `google-*` family still covers `google.auth`,
+  `google.oauth2` and `google.cloud.*`. A truly undeclared import still fails.
+- Tests cover each case.
+
+## 2026-10-26 (v1.27.1, RC012 false positives)
+
+- `repo_checks.py` RC012 (every import outside the standard library is pinned) no longer reports a declared
+  dependency as missing in three cases. A requirements line is skipped only when it is a real URL, `git+`, `-e`,
+  `-r` or option line, so a package whose name starts with those letters (`httpx`) counts as declared. The
+  `pyproject.toml` dependency arrays are parsed properly (`tomllib` on Python 3.11+, a Python 3.9 compatible
+  fallback that handles extras brackets, quotes, comments and multiline arrays), so an entry such as
+  `uvicorn[standard]>=0.30` no longer hides every dependency after it; `project.optional-dependencies` and
+  `dependency-groups` are read too. The import-to-distribution alias table gains the `pywin32` modules, `usb`
+  to `pyusb` and the `google-*` family, matched case-insensitively with `-`, `_` and `.` normalised. An import
+  whose distribution is not declared still fails.
+- Tests cover each case and a genuinely undeclared import.
+
+## 2026-10-26 (v1.27.0, proof batch 7: attested reviews and waivers)
+
+- `core-status.py` reports two new statuses, counted apart in the summary and the human line: `attested` (a review
+  rule with a valid dated `review` proof: a person looked, the record expires after `$max_review_age_days`) and
+  `waived` (a valid `waiver` proof: `ref` to a record file, `date`, `reason` and `reviewed_by`; it sets a rule aside
+  for that repo and expires like a review). `proved` now means a `ci` or `test` proof only. A waiver is never
+  counted as proof and a broken, stale or reason-less one proves nothing. A review proof without `reviewed_by`
+  adds a warning.
+- Tests cover attested, waived and each way a waiver is rejected. `standards-local/proofs.json` and CONSUMING.md
+  describe the four kinds.
+
+## 2026-10-26 (v1.26.0, proof batch 6: a test proof must name its rule)
+
+- `core-status.py` now checks that the test file a `standards-local/proofs.json` test proof points at carries the
+  rule id (a comment such as `core-rule: web-ui.0.8`). Without it the proof still counts and the report gains a
+  `warnings` entry (printed as WARNING); from the next release `PROOF_TAG_ENFORCED` turns the warning into a
+  problem and the proof stops counting. A tag that is removed, or a test file that is replaced, now makes a proof
+  fail instead of passing on file existence alone.
+- Tests cover the warning, the tagged case and the enforced mode.
+
+## 2026-10-26 (v1.25.0, proof batch 5: four more rules proved by kit tests)
+
+- Four rules whose behaviour the kit already tests move to `core-ci` with that test as the command, each with
+  `requires: ui-adoption` (pass for an app that adopts the kit whole, `not_applicable` otherwise): `web-ui.19`
+  (rail state and pin persistence, `tests/shell.test.tsx`), `web-ui.24` (axe on the composite shell and each overlay
+  in both themes, `tests/a11y.test.tsx`), `web-ui.26.1` (per-app dismissal keys, `tests/review-fixes.test.tsx`) and
+  `web-shell.5` (module CSS scope, `tests/scope-css.test.ts`).
+- Acceptance lines narrowed to what the kit test proves (statements unchanged): `web-ui.19` drops the browser
+  check, `web-ui.24` covers the kit's composite and overlays rather than an app's routes, `web-ui.26.1` covers the
+  storage key rather than the theme sharing, `web-shell.5` covers the selector scope.
+
+## 2026-10-26 (v1.24.0, proof batch 4: web runtime and access rules)
+
+- Four more `repo-check` rules: `web-client-runtime.4.1` (RC019, a bundled app has a bundle size budget check),
+  `web-client-runtime.4.3` (RC020, a vite config sets `assetsInlineLimit`), `web-client-runtime.5.1` (RC021, an
+  app's client code builds the bearer header in one file) and `rbac.3` (RC022, an app compares permissions by hand
+  in one module only). RC021 and RC022 group files per app (`apps/<name>`, `packages/<name>`, `services/<name>`).
+  Each has a failing and a passing fixture.
+- Acceptance lines narrowed to what each check proves (statements unchanged): the entry chunk size itself
+  (`4.1`) and the inline asset size in the built chunk (`4.3`) need a build and stay with the consumer's own
+  build step; the checks prove the budget and the limit are configured.
+
+## 2026-10-26 (v1.23.0, proof batch 3: web UI and build rules)
+
+- Five more `repo-check` rules: `web-ui.9` (RC014, test suites run axe and cover both themes), `web-ui.25`
+  (RC015, an app that mounts the app shell renders the build card), `web-build.8.1` (RC016, a verify script runs
+  every check:* script and each typecheck, lint, build and test script the package defines), `scripting-python.1.3`
+  (RC017, no secret-named value or flag in a subprocess argument list) and `web-client-runtime.4.2` (RC018, a vite
+  config names its vendor chunks). Each has a failing and a passing fixture; the core passes them.
+- Acceptance lines narrowed to what each check proves (statements unchanged): the log-redaction half of
+  `scripting-python.1.3`, the route coverage of `web-ui.9` and the hash survival of `web-client-runtime.4.2` stay
+  with review.
+
+## 2026-10-26 (v1.22.0, proof batch 2: security, secrets and release rules)
+
+- Three more `repo-check` rules: `secrets-and-credentials.1.4` (RC011, a checkout of another repository carries an
+  ssh-key), `scripting-python.1.2` (RC012, every import outside the standard library is in a pinned requirements
+  file with a reason comment, or in a declared dependency list with a lock file) and `ci-cd-release.6` (RC013, a
+  stateful deploy workflow re-runs CI or waits on a CI job, and checks health afterwards; a static-site or Vercel-only
+  deploy is carved out). Each has a failing and a passing fixture; the shipped overlay and the core pass them.
+- Two rules bind to a job of the template workflow the repo already runs: `pr-review-and-merge.1.3` to
+  `core-changelog` and `secrets-and-credentials.1.6` to `core-secret-scan`, both in `core-ci.yml`. Their acceptance
+  lines now say what that job proves.
+- Acceptance lines narrowed to what the check proves: the five rules above. Statements are unchanged.
+
+## 2026-10-26 (v1.21.0, proof batch 1: ten rules get a static check, five a core test)
+
+- New rule check kind `repo-check` and `scripts/repo_checks.py` (synced to every overlay). A repo check reads the
+  repo's tracked files and returns findings; `core-status.py` runs the check of every `repo-check` rule and reports
+  pass (no finding), fail (a finding) or excepted (an active exception names the rule), and `unverified` only when
+  the check cannot run. A check passes when the repo holds nothing the rule governs and fails only on a violation
+  (or, where the rule demands a thing, on its absence). A line with `core-exception: EXC-NNN` is skipped. Each
+  check has a failing and a passing fixture in `tests/test_repo_checks.py`. `check-rules.py` binds every check to
+  exactly one rule with the same ref and requires the rule's acceptance line to name it.
+- Ten rules move from review or test to `repo-check`, and their acceptance line now says what the check proves:
+  `automation-safety.1.9` (RC001, no kill by name or pattern), `pr-review-and-merge.1.6` (RC002, merge calls pass
+  the head sha), `ci-cd-release.4` (RC003, no major auto-merge in a renovate config), `ci-cd-release.5` (RC004, a
+  trusted-trigger workflow never checks out or runs pull request code), `web-api-runtime.3.3` (RC005, no platform
+  CORS list in hosting or infrastructure config), `data-safety-sqlite.2.10` (RC006, a SQLite repo's deploy
+  workflows queue and wait for a health endpoint that names the sha; a workflow that only publishes a static site or a Vercel app is carved out), `data-safety-sqlite.2.12` (RC007, no
+  destructive migration and no NOT NULL column without a default), `identity-and-people-data.1.7` (RC008, fixture
+  emails only on reserved test domains), `web-client-runtime.1.2` (RC009, the auth redirect handled in at most one
+  non-test file), `ci-cd-release.9` (RC010, every secret a workflow reads is named in a documentation page).
+- Five rules whose acceptance is a test the kit already ships move to `core-ci`, proved in the core before release
+  by that test, and count as pass only for an app whose UI adoption is adopted (`check.requires` is `ui-adoption`);
+  any other app reports `not_applicable`, a new status counted apart in the summary: `web-ui.0.8` (toast Undo), `web-ui.12` (theme init), `web-ui.18` (count-up), `web-ui.22`
+  (changelog parser) and `web-shell.3` (generated registry). `check-rules.py` fails a `core-ci` command that
+  names a kit test file that does not exist.
+- The ops-center sync lane now merges its sync pull request with `--match-head-commit` on the commit it pushed.
+  CONTRIBUTING documents the one repository secret the workflows read.
+
+## 2026-10-26 (v1.20.0, boards and wide tables keep their own scrollbars)
+
+- New UI rule 0.12 (`web-ui.md`, registered as `web-ui.0.12`, a review rule): the page body is one vertical
+  scroll container, a board is sized to the window with a floor, a wide table has a capped scroll area with a
+  floor, a page header is never capped with a viewport fraction, and `overflow: hidden` is never put on a flex
+  parent to fit a board. The proof is loading every route with a board or wide table at a window about 700px
+  tall. A row in the gates table records it as a hand-reviewed gate.
+- Kit: `page-scroll` class (full height, vertical scroll), `Table` `capped` prop (at most the window height less
+  15rem, never under 16rem, a named focusable region so the keyboard can scroll it) and `LaneBoard` `fit` prop
+  (the window height less 6rem, never under 360px, sideways scroll on the board edge, each lane scrolls on its
+  own). Both props default to off, so existing uses are unchanged. Gallery specimen and tests added.
+
+## 2026-10-26 (v1.18.0, fix: UI lint exempts data palettes and no longer flags neutral hairline dividers)
+
+- Fix, replacing the advisory notes of the previous release: the notes only labelled findings and left them
+  failing. `ui_lint.py` now exempts files matched by the optional `data_palettes` globs in `ui-lint.json` from
+  the colour-literal rule (UI003), since a chart theme or category colour table holds data colours. Every other
+  rule still applies to those files, and a colour literal in any other file still fails.
+- The edge-bar rule (UI001) no longer flags a one-sided border under 2px in a neutral grey (a hairline
+  divider). A coloured hairline, a 2px or thicker one-sided border and every accent edge bar still fail, and
+  the exit code for real violations is unchanged.
+- The `::notice` lines, the `N advisory` summary count and the `advisories` key of `--json` are removed.
+  `tests/test_ui_lint_advisory.py` is replaced by `tests/test_ui_lint_data_palettes.py`; fixtures and
+  `lint/README.md` follow.
+
+## 2026-10-26 (v1.16.0, UI lint advisory notes for data palettes and neutral dividers)
+
+- `ui_lint.py` adds advisory notes. A finding that probably is data rather than theme keeps its finding, its
+  `::error` annotation and the exit code exactly as before, and gains a `::notice` line, an `N advisory` count
+  in the summary and, with `--json`, an `advisories` list. Two notes: `data-palette` (a UI003 colour literal in a
+  file matched by the new optional `data_palettes` globs in `ui-lint.json`) and `neutral-divider` (a UI001
+  one-sided border under 2px in a neutral grey). A note never hides or adds a finding and never fails a build.
+- Self-test fixtures and `tests/test_ui_lint_advisory.py` cover both notes, the coloured and thick cases that
+  carry none, and an unchanged exit code. `lint/README.md` documents the config key and the notes.
+
+## 2026-10-26 (v1.14.1, lint-sweep sets up Node for web repos)
+
+- `lint-sweep.yml` ran the repo's "Lint sweep command" on whatever the runner carried, so on a self-hosted
+  runner without Node a web repo's sweep failed with `pnpm: command not found` and was filed as a lint issue.
+  When `core-ci.py params` reports `web=true` and a sweep command is set, the job now sets up Node
+  (`actions/setup-node`, SHA-pinned) at the repo's Node major, runs `corepack enable` so `package.json`
+  "packageManager" picks the package manager, and installs from the lockfile (pnpm, yarn, bun or npm; no
+  lockfile is a `toolchain missing` error). A Python-only repo runs no extra step.
+- A sweep command that exits 127 now fails the run with `::error::toolchain missing` instead of opening or
+  updating the `lint-sweep` issue.
+- `core-ci.py params` gains a `node` output: the parameters row "Node major version", else `.nvmrc`,
+  `.node-version` or `package.json` engines.node; empty means `lts/*`. Tests cover the output and the template.
 
 ## 2026-10-26 (v1.14.0, sanitised and consumer-neutral checks gain a diff mode)
 

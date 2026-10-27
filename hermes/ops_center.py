@@ -640,7 +640,19 @@ def land(clone: Path, wt: Path, branch: str, new: str, latest: str, repo: str, s
             if rc != 0 and "already exists" not in out:
                 return f"pull request failed: {out[-200:]}"
             rc, out = sh(
-                ["gh", "pr", "merge", pr_branch, "-R", repo, "--squash", "--delete-branch"], cwd=wt
+                [
+                    "gh",
+                    "pr",
+                    "merge",
+                    pr_branch,
+                    "-R",
+                    repo,
+                    "--squash",
+                    "--delete-branch",
+                    "--match-head-commit",
+                    new,
+                ],
+                cwd=wt,
             )
             if rc != 0:
                 return f"pull request merge failed: {out[-200:]}"

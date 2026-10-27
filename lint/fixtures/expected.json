@@ -12,6 +12,8 @@
   "bad.tsx::UI005": 1,
   "bad.tsx::UI007": 1,
   "dialogs-bad.tsx::UI002": 2,
+  "dividers.css::UI001": 2,
+  "dividers.css::UI003": 5,
   "expired.tsx::UI002": 1,
   "restyle-bad.tsx::UI009": 3,
   "theme-bad.css::UI010": 2,

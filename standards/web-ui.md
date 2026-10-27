@@ -132,6 +132,24 @@ exceptions name them.
     Otherwise it reports `partial`, and the drift check fails. The migration order is in
     `kit/MIGRATION.md`.
 
+12. **Boards and wide tables keep their own scrollbars.** On a short window a board or a wide table
+    stays scrollable on screen instead of being squeezed or clipped:
+    - The page body is one vertical scroll container (the kit's `page-scroll` class: full height,
+      `overflow-y: auto`), so content taller than the window scrolls the page.
+    - A board is sized to the window with a floor (`LaneBoard` `fit`: the window height less 6rem, never
+      under 360px). It scrolls sideways on its own edge and each lane scrolls vertically on its own.
+    - A wide or long table gets a capped scroll area with a floor (`Table` `capped`: at most the window
+      height less 15rem, no floor, so a short table stays short). The area is a named, focusable region so the keyboard can
+      scroll it.
+    - Never cap a page header with a viewport fraction (`max-height` in `vh`): on a short window the
+      content below it is squeezed to nothing. The header keeps its natural height and the page scrolls.
+    - Never put `overflow: hidden` on a flex parent to make a board fit: it removes the very scrollbars
+      the board needs. Use `min-height: 0` on the flex child and let the child scroll.
+    The proof: load every route that has a board or a wide table at a window about 700px tall (and at
+    the narrowest supported width) and confirm the page scrolls, the board shows its sideways scrollbar
+    and each lane scrolls, and the table shows its own scrollbars with the header still in view. A
+    route with no board or wide table has nothing to prove.
+
 ---
 
 ## 1. Design DNA
@@ -1008,6 +1026,7 @@ A rule with no check is a suggestion. Status of the gates:
 | Bundle-size baseline (growth over 10% needs a reason) | Recommended, not required |
 | Content stays inside its box | Borrowed kit classes are flagged by `ui_lint.py` (UI009). The rendered part is `kit/scripts/overflow-probe.mjs`, run by hand before done |
 | Actions live with content, one way home | Design rules, reviewed by hand, no check yet |
+| Boards and wide tables keep their scrollbars | Rule 12, reviewed by hand at a window about 700px tall; the kit parts (`page-scroll`, `Table` `capped`, `LaneBoard` `fit`) carry the sizing |
 
 An overlay may promote any recommended gate to required.
 

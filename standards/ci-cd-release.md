@@ -59,9 +59,9 @@ so no core-ci check shares a name with a job of the repo's own workflows: a gate
 names would read two jobs called `python` as one. A repo lists `core-checks` next to its own checks.
 
 Why one job: each core check is a short script, so a job's cost is mostly runner start and checkout.
-One job per pull request run, a push to the default branch that runs only the secret scan, and a
-title or body edit that runs only the two text checks keep the shared runner pool free (twelve jobs
-per run used to be most of a busy consumer's queue).
+One job per pull request run and a push to the default branch that runs only the secret scan keep
+the shared runner pool free (twelve jobs per run used to be most of a busy consumer's queue). A title or
+body edit is a pull request event, so it runs every check.
 
 **Reusable workflow (opt in, v1.12.0).** A repo can call the core's reusable workflow
 (`.github/workflows/core-ci-reusable.yml`, pinned to a release sha) from a caller `core-ci.yml` instead of
@@ -233,8 +233,13 @@ template `lint-sweep.yml` (templates/overlay): once a week it lints the whole tr
 and script lint over the configured paths, plus the repo's own full-tree command from the
 parameters row "Lint sweep command"), and while the sweep fails it keeps exactly one open issue
 labelled `lint-sweep`: it opens it on the first failure, updates the same issue on every later
-failure, never opens a second, and closes it on the first green sweep. Its action is SHA-pinned and
-it runs on `CORE_CI_RUNNER` like the other templates.
+failure, never opens a second, and closes it on the first green sweep. Its actions are SHA-pinned and
+it runs on `CORE_CI_RUNNER` like the other templates. A runner need not carry Node: when the repo is
+a web stack and sets a sweep command, the job sets up Node at the repo's Node major (lts/* when none
+is pinned), enables corepack so `package.json` "packageManager" decides the package manager, and
+installs from the lockfile before the sweep, in the repo root or, when the root holds no lockfile, the first folder one level down that does (or the folder named by the parameters row "App directory"), and runs the sweep command there; a Python-only repo gets none of this. A sweep command
+that exits 127 (not found) fails the run with a `toolchain missing` error instead of opening a
+lint issue, because a missing tool is not a lint finding.
 
 - Prevents: rot that only shows up when an unrelated pull request touches an old file and fails for
   a reason its author did not cause.
@@ -284,7 +289,13 @@ The page is open to everyone who can open the hub and has no API or permission.
 
 ## 5. Auto-merge
 
-`automerge.yml` is the merge gate. Policy: full auto-merge. Every non-draft PR into `main`,
+`automerge.yml` is the merge gate. A repo on a plan with no rulesets copies the core's template
+(`templates/overlay/.github/workflows/automerge.yml`): it reads the required core job names from the
+synced `core-ci.yml` (`core-ci.py required-names`) instead of a copied list, so a core-ci job rename
+cannot deadlock it; `REQUIRED_CHECKS` there holds only the repo's own checks. A copied list is rewritten
+by `core-ci.py required-checks --fix` (and by `sync-core.py`), and `core-ci.yml` runs
+`required-checks --lists-only` as the step `core-required-checks`, which exits non-zero on a mismatch.
+Policy: full auto-merge. Every non-draft PR into `main`,
 Dependabot included, is merged by the repo's declared merge method
 ([PR Review and Merge](pr-review-and-merge.md) rule 1.5; squash unless the repo declares rebase or
 a merge queue) once all checks pass. The `--squash` flags below stand for the declared method.

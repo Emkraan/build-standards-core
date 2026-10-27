@@ -50,6 +50,7 @@ OVERLAY_SCRIPTS = (
     "merge-pr.py",
     "triage_marker.py",
     "core-ci.py",
+    "repo_checks.py",
 )
 
 

@@ -12,7 +12,7 @@ by its own account and only ever reads from here.
 > follow [CONSUMING.md](CONSUMING.md) now. It sets up
 > the nightly job (`python3 hermes/setup.py --ui OWNER/REPO`) that applies this standard to the
 > Hermes desktop app (skills, plugins such as rtk and caveman, settings) and to every UI consumer
-> repo, then verifies it.
+> repo, then verifies it. A repo with no Hermes agent reads CONSUMING.md sections 3 and 8 to 14.
 
 `OWNER` in commands below is the GitHub account or organisation this repository lives in.
 
@@ -45,7 +45,7 @@ web frontend and backend practice, the CI workflows that proved themselves acros
 agent runtime practice. A repo either conforms or records its deviations; the core is not a
 menu.
 
-Four ways to take the core. Every consumer picks one per repo, recorded in the machine-local
+Five ways to take the core. Every consumer picks one per repo, recorded in the machine-local
 `consumer.json`, and [CONSUMING.md](CONSUMING.md) walks an agent through each:
 
 | Way | For | What lands |
@@ -53,7 +53,13 @@ Four ways to take the core. Every consumer picks one per repo, recorded in the m
 | `workflow` | a product repo with its own CI: one pull request per release, merged only on the owner's approval and only when the overlay's checks pass | synced copies pinned to a release; a pull request per release |
 | `ops-center` | a machine's ops center app and other local tools without CI: the sync applies at once, gated on the core's checks, with a rollback | synced copies applied directly; one log line per apply |
 | `vendored` | a repo that must carry no record of the core: a scrubbed copy with the identity files removed | files only; release and source hash recorded on the machine, never in the repo |
+| `pin-file` | a repo that records the core as one `KEY=<tag>` line (a deploy repo whose host syncs the pinned release) | a pull request that bumps the line; approval-gated |
 | `agent-home` | the agent runtime on a machine: skills, settings, hooks, cron jobs, plugins | applied at once by the nightly job; one log line per apply |
+
+Separately from the way, there are three channels a consumer can draw from: the overlay sync (synced
+copies, pinned by `standards.lock`), the opt-in reusable workflow `core-ci-reusable.yml` (the CI checks
+without a copy of the workflow), and the agent skills the nightly installs. The channels table is in
+[CONSUMING.md](CONSUMING.md#the-three-channels).
 
 `local` was the older name of `ops-center`; a config that still says it behaves the same, and
 the nightly notes the rename once.
@@ -63,9 +69,10 @@ Two consumption classes. This is the owner's rule, and every way above falls in 
 1. **Apply at once: the ops center.** A local, single-operator app takes every core release at
    once, nightly, behind its own gate and with rollback (the `ops-center` way). The agent home
    is applied the same way.
-2. **Approval-gated: every other app.** Product repos, hubs, multi-module shells and vendored
+2. **Approval-gated: every other app.** Product repos, hubs, multi-module shells, pin-file repos and vendored
    copies never change without the owner's approval. Each new release arrives as a pull request
-   (the `workflow` way's sync pull request, or the vendoring tool's pull request for `vendored`),
+   (the `workflow` way's sync pull request, the vendoring tool's pull request for `vendored`, or the
+   bump for `pin-file`),
    and adopting new kit parts in such an app happens through planned pull requests the owner
    approves. Nothing is applied to such an app directly: no direct push, no merge the owner did
    not approve. The repository variable `CORE_UPDATE_MERGE` defaults to `approve`; `wait` or
@@ -122,13 +129,17 @@ If a rule only makes sense inside one business, it belongs in that business's ov
 | Path | Holds |
 |---|---|
 | `standards/` | One topic per doc. This is what overlays consume |
-| `templates/overlay/` | Starter for a business overlay: pin file, sync script, local parameters sheet |
+| `templates/overlay/` | Starter for a business overlay: pin file, sync and update scripts, `core-status.py`, `core-ci.py`, `repo_checks.py`, `merge-pr.py`, the template workflows and the local parameters sheet |
 | `tokens/` | `tokens.json` (the one token source), `build.py` and everything it generates (CSS, TS, Tailwind preset, WPF dictionaries, contrast report), plus the behavioural layer `hub-layer.css`. Synced into overlays as `tokens-core/` |
-| `checks/` | Scripts that keep this repo agnostic and clean: sanitisation, ASCII, links and anchors, authors, CSS variables, token names in the docs, the rules registry |
+| `checks/` | Scripts that keep this repo agnostic and clean: sanitisation and consumer neutrality (full tree or `--diff`), ASCII, placeholders, links and anchors, authors, changelog, closing references, CSS variables, token names in the docs, kit comments, the rules registry, and `auto-release.py` |
 | `lint/` | `ui_lint.py`, the static UI rules every consumer runs; synced into overlays as `lint-core/` |
 | `kit/` | The shared React kit (shell, primitives, overlays, required chrome, chart theme), its gallery and tests; `kit/src/` syncs into overlays as `kit-core/` |
+| `opscenter/` | `DESIGN.md`: the design of the locally hosted ops center app that applies the core at once (see `standards/local-ops-app.md`) |
+| `claude/` | The opt-in coding-agent CLI layer the nightly can apply (`claude/README.md`, `tools.json`, `apply_claude.py`) |
+| `skills/` | `core-example.md`, the worked example of a shareable skill |
+| `tests/` | The unit tests for the checks, the overlay scripts, the nightly and the lints (`python3 -m unittest discover -s tests -p "test_*.py"`) |
+| `.github/workflows/` | The core's own CI: `checks.yml` (job `ci`), `kit.yml`, `visual.yml`, `sweep.yml` (weekly full-tree checks), `release.yml` and `gallery-release.yml` (automatic releases), `automerge.yml`, and `core-ci-reusable.yml` (the opt-in reusable `core-ci` workflow consumers call) |
 | `hermes/` | Shared practice for consumers that run the Hermes agent: `configurations.md` (settings and plugins that proved themselves), `token-efficiency.md` (where model spend goes and the setting that controls each part), `skills/core-*` (shared skills, the generated `core-practices` first), `tools.json` (adopt, adapt or reject per plugin or skill), `setup.py` (one-time consumer setup), `nightly.py` (the nightly job), `apply_setup.py`, `build_skills.py` and `sync_skills.py`. See [hermes/README.md](hermes/README.md) |
-| `ingest/` | One provenance record per source repo: what was adopted, adapted or rejected, and why |
 | `CHANGELOG.md` | One dated entry per change to any standard. Read it before bumping a pin |
 | `CONTRIBUTING.md` | Rules for changing this repo |
 
@@ -151,6 +162,7 @@ value of the doc's registered rules (see the rules registry below).
 | Patterns | `standards/identity-and-people-data.md` | Directory as source of truth and the single roster | all (no rules yet) |
 | Patterns | `standards/notifications.md` | Message format and channel rules | all (no rules yet) |
 | App types | `standards/web-build.md` | Stack, layout, API envelope, auth, RBAC wiring and the verification gate for first-party web apps | web (no rules yet) |
+| App types | `standards/web-shell.md` | Several tools on one origin: registry generated from manifests, per-module CSS scope, storage and accent, safe return target, home as the hub | web |
 | App types | `standards/web-api-runtime.md` | Node and Express APIs behind a gateway: group caching, directory token, CORS max age and origin guard, Server-Timing, request log, telemetry, the shared runtime package | web |
 | App types | `standards/web-client-runtime.md` | Single page apps with an OIDC library: one auth boot, renewal without iframes, the API client, lazy bundles, the shared client package, the live feed strip | web |
 | App types | `standards/local-ops-app.md` | Locally hosted operations apps: contract, cost-gated analyzer, loopback server | local-ops |
@@ -166,6 +178,7 @@ value of the doc's registered rules (see the rules registry below).
 | Engineering | `standards/docs-and-changelog.md` | Done means documented, one docs home and changelog per thing, coverage audits | all |
 | Engineering | `standards/iac-governance.md` | Plan gates, destroy guards, owner-applied roots, state backends, drift, change freezes | iac |
 | Engineering | `standards/cmtrace-logging.md` | Log line format for device-management tooling | powershell (no rules yet) |
+| Engineering | `standards/hermes.md` | What an agent runtime may and may not share (see [Hermes](#hermes-shared-configuration-and-core-skills)) | all (no rules yet) |
 
 Each doc has numbered sections so links stay stable, and each rule carries an acceptance line
 saying how it is checked. The engineering practice docs open with a section 1 of numbered rules,
@@ -174,11 +187,15 @@ each with the failure it prevents and its acceptance line, and end with a checkl
 **Rules registry.** `standards/rules.json` lists every enforceable rule once: a stable id, the doc
 and section an exception names, the statement, the acceptance line and how a consumer proves it
 (`lint`, `core-ci`, `overlay-ci`, `test` or `review`), and `applies_to`, the stacks it covers (`web`,
-`wpf`, `local-ops`, `powershell`, `python`, `iac`, or `all`). `checks/check-rules.py` keeps it in step
-with the docs and the UI lint, and consumers diff it between releases to raise new and changed rules.
+`wpf`, `local-ops`, `powershell`, `python`, `iac`, or `all`). The check kind is one of `lint`, `core-ci`,
+`overlay-ci`, `repo-check` (a static check in `repo_checks.py`, RC001 to RC022), `test` or `review`.
+`checks/check-rules.py` keeps it in step with the docs and the UI lint, and consumers diff it between
+releases to raise new and changed rules. What each status means (pass, proved, attested, waived,
+not_applicable, excepted, unverified, fail) and how a consumer records a proof is in
+[CONSUMING.md](CONSUMING.md#8-rule-status-proofs-and-the-repo-checks).
 Docs without registered rules are listed by the check until they have them. `opscenter/applicability.json`
-is the published list of rule ids that apply to an ops center, so every consumer's ops center report
-computes against the same set; `check-rules.py` fails when an id in it is not in the registry. A consumer lists its
+is the published list of rule ids that apply to an ops center; `check-rules.py` fails when an id in it is not
+in the registry. A consumer lists its
 stacks in the `Stacks` row of `standards-local/parameters.md`, and `core-status.py` then leaves out the
 rules for stacks it does not have. With the row empty every rule is reported.
 
@@ -200,8 +217,9 @@ rules for stacks it does not have. With the row empty every rule is reported.
                   A's apps and docs           B's apps and docs           C's apps and docs
 ```
 
-Changes flow down by pinned, reviewed pull requests. Improvements flow up by pull request to this
-repo. Nothing flows sideways, and no overlay can change another overlay.
+Changes flow down by pinned, reviewed pull requests. Improvements flow up through the report path
+(Direction, "The upward path") and land here by pull request. Nothing flows sideways, and no overlay can
+change another overlay.
 
 ## Day one for a new account
 
@@ -211,23 +229,27 @@ For an account that owns its own repos (a different GitHub owner than the core).
    Check it: `git ls-remote --tags https://github.com/OWNER/build-standards-core.git` lists the releases.
 2. **Optional: sign in to `gh`.** The scripts use `gh` when it is installed and signed in, and plain
    `git` over HTTPS otherwise, so a machine or CI job without an account works the same.
-3. **Create your overlay.** In your own repo, copy `templates/overlay/` as described in step 1 of
-   "Consuming the core", set `standards-local/parameters.md`, and run `python3 scripts/sync-core.py <tag>`.
-4. **Keep the offline check.** The template `core-drift.yml` needs no secret and no access to the core,
+3. **Name the core.** The lock file never names it. Export `CORE_REPO=OWNER/build-standards-core` on a
+   machine, and set the repository variable `CORE_REPO` in CI.
+4. **Create your overlay.** In your own repo, copy `templates/overlay/` as described in step 1 of
+   "Consuming the core", set `standards-local/parameters.md`, and run `python3 scripts/sync-core.py latest`.
+5. **Keep the offline check.** The template `core-drift.yml` needs no secret and no access to the core,
    so it works for any owner. Nothing to configure.
-5. **Mount the required chrome.** Work through section 25 of `standards/web-ui.md` for every app with a
+6. **Mount the required chrome.** Work through section 25 of `standards/web-ui.md` for every app with a
    sidebar. The build card's changelog must be generated in CI, not at upload time.
-6. **Open a pull request** for the overlay and let its checks pass before merging.
+7. **Open a pull request** for the overlay and let its checks pass before merging. Require `core-checks`
+   in the merge gate, then follow [CONSUMING.md](CONSUMING.md#12-the-update-flow-for-an-account-that-only-has-the-public-docs)
+   to keep the pin current.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `Could not read OWNER/build-standards-core at <ref>` | the ref does not exist, or no route to github.com | check the tag, step 1 |
+| `Could not read OWNER/build-standards-core at <ref>` | the ref does not exist, `CORE_REPO` is unset or wrong, or no route to github.com | check the tag and `CORE_REPO`, steps 1 and 3 |
 | drift check says `DRIFT` | someone edited `standards-core/` by hand | rerun `sync-core.py` |
 | `DRIFT: content hash ... does not match the lock` | the synced copies were edited, or the lock is stale | rerun `sync-core.py` and commit both |
 
 ## Consuming the core
 
-Which way a repo consumes the core (`workflow`, `ops-center`, `vendored`, `agent-home`) is in
+Which way a repo consumes the core (`workflow`, `ops-center`, `vendored`, `pin-file`, `agent-home`) is in
 [Direction](#direction), and [CONSUMING.md](CONSUMING.md) is the agent-side procedure for
 each way. What follows is the `workflow` way in full: the overlay, its pinned pull requests
 and the CI that keeps a repo current.
@@ -257,7 +279,10 @@ Any scratch directory works. The result in your repo is:
 | `.github/workflows/core-drift.yml` | Runs the offline drift check on pull requests and weekly |
 | `.github/workflows/lint-sweep.yml` | Weekly full-tree lint; keeps one issue open while it fails (ci-cd-release.md 2.1) |
 | `.github/workflows/core-ci.yml` | The CI half of the standard: secret scan, workflow lint, ASCII, PR title, commitlint, attribution, identity, changelog, Python floor and ruff, PowerShell parse and edition syntax, Node pin (templates/overlay/README.md "CI workflow") |
+| `scripts/repo_checks.py` | Static checks RC001 to RC022 that `core-status.py` runs for every `repo-check` rule |
+| `scripts/core-status.py`, `scripts/core-ci.py`, `scripts/merge-pr.py` | The status report, the checks behind `core-ci.yml` and the noreply-author merge wrapper |
 | `standards-local/proofs.json` | How the repo proves the rules `core-status.py` cannot see (see "Source of truth and explicit exceptions") |
+| `standards-local/ui-lint.json` | Which paths the UI lint reads, its token files and `data_palettes` |
 
 The scripts resolve paths from their own location, so the overlay can sit at a repo root or in a
 subfolder (for example `standards-overlay/`). If you use a subfolder, move `.github/workflows/core-drift.yml`
@@ -274,14 +299,15 @@ any repo that is shared.
 ```bash
 git checkout -b chore/sync-core
 python3 scripts/sync-core.py            # tracks the ref in standards.lock
-python3 scripts/sync-core.py v0.2.0     # or pin an explicit tag
+python3 scripts/sync-core.py vX.Y.Z     # or pin an explicit release tag
 python3 scripts/sync-core.py latest     # or the newest release
 git add standards.lock standards-core tokens-core lint-core kit-core scripts
 python3 scripts/check-core-sync.py       # confirm the copy matches the pin
 ```
 
-The script needs the `gh` CLI signed in with read access to this repo and Python 3.9 or newer (the
-floor is the macOS system python, and core CI runs every script on 3.9). It copies `standards/`,
+The script needs `git` and Python 3.9 or newer (the floor is the macOS system python, and core CI runs
+every script on 3.9). It reads the core through `gh` when that is signed in and over anonymous HTTPS
+otherwise, from the repository named by `CORE_REPO`. It copies `standards/`,
 `tokens/`, `lint/` and `kit/src/` into `standards-core/`, `tokens-core/`, `lint-core/` and
 `kit-core/`, writes the kit's release notes generator to `scripts/gen-changelog.mjs`, refreshes the
 overlay scripts, resolves the ref to a commit, and rewrites `standards.lock` with that commit, so a
@@ -301,8 +327,8 @@ The template `core-drift.yml` is an offline check and needs no secret, no `gh` a
 core. `sync-core.py` writes a hash of `standards-core/` and `tokens-core/` into `standards.lock`
 (`content_sha256`), and `check-core-sync.py` recomputes it. CI fails when someone edits the synced copies
 by hand or they no longer match the lock. It does not prove the lock names a real release; `sync-core.py`
-does that when you run it, because it must read the core. Syncing is a developer action run with `gh`
-signed in as an invited account. A CI job that only checks drift never needs access to the core.
+does that when you run it, because it must read the core. Syncing is a developer action that reads the
+core over HTTPS or through `gh`. A CI job that only checks drift never needs access to the core.
 
 Put the workflow in the repo's root `.github/workflows/`. If the overlay is in a subfolder, change the
 script path in the workflow. `python3 scripts/check-core-sync.py --remote` additionally compares the copies
@@ -370,13 +396,15 @@ Never edit `standards-core/`, `tokens-core/` or any file listed in `targets.map`
    for every check on the head commit to pass and then merges that commit, so a red one never lands, and
    `CORE_UPDATE_MERGE=gate` leaves the merge to the repo's own merge gate. It never turns on GitHub's auto-merge, which merges at once on a
    repo with no required checks. It runs on `workflow_dispatch` (the consumer's own scheduler dispatches it; a cron is optional) and
-   needs one token with contents, pull-requests and workflows write on the consumer: a GitHub App
+   needs the repository variable `CORE_REPO` (`OWNER/build-standards-core`) and one token with contents,
+   pull-requests and workflows write on the consumer: a GitHub App
    (repository variable `CORE_APP_ID`, secret `CORE_APP_PRIVATE_KEY`) or, without an App, the secret
    `CORE_TOKEN`. The core is public, so reading it needs no credential. Require the `core-ci.yml` jobs
    in the merge gate (`scripts/core-ci.py required-checks`, templates/overlay/README.md "Required
    checks").
 3. **Local alternative.** Where a repo secret is not wanted, run the update from a scheduled job on a
-   machine where `gh` is signed in as an invited account, and open the pull request from there. A repo
+   machine where `gh` is signed in as an account that can open pull requests on the repo, and open the
+   pull request from there. A repo
    with no remote CI has no pull request gate, so the job must be the gate. The pattern that holds up:
    - Test the new release against the **committed** code in a throwaway copy (`git archive HEAD`), never
      the working tree, so uncommitted work never decides the verdict.
@@ -396,7 +424,7 @@ Never edit `standards-core/`, `tokens-core/` or any file listed in `targets.map`
 4. **CI is a check, not the updater.** The offline drift check only proves the copies match the lock. Keep
    the updater running so the pin never ages.
 5. **Status for tooling.** `python3 scripts/core-status.py --latest --json` reports the pin, each
-   registered rule as pass, proved, excepted, fail or unverified, exceptions expiring within 30 days, and the
+   registered rule as pass, proved, attested, waived, not_applicable, excepted, fail or unverified, exceptions expiring within 30 days, and the
    rules that are new or changed in the newest release. Rules for stacks the overlay does not declare
    in the `Stacks` parameter are left out and listed under `out_of_scope`; a sheet with no `Stacks` row is a
    problem, and `--require-lint-config` fails on it. An `overlay-ci` rule passes or fails from its
@@ -534,25 +562,13 @@ or closed by fixing the app. `--json` prints the table for tooling.
 An exception never loosens the core for anyone else, and it is not a way to keep a business name,
 host or id in the core.
 
-**Proof records.** A rule `core-status.py` cannot see (a `test` or `review` rule, or an `overlay-ci`
-rule whose result was not read) is `unverified` until the consumer records how it is proved, in the
-overlay's `standards-local/proofs.json` (consumer-owned):
-
-```json
-{
-  "$max_review_age_days": 180,
-  "web-ui.25": {"kind": "test", "ref": "app/test/chrome.test.ts"},
-  "rbac.1.3": {"kind": "ci", "ref": "ci.yml#route-guard"},
-  "ci-cd-release.6": {"kind": "review", "ref": "docs/reviews/deploy.md", "date": "2026-10-20", "reviewed_by": "owner"}
-}
-```
-
-`kind` is `ci`, `test` or `review` and must be the rule's own check kind or stronger (ci, then test,
-then review). `ref` is `<workflow file>#<job>` of an installed workflow, a test file, or the review
-record, each from the repo root. A review carries its `date` and goes stale after
-`$max_review_age_days` (default 180). A valid entry turns the rule `proved`, counted apart from `pass`:
-a record says how the rule is proved, the script did not watch it pass. A missing file, unknown rule,
-weaker kind or stale review is listed under problems and proves nothing.
+**Proof records.** A rule `core-status.py` cannot see (a `test` or `review` rule, or an `overlay-ci` rule
+whose result was not read) is `unverified` until the consumer records how it is proved in the overlay's
+`standards-local/proofs.json` (consumer-owned). There are four kinds: `ci` and `test` turn the rule
+`proved`, a dated `review` turns it `attested`, and a dated `waiver` with a reason turns it `waived`
+(never counted as proof). A test proof names its rule with a `core-rule: <id>` comment. The record
+format, expiry, the other statuses (`pass`, `not_applicable`, `excepted`, `fail`) and the `repo-check`
+rules RC001 to RC022 are in [CONSUMING.md](CONSUMING.md#8-rule-status-proofs-and-the-repo-checks).
 
 ## Hermes: shared configuration and core skills
 
@@ -601,7 +617,7 @@ best-practice patterns.
 3. Validate zero leaks of instance context, secrets, or board references.
 4. Run the checks; a nonconformant submission is fixed or rejected. Any consumer account may merge
    its own pull request once `ci` and `visual` pass, since every consumer is the same owner.
-5. On acceptance, every consumer picks the skill up on its next `hermes/sync_skills.py` run.
+5. On acceptance, every consumer picks the skill up on its next `python3 hermes/sync_skills.py --dest <profile home>/skills/core` run (the nightly passes it).
 
 ## Contributing back
 
@@ -619,10 +635,11 @@ pull request. Nobody pushes to `main`.
    change agnostic: name no employer, product, hostname, tenant or person; where a rule
    needs a value, expose it as a parameter and document the default. Add a dated entry to
    `CHANGELOG.md` in the same pull request.
-4. Run the three checks below. All must pass.
-5. If the change comes from a source repo, add or extend its record in `ingest/`. A source
-   repo feeds later changes the same way any other consumer does: report, approval, pull
-   request.
+4. Run the [checks](#checks) below (CONSUMING.md section 13 lists the pre-merge set). All must pass.
+5. If the change comes from a source repo, state in the pull request which parts were adopted, adapted
+   or rejected, by role and never by name. The provenance record that would name the source stays with the
+   contributing account, not in this public repo. A source repo feeds later changes the same way any
+   other consumer does: report, approval, pull request.
 
 A rule is adopted when it is generic, adapted when it becomes generic once a name or platform is
 turned into a parameter, and rejected when it only makes sense inside one business. Record the
@@ -632,35 +649,53 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full rules.
 
 ## Versioning and releases
 
-- `main` is always releasable. Every change lands by pull request after the `ci` check passes.
-- Releases are tags of the form `vMAJOR.MINOR.PATCH`. Pushing the tag publishes the GitHub release
-  (`gallery-release.yml`); consumers move only to published releases, so a tag must be pushed.
+- `main` is always releasable. Every change lands by pull request after the `ci` and `visual` checks
+  pass, and carries a dated `CHANGELOG.md` entry.
+- Releases are tags of the form `vMAJOR.MINOR.PATCH`, made automatically: when a pull request that adds a
+  new top changelog entry merges, `release.yml` tags the merge commit, publishes the GitHub Release with
+  that entry as its notes and attaches the kit gallery (`gallery-release.yml`). Nobody tags by hand.
+  Consumers move only to published releases.
+- The version is assigned at merge: take the next free number right before opening the pull request and
+  again before it merges, and when another change took it, merge `origin/main` and renumber
+  ([CONSUMING.md](CONSUMING.md#10-releases-and-versions)).
 - A rule that becomes stricter, or a parameter that becomes required, is a **major** release.
 - A new rule, doc or optional parameter is a **minor** release.
 - A wording fix or clarification is a **patch** release.
-- Overlays pin a tag for production use and may track `main` only on a scratch branch.
+- Overlays pin a tag (or, for the reusable workflow, a release commit) and may track `main` only on a
+  scratch branch. An external monitor watches releases and pins; the core itself runs no monitor.
 
 ## Checks
 
 ```bash
-python3 checks/check-sanitised.py   # no business-specific terms, no real email addresses
+python3 checks/check-sanitised.py --diff origin/main  # no business-specific terms or real emails on added lines
+python3 checks/check-sanitised.py   # the same over the whole tree (what sweep.yml runs weekly)
+python3 checks/check-consumer-neutral.py --diff origin/main  # nothing names a consumer (also: no argument)
 python3 checks/check-ascii.py       # plain ASCII only, no em or en dashes or curly quotes
+python3 checks/check-placeholders.py  # no placeholder prose standing in for removed content
 python3 checks/check-links.py       # every relative markdown link and heading anchor resolves
-python3 checks/check-authors.py     # every commit uses a GitHub noreply email
+python3 checks/check-authors.py origin/main  # every commit uses a GitHub noreply email
+python3 checks/check-changelog.py origin/main  # shipped content changed, so the changelog changed
+python3 checks/check-closing-refs.py origin/main  # no closing keyword before a consumer-report reference
 python3 tokens/build.py --check     # token outputs are current and every contrast rule passes
 python3 lint/ui_lint.py --self-test # the UI lint still catches every fixture violation
 python3 lint/ui_lint.py tokens/hub-layer.css  # the core's own recipes pass the rules it sets
 python3 lint/script_lint.py --self-test  # the script lint still catches every fixture violation
 python3 checks/check-css-vars.py    # every var() in the core CSS resolves
 python3 checks/check-token-names.py # every --token a standards doc names exists
-python3 checks/check-rules.py       # the rules registry matches the docs and the UI lint
+python3 checks/check-rules.py       # the rules registry matches the docs, the UI lint and the repo checks
 python3 checks/check-hermes-skills.py  # shared skills are core- named and core-practices is current
 python3 checks/check-hermes-tools.py   # every Hermes tool has a decision and required tools are in the doc
+python3 checks/check-kit-comments.py   # kit source comments name no doc
+python3 templates/overlay/scripts/repo_checks.py  # the repo checks pass on the core itself
+python3 -m unittest discover -s tests -p "test_*.py"  # run under the oldest supported Python (3.9) too
+ruff check . && ruff format --check .  # pinned ruff, configured in pyproject.toml
 (cd kit && npm ci && npm run check) # kit typecheck, unit and axe tests, gallery build
 ```
 
-CI runs all of them on every pull request through one required job named `ci`. The `visual` job
-(see [Visual gate](#visual-gate)) is required next to it.
+CI runs them on every pull request through one required job named `ci` (`checks.yml`; a push to `main`
+runs only the secret scan). The `kit` workflow runs when `kit/` or `tokens/` change, and the `visual` job
+(see [Visual gate](#visual-gate)) is required next to `ci`. CONSUMING.md section 13 says what READY means
+and what to do when a check is cancelled.
 
 **Denylists.** The shared list, `checks/denylist.sha256`, holds only the sha256 of each term, so
 the file never names what it protects; `check-sanitised.py` hashes every span of one to four words
@@ -708,18 +743,20 @@ After an update-baselines run, copy the full linux baseline set from the artifac
 specimen: copying only the changed one leaves unrelated specimens one pixel off.
 
 Every pull request also uploads the built gallery as the `kit-gallery`
-artifact. Every release attaches `kit-gallery-<tag>.zip` to the release (the repo is private, so
-there is no public site). Unzip it and serve the folder (`python3 -m http.server`), because the
+artifact. Every release attaches `kit-gallery-<tag>.zip` to the release, so any account can see the
+reference without building it. Unzip it and serve the folder (`python3 -m http.server`), because the
 page loads ES modules and browsers block them from `file://`.
 
 ## Adding a new source repo
 
 1. Add the source's business-specific terms to your private denylist first (and, hashed, to the
    shared `checks/denylist.sha256` when every contributor must be stopped from naming them).
+   Ingest by role: a source's names never reach this repo.
 2. Copy the source docs into a scratch branch and replace identifiers with generic nouns.
 3. Run `check-sanitised.py` until it reports zero hits, then read each doc for voice and for
    rules that only fit the source business.
-4. Write `ingest/<source>.md` with a per-doc decision table and the replacement map.
+4. Keep the per-doc decision table and the replacement map with the contributing account, and put the
+   adopt, adapt or reject decision for each part in the pull request description, by role.
 5. Open a pull request. Merge only when all checks pass.
 
 ## FAQ

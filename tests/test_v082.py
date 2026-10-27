@@ -53,6 +53,18 @@ class WorkflowMerge(unittest.TestCase):
         self.assertIn('- cron: "3 2 * * 2"  # core-sync: keep', new)
         self.assertIn("# new line", new)
 
+    def test_lint_sweep_sets_up_node_only_for_web(self):
+        tpl = (TEMPLATES / "lint-sweep.yml").read_text()
+        gate = "if: steps.p.outputs.sweep_web == 'true' && steps.p.outputs.lint_sweep != ''"
+        self.assertEqual(tpl.count(gate), 2)
+        self.assertRegex(tpl, r"uses: actions/setup-node@[0-9a-f]{40} # v")
+        self.assertIn("corepack enable", tpl)
+        self.assertIn("pnpm install --frozen-lockfile", tpl)
+        self.assertIn("::error::toolchain missing", tpl)
+        self.assertIn('"$src" -eq 127', tpl)
+        self.assertIn("working-directory: ${{ steps.p.outputs.app_dir }}", tpl)
+        self.assertIn('cd "$APP_DIR"', tpl)
+
     def test_core_drift_prefix_is_kept(self):
         tpl = (TEMPLATES / "core-drift.yml").read_text()
         local = tpl.replace("python3 scripts/", "python3 ov/scripts/").replace(
@@ -127,6 +139,8 @@ class SyncFixture(Work):
         )
         own = "name: own\non: push\njobs:\n  a:\n    runs-on: x\n"
         (wf / "own.yml").write_text(own)
+        gate = "name: automerge\nenv:\n  REQUIRED_CHECKS: own-build core-ascii core-python\n"
+        (wf / "automerge.yml").write_text(gate)
         git(self.dir, "init", "-q", "-b", "main", app)
 
         notes = self.dir / "notes.txt"
@@ -156,6 +170,16 @@ class SyncFixture(Work):
         self.assertIn("python3 ov/scripts/check-core-sync.py", d)
         self.assertNotIn("# old", d)
         self.assertEqual((wf / "own.yml").read_text(), own)
+        # The gate list in the sync pull request is rewritten to the new job name, own check kept.
+        self.assertEqual(
+            (wf / "automerge.yml").read_text(),
+            "name: automerge\nenv:\n  REQUIRED_CHECKS: own-build core-checks\n",
+        )
+        self.assertIn(
+            "required-checks: rewrote REQUIRED_CHECKS in .github/workflows/automerge.yml", r.stdout
+        )
+        self.assertIn("order: a newly required job must already exist", r.stdout)
+        self.assertIn("rewrote REQUIRED_CHECKS", notes.read_text())
         self.assertFalse((wf / "lint-sweep.yml").exists())
         self.assertFalse((wf / "core-update.yml").exists())
 

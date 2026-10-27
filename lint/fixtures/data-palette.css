@@ -1,0 +1,3 @@
+/* Declared a data palette by the self-test config: its colour literals are data, so UI003 skips it. */
+.k1 { background: #3366cc; }
+.k2 { fill: rgb(10, 200, 30); }

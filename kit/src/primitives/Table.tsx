@@ -217,6 +217,10 @@ export interface TableProps<T> {
   isRowSelectable?: ((row: T) => boolean) | undefined;
   /** Max height of the scroll area, for a sticky head inside a card. */
   maxHeight?: string | undefined;
+  /** Caps a wide or long table to the window with a floor, so it keeps its own scrollbars on a short
+      window (a short window never traps the page): the scroll area is at most the window height less room for the page
+      above it, and a short table stays short. Ignored when `maxHeight` is set. Default false. */
+  capped?: boolean | undefined;
   /** Phone layout (640px and below). `scroll` keeps the table and scrolls it sideways; `cards` turns
       each row into a stacked card of label and value pairs, the label being the column header.
       Default `scroll`. */
@@ -258,6 +262,7 @@ export function Table<T>({
   selectAllLabel = 'Select all visible rows',
   isRowSelectable,
   maxHeight,
+  capped = false,
   mobile = 'scroll',
   stickyHead = true,
   wrapClassName,
@@ -342,6 +347,8 @@ export function Table<T>({
       data-density={density === 'compact' ? 'compact' : undefined}
       data-mobile={mobile === 'cards' ? 'cards' : undefined}
       data-sticky-head={stickyHead ? undefined : 'false'}
+      data-capped={capped && !maxHeight ? '' : undefined}
+      {...(capped && !maxHeight ? { role: 'region', 'aria-label': caption, tabIndex: 0 } : {})}
       style={maxHeight ? { maxHeight } : undefined}
     >
       <table className="table">

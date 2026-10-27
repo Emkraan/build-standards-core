@@ -40,8 +40,14 @@ Each registered rule gets a status:
   pass        no finding (lint rules), or proved in the core before release (core-ci rules)
   excepted    findings exist but sit inside a ratchet baseline or an active exception
   fail        findings above the baseline
-  proved      a test or review rule (or an overlay-ci rule with no result read) that a valid entry in
+  pass (repo-check)  a rule whose check is a scripts/repo_checks.py check (RC0nn) is run here against the repo's
+              tracked files: no finding is pass, a finding is fail, an active exception makes it excepted
+  attested    a review rule that a valid review entry proves: a person looked, the record is dated and expires
+  waived      a rule a valid waiver entry sets aside for this repo: kind waiver with ref (the record), date, reason
+              and reviewed_by; it expires like a review and is never counted as proof
+  proved      a test or review rule (or an overlay-ci rule with no result read) that a valid ci or test entry in
               standards-local/proofs.json proves; counted apart from pass
+  not_applicable  a core-ci rule that needs the kit (check.requires ui-adoption) in an app whose UI is not adopted
   unverified  a test or review rule with no proof record, an overlay-ci rule whose workflow is installed
               but whose result was not read, or a script lint rule while the overlay has no
               standards-local/script-lint.json; prove it in the app
@@ -59,6 +65,9 @@ gate's required checks (branch protection, active rulesets, and a REQUIRED_CHECK
 workflow) and lists every core-ci job nothing requires as a problem: a job that is not required does
 not gate the merge, so its rule holds only by luck. `scripts/core-ci.py required-checks --fix` prints
 the command that adds them.
+
+A test proof's file must carry the rule id (core-rule: <id>); until PROOF_TAG_ENFORCED is set a missing tag is a
+warning, then it is a problem and proves nothing.
 
 standards-local/proofs.json (consumer-owned, optional) records how the app proves a rule the script
 cannot see: {"<rule id>": {"kind": "ci|test|review", "ref": "...", "date": "YYYY-MM-DD",
@@ -96,6 +105,11 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import corehash as ch  # noqa: E402
+
+try:
+    import repo_checks  # noqa: E402
+except ImportError:  # an overlay that predates repo_checks.py
+    repo_checks = None
 
 REGISTRY = ch.ROOT / "standards-core" / "rules.json"
 LINT = ch.ROOT / "lint-core" / "ui_lint.py"
@@ -221,6 +235,7 @@ CORE_CI_STEPS = (
     "core-powershell",
     "core-node-pin",
     "core-kit-peers",
+    "core-required-checks",
 )
 
 
@@ -500,16 +515,31 @@ def overlay_ci_status(rule, results) -> tuple[str, str]:
 # ---------------------------------------------------------------- proof records
 
 PROOFS = ch.ROOT / "standards-local" / "proofs.json"
-PROOF_KINDS = ("ci", "test", "review")
+PROOF_KINDS = ("ci", "test", "review", "waiver")
 # A proof may be the rule's own kind or stronger: ci beats test beats review.
-STRENGTH = {"review": 0, "test": 1, "ci": 2, "overlay-ci": 2, "core-ci": 2, "lint": 2}
+STRENGTH = {
+    "waiver": 0,
+    "review": 0,
+    "test": 1,
+    "ci": 2,
+    "overlay-ci": 2,
+    "core-ci": 2,
+    "lint": 2,
+    "repo-check": 2,
+}
 REVIEW_MAX_DAYS = 180
+# A test proof must name its rule: the referenced file carries the rule id (a comment such as
+# "core-rule: <id>"), so a proof can fail when the tag or the test goes. A missing tag is a warning for one
+# release; set True to make it a problem that drops the proof.
+PROOF_TAG_ENFORCED = False
+PROOF_WARNINGS: list = []
 
 
 def load_proofs(registry, today=None) -> tuple[dict, list[str]]:
     """Valid proof records by rule id, and a problem line for every broken or stale one."""
     import datetime
 
+    PROOF_WARNINGS.clear()
     if not PROOFS.is_file():
         return {}, []
     try:
@@ -535,10 +565,10 @@ def load_proofs(registry, today=None) -> tuple[dict, list[str]]:
             or not isinstance(p.get("ref"), str)
             or not p["ref"]
         ):
-            problems.append(f"{where}: needs kind (ci, test or review) and ref")
+            problems.append(f"{where}: needs kind (ci, test, review or waiver) and ref")
             continue
         kind, ref = p["kind"], p["ref"]
-        if STRENGTH[kind] < STRENGTH.get(rules[rid]["check"]["kind"], 0):
+        if kind != "waiver" and STRENGTH[kind] < STRENGTH.get(rules[rid]["check"]["kind"], 0):
             problems.append(
                 f"{where}: a {kind} proof is weaker than the rule's {rules[rid]['check']['kind']} check"
             )
@@ -555,15 +585,32 @@ def load_proofs(registry, today=None) -> tuple[dict, list[str]]:
             if not (root / ref).is_file():
                 problems.append(f"{where}: test file {ref} does not exist")
                 continue
+            try:
+                tagged = rid in (root / ref).read_text(encoding="utf8", errors="replace")
+            except OSError:
+                tagged = False
+            if not tagged:
+                msg = f"{where}: test file {ref} does not name the rule; add the comment core-rule: {rid}"
+                if PROOF_TAG_ENFORCED:
+                    problems.append(msg)
+                    continue
+                PROOF_WARNINGS.append(msg)
         else:
             doc = root / ref
             if not doc.is_file():
-                problems.append(f"{where}: review record {ref} does not exist")
+                problems.append(f"{where}: {kind} record {ref} does not exist")
                 continue
+            if kind == "waiver" and not (
+                str(p.get("reason", "")).strip() and str(p.get("reviewed_by", "")).strip()
+            ):
+                problems.append(f"{where}: a waiver needs a reason and reviewed_by")
+                continue
+            if kind == "review" and not str(p.get("reviewed_by", "")).strip():
+                PROOF_WARNINGS.append(f"{where}: a review proof should name reviewed_by")
             try:
                 when = datetime.date.fromisoformat(str(p.get("date", "")))
             except ValueError:
-                problems.append(f"{where}: a review proof needs date YYYY-MM-DD")
+                problems.append(f"{where}: a {kind} proof needs date YYYY-MM-DD")
                 continue
             age = (today - when).days
             if age > max_days:
@@ -573,6 +620,22 @@ def load_proofs(registry, today=None) -> tuple[dict, list[str]]:
                 continue
         good[rid] = p
     return good, problems
+
+
+def repo_check_status(rule, by_ref) -> tuple[str, int, str]:
+    """(status, finding count, note) of a repo-check rule: pass on no finding, fail on a finding, excepted
+    while an active exception names the rule, unverified when the check cannot run."""
+    cid = rule["check"].get("id")
+    if repo_checks is None or cid not in repo_checks.CHECKS:
+        return "unverified", 0, f"repo check {cid} is not in this overlay's scripts/repo_checks.py"
+    try:
+        found = repo_checks.run(cid, repo_root())
+    except Exception as e:  # a crashed check proves nothing
+        return "unverified", 0, f"repo check {cid} could not run: {e}"
+    if not found:
+        return "pass", 0, ""
+    first = f"{found[0][0]}:{found[0][1]}: {found[0][2]}"
+    return ("excepted" if by_ref.get(rule["ref"]) else "fail"), len(found), first
 
 
 def in_scope(rule, scopes) -> bool:
@@ -786,6 +849,7 @@ def main(argv):
     ui_gap = "web" in gap_stacks
     script_gap = bool(gap_stacks & {"powershell", "python", "iac"})
     rules, out_of_scope = [], []
+    ui = ui_with_exceptions(ui_adoption(lint, scopes), by_ref)
     for r in registry.get("rules", []):
         if not in_scope(r, scopes):
             out_of_scope.append(r["id"])
@@ -830,7 +894,15 @@ def main(argv):
                 else "excepted"
             )
         elif kind == "core-ci":
-            status = "pass"
+            # A proof the core runs on the kit holds for an app only when the app uses the kit whole.
+            status = (
+                "pass"
+                if r["check"].get("requires") != "ui-adoption" or ui["status"] == "adopted"
+                else "not_applicable"
+            )
+        elif kind == "repo-check":
+            status, n, note = repo_check_status(r, by_ref)
+            n_over = n if status == "fail" else 0
         elif kind == "overlay-ci":
             status, note = overlay_ci_status(r, results)
             if status == "unverified" and by_ref.get(r["ref"]):
@@ -846,7 +918,8 @@ def main(argv):
                     status = "fail" if n_over else "excepted"
         proof = proofs.get(r["id"])
         if proof and status == "unverified":
-            status, note = "proved", f"{proof['kind']}: {proof['ref']}"
+            status = {"review": "attested", "waiver": "waived"}.get(proof["kind"], "proved")
+            note = f"{proof['kind']}: {proof['ref']}"
         rules.append(
             {
                 "id": r["id"],
@@ -872,16 +945,27 @@ def main(argv):
         },
         "scopes": sorted(scopes) if scopes is not None else None,
         "out_of_scope": out_of_scope,
-        "ui_adoption": ui_with_exceptions(ui_adoption(lint, scopes), by_ref),
+        "ui_adoption": ui,
         "summary": {
             s: sum(1 for x in rules if x["status"] == s)
-            for s in ("pass", "proved", "excepted", "fail", "unverified", "error")
+            for s in (
+                "pass",
+                "proved",
+                "attested",
+                "waived",
+                "excepted",
+                "fail",
+                "unverified",
+                "not_applicable",
+                "error",
+            )
         },
         "rules": rules,
         "exceptions": [
             dict(e, expiring=e.get("days_left") is not None and e["days_left"] <= EXPIRING_DAYS)
             for e in exceptions
         ],
+        "warnings": list(PROOF_WARNINGS),
         "problems": (
             exc.get("problems", [])
             + ([lint["error"]] if "error" in lint else [])
@@ -929,8 +1013,8 @@ def main(argv):
         + (" (drift: synced copies were edited)" if drift else "")
     )
     print(
-        f"  rules: {s['pass']} pass, {s['proved']} proved, {s['excepted']} excepted, {s['fail']} fail, "
-        f"{s['unverified']} unverified"
+        f"  rules: {s['pass']} pass, {s['proved']} proved, {s['attested']} attested, {s['waived']} waived, {s['excepted']} excepted, {s['fail']} fail, "
+        f"{s['unverified']} unverified, {s['not_applicable']} not applicable"
     )
     if report["scopes"] is not None:
         print(
@@ -948,6 +1032,8 @@ def main(argv):
     for e in report["exceptions"]:
         if e["expiring"]:
             print(f"  EXPIRING {e['id']} ({e['rule']}) in {e['days_left']} day(s)")
+    for w in report["warnings"]:
+        print(f"  WARNING {w}")
     for p in report["problems"]:
         print(f"  PROBLEM {p}")
     for r in report["new_rules"]:

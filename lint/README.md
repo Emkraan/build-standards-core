@@ -20,12 +20,23 @@ against the paths in `standards-local/ui-lint.json`, and in core CI against its 
 ## Config (`standards-local/ui-lint.json`)
 
 ```json
-{ "paths": ["src"], "exclude": [], "token_files": [], "baseline": null }
+{ "paths": ["src"], "exclude": [], "token_files": [], "data_palettes": [], "baseline": null }
 ```
 
 `token_files` adds files allowed to hold colour literals (the synced `tokens-core/` is always
 allowed). A custom accent block printed by `tokens-core/build.py --accent` is recognised by its
 header and may set accent tokens.
+
+`data_palettes` lists globs of files that hold data colours (a chart theme, a table of category colours)
+rather than theme colours. Colour literals in those files are exempt from UI003. Every other rule still
+applies to them, and a colour literal anywhere else still fails.
+
+## Neutral dividers
+
+A one-sided border under 2px in a neutral grey (equal channels, or saturation of 10% or less) is a hairline
+divider, so UI001 does not flag it. A coloured hairline, a 2px or thicker one-sided border, an accent edge
+bar and every other UI001 shape still fail. A literal grey in that border is still a colour literal (UI003)
+unless the file is a data palette: the fix is a `--border-*` token.
 
 ## Suppression is traceable
 

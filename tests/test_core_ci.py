@@ -310,6 +310,33 @@ class AsciiNodePython(Overlay):
         self.assertIn("python_floor=3.11", out)
         self.assertIn("powershell=false", out)
 
+    def test_params_node_major(self):
+        rc, out = self.ci("params")
+        self.assertIn("node=\n", out + "\n")
+        self.commit("chore: pin", {"package.json": '{"engines": {"node": ">=22"}}\n'})
+        self.assertIn("node=22", self.ci("params")[1])
+        self.commit("chore: pin", {".nvmrc": "24.1.0\n"})
+        self.assertIn("node=24", self.ci("params")[1])
+        self.params("web", "| Node major version | 20 | x |\n")
+        self.assertIn("node=20", self.ci("params")[1])
+
+    def test_params_app_dir_finds_a_lockfile_one_level_down(self):
+        self.assertIn("app_dir=.\n", self.ci("params")[1] + "\n")
+        self.commit("chore: app", {"web/package.json": "{}\n", "web/pnpm-lock.yaml": "x\n"})
+        out = self.ci("params")[1]
+        self.assertIn("app_dir=web", out)
+        self.assertIn("sweep_web=true", out)
+        self.commit("chore: root lock", {"package-lock.json": "{}\n"})
+        self.assertIn("app_dir=.", self.ci("params")[1])
+
+    def test_params_app_dir_row_overrides(self):
+        self.commit("chore: app", {"a/yarn.lock": "x\n", "b/package.json": "{}\n"})
+        self.params("", "| App directory | b | x |\n")
+        out = self.ci("params")[1]
+        self.assertIn("app_dir=b", out)
+        self.params("", "| App directory | ../evil | x |\n")
+        self.assertIn("app_dir=a", self.ci("params")[1])
+
     def test_python_config_monorepo(self):
         self.params("python", "| Python interpreter floor | 3.12 | x |\n")
         self.commit(
@@ -635,6 +662,25 @@ class CoreStatus(Overlay):
                 self.by_id(self.status("--ci-results", res)[1])["a.1"]["status"], want, conclusion
             )
 
+    def test_kit_core_ci_rule_is_not_applicable_without_ui_adoption(self):
+        rules = json.loads((self.repo / "standards-core" / "rules.json").read_text())["rules"]
+        rules.append(
+            {
+                "id": "a.9",
+                "ref": "a.md 9",
+                "title": "T9",
+                "statement": "s",
+                "level": "must",
+                "applies_to": ["all"],
+                "check": {"kind": "core-ci", "command": "x", "requires": "ui-adoption"},
+                "acceptance": "x",
+            }
+        )
+        (self.repo / "standards-core" / "rules.json").write_text(json.dumps({"rules": rules}))
+        rc, rep = self.status()
+        self.assertEqual(self.by_id(rep)["a.9"]["status"], "not_applicable")
+        self.assertEqual(rep["summary"]["not_applicable"], 1)
+
     def test_proofs(self):
         (self.repo / "tests").mkdir()
         (self.repo / "tests" / "t.py").write_text("")
@@ -653,9 +699,9 @@ class CoreStatus(Overlay):
         (self.repo / "standards-local" / "proofs.json").write_text(json.dumps(proofs))
         _, rep = self.status()
         ids = self.by_id(rep)
-        self.assertEqual(ids["a.2"]["status"], "proved")
+        self.assertEqual(ids["a.2"]["status"], "attested")
         self.assertEqual(ids["a.3"]["status"], "proved")
-        self.assertEqual(rep["summary"]["proved"], 2)
+        self.assertEqual((rep["summary"]["proved"], rep["summary"]["attested"]), (1, 1))
         self.assertEqual(rep["summary"]["pass"], 0)
         old = (datetime.date.today() - datetime.timedelta(days=400)).isoformat()
         proofs = {
@@ -679,6 +725,46 @@ class CoreStatus(Overlay):
             "a.9: no such rule",
         ):
             self.assertIn(want, text)
+
+    def test_waiver_needs_a_reason_a_record_and_a_date_and_never_counts_as_proof(self):
+        (self.repo / "docs").mkdir()
+        (self.repo / "docs" / "waiver.md").write_text("not applicable here\n")
+        today = datetime.date.today().isoformat()
+        good = {
+            "kind": "waiver",
+            "ref": "docs/waiver.md",
+            "date": today,
+            "reason": "no database in this repo",
+            "reviewed_by": "owner",
+        }
+        write = lambda d: (self.repo / "standards-local" / "proofs.json").write_text(json.dumps(d))  # noqa: E731
+        write({"a.3": good})
+        _, rep = self.status()
+        self.assertEqual(self.by_id(rep)["a.3"]["status"], "waived")
+        self.assertEqual((rep["summary"]["waived"], rep["summary"]["proved"]), (1, 0))
+        for bad, want in (
+            (dict(good, reason=""), "needs a reason"),
+            (dict(good, date="2020-01-01"), "days old"),
+            (dict(good, ref="docs/none.md"), "does not exist"),
+        ):
+            write({"a.3": bad})
+            _, rep = self.status()
+            self.assertEqual(self.by_id(rep)["a.3"]["status"], "unverified", want)
+            self.assertIn(want, "\n".join(rep["problems"]))
+
+    def test_test_proof_without_the_rule_tag_warns_and_a_tagged_one_does_not(self):
+        (self.repo / "tests").mkdir()
+        (self.repo / "tests" / "t.py").write_text("# nothing\n")
+        (self.repo / "tests" / "u.py").write_text("# core-rule: a.3\n")
+        proofs = {"a.3": {"kind": "test", "ref": "tests/t.py"}}
+        (self.repo / "standards-local" / "proofs.json").write_text(json.dumps(proofs))
+        _, rep = self.status()
+        self.assertEqual(self.by_id(rep)["a.3"]["status"], "proved")
+        self.assertIn("core-rule: a.3", "\n".join(rep["warnings"]))
+        proofs["a.3"]["ref"] = "tests/u.py"
+        (self.repo / "standards-local" / "proofs.json").write_text(json.dumps(proofs))
+        _, rep = self.status()
+        self.assertEqual(rep["warnings"], [])
 
     def test_missing_stacks_row_is_a_problem(self):
         (self.repo / "standards-local" / "parameters.md").write_text(

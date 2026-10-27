@@ -12,6 +12,11 @@ Usage (from anywhere, paths resolve from the config file):
 
 Exit codes: 0 clean or within the baseline, 1 violations, 2 configuration error.
 
+Data palettes and neutral dividers: files matched by "data_palettes" (globs in the config: a chart theme,
+a table of category colours) are exempt from the colour-literal rule UI003, because their colours are data.
+A one-sided border under 2px in a neutral grey is a hairline divider, not an edge bar, so UI001 does not
+flag it. A coloured or 2px+ one-sided border, and a colour literal outside a data palette, still fail.
+
 Suppression is deliberate and traceable, never a blanket switch:
   edge-ok                 on the line or the line above, UI001 only, for data marks that look like
                           bars (a chart today line, a timeline connector)
@@ -103,6 +108,7 @@ DEFAULTS = {
         "**/standards-core/**",
     ],
     "token_files": ["**/tokens.css", "**/tokens.ts", "**/tailwind.preset.cjs"],
+    "data_palettes": [],
     "baseline": None,
 }
 EXTS = {".css", ".tsx", ".ts", ".jsx", ".js", ".mjs", ".html"}
@@ -208,6 +214,33 @@ def css_decls(body, body_pos):
 
 
 # ------------------------------------------------------------------ checks
+
+
+def neutral_hairline(val):
+    """True for a border value that is a hairline (under 2px) in a neutral grey: a divider, not an accent."""
+    px = re.search(r"(\d+(?:\.\d+)?)px", val)
+    if not px or float(px.group(1)) >= 2:
+        return False
+    if re.search(r"accent|hue|success|warning|danger|info", val):
+        return False
+    cols = []
+    for m in re.finditer(r"#([0-9a-fA-F]{3,8})\b", val):
+        h = m.group(1)
+        if len(h) in (3, 4):
+            h = "".join(c * 2 for c in h[:3])
+        if len(h) not in (6, 8):
+            return False
+        ch = [int(h[i : i + 2], 16) for i in (0, 2, 4)]
+        cols.append(max(ch) - min(ch) <= 16)
+    for m in re.finditer(r"rgba?\(([^)]*)\)", val):
+        nums = re.findall(r"\d*\.?\d+", m.group(1))[:3]
+        if len(nums) < 3:
+            return False
+        ch = [float(n) for n in nums]
+        cols.append(max(ch) - min(ch) <= 16)
+    for m in re.finditer(r"hsla?\(\s*[\d.]+(?:deg)?[\s,]+([\d.]+)%", val):
+        cols.append(float(m.group(1)) <= 10)
+    return bool(cols) and all(cols)
 
 
 NARROW_PX = 6
@@ -346,8 +379,9 @@ def check_css(text, clean, hit, is_token_file, allow_accent_block):
             if m:
                 px = re.search(r"(\d+(?:\.\d+)?)px", val)
                 coloured = re.search(r"accent|hue|success|warning|danger|info|#|rgb|hsl", val)
-                if (px and float(px.group(1)) >= 2) or (
-                    coloured and not re.search(r"transparent", val)
+                if not neutral_hairline(val) and (
+                    (px and float(px.group(1)) >= 2)
+                    or (coloured and not re.search(r"transparent", val))
                 ):
                     hit("UI001", pos, f"{prop}: {val[:40]}")
             if prop == "box-shadow":
@@ -575,7 +609,14 @@ def lint_file(path, rel, root, cfg, active, findings, accent_writes):
                         return True
         return False
 
+    is_data = any(
+        fnmatch.fnmatch(rel, g) or fnmatch.fnmatch("/" + rel, g)
+        for g in cfg.get("data_palettes", [])
+    )
+
     def hit(rule, pos, detail):
+        if rule == "UI003" and is_data:
+            return
         line = line_of(clean, pos)
         if not suppressed(rule, line):
             findings.append({"rule": rule, "file": rel, "line": line, "detail": detail.strip()})
@@ -625,6 +666,7 @@ def load_config(argv):
                 cfg[k] = user[k]
         cfg["exclude"] = DEFAULTS["exclude"] + user.get("exclude", [])
         cfg["token_files"] = DEFAULTS["token_files"] + user.get("token_files", [])
+        cfg["data_palettes"] = list(user.get("data_palettes", []))
         cfg["_overlay"] = (
             cpath.parent.parent if cpath.parent.name == "standards-local" else cpath.parent
         )
@@ -705,6 +747,7 @@ def self_test():
     cfg["exclude"] = ["**/expected.json"]
     cfg["_overlay"] = fx
     cfg["paths"] = ["."]
+    cfg["data_palettes"] = ["**/data-palette.css"]
     files, findings, _ = run(cfg, fx)
     got = counts(findings)
     bad = []

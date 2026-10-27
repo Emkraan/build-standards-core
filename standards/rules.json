@@ -1,5 +1,5 @@
 {
-  "$description": "Every enforceable rule in the standards, one entry per rule. id is the stable slug, ref is the doc and section an exception names. check.kind says how a consumer proves it: lint (a ui_lint or script_lint rule), core-ci (proved in the core), overlay-ci (a job of the overlay's template workflow: check.workflow names the file under templates/overlay/.github/workflows and check.jobs the jobs whose success proves the rule), test (a test the app carries), review (design review, no automated check yet). applies_to lists the stacks a rule covers (web, wpf, local-ops, powershell, python, iac) or all. core-status reports a rule to a consumer that declares its stacks only when one of them matches or the rule is all. Tooling diffs this file between releases to raise new and changed rules.",
+  "$description": "Every enforceable rule in the standards, one entry per rule. id is the stable slug, ref is the doc and section an exception names. check.kind says how a consumer proves it: lint (a ui_lint or script_lint rule), core-ci (proved in the core; check.requires ui-adoption makes it not_applicable for an app that has not adopted the kit), overlay-ci (a job of the overlay's template workflow: check.workflow names the file under templates/overlay/.github/workflows and check.jobs the jobs whose success proves the rule), repo-check (a static check of the repo's own files in scripts/repo_checks.py, run by core-status: no finding is pass), test (a test the app carries), review (design review, no automated check yet). applies_to lists the stacks a rule covers (web, wpf, local-ops, powershell, python, iac) or all. core-status reports a rule to a consumer that declares its stacks only when one of them matches or the rule is all. Tooling diffs this file between releases to raise new and changed rules.",
   "format": "build-standards-rules/1",
   "rules": [
     {
@@ -113,7 +113,9 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "core-ci",
+        "command": "npm --prefix kit test -- tests/toast.test.tsx",
+        "requires": "ui-adoption"
       },
       "acceptance": "A unit test mounts the toast provider, clicks Undo and asserts the callback ran (section 23)."
     },
@@ -160,6 +162,20 @@
         "id": "UI010"
       },
       "acceptance": "lint-core/ui_lint.py reports no UI010 finding and standards-local/ui-lint.json sets no baseline, and core-status.py reports the UI as adopted."
+    },
+    {
+      "id": "web-ui.0.12",
+      "ref": "web-ui.md 0.12",
+      "title": "Boards and wide tables keep their own scrollbars",
+      "statement": "The page body is one vertical scroll container. A board is sized to the window with a floor and scrolls on its own edge, and a wide table has a capped scroll area with a floor. A page header is never capped with a viewport fraction, and overflow hidden is never put on a flex parent to fit a board.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Every route with a board or wide table, loaded at a window about 700px tall, scrolls the page, shows the board's sideways scrollbar with each lane scrolling on its own, and shows the table's own scrollbars with its header in view."
     },
     {
       "id": "web-ui.1",
@@ -231,9 +247,10 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "repo-check",
+        "id": "RC014"
       },
-      "acceptance": "The Playwright e2e job runs axe on every route in both themes."
+      "acceptance": "repo check RC014 reports a web app whose test suites never run axe or never cover both the light and the dark theme."
     },
     {
       "id": "web-ui.14",
@@ -289,7 +306,9 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "core-ci",
+        "command": "npm --prefix kit test -- tests/stat-tile.test.tsx",
+        "requires": "ui-adoption"
       },
       "acceptance": "A unit test drives requestAnimationFrame with a fake clock and asserts an intermediate and the exact final value, and the reduced-motion path renders the final value at once."
     },
@@ -303,9 +322,11 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "core-ci",
+        "command": "npm --prefix kit test -- tests/shell.test.tsx",
+        "requires": "ui-adoption"
       },
-      "acceptance": "A Playwright check asserts data-rail moves through collapsed, open and pinned and persists."
+      "acceptance": "A kit unit test asserts data-rail moves between collapsed and pinned, persists the pin and restores it."
     },
     {
       "id": "web-ui.20",
@@ -345,7 +366,9 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "core-ci",
+        "command": "npm --prefix kit test -- tests/gen-changelog.test.ts",
+        "requires": "ui-adoption"
       },
       "acceptance": "A unit test asserts the parser keeps the three change types and strips references."
     },
@@ -359,9 +382,11 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "core-ci",
+        "command": "npm --prefix kit test -- tests/a11y.test.tsx",
+        "requires": "ui-adoption"
       },
-      "acceptance": "axe-core reports zero violations on the home, health and announcements routes in both themes."
+      "acceptance": "A kit test runs axe on the composite shell and each overlay in both themes and finds zero violations."
     },
     {
       "id": "web-ui.25",
@@ -373,9 +398,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC015"
       },
-      "acceptance": "The overlay CI fails when an app with a sidebar lacks the build card with changelog or another required piece."
+      "acceptance": "repo check RC015 reports an app that mounts an app shell and renders no build card."
     },
     {
       "id": "web-ui.12",
@@ -387,7 +413,9 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "core-ci",
+        "command": "npm --prefix kit test -- tests/theme-init.test.ts",
+        "requires": "ui-adoption"
       },
       "acceptance": "The built index.html carries the kit script, or a test with hasCurrentThemeInit passes."
     },
@@ -401,9 +429,11 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "core-ci",
+        "command": "npm --prefix kit test -- tests/review-fixes.test.tsx",
+        "requires": "ui-adoption"
       },
-      "acceptance": "Two apps with different appIds dismiss a banner in one and still show it in the other, while a theme change applies to both."
+      "acceptance": "A kit test asserts a banner dismissed in one app is stored under that app's own appId key and not the shared one."
     },
     {
       "id": "web-ui.26.2",
@@ -860,9 +890,10 @@
         "python"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC012"
       },
-      "acceptance": "Every import outside the standard library is listed in a pinned requirements file with a reason."
+      "acceptance": "repo check RC012 reports no import outside the standard library that is missing from a pinned requirements file with a reason comment (or a lock file)."
     },
     {
       "id": "scripting-python.1.3",
@@ -874,9 +905,10 @@
         "python"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC017"
       },
-      "acceptance": "No secret is passed as a subprocess argument and the log helpers redact."
+      "acceptance": "repo check RC017 reports no subprocess call that passes a secret-named value or flag as an argument."
     },
     {
       "id": "scripting-python.1.4",
@@ -1033,9 +1065,10 @@
         "all"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC011"
       },
-      "acceptance": "The consumer workflow checks out with ssh-key and the key is listed read-only on the source repo."
+      "acceptance": "repo check RC011 reports no checkout of another repository without an ssh-key."
     },
     {
       "id": "secrets-and-credentials.1.5",
@@ -1061,9 +1094,13 @@
         "all"
       ],
       "check": {
-        "kind": "review"
+        "kind": "overlay-ci",
+        "workflow": "core-ci.yml",
+        "jobs": [
+          "core-secret-scan"
+        ]
       },
-      "acceptance": "The secret scan passes and the inventory names the store entry for every secret."
+      "acceptance": "core-ci.yml core-secret-scan passes: the secret scan finds no secret in the change."
     },
     {
       "id": "secrets-and-credentials.1.7",
@@ -1261,9 +1298,10 @@
         "all"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC001"
       },
-      "acceptance": "No pkill, killall or pattern kill in the job, and stops are by recorded id."
+      "acceptance": "repo check RC001 reports no process kill by name or pattern in scripts or workflows."
     },
     {
       "id": "automation-safety.1.10",
@@ -1350,9 +1388,13 @@
         "all"
       ],
       "check": {
-        "kind": "review"
+        "kind": "overlay-ci",
+        "workflow": "core-ci.yml",
+        "jobs": [
+          "core-changelog"
+        ]
       },
-      "acceptance": "The PR links or contains the entry for its version."
+      "acceptance": "core-ci.yml core-changelog passes: the pull request touches the changelog."
     },
     {
       "id": "pr-review-and-merge.1.4",
@@ -1391,15 +1433,16 @@
       "id": "pr-review-and-merge.1.6",
       "ref": "pr-review-and-merge.md 1.6",
       "title": "Merges are pinned to the reviewed head",
-      "statement": "Every merge names the head commit that was reviewed (--match-head-commit <sha> or the API sha field), and every push and merge re-reads the PR state immediately before it runs.",
+      "statement": "Every merge names the head commit that was reviewed (--match-head-commit <sha> or the API sha field, which must be in the merge call statement: the call, its continuation lines and the body built for it), and every push and merge re-reads the PR state immediately before it runs.",
       "level": "must",
       "applies_to": [
         "all"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC002"
       },
-      "acceptance": "Merge commands and endpoints pass the head sha, and tooling refuses a moved head."
+      "acceptance": "repo check RC002 reports no merge command or merge endpoint call without the head sha."
     },
     {
       "id": "pr-review-and-merge.1.7",
@@ -2236,9 +2279,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC022"
       },
-      "acceptance": "Review: no hand-written permission comparison in handlers."
+      "acceptance": "repo check RC022 reports no app that compares permissions or roles by hand in more than one non-test file."
     },
     {
       "id": "rbac.4",
@@ -2432,9 +2476,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC006"
       },
-      "acceptance": "The deploy workflow declares the shared concurrency group and fails when health does not report the new sha."
+      "acceptance": "repo check RC006 reports every deploy workflow of a SQLite repo, other than a static-site or Vercel-only deploy, with a concurrency group that queues and a health step that names the sha."
     },
     {
       "id": "data-safety-sqlite.2.11",
@@ -2460,9 +2505,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC007"
       },
-      "acceptance": "The overlay CI runs a migration safety check that fails on a destructive change or a NOT NULL column without a default."
+      "acceptance": "repo check RC007 reports no destructive migration and no NOT NULL column added without a default."
     },
     {
       "id": "data-safety-sqlite.7.1",
@@ -2598,9 +2644,10 @@
         "all"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC003"
       },
-      "acceptance": "Review of the dependency update configuration and the merge gate."
+      "acceptance": "repo check RC003 reports no renovate config that auto-merges major updates."
     },
     {
       "id": "ci-cd-release.5",
@@ -2612,9 +2659,10 @@
         "all"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC004"
       },
-      "acceptance": "Review of the merge workflow: no checkout of PR code, merge call passes the head sha."
+      "acceptance": "repo check RC004 reports no workflow with a trusted trigger that checks out or runs pull request code."
     },
     {
       "id": "ci-cd-release.6",
@@ -2626,9 +2674,10 @@
         "all"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC013"
       },
-      "acceptance": "Review of the deploy workflow."
+      "acceptance": "repo check RC013 reports every stateful deploy workflow that does not re-run CI or wait on a CI job, or that has no health check."
     },
     {
       "id": "ci-cd-release.7",
@@ -2668,9 +2717,10 @@
         "all"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC010"
       },
-      "acceptance": "Review: the secrets table matches the secrets the workflows read."
+      "acceptance": "repo check RC010 reports every secret a workflow reads named in a documentation page."
     },
     {
       "id": "ci-cd-release.11",
@@ -3293,9 +3343,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC005"
       },
-      "acceptance": "A CI check over the hosting configuration fails when a platform CORS origin list is set."
+      "acceptance": "repo check RC005 reports no platform CORS origin list in hosting or infrastructure config."
     },
     {
       "id": "web-api-runtime.5.7",
@@ -3349,9 +3400,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC009"
       },
-      "acceptance": "No app calls the auth library's initialize or redirect handling itself."
+      "acceptance": "repo check RC009 reports the auth redirect handled in at most one non-test source file."
     },
     {
       "id": "web-client-runtime.2.1",
@@ -3559,9 +3611,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC019"
       },
-      "acceptance": "The build reports an entry chunk under the budget the consumer sets."
+      "acceptance": "repo check RC019 reports a bundled app with no bundle size budget check (a size-limit or bundlewatch config, or a budget script)."
     },
     {
       "id": "web-client-runtime.4.2",
@@ -3573,9 +3626,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC018"
       },
-      "acceptance": "The build config names the vendor chunks and their hashes survive an app-only change."
+      "acceptance": "repo check RC018 reports no vite config without manualChunks."
     },
     {
       "id": "web-client-runtime.4.3",
@@ -3587,9 +3641,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC020"
       },
-      "acceptance": "No inline asset above the bundler's inline limit is in the entry chunk."
+      "acceptance": "repo check RC020 reports no vite config without assetsInlineLimit."
     },
     {
       "id": "web-client-runtime.5.1",
@@ -3601,9 +3656,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC021"
       },
-      "acceptance": "No app carries its own token or fetch wrapper."
+      "acceptance": "repo check RC021 reports no app whose client code builds the bearer header in more than one file."
     },
     {
       "id": "web-client-runtime.5.2",
@@ -3881,9 +3937,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC008"
       },
-      "acceptance": "A scan of fixtures finds no real address."
+      "acceptance": "repo check RC008 reports no fixture email address outside the reserved test domains."
     },
     {
       "id": "web-build.4",
@@ -3923,9 +3980,10 @@
         "web"
       ],
       "check": {
-        "kind": "review"
+        "kind": "repo-check",
+        "id": "RC016"
       },
-      "acceptance": "The repo has the verify script and it lists every CI step."
+      "acceptance": "repo check RC016 reports a package with no verify script, or one that does not run each check:* script and each typecheck, lint, build and test script the package defines."
     },
     {
       "id": "web-build.10",
@@ -3979,7 +4037,9 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "core-ci",
+        "command": "npm --prefix kit test -- tests/build-registry.test.ts",
+        "requires": "ui-adoption"
       },
       "acceptance": "A manifest added without regenerating fails CI; a module with no icon gets the fallback."
     },
@@ -4007,9 +4067,11 @@
         "web"
       ],
       "check": {
-        "kind": "test"
+        "kind": "core-ci",
+        "command": "npm --prefix kit test -- tests/scope-css.test.ts",
+        "requires": "ui-adoption"
       },
-      "acceptance": "A module rule does not match an element of another module."
+      "acceptance": "A kit test asserts module rules are prefixed inside :where([data-module=id]) at zero specificity and root selectors map onto the module root, so a module rule matches only its own module."
     },
     {
       "id": "web-shell.6",
