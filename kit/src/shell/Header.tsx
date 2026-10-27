@@ -35,6 +35,7 @@ export function Header({ title, subtitle, home, children, actions, menuLabel = '
           data-variant="ghost"
           data-icon-only=""
           aria-label={menuLabel}
+          data-tip={menuLabel}
           aria-expanded={shell.mobileOpen}
           aria-controls={shell.sidebarId}
           onClick={() => shell.setMobileOpen(true)}

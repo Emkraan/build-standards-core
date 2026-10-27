@@ -180,7 +180,7 @@ function ToastItem({ entry, onDismiss, dismissLabel }: ToastItemProps) {
           {entry.action.label}
         </button>
       ) : null}
-      <button type="button" className="toast-close" aria-label={dismissLabel} onClick={() => onDismiss(entry.key)}>
+      <button type="button" className="toast-close" aria-label={dismissLabel} data-tip={dismissLabel} onClick={() => onDismiss(entry.key)}>
         <IconClose size={14} />
       </button>
     </div>

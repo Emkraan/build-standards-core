@@ -93,6 +93,11 @@ Routing stays in the app. Pass your router's link component to `AppShell linkCom
 receives `href`) and the current path to `AppShell pathname` so the mobile drawer closes on
 navigation.
 
+`AppShell tooltipLayer` mounts the tip layer, so `data-tip` and every native `title` show the kit tip with
+no extra line. It is off by default: an app that mounts its own `TooltipLayer` keeps working as before, and if it
+turns the prop on as well only the first layer mounted draws, so a tip never shows twice.
+`AppShell glossary={{ pool: { term: 'host pool', short: '...' } }}` registers the app's glossary.
+
 ### Apps that share an origin
 
 Local storage is per origin. When several apps are served from one origin (mounted under different
@@ -193,16 +198,16 @@ Shell
 
 Primitives
 
-- `Button`, `IconButton`: primary gradient with a spring press, secondary, ghost and danger, plus `success` and `warning` (solid deep fills) and `success-subtle`, `warning-subtle` and `danger-subtle` (status tint, hairline and ink). An icon-only button requires a label.
+- `Button`, `IconButton`: primary gradient with a spring press, secondary, ghost and danger, plus `success` and `warning` (solid deep fills) and `success-subtle`, `warning-subtle` and `danger-subtle` (status tint, hairline and ink). An icon-only button requires a label. `disabledReason` replaces `disabled` for a button that cannot be used now (see the help layer below).
 - `Card`, `CardHead`, `CardBody`: card with title left and controls right, optional tone or selection. `CardHead` takes `variant` (`card`, `panel` for a page region, `label` for a small group label), `count` and `level` (2, 3 or 4).
 - `FormSection`: a fieldset with a legend and one muted description line, two columns of fields above the phone breakpoint.
 - `ErrorState`, `errorDetail`: the load-failed block with the error's one line detail and a Retry button that spins while `retrying`.
 - `SelectionBar`, `ListFooter`: the bulk action bar for selected rows, and the "Showing N of M" footer with a freshness label. `SelectionBar` also takes `run` (the `useBulkRun` state), `onCancel` and `itemNoun`, and then shows a named progress bar, Cancel while running, the per-item errors afterwards and a locked Clear while the run is active.
 - `FilterPanel`: a form of typed filter cells (text, number and date ranges, select, multiselect, boolean and a lookup with an async loader) with Apply and Clear. It emits a neutral `{ key, op, value }` list (`FilterClause`) through `onApply`, seeds from `value`, and `buildFilters` and `draftFromFilters` are the pure halves. Cells are labelled, ranges and multiselects are fieldsets, and the lookup is a small local combobox (arrow keys, Enter, Escape, a status line, stale answers dropped). A lookup with `multiple: true` keeps several choices as removable chips (Backspace on an empty input removes the last) and emits one `in` clause of the chosen values, with the loader and keyboard behaviour unchanged. Without it the lookup is unchanged.
 - `useBulkRun`: runs one task per item with a concurrency cap (default 4), progress, per-item errors and cancel (an `AbortSignal` for every task). `run(items)` resolves with the counts and `skipped`. Pair it with `SelectionBar`'s `run` prop.
-- `Badge`, `Pill`: status and identity labels. Tones: neutral, accent, success, warning, urgent (the orange high-priority step), danger, info. `live` puts a spinner in the tone colour before the label for rows that are still working. `onRemove` makes a removable tag; `removing` turns its remove button into a spinner.
+- `Badge`, `Pill`: status and identity labels. Tones: neutral, accent, success, warning, urgent (the orange high-priority step), danger, info. `live` puts a spinner in the tone colour before the label for rows that are still working. `onRemove` makes a removable tag; `removing` turns its remove button into a spinner. `Badge` takes `tip` (what the state means and whether it is normal) and then a focusable mark.
 - `Spinner`: the working indicator, sizes xs, sm, md and lg, one turn per `--dur-spin`. Hidden from screen readers unless it gets a `label`, held still under reduced motion.
-- `StatusDot`: a status mark, pulsing on success, with an optional text label. Takes the urgent tone too.
+- `StatusDot`: a status mark, pulsing on success, with an optional text label. Takes the urgent tone too. `tip` says what the state means and whether it is normal.
 - `Tone`: wraps content in the `.tone` corner wash for a categorical hue.
 - `HueTile`: an icon tile tinted by a categorical hue.
 - `StatTile`: the only hero KPI primitive, with the deep fill, the glow recipe and a count-up that respects reduced motion.
@@ -222,7 +227,13 @@ Primitives
 - `SplitLayout`: a list pane and a detail pane with a resize handle (a focusable separator: arrows move it 16 pixels, Shift 64, Home and End go to the bounds, Enter or a double click resets, dragging works too). The detail pane keeps a minimum width. Under `stackBelow` pixels (720), measured on the layout itself, the panes stack, the handle goes away and the list is capped in height. `width` and `onWidthChange` make the width controlled.
 - `EmptyState`, `StickFigure`: empty states with an icon tile or a mascot pose.
 - `Skeleton`: loading placeholders for lines, cards, tables and lists (`variant="list"`).
-- `TooltipLayer`: one layer for every `data-tip` on the page, placed by `data-tip-side` (top, bottom, right or left). A native `title` is adopted on first hover or focus: the text moves to `data-tip`, and a control with no other name keeps it as `aria-label`.
+- `TooltipLayer`: one layer (mounted by `AppShell tooltipLayer` or by the app, and a second mount draws nothing, so tips never double) for every `data-tip` on the page, placed by `data-tip-side` (top, bottom, right or left). A native `title` is adopted on first hover or focus: the text moves to `data-tip`, and a control with no other name keeps it as `aria-label`.
+- Tip layer (UI standard section 27, rules 1 to 4):
+  - `useTip(text, side)`: the props that put a tip on any element (`data-tip`, `data-tip-side`, `aria-describedby`) plus a hidden description node, because the layer's own tip is hidden from assistive technology. `Badge`, `StatusDot`, `Term`, `When`, `InfoTip` and `Button` use it.
+  - `Button` and `IconButton` `disabledReason`: renders `aria-disabled` instead of `disabled`, so the button stays focusable, a click and a form submit do nothing, and the reason is its tip and its description. `loading` wins while both are set. `Modal` `primaryAction.disabledReason` does the same for the dialog's main action. `Badge` and `StatusDot` take `tip` and `tipSide` (a bare `StatusDot` takes its tip as its name).
+  - `GlossaryProvider` and `Term`: the app registers `{ id: { term, short, long?, href? } }` once. `<Term id="pool" />` renders the term with a dotted underline, keyboard focusable, with the short text as its tip. An unknown id renders plain text and warns in development only. `useGlossary()` and `glossaryEntry(id)` read it.
+  - `InfoTip`: a 24px info icon button (44px on a coarse pointer) with an accessible name, the short text as its tip, and a click that opens a popover with the long text and an optional link (`HelpLink`).
+  - `When`: relative text ("2 h ago") with the absolute date, time and zone as its tip, `timeZone` to pick the zone (an unknown zone falls back to the viewer's and warns in development), and one shared interval for every instance on the page (`CLOCK_TICK`). `formatWhen` and `formatWhenAbsolute` are the pure halves. `RelativeTime` stays for existing pages.
 - `MonthGrid`: a generic month calendar: weekday headers, day cells, event chips with "+N more", a today marker and roving keyboard navigation (arrows, Home, End, PageUp, PageDown). Dates are ISO day strings. Events arrive as a list; `renderEvent`, `renderDay` and `dayHint` are the slots, and the rules about what an event means (coverage, shifts) stay in the app. Known limit: an event sits on its one `date`; multi-day events (a span across cells or weeks) are not supported, so an app splits one into an event per day.
 - `LaneBoard`: a lane board: lanes as columns, cards inside, an empty-lane state and a drop indicator. Drag with the pointer, or focus a card and press Space or Enter to pick it up, arrows to pick a lane (left, right) and a position (up, down), Space or Enter to drop, Escape to cancel; each step is announced in a polite live region. `onMove({ cardId, from, to, index })` reports the move; the board never reorders itself, so the app owns the data and the rules about which moves are allowed.
 - `Table` `capped` and `LaneBoard` `fit`, with the `page-scroll` class: boards and wide tables keep their own scrollbars on a short window (a short window never traps the page). `page-scroll` makes the page body the one vertical scroll container. `capped` limits a table to the window height less 15rem, with no floor so a short table stays short (a focusable named region, so the keyboard can scroll it); `fit` sizes a board to the window height less 6rem with a 360px floor, scrolling sideways on the board edge and vertically inside each lane. Never cap a page header with a viewport fraction and never put `overflow: hidden` on a flex parent to fit a board.

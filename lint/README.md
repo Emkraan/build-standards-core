@@ -16,6 +16,9 @@ against the paths in `standards-local/ui-lint.json`, and in core CI against its 
 | UI008 | A `[data-theme]` or `prefers-color-scheme` selector in app CSS (a theme is a token swap) | web-ui 1 |
 | UI009 | A kit control class (`btn`, `badge`, `tab`, `input`...) borrowed by an element that restyles its box inline | web-ui 0.10 |
 | UI010 | An app stylesheet that declares a core token (`--surface-1`, `--text-primary`, `--radius-md`...) | web-ui 0.11 |
+| UI011 | A kit `Button` or `IconButton` (imported from the kit package or alias) with `disabled` and no `disabledReason`. A spread, `loading`, `disabled={false}` and a component the file declares or imports by a relative path are left alone | web-ui 27.2 |
+| UI012 | A control that holds only an icon (`<button>` or `<a>` around an icon or `<svg>`, a kit `Button` with `icon` and no children) and lacks an accessible name or a tip (`title` counts as a tip) | web-ui 27.1 |
+| UI013 | A `data-tip`, `tip` or `disabledReason` written as a literal over 200 characters or in three or more sentences | web-ui 27.4 |
 
 ## Config (`standards-local/ui-lint.json`)
 

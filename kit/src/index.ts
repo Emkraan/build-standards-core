@@ -129,7 +129,14 @@ export { PageErrorBoundary, resetKeyChanged } from './chrome/ErrorBoundary';
 export type { ErrorBoundaryProps, PageErrorBoundaryProps } from './chrome/ErrorBoundary';
 export { Avatar } from './primitives/Avatar';
 export type { AvatarProps } from './primitives/Avatar';
-export { TooltipLayer } from './primitives/Tooltip';
+export { TooltipLayer, useTip } from './primitives/Tooltip';
+export type { TipAttributes, TipSide } from './primitives/Tooltip';
+export { GlossaryProvider, Term, glossaryEntry, useGlossary } from './primitives/Glossary';
+export type { Glossary, GlossaryEntry, GlossaryProviderProps, TermProps } from './primitives/Glossary';
+export { When, formatWhen, formatWhenAbsolute } from './primitives/When';
+export type { WhenProps } from './primitives/When';
+export { HelpLink } from './primitives/HelpLink';
+export type { HelpLinkProps } from './primitives/HelpLink';
 
 // Layout
 export {
@@ -163,6 +170,8 @@ export { Toaster, useToast } from './overlays/Toaster';
 export type { ToastAction, ToastApi, ToastOptions, ToastVariant, ToasterProps } from './overlays/Toaster';
 export { Menu, Popover } from './overlays/Popover';
 export type { MenuItemDef, MenuProps, Placement, PopoverProps } from './overlays/Popover';
+export { InfoTip } from './overlays/InfoTip';
+export type { InfoTipProps } from './overlays/InfoTip';
 
 // Required chrome
 export { CommandPalette, PALETTE_OPEN_EVENT, SearchTrigger, filterPaletteItems, groupPaletteItems, highlight, isSlashOpen, onPaletteOpen, openCommandPalette, openScopedPalette, paletteOwnsKey, paletteScope, scorePaletteItem } from './chrome/CommandPalette';

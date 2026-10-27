@@ -90,7 +90,6 @@ import {
   Toaster,
   Tone,
   Toolbar,
-  TooltipLayer,
   openCommandPalette,
   openScopedPalette,
   useCategoricalHues,
@@ -151,6 +150,8 @@ import type { AppAccent, ArtAnchors, BulkRunState, ComboboxFreeEntry, FilterClau
 import { AreaChart, BarChart, ChartLegend, DonutChart, Gauge, LineChart, RingProgress, Sparkline } from '../src/charts';
 import { Graph, graphEdge } from '../src/graph';
 import type { Edge, GraphCardNode } from '../src/graph';
+
+import { GALLERY_GLOSSARY, TipsSpecimen, WhenSpecimen } from './HelpSpecimens';
 
 /* Scalar is a large app: the API reference specimen loads it only when a reader opens it. */
 const ApiReferenceDemo = lazy(() => import('./ApiReferenceDemo'));
@@ -2336,7 +2337,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2353,6 +2354,8 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
     <AccentProvider accent={accent}>
       <AppShell
         pathname="#gallery"
+        tooltipLayer
+        glossary={GALLERY_GLOSSARY}
         rail={
           <Rail brandMark="K" brandName="Kit gallery" brandSlot={<span className="badge">Tool</span>} version={version} footer={<BuildCard version={version} releases={releases} />} environment="Gallery" statusText="Data refreshed just now" showVersion={false}>
             <NavGroup label="Foundations">
@@ -2567,6 +2570,12 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         <Specimen id="scroll-fit" title="Boards and tables that keep their scrollbars">
           <ScrollSpecimen />
         </Specimen>
+        <Specimen id="tips" title="Tips, disabled reasons and glossary terms">
+          <TipsSpecimen />
+        </Specimen>
+        <Specimen id="when" title="Relative time with the absolute time in the tip">
+          <WhenSpecimen />
+        </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">
             Palette opened {paletteResult}
@@ -2574,7 +2583,6 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         ) : null}
       </AppShell>
       <CommandPalette items={paletteItems} filters={[{ id: 'Pages', label: 'Pages' }, { id: 'Data', label: 'Data' }]} />
-      <TooltipLayer />
     </AccentProvider>
   );
 }

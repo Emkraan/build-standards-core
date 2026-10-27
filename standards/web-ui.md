@@ -24,7 +24,7 @@ exceptions name them.
 |---|---|
 | Rules | [0](#0-the-rules-non-negotiable) |
 | Foundations | [1 DNA](#1-design-dna), [2 colour](#2-color-tokens), [3 Tailwind](#3-tailwind-class-map), [4 type](#4-typography), [5 geometry](#5-geometry--elevation), [14 motion](#14-motion), [16 accent tokens](#16-one-accent-token-per-app), [17 hues, tone, selection](#17-categorical-hues-tone-and-selection) |
-| Components | [7 primitives](#7-shared-primitives), [8 charts](#8-charts), [18 stat tile](#18-stat-tile-glow-and-count-up) |
+| Components | [7 primitives](#7-shared-primitives), [8 charts](#8-charts), [18 stat tile](#18-stat-tile-glow-and-count-up), [27 help layer](#27-the-help-layer) |
 | Shell and patterns | [6 shell](#6-shell-layout), [11 mobile](#11-mobile--responsive-shell), [13 search palette](#13-global-search-palette), [19 rail](#19-the-desktop-icon-rail), [20 announcements and feed](#20-announcements-the-pulse-feed-and-the-presenter), [22 build card](#22-build-card-and-release-notes), [23 undo and confirm](#23-reversible-actions-undo-irreversible-ones-confirm), [24 chrome accessibility](#24-shell-chrome-added-by-the-behavioural-layer), [25 required chrome](#25-required-chrome-what-every-app-with-a-sidebar-must-mount) |
 | App types | [10 WPF](#10-wpf--powershell-translation-desktop-tools), [12 accent and plain-CSS port](#12-per-app-accent-and-plain-css-port), [21 system health](#21-system-health-request-analytics) |
 | Engineering | [9 verification gate](#9-verification-gate-before-done) |
@@ -456,6 +456,11 @@ Every button presses with a spring (`scale(0.97)`), shows `--focus-ring` on keyb
 `loading` swaps the icon for a spinner. `IconButton` takes a required `label` (its `aria-label` and
 tooltip).
 
+A button that cannot be used now takes `disabledReason` instead of `disabled`. It renders
+`aria-disabled`, so it stays in the tab order, a click does nothing (no handler, no form submit) and
+the reason is its tip and its accessible description. The same prop is on `Modal`'s `primaryAction`.
+Rule 2 of [section 27](#27-the-help-layer) says what the reason holds.
+
 ### Cards (`Card`, `CardHead`, `CardBody`)
 
 `.card` is `--surface-1` with a `--border-default` hairline, `--radius-xl`, `--elev-1` and padding
@@ -659,7 +664,10 @@ layout mode of `Table`. A page whose data is comparable across columns keeps `Ta
 
 `Badge` takes a status `tone` (its `-dim` fill, `-border` hairline and ink) or a categorical `hue`.
 Status tokens are deep enough in the light theme to clear AA on white and on their own tint.
-`StatusDot` marks live states and pulses on `--dur-pulse` ([section 14](#14-motion)).
+`StatusDot` marks live states and pulses on `--dur-pulse` ([section 14](#14-motion)). `Badge` and
+`StatusDot` take `tip` (and `tipSide`): what the state means and whether it is normal (rule 3 of
+[section 27](#27-the-help-layer)). A mark with a tip is a tab stop and the tip is its accessible
+description. A bare `StatusDot` with a tip takes the tip as its name.
 
 `.hue-chip` is the generic accent chip: a small label with a hue dot, on a tint of that hue and a
 full hairline of it. Set `--hue` (a channel triplet) on the chip or any ancestor, usually with a
@@ -773,12 +781,22 @@ stack sits in a closed "Technical details" disclosure.
 
 ### Tooltips (`TooltipLayer`, `data-tip`)
 
-One layer mounted once serves the whole page. Put `data-tip="..."` on an element (optional
+One layer serves the whole page. `AppShell` mounts it when given `tooltipLayer` (default off, so an app
+that does not ask sees no change), and `data-tip` on a kit `Button`, the feed strip or the launcher then
+shows with no wiring. An app that mounts its own `TooltipLayer` leaves the prop off: only the first layer
+mounted is active, so a second mount never draws a tip twice. Put `data-tip="..."` on an element (optional
 `data-tip-kbd` key chip, `data-tip-side="bottom"`, or `"right"` for icon rails). Native `title`
 attributes and truncated or line-clamped text that is actually cut off are upgraded automatically.
 Shows after `TOOLTIP_DELAY` on hover (`TOOLTIP_SKIP_DELAY` when moving between tips) or on keyboard
 focus, never on touch, and hides on scroll, pointer down and Escape. Icon-only buttons always carry
 `aria-label` and `data-tip`.
+
+The layer's tip is a visual aid and is hidden from assistive technology, so the words reach a screen
+reader through the element: `useTip(text, side)` returns the tip attributes plus a hidden description
+wired with `aria-describedby`, and every kit part with a `tip` prop uses it. A tip is one or two short
+plain sentences and never the only copy of something needed to act. What to put in a tip, and the parts
+built on it (`Term`, `InfoTip`, `When`, `disabledReason`, `Badge tip`), are in
+[section 27](#27-the-help-layer).
 
 ### Toasts (`Toaster`, `useToast`)
 
@@ -1077,6 +1095,8 @@ AppShell (.shell, data-rail, data-mobile-nav)
   padding) and keyboard hints are hidden. The presenter is hidden on phones, and the home page
   carries the same information in its cards.
 - Every icon a nav item names must resolve. A missing icon is a defect, never a silent fallback.
+- `AppShell` mounts the tip layer when given `tooltipLayer` ([Tooltips](#tooltips-tooltiplayer-data-tip))
+  and registers the app's glossary when given `glossary`. Both are off by default.
 
 ### z-index stack
 
@@ -1546,3 +1566,45 @@ cookies and the auth cache.
 
 **Acceptance (test):** two apps with different `appId`s on one origin dismiss a banner in one and
 still show it in the other, while a theme change in one applies to both.
+
+## 27. The help layer
+
+A console explains itself where the person is looking: a short tip on the thing, a plain word list for
+the domain, and times and states that say what they mean. The kit has a part for each and the four
+rules below say when to use them. A tip is an aid for the pointer and the keyboard. It is never the only
+place a fact lives. The number of this section and of its rules is provisional: the core assigns the
+final numbers when it merges.
+
+| Need | Part | What it does |
+|---|---|---|
+| Show every tip | `TooltipLayer`, mounted by `AppShell tooltipLayer` | One layer per page. Off by default. A second mount never draws a second tip |
+| Put a tip on anything | `useTip(text)`, or the `tip` prop of a kit part | `data-tip` plus a hidden description wired with `aria-describedby`, so a screen reader gets the words the layer shows |
+| A control that cannot be used now | `Button disabledReason`, `Modal` `primaryAction.disabledReason` | `aria-disabled` instead of `disabled`: it stays focusable, a click does nothing and the reason is its tip and its description. `loading` wins while both are set |
+| A status | `Badge tip`, `StatusDot tip` | A mark with a tip is focusable and reads the tip as its description |
+| A domain word | `GlossaryProvider` (or `AppShell glossary`), `Term`, `InfoTip` | The app registers `{ id: { term, short, long?, href? } }` once. `<Term id>` shows the word with a dotted underline, focusable, with the short text as its tip. `InfoTip` is an info icon button with an accessible name whose click opens a popover with the long text and the link. An unknown id renders plain text and warns in development only |
+| A time | `When` | Relative text ("2 h ago"), the absolute date, time and zone as the tip, a `timeZone` prop, and one shared clock for the page (`CLOCK_TICK`) |
+
+1. **An icon-only control has an accessible name and a tip that says its verb.** "Remove host", not
+   "Trash". `IconButton` requires `label` and uses it for both. A control that holds only an icon (a
+   `button` or `a`, or a kit `Button` with `icon` and no children) carries `aria-label` and
+   `data-tip`, and a native `title` counts as the tip. The UI lint reports UI012.
+2. **A disabled control says why and how to enable it.** Use `disabledReason` instead of `disabled` on a
+   kit `Button` or `IconButton`, in one or two sentences that name what is missing and how to get it
+   ("Choose a pool first. The size applies to that pool."). The UI lint reports UI011 for a kit button
+   with `disabled` and no `disabledReason`. A button that is `loading` is busy, not blocked, and is
+   left alone. The reason is a tip by design, so when it is the next step, say the step in the page
+   text too.
+3. **A status badge or dot says what the state means and whether it is normal.** The label is the short
+   plain word. The tip says what it means, whether anyone has to act and, when the label translates a
+   raw value, the raw value ("The scaling plan turned it off because nobody needed it. Not a problem.").
+   Use `Badge tip` and `StatusDot tip`. The label and the tone carry the state as well, because colour is
+   never the only signal.
+4. **A tip is one or two short plain sentences.** About 200 characters at most, with no markup and no
+   list. Anything longer goes into the `InfoTip` popover or the page itself. A tip never holds the only
+   copy of something needed to act, because tips do not show on touch and hide on scroll and pointer
+   down. The UI lint reports UI013 for a literal `data-tip`, `tip` or `disabledReason` over 200
+   characters or in three or more sentences.
+
+**Acceptance:** `lint/ui_lint.py` reports no UI011, UI012 or UI013 finding in the app. Rule 3 is checked
+in design review of each page. The kit tests `help-tips`, `help-time` and `tooltip-shell` prove the
+parts, and every part has a gallery specimen with visual baselines.

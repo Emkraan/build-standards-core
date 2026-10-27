@@ -99,6 +99,14 @@ for (const theme of THEMES) {
         await page.keyboard.press('Escape');
         await expect(page.getByRole('dialog')).toHaveCount(0);
       }
+      // The InfoTip popover and a shown tip sit on the overlay layer too.
+      await page.getByRole('button', { name: 'About host pool', exact: true }).click();
+      await expect(page.getByRole('dialog', { name: 'About host pool' })).toBeVisible();
+      expect(await axeViolations(page), 'with the InfoTip popover open').toEqual([]);
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', { name: 'Scale pool', exact: true }).hover();
+      await expect(page.locator('.tooltip')).toHaveCount(1);
+      expect(await axeViolations(page), 'with a tip shown').toEqual([]);
     });
   });
 }

@@ -1,5 +1,43 @@
 # Changelog
 
+## Pending release (the tip layer: tips that show, disabled reasons, glossary terms, InfoTip and When)
+
+Unreleased. Every part below is off by default or inert until an app uses it, so a consumer that uses none of them
+renders exactly as before. The version and the final standards section number are assigned when the core merges.
+
+- Kit, the tip layer: `AppShell` takes `tooltipLayer` (default false). When set it mounts `TooltipLayer`, so
+  `data-tip` on a kit `Button`, the feed strip or the launcher shows with no wiring and a native `title` gets the kit
+  tip. The layer is a singleton: a second mount (an app that still mounts its own) draws nothing, so a tip never shows
+  twice. New `useTip(text, side)` returns the `data-tip` props plus a hidden description wired with
+  `aria-describedby`, because the layer's tip is hidden from assistive technology. New `devWarn` in `lib/env`
+  (development only, once per key).
+- Kit, reasons and marks: `Button` and `IconButton` take `disabledReason`: `aria-disabled` instead of `disabled`, so
+  the button stays focusable, a click and a form submit do nothing, and the reason is its tip and description
+  (`loading` wins). `Modal` `primaryAction.disabledReason` does the same. `Badge` and `StatusDot` take `tip` and
+  `tipSide` (a marked badge or dot is focusable, and a bare dot takes its tip as its name). The hover, active and
+  disabled selectors for a button treat `aria-disabled` like `:disabled` through a zero-specificity guard, so no
+  existing selector changes its result.
+- Kit, words and times: `GlossaryProvider` and `Term` (`{ id: { term, short, long?, href? } }`, a dotted underline,
+  keyboard focusable, the short text as the tip, an unknown id renders plain text and warns in development only),
+  `AppShell glossary` (default none), `InfoTip` (an info button with an accessible name whose click opens a popover
+  with the long text and a link, on `HelpLink`), `When` (relative text with the absolute date, time and zone as the
+  tip, a `timeZone` prop, one shared interval on `CLOCK_TICK` through `lib/clock`) with `formatWhen` and
+  `formatWhenAbsolute`. `RelativeTime` stays.
+- Kit, existing parts: the kit's own icon-only buttons (announcement close, build card, toast close, search clear,
+  header menu) carry `data-tip` as well as `aria-label`. The tip shows only where a tip layer is mounted, so nothing
+  changes for an app without one.
+- Standards: new `web-ui.md` section 27, "The help layer", with four rules registered as `web-ui.27.1` to
+  `web-ui.27.4` (an icon-only control has a name and a tip, a disabled control says why, a status says what it
+  means, a tip is one or two short sentences). The Tooltips, Buttons, Badges and Shell sections point at it. The
+  section and rule numbers are provisional. `hermes/skills/core-practices` is regenerated.
+- UI lint: three new rules. UI011 flags a kit `Button` or `IconButton` with `disabled` and no `disabledReason`
+  (27.2), UI012 flags a `button`, an `a` or a kit `Button` that holds only an icon and lacks `aria-label` or a tip
+  (27.1), UI013 flags a literal `data-tip`, `tip` or `disabledReason` over 200 characters or in three or more
+  sentences (27.4).
+- Tests and gallery: kit tests `tooltip-shell`, `help-tips` and `help-time`, the python lint tests in
+  `tests/test_ui_lint_help_layer.py`, the lint fixtures, and gallery specimens `tips` and `when` with visual
+  baselines.
+
 ## 2026-10-27 (v1.27.6, consumer report fixes: gate rename, sweep lockfile, merge sha, report issue)
 
 - Gate rename deadlock: `core-ci.py required-checks --fix` now rewrites a `REQUIRED_CHECKS` list in a gate

@@ -47,7 +47,7 @@ export function SearchInput({ value, onChange, placeholder = 'Search', focusHotk
         placeholder={placeholder}
       />
       {value ? (
-        <button type="button" className="search-field-clear" onClick={() => onChange('')} aria-label="Clear search">
+        <button type="button" className="search-field-clear" onClick={() => onChange('')} aria-label="Clear search" data-tip="Clear search">
           <IconClose size={12} />
         </button>
       ) : null}

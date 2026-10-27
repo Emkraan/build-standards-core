@@ -141,7 +141,7 @@ function BannerView({ tone, title, body, meta, action, dismissible = true, onClo
         {action !== undefined && action !== null && action !== false ? <div className="announce-action">{action}</div> : null}
       </div>
       {dismissible ? (
-        <button type="button" className="announce-close" aria-label={`Dismiss announcement: ${title}`} onClick={onClose}>
+        <button type="button" className="announce-close" aria-label={`Dismiss announcement: ${title}`} data-tip="Dismiss" onClick={onClose}>
           <IconClose size={14} />
         </button>
       ) : null}

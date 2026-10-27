@@ -151,6 +151,7 @@ export function Rail({
           data-variant="ghost"
           data-icon-only=""
           aria-label={closeLabel}
+          data-tip={closeLabel}
           onClick={() => shell.setMobileOpen(false)}
         >
           <IconClose />

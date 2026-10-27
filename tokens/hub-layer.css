@@ -89,14 +89,14 @@
 
 /* ---- Buttons: gradient primary + spring press ---- */
 .btn { transition: all var(--dur-base) var(--ease-out); }
-.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn:active:not(:disabled):not(:where([aria-disabled="true"])) { transform: scale(0.97); }
 .btn[data-variant="primary"] {
   background: linear-gradient(135deg, rgb(var(--accent-fill)) 0%, rgb(var(--accent-fill-d)) 100%);
   border-color: transparent;
   color: var(--text-inverse);
   box-shadow: 0 2px 8px rgb(var(--accent-rgb) / 0.3), 0 1px 3px rgb(var(--accent-rgb) / 0.2);
 }
-.btn[data-variant="primary"]:hover:not(:disabled) {
+.btn[data-variant="primary"]:hover:not(:disabled):not(:where([aria-disabled="true"])) {
   background: linear-gradient(135deg, rgb(var(--accent-fill-d)) 0%, rgb(var(--accent-fill)) 100%);
   box-shadow: 0 3px 12px rgb(var(--accent-rgb) / 0.4), 0 1px 4px rgb(var(--accent-rgb) / 0.25);
 }

@@ -23,6 +23,9 @@ export interface ModalAction {
   icon?: ReactNode;
   loading?: boolean | undefined;
   disabled?: boolean | undefined;
+  /** Why the action cannot run yet and how to enable it. The button stays focusable and shows the
+      reason as its tip, and the Cmd or Ctrl and Enter shortcut waits too. Use it instead of `disabled`. */
+  disabledReason?: string | undefined;
 }
 
 /** Why a modal asked to close: Escape, a backdrop press, or the close button and Cancel. */
@@ -184,7 +187,7 @@ export function Modal({
     const before = event.defaultPrevented;
     onPanelKeyDown?.(event);
     if (!before && event.defaultPrevented) return;
-    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && formRef.current) {
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && formRef.current && !primaryAction?.disabledReason) {
       event.preventDefault();
       formRef.current.requestSubmit();
     }
@@ -218,6 +221,7 @@ export function Modal({
             onClick={onSubmit ? undefined : primaryAction.onClick}
             loading={primaryAction.loading || busy}
             disabled={primaryAction.disabled}
+            disabledReason={primaryAction.disabledReason}
             icon={primaryAction.icon}
           >
             {primaryAction.label}
@@ -233,6 +237,7 @@ export function Modal({
       data-variant="ghost"
       data-icon-only=""
       aria-label={closeLabel}
+      data-tip={closeLabel}
       onClick={() => requestClose('close')}
       disabled={busy}
     >

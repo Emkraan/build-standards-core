@@ -7,6 +7,9 @@ import { STORAGE_KEYS, cx, isTypingTarget, mediaQuery, onMediaChange, readStorag
 import { focusables, isDialogOpen, isTopLayer, lockScroll, pushLayer, removeLayer, trapTab, unlockScroll } from '../lib/layers';
 import { StorageScope } from '../lib/scope';
 import { RAIL_CLOSE_DELAY, RAIL_OPEN_DELAY } from '../lib/timing';
+import { GlossaryProvider } from '../primitives/Glossary';
+import type { Glossary } from '../primitives/Glossary';
+import { TooltipLayer } from '../primitives/Tooltip';
 import { DefaultLink, ShellContext } from './context';
 import type { LinkComponent, RailHandlers, RailState, ShellContextValue } from './context';
 
@@ -34,6 +37,19 @@ export interface AppShellProps {
    * `shell.<appId>.announce.dismissed`). Theme and rail pin stay shared. Default: no scope.
    */
   appId?: string | undefined;
+  /**
+   * Mounts the page's tooltip layer, so every `data-tip` and native `title` in the app shows the kit
+   * tip. Default false, so an app that does not ask sees nothing change: it keeps mounting its own
+   * `TooltipLayer` or none. Only the first layer mounted is active, so a tip never shows twice when an
+   * app turns this on and still mounts its own.
+   */
+  tooltipLayer?: boolean | undefined;
+  /**
+   * The app's glossary, by id (see GlossaryProvider). Registers it for every page, so <Term id> and
+   * InfoTip resolve anywhere with no further wiring. Default none: nothing is registered and a Term
+   * renders its plain text.
+   */
+  glossary?: Glossary | undefined;
 }
 
 export function AppShell({
@@ -48,6 +64,8 @@ export function AppShell({
   mainId = 'kit-main',
   className,
   appId,
+  tooltipLayer = false,
+  glossary,
 }: AppShellProps) {
   const sidebarId = `${useId()}-sidebar`;
   const [pinned, setPinned] = useState(() => readStorage(railStorageKey) === 'true');
@@ -205,8 +223,10 @@ export function AppShell({
             {children}
           </main>
         </div>
+        {tooltipLayer ? <TooltipLayer /> : null}
       </div>
     </ShellContext.Provider>
   );
-  return appId ? <StorageScope appId={appId}>{shell}</StorageScope> : shell;
+  const scoped = appId ? <StorageScope appId={appId}>{shell}</StorageScope> : shell;
+  return glossary ? <GlossaryProvider glossary={glossary}>{scoped}</GlossaryProvider> : scoped;
 }

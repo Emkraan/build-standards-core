@@ -80,3 +80,29 @@ test('a LaneBoard card moves to another lane by pointer drag and by keyboard', a
   await expect(todo).toHaveAccessibleName('To do, 0 cards');
   await expect(specimen.getByRole('status')).not.toHaveText('');
 });
+
+test('the shell mounts one tip layer: a disabled reason and a term meaning show on hover and on keyboard focus', async ({ page }) => {
+  const specimen = page.locator('#specimen-tips');
+  const tip = page.locator('.tooltip');
+  const scale = specimen.getByRole('button', { name: 'Scale pool' });
+  await specimen.scrollIntoViewIfNeeded();
+  await expect(scale).toHaveAttribute('aria-disabled', 'true');
+  await expect(scale).not.toHaveAttribute('disabled', /.*/);
+
+  await scale.hover();
+  await expect(tip).toHaveCount(1);
+  await expect(tip).toHaveText('Choose a host pool first. The size applies to that pool.');
+  await page.keyboard.press('Escape');
+  await expect(tip).toHaveCount(0);
+
+  // The button is a tab stop, so the reason reaches a keyboard user as well.
+  await scale.focus();
+  await expect(scale).toBeFocused();
+  await expect(tip).toHaveCount(1);
+  await expect(tip).toHaveText(/Choose a host pool first/);
+
+  const term = specimen.locator('.term').first();
+  await term.focus();
+  await expect(tip).toHaveCount(1);
+  await expect(tip).toHaveText('A group of machines that share one image and settings.');
+});
