@@ -3,6 +3,7 @@
 
 import type { ElementType, HTMLAttributes, KeyboardEvent, ReactNode } from 'react';
 import { cx } from '../lib/env';
+import { InfoTip } from '../overlays/InfoTip';
 import type { MarkHue } from '../lib/hues';
 
 export interface CardProps extends HTMLAttributes<HTMLElement> {
@@ -50,6 +51,9 @@ export interface CardHeadProps {
   icon?: ReactNode;
   /** A count after the title, such as the rows in the group below. */
   count?: ReactNode;
+  /** Help for this card. A string shows as a visible info icon beside the title (tip on hover or focus,
+      the same text in a popover on click). A node is placed there as given. Off when empty. */
+  info?: ReactNode;
   /** Heading level of the title. Default 2. */
   level?: 2 | 3 | 4 | undefined;
   /**
@@ -63,17 +67,28 @@ export interface CardHeadProps {
   className?: string | undefined;
 }
 
-export function CardHead({ title, subtitle, controls, icon, count, level = 2, variant = 'card', className }: CardHeadProps) {
+export function CardHead({ title, subtitle, controls, icon, count, info, level = 2, variant = 'card', className }: CardHeadProps) {
   const Heading = `h${level}` as 'h2' | 'h3' | 'h4';
+  const hasInfo = info !== undefined && info !== null && info !== false && info !== '';
+  const heading = (
+    <Heading className="card-title">
+      {title}
+      {count === undefined || count === null ? null : <span className="card-head-count">{count}</span>}
+    </Heading>
+  );
   return (
     <div className={cx('card-head', variant !== 'card' && `card-head-${variant}`, className)}>
       <div className="card-head-text">
         {icon}
         <div className="card-titles">
-          <Heading className="card-title">
-            {title}
-            {count === undefined || count === null ? null : <span className="card-head-count">{count}</span>}
-          </Heading>
+          {hasInfo ? (
+            <div className="card-title-row">
+              {heading}
+              {typeof info === 'string' ? <InfoTip short={info} label={typeof title === 'string' ? `About ${title}` : undefined} /> : info}
+            </div>
+          ) : (
+            heading
+          )}
           {subtitle ? <p className="card-sub">{subtitle}</p> : null}
         </div>
       </div>

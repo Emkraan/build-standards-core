@@ -40,9 +40,10 @@ describe('StatTile delta, selected and tip', () => {
     expect(container.querySelector('.kpi-tile')?.hasAttribute('aria-pressed')).toBe(false);
   });
 
-  it('passes the tip to the shared tooltip layer', () => {
+  it('serves the tip from a visible info icon, not from the tile', () => {
     const { container } = render(<StatTile label="x" value={1} tip="Why this number" />);
-    expect(container.querySelector('.kpi-tile')?.getAttribute('data-tip')).toBe('Why this number');
+    expect(container.querySelector('.kpi-tile')?.hasAttribute('data-tip')).toBe(false);
+    expect(container.querySelector('.kpi-tile .info-tip')?.getAttribute('data-tip')).toBe('Why this number');
   });
 
   it('keeps the click and key behaviour', () => {

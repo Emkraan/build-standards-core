@@ -173,6 +173,9 @@
 
 /* ---- Rule 1: no edge bars. Remove the legacy 3px top strip on KPI tiles. ---- */
 .kpi-tile::before { content: none !important; }
+.kpi-tile[data-tone] .info-tip, .kpi-tile-wrap .info-tip { color: var(--on-fill-label); }
+@media (hover: hover) and (pointer: fine) { .kpi-tile[data-tone] .info-tip:hover, .kpi-tile-wrap .info-tip:hover { background: var(--on-fill-chip); color: var(--text-inverse); } }
+.kpi-tile[data-tone] .info-tip[aria-expanded="true"], .kpi-tile-wrap .info-tip[aria-expanded="true"] { background: var(--on-fill-chip); color: var(--text-inverse); }
 .kpi-tile[data-tone] .kpi-hint { color: var(--on-fill-hint); font-size: 12px; }
 .kpi-tile[data-tone] .kpi-label { color: var(--on-fill-label); min-height: 2.6em; line-height: 1.3; display: flex; align-items: flex-start; }
 .kpi-strip { align-items: stretch; }

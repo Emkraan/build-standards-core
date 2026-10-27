@@ -26,6 +26,13 @@ renders exactly as before. The version and the final standards section number ar
 - Kit, existing parts: the kit's own icon-only buttons (announcement close, build card, toast close, search clear,
   header menu) carry `data-tip` as well as `aria-label`. The tip shows only where a tip layer is mounted, so nothing
   changes for an app without one.
+- Kit, visible cues: `StatTile` and `Stat` show an info icon beside the label when `tip` is given (`Stat` also takes an
+  `info` node, which wins), and `CardHead` takes `info` (a string or a node) and shows the same icon beside the
+  title. The icon is an `InfoTip`: the tip on hover or focus, the same text in a popover on click. With no `tip` or
+  `info` the markup is the same as before. A `StatTile` or `Stat` that has `onClick` keeps the icon in its corner,
+  outside the button, so a button never holds a button. The glossary underline at rest is 2px dotted in
+  `--text-secondary`, and goes to `--text-primary` on hover and focus. One named visible change: a `StatTile` that
+  already passed `tip` now shows the icon and no longer puts `data-tip` on the tile itself.
 - Standards: new `web-ui.md` section 27, "The help layer", with four rules registered as `web-ui.27.1` to
   `web-ui.27.4` (an icon-only control has a name and a tip, a disabled control says why, a status says what it
   means, a tip is one or two short sentences). The Tooltips, Buttons, Badges and Shell sections point at it. The
@@ -34,8 +41,8 @@ renders exactly as before. The version and the final standards section number ar
   (27.2), UI012 flags a `button`, an `a` or a kit `Button` that holds only an icon and lacks `aria-label` or a tip
   (27.1), UI013 flags a literal `data-tip`, `tip` or `disabledReason` over 200 characters or in three or more
   sentences (27.4).
-- Tests and gallery: kit tests `tooltip-shell`, `help-tips` and `help-time`, the python lint tests in
-  `tests/test_ui_lint_help_layer.py`, the lint fixtures, and gallery specimens `tips` and `when` with visual
+- Tests and gallery: kit tests `tooltip-shell`, `help-tips`, `help-time` and `help-cues`, the python lint tests in
+  `tests/test_ui_lint_help_layer.py`, the lint fixtures, and gallery specimens `tips` (with the cues) and `when` with visual
   baselines.
 
 ## 2026-10-27 (v1.27.6, consumer report fixes: gate rename, sweep lockfile, merge sha, report issue)
