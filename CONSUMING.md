@@ -642,7 +642,7 @@ instead of local CSS:
 | Kit part | What it does |
 |---|---|
 | `page-scroll` class | makes the page body the one vertical scroll container (full height) |
-| `Table` `capped` prop | limits the table to the window height less 15rem, never under 16rem, as a named focusable region so the keyboard can scroll it |
+| `Table` `capped` prop | limits the table to the window height less 15rem, with no floor so a short table stays short, as a named focusable region so the keyboard can scroll it |
 | `LaneBoard` `fit` prop | sizes the board to the window height less 6rem, never under 360px, scrolls sideways on the board edge and each lane on its own |
 
 `capped` and `fit` default to off, so an existing use is unchanged. The proof is loading every route that has a

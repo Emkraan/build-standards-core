@@ -139,7 +139,7 @@ exceptions name them.
     - A board is sized to the window with a floor (`LaneBoard` `fit`: the window height less 6rem, never
       under 360px). It scrolls sideways on its own edge and each lane scrolls vertically on its own.
     - A wide or long table gets a capped scroll area with a floor (`Table` `capped`: at most the window
-      height less 15rem, never under 16rem). The area is a named, focusable region so the keyboard can
+      height less 15rem, no floor, so a short table stays short). The area is a named, focusable region so the keyboard can
       scroll it.
     - Never cap a page header with a viewport fraction (`max-height` in `vh`): on a short window the
       content below it is squeezed to nothing. The header keeps its natural height and the page scrolls.
