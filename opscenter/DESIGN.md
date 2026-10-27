@@ -251,7 +251,8 @@ switch), and the result of its last dry run. Each rule offers three actions:
   operation would have recorded. Nothing outward is written and no operation changes state. One
   activity record notes the dry run.
 - **Enable.** Allowed only when a dry run of that rule finished after the rule last changed (its
-  rule hash) with no refused step. It needs a typed confirm (section 4.4) of the text
+  rule hash), replayed at least one operation, and had no refused step. A dry run that replayed
+  no operation never qualifies, because it passes with nothing tested. It needs a typed confirm (section 4.4) of the text
   `<scope>.<action> live`, and the server re-checks the text and the dry run before it flips
   the flag.
 - **Disable.** Always allowed, one click, no dry run needed.
@@ -263,8 +264,8 @@ for. A rule that changes in `local/params.json` drops its switch, so a changed r
 its parameter value and needs a new dry run. Every switch is one activity ledger record. The
 three core approval rules appear in the card and can be switched off, never silently.
 
-Acceptance (test): enable is refused with no dry run, with a dry run older than the rule, and
-with a dry run that had a refused step. Enable with a matching dry run and the typed text flips the
+Acceptance (test): enable is refused with no dry run, with a dry run older than the rule, with a
+dry run that replayed no operation, and with a dry run that had a refused step. Enable with a matching dry run and the typed text flips the
 flag. Disable needs neither. A dry run writes nothing through the fake slot. A rule edited in
 parameters loses its switch. A session or engine caller is refused. Each switch leaves one
 activity record.
@@ -475,7 +476,8 @@ contract text; the feed writer stays `hermes/consumption.py`).
   2. **Merge:** merge the sync PR by the repo's declared method, pinned to the head seen.
   3. **Approve item:** post `approve <id>` on this account's own report issue.
 - **Typed confirm** (B-10): the confirm dialog requires the exact text, `<repo>#<number>` for a PR
-  action and `<id> on issue #<n>` for an item. The server re-checks the text.
+  action, `<id> on issue #<n>` for an item, and `<scope>.<action> live` to enable a writer rule
+  (section 2.5). The server re-checks the text.
 - The server re-reads live before acting: a PR that is not open records a tombstone and says
   already done; a moved head or failing checks refuses; an item not in the awaiting list or an
   issue that is not this account's report refuses.
