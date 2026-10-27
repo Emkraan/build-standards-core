@@ -1433,7 +1433,7 @@
       "id": "pr-review-and-merge.1.6",
       "ref": "pr-review-and-merge.md 1.6",
       "title": "Merges are pinned to the reviewed head",
-      "statement": "Every merge names the head commit that was reviewed (--match-head-commit <sha> or the API sha field), and every push and merge re-reads the PR state immediately before it runs.",
+      "statement": "Every merge names the head commit that was reviewed (--match-head-commit <sha> or the API sha field, which must be in the merge call statement: the call, its continuation lines and the body built for it), and every push and merge re-reads the PR state immediately before it runs.",
       "level": "must",
       "applies_to": [
         "all"
