@@ -43,7 +43,8 @@ opscenter/
     run.py             the one subprocess helper (timeout, missing binary, nonzero exit)
     writer.py          the single default-deny outward writer (applier)
     approvals.py       the approvals inbox at /api/approvals
-    state.py           atomic state read and write helper, the only writer of state files
+    state.py           atomic state read and write helper and command line entry, the only
+                       writer of state files
     heartbeats.py      job liveness against the job manifest
     modules/           one file per core screen's API (action, awareness, drafts, work, reviews,
                        knowledge, plans, debt, activity, search, core, infra, overview, badges)
@@ -132,6 +133,9 @@ The ops center is consumed the way the kit is: a synced copy, never hand edited.
 - State directory from parameter `host.state_dir`; runtime directory from `host.runtime_dir`. Both
   live outside the repo, so a deploy never touches data or identity.
 - No auth layer. The loopback bind plus the gate is the boundary.
+- `state.py` is callable outside the server (section 3.2). The server imports it, and any other
+  process that writes the state tree runs it as a command, so the lock and the header have one
+  implementation and no second write path exists.
 
 ### 2.2 Route registry and the gate
 
@@ -385,6 +389,40 @@ is read by a parser that has its own fixture tests.
 - Every state file has exactly one writer, except a `ledger` that declares one producer and one
   drainer (section 3.1). All writers go through `state.py` (atomic temp file plus `os.replace`, a
   file lock for read-modify-write, the header stamped on write).
+- `state.py` is callable outside the server. The server imports it. Every other process that writes
+  the state tree (a scheduled script, a gate script, a skill, a job that keeps state of its own)
+  runs it as a command, so it takes the same lock and stamps the same header and nothing needs a
+  second write path:
+
+  ```text
+  python3 state.py [--state-dir DIR] [--writer NAME] [--lock-timeout-s N] <command> <file> [args]
+    append  <file> <record>        ledger kinds: add one record (id and at_utc stamped when absent)
+    replace <file> <document>      store, kv, watch, report and config kinds: write the whole file
+    update  <file> <key> <patch>   read modify write of one record or value, under the lock
+    read    <file> [key]           read the file or one key, no write
+  ```
+
+  - The state directory is `--state-dir`, else parameter `host.state_dir`. A record, document or
+    patch is JSON text, `@<path>` or `-` for standard input.
+  - A write command needs `--writer`. The value must equal the writer the file's schema declares.
+    For a ledger that declares a producer and a drainer, the declared writer means
+    either of the two, so the producer's name and the drainer's name are both accepted and any
+    other value is not. A script that owns a file is declared as its writer in that schema, for
+    example `script.<name>`. Any other value is refused with `denied` and the file is untouched.
+  - The document is validated against the file's schema before the write. A violation is refused
+    with `bad_request` and the file is untouched. The header (`kind`, `schema`, `writer`,
+    `updated_utc`) is stamped by the command and never taken from the caller.
+  - The lock wait is bounded by `--lock-timeout-s` (default 10). A held lock past it is refused
+    with `conflict`.
+  - Output is one JSON line, `{"ok": true, "file": ..., "written": <n>}` or `{"ok": false,
+    "code": ..., "message": ...}`, with a code from the envelope list (section 2.3). The exit
+    status is 0 for success, 1 for a refused write and 2 for bad usage.
+  - Reads take the same lock in shared mode and never write.
+
+Acceptance (test): two processes appending to one ledger at the same moment lose no record. A
+replace keeps the header and stamps `updated_utc`. A `--writer` that is not the declared writer (for a
+ledger, its producer or its drainer) is refused and the file is byte for byte unchanged. A schema violation is refused and the file is
+unchanged. A held lock past the timeout exits 1 with `conflict`. A read never changes the file.
 
 ### 3.3 The conformance checker
 
@@ -724,7 +762,7 @@ Release numbers are assigned at merge in a fixed merge order (D7-19).
 |---|---|---|---|
 | R1 Guard and route registry | `gate.py`, `registry.py`, `app.py` skeleton, `/api/health`, static files | registry walk (bad Host, foreign Origin, body cap, no wildcard CORS, unknown POST 404), traversal 403 | fixture consumer serves the SPA and health; every probe in the walk is refused as specified |
 | R2 Envelope | `envelope.py`, error codes, tolerant client reader for one release, response validation in tests | shape test on every route; error code to status map | fixture consumer and both tolerant and strict readers pass; R3 removes the tolerant reader |
-| R3 Schemas and checker | six envelope kinds, all core state and API schemas, `state.py`, `conformance.py` with `extends` and JSON lines, `migrate.py`, params schema, the estate-literal check | conformance on fixture state, producer and drainer ledger (roles enforced, marks leave content unchanged, retention pass by the producer only), migrate plan and apply on a copy (idempotent, backup, failure report) | fixture state passes; a seeded bad record is reported and not converted |
+| R3 Schemas and checker | six envelope kinds, all core state and API schemas, `state.py` with its command line entry, `conformance.py` with `extends` and JSON lines, `migrate.py`, params schema, the estate-literal check | conformance on fixture state, producer and drainer ledger (roles enforced, marks leave content unchanged, retention pass by the producer only), migrate plan and apply on a copy (idempotent, backup, failure report), state.py command line (concurrent appends, header kept, undeclared writer refused, schema violation refused) | fixture state passes; a seeded bad record is reported and not converted |
 | R4 Writer and inbox | `writer.py`, `approvals.py`, tombstones, applied ledger, `testing/fixtures.py`, `check-opscenter-writer`, the three core approvals and the consumption panel server module | the writer acceptance in 2.5; panel tests from local-ops-app 19 | fixture flows write only through the writer; the consumption panel's three approvals pass against a fake code host |
 | R5 Live reads and engine | `swr.py`, `run.py`, core server modules, collector and analyzer engine with the gate, routing, heartbeats, sign-in loop, notice discipline; the app shell and every core screen in 4.2 | swr single flight and last-good; gate order; heartbeat raise and clear; app unit and e2e smoke on fixture state in both themes | fixture consumer runs every core screen live with no bundle step |
 | R6 Slots | slot loader, interfaces, null adapters, reference adapters (code host, work tracker, docs home), slot UI mounts, claim token protocol, optional modules | per-slot conformance on fixtures; null adapter hides UI; claim token states | fixture consumer runs with all null, then with the three reference adapters against fakes |

@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-27 (v1.28.1, the kit drops the glow outside the four allowed uses)
+## 2026-10-27 (v1.28.2, the kit drops the glow outside the four allowed uses)
 
 - Kit fix (web-ui.0.3, one glow recipe): consumers see the progress bar, the meter fill and the search field focus
   ring lose the glow. The search field focus now uses the standard `--focus-ring`, and the progress and meter
@@ -11,6 +11,15 @@
   stylesheets outside the allowed selectors.
 - `standards/web-build.md` notes that two test files that each start a dev server need separate dependency caches
   with the dependency scan disabled.
+
+## 2026-10-27 (v1.28.1, ops center design, state writer command line)
+
+- `opscenter/DESIGN.md` sections 1.1, 2.1, 3.2 and the R3 row: `state.py` is callable outside the
+  server. It gains a command line entry (`append`, `replace`, `update`, `read`) that takes the same
+  lock, validates against the file's schema and stamps the same header. A write names its writer
+  and is refused when the name is not the file's declared writer (for a ledger, the declared
+  writer is its producer or its drainer). The R3 row is repaired as a single line. The section
+  gives the exit statuses and the acceptance test.
 
 ## 2026-10-27 (v1.28.0, a consumer declares which rules do not apply, and opscenter/applicability.json)
 
