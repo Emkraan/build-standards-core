@@ -1,8 +1,8 @@
 # Changelog
 
-## 2026-10-27 (v1.27.6, checkout health probe and companions)
+## 2026-10-27 (v1.27.6, deploy health probe and companions)
 
-- Design only. `opscenter/DESIGN.md` section 7.1: strategy `checkout` defines its health probe (`deploy.health_path`, default `/api/health`, must report the target commit within `deploy.health_timeout_s` and pass the conformance check) and a list of companion paths (`deploy.companions`) installed into the agent home only after the probe passes. A companion whose destination differs from both the previous and the target commit's file is local drift, is left in place and raises one board item. Both parameters are listed in section 6.
+- Design only. `opscenter/DESIGN.md` section 7.1: the deploy contract defines a health probe (`deploy.health_path`, default `/api/health`, must report the target commit within `deploy.health_timeout_s` and pass the conformance check) and a list of companion paths (`deploy.companions`) installed into the agent home only after the probe passes. Both apply to the `copy` strategy as well as `checkout`, and the `checkout` rollback now states that a failure of the build, the restart or the probe each triggers it. A companion whose destination differs from both the previous and the target commit's file is local drift, is left in place and raises one board item. Both parameters are listed in section 6, and the R8 acceptance in section 9.2 covers the probe path, the companion rules and both strategies.
 
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 

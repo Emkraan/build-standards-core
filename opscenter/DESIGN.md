@@ -565,7 +565,7 @@ secret references name a store and a key, never a value.
 | jobs | manifest `[{name, schedule, expected_every_s, grace_s, feeds, quiet}]` | the core jobs | A-98 |
 | heartbeats | `names[]`, `sync_from_tags` (false) | from the job manifest | A-87 |
 | freeze | `source` | null | slot name |
-| deploy | `strategy` (`copy` or `checkout`), `keep_releases` (3), `health_timeout_s` (30), `health_path` (`/api/health`), `companions[]` (`{from, to}`, default none) | `copy` | B-07, section 7.1 |
+| deploy | `strategy` (`copy` or `checkout`), `keep_releases` (3), `health_timeout_s` (30), `health_path` (`/api/health`), `companions[]` (`{from, to}`, default none), the last two for both strategies | `copy` | B-07, section 7.1 |
 | automerge | `enabled` (true), `hold_label`, `method` | repo's declared method | B-08 |
 | autofix | `own_sync_pr` (true) | | A-65, kill switch |
 | discovery | `roots[]`, `ignore[]` | `[workspace_root]` | section 8.2 |
@@ -588,15 +588,20 @@ Strategy `copy` (default):
    content hash).
 3. Switch: point `<runtime_dir>/current` at the new release (atomic rename of a symlink).
 4. Restart through `host.service_manager` with `host.service_label`.
-5. Health: `/api/health` reports the new commit within `deploy.health_timeout_s`, and
-   `conformance --server` passes.
-6. On failure: point `current` back at the previous release, restart, report once. Keep the last
-   `deploy.keep_releases` releases.
+5. Health: the health probe below passes (`deploy.health_path` reports the new commit within
+   `deploy.health_timeout_s`, and `conformance --server` passes).
+6. Companions install after the probe passes (see below). On failure: point `current` back at the
+   previous release, restart, report once. Keep the last `deploy.keep_releases` releases.
 
 Strategy `checkout`: fast-forward a live checkout to the target commit, build in place, restart,
-then run the health probe. On failure reset to the previous commit, rebuild, restart and probe
-again, and report once. Same health gate as `copy`, and a build failure alone is never the only
-trigger for the rollback.
+then run the health probe. A failure of the build, the restart or the probe each triggers the
+rollback: reset to the previous commit, rebuild, restart and probe again, and report once. A build
+that succeeds does not skip the probe, and a passing probe is required whatever the build did.
+
+Both strategies share the health probe and the companion paths below. `deploy.health_path` and
+`deploy.companions[]` apply to `copy` as well as `checkout`, so a consumer that changes strategy keeps
+the same probe and the same agent home files. For `copy` the previous commit is the one in the
+previous release's `release.json` and the target commit is the one being staged.
 
 - **Health probe.** A `GET` of `deploy.health_path` (default `/api/health`) repeated until it reports
   the target commit within `deploy.health_timeout_s`, then `conformance --server` passes. A probe
@@ -710,7 +715,7 @@ Release numbers are assigned at merge in a fixed merge order (D7-19).
 | R5 Live reads and engine | `swr.py`, `run.py`, core server modules, collector and analyzer engine with the gate, routing, heartbeats, sign-in loop, notice discipline; the app shell and every core screen in 4.2 | swr single flight and last-good; gate order; heartbeat raise and clear; app unit and e2e smoke on fixture state in both themes | fixture consumer runs every core screen live with no bundle step |
 | R6 Slots | slot loader, interfaces, null adapters, reference adapters (code host, work tracker, docs home), slot UI mounts, claim token protocol, optional modules | per-slot conformance on fixtures; null adapter hides UI; claim token states | fixture consumer runs with all null, then with the three reference adapters against fakes |
 | R7 Automerge | `automerge.yml` template, overlay install step | newest run per check, rerun unblocks, hold label, draft skip, head pin | merges a test PR on one repo; a failing then rerun check behaves as specified |
-| R8 Deploy | `deploy.py` with both strategies, rollback, drift check, service definitions | failed health rolls back; drift raises one item; keep_releases prunes | fixture consumer deploys, fails a seeded health check and rolls back |
+| R8 Deploy | `deploy.py` with both strategies, rollback, drift check, service definitions | failed health rolls back; drift raises one item; keep_releases prunes; a custom `health_path` is the one probed; companions install only after the probe, a drifted destination is left alone with one board item, an unchanged one is untouched, and a destination outside the agent home is refused; both strategies | fixture consumer deploys, fails a seeded health check and rolls back, then deploys with `checkout` and `copy`, a custom `health_path` and a changed companion, and the agent home file is replaced only after the probe passes and left alone when seeded with drift |
 | R9 Adopt | `hermes/adopt.py`, discovery, report-only registration, migration step, downstream app card, daily report-back rows | dry run on a fixture workspace; rerun is a no-op; unconverted record stops adopt | a clean machine fixture goes from nothing to a running, conformant ops center |
 
 ## 10. Migration path per consumer
