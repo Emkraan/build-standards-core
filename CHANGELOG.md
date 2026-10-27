@@ -47,7 +47,7 @@ renders exactly as before. The version and the final standards section number ar
   `web-ui.27.8` (an icon-only control has a name and a tip, a disabled control says why, a status says what it
   means, the first use of a domain term is a `Term`, a timestamp is relative with the absolute time in the tip, a
   person is shown by name, a tip never holds the only copy, a tip is one or two short sentences). The Tooltips, Buttons, Badges, Header and Shell sections point at it. The
-  section and rule numbers are provisional. `hermes/skills/core-practices` is regenerated.
+  section and rule numbers are provisional. The shared core-practices skill is regenerated.
 - UI lint: three new rules. UI011 flags a kit `Button` or `IconButton` with `disabled` and no `disabledReason`
   (27.2), UI012 flags a `button`, an `a` or a kit `Button` that holds only an icon and lacks `aria-label` or a tip
   (27.1), UI013 flags a literal `data-tip`, `tip` or `disabledReason` over 200 characters or in three or more
