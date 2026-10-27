@@ -22,6 +22,7 @@
 - CONSUMING.md and the overlay README document the new-repo traps, the ASCII order (escapes, a time-boxed
   exception, `ascii_ignore`) and a ready-to-paste gitleaks allowlist for token files, with notes for other
   scanners. The core's own secret scan is unchanged.
+
 ## 2026-10-27 (v1.28.2, the kit drops the glow outside the four allowed uses)
 
 - Kit fix (web-ui.0.3, one glow recipe): consumers see the progress bar, the meter fill and the search field focus
