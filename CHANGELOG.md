@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-27 (v1.27.6, ops center design, api backed docs home)
+
+- `opscenter/DESIGN.md` sections 5.2, 5.3, 6 and the R6 row: the `docs_home` reference adapter gains
+  an `api` variant for a docs home that is not a git repo. Every write passes a scope proof against
+  the allowed roots (`docs.allowed_roots`), deletes are refused, the body hash is checked and the
+  page is read back. Parameter `docs.adapter` picks the variant (`git` stays the default). The
+  section gives the acceptance test.
+
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 
 - `repo_checks.py` RC012: the import-name to distribution map gains `docx` (`python-docx`), `pptx`, `fitz`,
