@@ -1213,9 +1213,7 @@ def arg_hits(el, prev):
     if isinstance(prev, ast.Constant) and prev.value in NAME_FLAGS:
         return False
     if isinstance(el, ast.JoinedStr):
-        return any(
-            arg_hits(v.value, None) for v in el.values if isinstance(v, ast.FormattedValue)
-        )
+        return any(arg_hits(v.value, None) for v in el.values if isinstance(v, ast.FormattedValue))
     txt = unwrap_arg(el)
     if NAME_EXPR.search(txt.strip()):
         return False
