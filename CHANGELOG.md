@@ -12,6 +12,7 @@
   that often; no cached value lives forever.
 - `CONSUMING.md`: a rule whose proof only checks that a risk owner and decision record are named also needs
   a dated `review` record from the accountable owner.
+
 ## 2026-10-27 (v1.27.8, ops center design, ledger producer and drainer)
 
 - `opscenter/DESIGN.md` sections 3.1, 3.2 and the R3 row: the `ledger` kind may declare one
@@ -21,7 +22,6 @@
   record older than `analyzer.spool_days` and never one still `new`. The R3 row is repaired as a
   single line. Every other kind keeps exactly one writer. The section gives the acceptance test and
   the conformance rule.
->>>>>>> c7d5b71ccba600f7713744620683042103879cb9
 
 ## 2026-10-27 (v1.27.7, checker precision: secret names in argv, merge prose)
 
