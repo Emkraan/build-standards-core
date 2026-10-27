@@ -229,15 +229,45 @@ an outward call site outside `writer.py` and the slot `act` methods it invokes.
 4. Re-read the target live through the slot's `read`. `base_hash` still matches, and for pull
    request actions the head equals `pin.head_sha` and the required checks are green. A mismatch is
    `stale`: nothing is written and the UI says what moved.
-5. Write, unless dry run. `writer.live` is a parameter, default `false`, with per-rule override.
-   The three core approvals (section 4.4) ship with explicit rules that are live by default, so they
-   never silently dry run (hub consumer risk).
+5. Write, unless dry run. A rule is live when its effective flag is on. The effective flag is the
+   rule's switch in `writer-rules.json` when one has been set from the screen, else the rule's
+   own `live`, else `writer.live` (a parameter, default `false`). The three core approvals
+   (section 4.4) ship with explicit rules that are live by default, so they never silently dry
+   run (hub consumer risk).
 6. Read back and verify the effect.
 7. Record the outcome in the applied ledger and write a tombstone (section 2.5.1).
 
 **Tombstones.** An applied or refused-as-already-done operation leaves a tombstone keyed by target.
 The UI shows the item as done until the next source read confirms it, so a double click or a stale
 poll never offers the same act twice.
+
+**Live switch.** Parameters are read once at start, so a rule's live flag needs its own way to
+change at runtime. The Core page carries a "Writer rules" card (section 4.2) that lists every
+rule with its scope, action, direction, effective flag, where the flag comes from (parameter or
+switch), and the result of its last dry run. Each rule offers three actions:
+
+- **Dry run.** The writer replays the rule's pending approved operations through every applier
+  step with the write forced off, and the card shows each step's result and the outcome the
+  operation would have recorded. Nothing outward is written and no operation changes state. One
+  activity record notes the dry run.
+- **Enable.** Allowed only when a dry run of that rule finished after the rule last changed (its
+  rule hash) with no refused step. It needs a typed confirm (section 4.4) of the text
+  `<scope>.<action> live`, and the server re-checks the text and the dry run before it flips
+  the flag.
+- **Disable.** Always allowed, one click, no dry run needed.
+
+The switch is itself a writer operation (scope `core`, action `rule.live`, requested by the owner
+click only, never by an engine job or session). Its state is a `kv` file, `writer-rules.json`
+(schema `writer-rules/1`, writer `server.writer`), holding the flag and the rule hash it was set
+for. A rule that changes in `local/params.json` drops its switch, so a changed rule starts from
+its parameter value and needs a new dry run. Every switch is one activity ledger record. The
+three core approval rules appear in the card and can be switched off, never silently.
+
+Acceptance (test): enable is refused with no dry run, with a dry run older than the rule, and
+with a dry run that had a refused step. Enable with a matching dry run and the typed text flips the
+flag. Disable needs neither. A dry run writes nothing through the fake slot. A rule edited in
+parameters loses its switch. A session or engine caller is refused. Each switch leaves one
+activity record.
 
 **Approvals inbox, `/api/approvals`.** `GET` lists pending, approved, rejected and applied entries.
 `POST` queues one entry `{operation, decision: approve|reject}`; it refuses missing fields, a
@@ -411,7 +441,7 @@ Only Table A rows marked core. Slot-supplied tabs mount into these screens when 
 | Knowledge | Plans | `/plans` | trackers and library, reader, archive and restore | 77 |
 | Knowledge | Debt | `/debt` | Needs decision, To do, Parked, Snoozed, Done | 78 |
 | Platform | Infrastructure | `/infra` | Overview roll up, Scheduled jobs, Live jobs, Code host, Runners, Spend, Heartbeats | 79 to 83, 85, 87 |
-| Platform | Core | `/core` | consumption panel (section 4.4) | 57 to 61, 64, 65 |
+| Platform | Core | `/core` | consumption panel (section 4.4), writer rules card (section 2.5) | 57 to 61, 64, 65 |
 | Platform | Activity | `/activity` | every change, newest first | 14 |
 | (palette) | Search | `/search` | full search across providers | 9 |
 
@@ -550,7 +580,7 @@ secret references name a store and a key, never a value.
 | app | `poll` | badges 30 s, board 30 s, core 60 s | per screen |
 | host | `state_dir`, `runtime_dir`, `port` (8766), `service_label`, `service_manager` (`launchd` or `systemd`), `agent_home`, `workspace_root` | required except port | host layout |
 | server | `max_body` (1 MiB), `validate_responses` (false), `ttl.*` | as section 2.4 | |
-| writer | `live` (false), `rules[]` | three core approval rules, live | default deny |
+| writer | `live` (false), `rules[]` (each with its own `live`) | three core approval rules, live | default deny, the screen switch (section 2.5) overrides both at runtime |
 | analyzer | `min_gap_s` (1800), `retry_after_s` (1200), `daily_audit` (true), `alert_every_s` (14400), `spool_days` (14) | | B-13 |
 | model | `cmd`, `timeout_s`, `price_table`, `outlier_threshold`, `plan_usage_cmd` | `cmd` null disables the analyzer and briefs | |
 | routing | `rules_file`, `ignore_senders[]`, `ignore_subject_regex[]`, `priority_senders[]` | | collectors |
@@ -690,7 +720,7 @@ Release numbers are assigned at merge in a fixed merge order (D7-19).
 | R1 Guard and route registry | `gate.py`, `registry.py`, `app.py` skeleton, `/api/health`, static files | registry walk (bad Host, foreign Origin, body cap, no wildcard CORS, unknown POST 404), traversal 403 | fixture consumer serves the SPA and health; every probe in the walk is refused as specified |
 | R2 Envelope | `envelope.py`, error codes, tolerant client reader for one release, response validation in tests | shape test on every route; error code to status map | fixture consumer and both tolerant and strict readers pass; R3 removes the tolerant reader |
 | R3 Schemas and checker | six envelope kinds, all core state and API schemas, `state.py`, `conformance.py` with `extends` and JSON lines, `migrate.py`, params schema, the estate-literal check | conformance on fixture state; migrate plan and apply on a copy (idempotent, backup, failure report) | fixture state passes; a seeded bad record is reported and not converted |
-| R4 Writer and inbox | `writer.py`, `approvals.py`, tombstones, applied ledger, `testing/fixtures.py`, `check-opscenter-writer`, the three core approvals and the consumption panel server module | the writer acceptance in 2.5; panel tests from local-ops-app 19 | fixture flows write only through the writer; the consumption panel's three approvals pass against a fake code host |
+| R4 Writer and inbox | `writer.py`, `approvals.py`, tombstones, applied ledger, `testing/fixtures.py`, `check-opscenter-writer`, the three core approvals and the consumption panel server module | the writer acceptance in 2.5, the live switch acceptance in 2.5, panel tests from local-ops-app 19 | fixture flows write only through the writer; the consumption panel's three approvals pass against a fake code host |
 | R5 Live reads and engine | `swr.py`, `run.py`, core server modules, collector and analyzer engine with the gate, routing, heartbeats, sign-in loop, notice discipline; the app shell and every core screen in 4.2 | swr single flight and last-good; gate order; heartbeat raise and clear; app unit and e2e smoke on fixture state in both themes | fixture consumer runs every core screen live with no bundle step |
 | R6 Slots | slot loader, interfaces, null adapters, reference adapters (code host, work tracker, docs home), slot UI mounts, claim token protocol, optional modules | per-slot conformance on fixtures; null adapter hides UI; claim token states | fixture consumer runs with all null, then with the three reference adapters against fakes |
 | R7 Automerge | `automerge.yml` template, overlay install step | newest run per check, rerun unblocks, hold label, draft skip, head pin | merges a test PR on one repo; a failing then rerun check behaves as specified |

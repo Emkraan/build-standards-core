@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-27 (v1.27.6, ops center design, writer rule live switch)
+
+- `opscenter/DESIGN.md` sections 2.5, 4.2, 6 and the R4 row: a "Writer rules" card on the Core page
+  lists every writer rule and offers dry run, enable and disable. Enable needs a dry run finished
+  after the rule last changed with no refused step, plus a typed confirm. Disable is always one
+  click. The flag lives in a `kv` state file and overrides the parameter at runtime. The section
+  gives the acceptance test.
+
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 
 - `repo_checks.py` RC012: the import-name to distribution map gains `docx` (`python-docx`), `pptx`, `fitz`,
