@@ -95,12 +95,28 @@ test('the shell mounts one tip layer: a disabled reason and a term meaning show 
     await page.waitForTimeout(700);
     expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(before);
   }).toPass({ timeout: 20000 });
+  await page.evaluate(() => {
+    const w = window as unknown as { __log: string[] };
+    w.__log = [];
+    for (const type of ['pointerover', 'pointerout', 'pointerdown', 'scroll', 'focusin'])
+      document.addEventListener(type, (e) => w.__log.push(`${type}:${(e.target as HTMLElement)?.className ?? 'doc'}`.slice(0, 40)), true);
+  });
+  try {
   await expect(async () => {
     await scale.evaluate((el) => el.scrollIntoView({ block: 'center' }));
     await page.mouse.move(1, 1);
     await scale.hover();
     await expect(tip).toHaveCount(1, { timeout: 2000 });
-  }).toPass({ timeout: 20000 });
+  }).toPass({ timeout: 8000 });
+  } catch (error) {
+    const info = await page.evaluate(() => {
+      const b = document.querySelector('#specimen-tips .btn[aria-disabled]') as HTMLElement;
+      const r = b.getBoundingClientRect();
+      const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      return JSON.stringify({ rect: [r.x, r.y, r.width, r.height], top: top?.className, tip: b.getAttribute('data-tip'), log: (window as unknown as { __log: string[] }).__log.slice(-14), vh: innerHeight });
+    });
+    throw new Error(`DIAG ${info}`);
+  }
   await expect(tip).toHaveText('Choose a host pool first. The size applies to that pool.');
   await page.keyboard.press('Escape');
   await expect(tip).toHaveCount(0);
