@@ -2,7 +2,7 @@
 
 ## 2026-10-27 (v1.27.6, gated deploy verbs)
 
-- Design only. `opscenter/DESIGN.md` section 5.3: the `gated_deploys` slot lists the verbs it needs beyond approve, reject and retry (`override_window`, `delete_release`, `accept_risk`, `decide_fix`, `triage`) in a table with direction and the extra rule for each. Every verb is a writer operation and a declared capability, a delete is default deny with its own rule, and accepting a risk is an owner decision only.
+- Design only. `opscenter/DESIGN.md` section 5.3: the `gated_deploys` slot lists the verbs it needs beyond approve, reject and retry (`override_window`, `delete_release`, `accept_risk`, `decide_fix`) in a table with direction and the extra rule for each. Every verb in the table is a writer operation and a declared capability, a delete is default deny with its own rule, and accepting a risk is an owner decision only. Triage is a state-only change with no outward effect, so it is not a verb of the slot and not a writer operation.
 
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 

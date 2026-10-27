@@ -511,7 +511,7 @@ Every other slot ships an interface and the null adapter.
 | `classification` | 42 | the work type and project default sets | null (empty set) |
 | `digest_source` | 43 | ideas digest input | null |
 | `review_lanes` | 45, 56 | lane manifest `{lane, repo, tabs, engine_check, gates, canary}`; mounts `/reviews/<lane>` on the core PR card | null |
-| `gated_deploys` | 47 | list pending gated deployments and plan runs, act: approve, reject, retry, override window, delete release, accept risk, decide fix, triage (verbs below) | null |
+| `gated_deploys` | 47 | list pending gated deployments and plan runs, act: approve, reject, retry, override window, delete release, accept risk, decide fix (verbs below) | null |
 | `docs_home` | 70 to 74 (source) | see 5.2; naming scheme from parameter (B-14) | reference |
 | `doc_builder` | 75 | build a draft from a template path and header label | null |
 | `doc_archive` | 76 | list and read documents from a folder of one doc kind | null |
@@ -526,7 +526,7 @@ Every other slot ships an interface and the null adapter.
 | `code_host` | 44, 46, 82 | see 5.2 | reference |
 
 Gated deploy verbs. A consumer's gated deploy lane carries more than approve, reject and retry, and
-each extra verb is an outward change, so each one is a writer operation (section 2.5) and a capability
+each extra verb below is an outward change, so each one is a writer operation (section 2.5) and a capability
 the slot declares. A verb the slot does not declare is refused by the writer.
 
 | Verb | Direction | What it does | Extra rule |
@@ -536,7 +536,10 @@ the slot declares. A verb the slot does not declare is refused by the writer.
 | `delete_release` | delete | remove a release or a pending run | default deny, needs its own explicit rule, never covered by a wildcard rule |
 | `accept_risk` | update | record the accountable owner's acceptance of a finding | owner decision only, a machine caller can queue a proposal and never approve it |
 | `decide_fix` | update | choose one of the fixes the slot offered for a finding | the chosen option id must be one the last read offered |
-| `triage` | update | set the triage state of a finding | no outward effect beyond the slot's own record |
+
+Setting the triage state of a finding is not a verb of this slot. It changes only the ops center's own
+state and has no outward effect, so it is not a writer operation and needs no capability. It is written
+as ordinary state, through the state API, and never calls the slot.
 
 The same rules as every operation hold: an approval record whose hash equals the content hash, a live
 re-read before the write, a tombstone after it, and the applied ledger.
