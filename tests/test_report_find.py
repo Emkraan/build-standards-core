@@ -6,7 +6,7 @@ from support import load
 report = load("report_mod_find", "hermes/report.py")
 
 
-def fake(search=None, rest=None, view=None, login="rpoh25"):
+def fake(search=None, rest=None, view=None, login="owner-acct"):
     """A gh stand-in: search list, REST listing, and view by number."""
     calls = []
 
@@ -41,7 +41,7 @@ class FindIssue(unittest.TestCase):
         ]
         sh, calls = fake(search=[], rest=rows)
         self.assertEqual(report.find_issue("o/intake", sh)["number"], 120)
-        self.assertTrue(any("creator=rpoh25" in " ".join(c) for c in calls))
+        self.assertTrue(any("creator=owner-acct" in " ".join(c) for c in calls))
 
     def test_rest_fallback_takes_the_existing_report_when_no_title_matches(self):
         sh, _ = fake(rest=[{"number": 115, "title": "consumer report: x", "body": "b"}])
