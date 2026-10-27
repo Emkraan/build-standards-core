@@ -5,6 +5,7 @@
 
 import type { KeyboardEvent, ReactNode } from 'react';
 import { cx } from '../lib/env';
+import { InfoTip } from '../overlays/InfoTip';
 import type { MarkHue } from '../lib/hues';
 import { useCountUp } from './StatTile';
 
@@ -22,6 +23,12 @@ export interface StatProps {
   hue?: MarkHue | undefined;
   /** Ink of the value. Default neutral. */
   tone?: StatValueTone | undefined;
+  /** Help text. Shows as a visible info icon after the label (hover or focus for the tip, click for a
+      popover). Off when empty. Use `info` instead for a glossary entry. On a Stat that has `onClick` the
+      icon sits in the card's corner, outside the button. */
+  tip?: string | undefined;
+  /** A node placed where the help icon goes, such as an InfoTip with a glossary id. Wins over `tip`. */
+  info?: ReactNode;
   /** Counts the value up once on mount, like StatTile. Default false. */
   countUp?: boolean | undefined;
   /** Makes the whole card a button that opens the detail. */
@@ -44,7 +51,7 @@ function StatValue({ text, countUp }: { text: string; countUp: boolean }) {
   );
 }
 
-export function Stat({ label, value, hint, icon, hue = 'blue', tone = 'neutral', countUp = false, onClick, selected, className }: StatProps) {
+export function Stat({ label, value, hint, icon, hue = 'blue', tone = 'neutral', countUp = false, tip, info, onClick, selected, className }: StatProps) {
   const text = typeof value === 'number' ? value.toLocaleString('en-US') : value;
   const interactive = Boolean(onClick);
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -53,7 +60,8 @@ export function Stat({ label, value, hint, icon, hue = 'blue', tone = 'neutral',
       onClick();
     }
   };
-  return (
+  const helpIcon = info ?? (tip ? <InfoTip short={tip} label={typeof label === 'string' ? `About ${label}` : undefined} /> : null);
+  const cardNode = (
     <div
       className={cx('stat', interactive && 'card-interactive', selected && 'is-selected', className)}
       role={interactive ? 'button' : undefined}
@@ -69,6 +77,7 @@ export function Stat({ label, value, hint, icon, hue = 'blue', tone = 'neutral',
           </span>
         ) : null}
         <span className="stat-label">{label}</span>
+        {helpIcon && !interactive ? <span className="stat-info">{helpIcon}</span> : null}
       </div>
       <span className="stat-value" data-tone={tone}>
         <StatValue text={text} countUp={countUp} />
@@ -76,6 +85,15 @@ export function Stat({ label, value, hint, icon, hue = 'blue', tone = 'neutral',
       {hint ? <span className="stat-hint">{hint}</span> : null}
     </div>
   );
+  if (helpIcon && interactive) {
+    return (
+      <div className="stat-wrap">
+        {cardNode}
+        <span className="stat-corner">{helpIcon}</span>
+      </div>
+    );
+  }
+  return cardNode;
 }
 
 export interface StatRowProps {

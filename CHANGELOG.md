@@ -36,6 +36,13 @@ renders exactly as before. The version and the final standards section number ar
 - Kit, existing parts: the kit's own icon-only buttons (announcement close, build card, toast close, search clear,
   header menu) carry `data-tip` as well as `aria-label`. The tip shows only where a tip layer is mounted, so nothing
   changes for an app without one.
+- Kit, visible cues: `StatTile` and `Stat` show an info icon beside the label when `tip` is given (`Stat` also takes an
+  `info` node, which wins), and `CardHead` takes `info` (a string or a node) and shows the same icon beside the
+  title. The icon is an `InfoTip`: the tip on hover or focus, the same text in a popover on click. With no `tip` or
+  `info` the markup is the same as before. A `StatTile` or `Stat` that has `onClick` keeps the icon in its corner,
+  outside the button, so a button never holds a button. The glossary underline at rest is 2px dotted in
+  `--text-secondary`, and goes to `--text-primary` on hover and focus. One named visible change: a `StatTile` that
+  already passed `tip` now shows the icon and no longer puts `data-tip` on the tile itself.
 - Standards: new `web-ui.md` section 27, "The help layer", with eight rules registered as `web-ui.27.1` to
   `web-ui.27.8` (an icon-only control has a name and a tip, a disabled control says why, a status says what it
   means, the first use of a domain term is a `Term`, a timestamp is relative with the absolute time in the tip, a
@@ -45,9 +52,19 @@ renders exactly as before. The version and the final standards section number ar
   (27.2), UI012 flags a `button`, an `a` or a kit `Button` that holds only an icon and lacks `aria-label` or a tip
   (27.1), UI013 flags a literal `data-tip`, `tip` or `disabledReason` over 200 characters or in three or more
   sentences (27.8).
-- Tests and gallery: kit tests `tooltip-shell`, `help-tips`, `help-time`, `help-drawer` and `help-process`, the python lint tests in
-  `tests/test_ui_lint_help_layer.py`, the lint fixtures, and gallery specimens `tips`, `when`, `page-help`, `stepper` and `timeline` with visual
+- Tests and gallery: kit tests `tooltip-shell`, `help-tips`, `help-time`, `help-cues`, `help-drawer` and `help-process`, the python lint tests in
+  `tests/test_ui_lint_help_layer.py`, the lint fixtures, and gallery specimens `tips` (with the cues), `when`, `page-help`, `stepper` and `timeline` with visual
   baselines.
+
+## 2026-10-27 (v1.27.7, checker precision: secret names in argv, merge prose)
+
+- `scripting-python.1.3` (RC017): a secret NAME is not the secret. An argument after `-n`, `--name`,
+  `--secret-name` or `--secret_name`, or one ending `.name`, `_name` or `_id`, no longer fails. An f-string is
+  tested per interpolated expression, so `f"origin/main:{SECRETS_PATH}"` passes while `str(api_token)` and
+  `f"{api_token}"` still fail.
+- `pr-review-and-merge.1.6` (RC002): prose is not a merge command. Python docstrings and standalone string
+  statements are skipped (read with `ast`), and adjacent string literals count as one string. A real
+  `["gh", "pr", "merge", ...]` argv or `gh pr merge` line without a head pin still fails.
 
 ## 2026-10-27 (v1.27.6, consumer report fixes: gate rename, sweep lockfile, merge sha, report issue)
 

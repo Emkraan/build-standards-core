@@ -7,6 +7,9 @@ import type { ComponentProps, ReactNode } from 'react';
 import {
   Badge,
   Button,
+  Card,
+  CardBody,
+  CardHead,
   CommandPalette,
   GlossaryProvider,
   HelpProvider,
@@ -15,6 +18,9 @@ import {
   IconTrash,
   InfoTip,
   Segmented,
+  Stat,
+  StatRow,
+  StatTile,
   StatusDot,
   Stepper,
   Term,
@@ -90,6 +96,20 @@ export function TipsSpecimen() {
       <p>
         Scale a <Term id="pool" /> by hand, or put it in <Term id="drain" /> before a restart. Each one shows a short meaning on hover or focus.
       </p>
+      <p className="gallery-note">Visible help cues: an info icon beside a label or a card title, and a dotted underline on glossary words. A tile that is itself a button keeps the icon in its corner.</p>
+      <div className="gallery-row">
+        <StatTile label="Open items" value={12} tip="Items waiting for a reply." />
+        <StatTile label="Needs review" value={3} tone="warning" tip="Items older than two days." onClick={() => undefined} />
+      </div>
+      <StatRow label="Summary">
+        <Stat label="Online" value={4} tip="Checked in within 15 minutes." />
+        <Stat label="Offline" value={1} tone="danger" tip="No check-in for a day." onClick={() => undefined} />
+        <Stat label="Draining" value={2} info={<InfoTip id="drain" />} />
+      </StatRow>
+      <Card>
+        <CardHead title="Hosts" info="Every host in the pool, with its current state." level={3} />
+        <CardBody>Rows go here.</CardBody>
+      </Card>
       <div className="gallery-row">
         <span>Compliance</span>
         <InfoTip id="compliance" />
