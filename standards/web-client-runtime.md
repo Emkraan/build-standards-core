@@ -66,7 +66,7 @@ the platform the rule came from.
 2. **Identical GETs in flight share one request.** A GET for a key that is already in flight returns the same promise.
    - Prevents: a page whose components each ask for the same data sending the same call several times at load.
    - Acceptance (test): three concurrent GETs of one path produce one request.
-3. **Stale-while-revalidate with a per-key TTL.** Cached reads return at once and refresh in the background when older than their TTL, and each key may set its own TTL.
+3. **Stale-while-revalidate with a per-key TTL.** Cached reads return at once and refresh in the background when older than their TTL, and each key may set its own TTL. A poll interval on the page meets this when every cached read is refreshed at least that often; no cached value lives forever.
    - Prevents: a blank page on every navigation, and slow data refreshed as often as fast data.
    - Acceptance (test): a stale key returns the cached value and starts one background refresh.
 4. **Persist only identity reads, and always as stale.** Only identity reads (who am I, my permissions) persist to sessionStorage so the shell paints at once on load. They are always treated as stale, and cleared on sign-out and on an account change.

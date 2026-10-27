@@ -332,28 +332,63 @@ starts with the same header:
 
 | Kind | Shape | Use |
 |---|---|---|
-| `ledger` | append-only records `{id, at_utc, ...}`; JSON array or JSON lines (`.jsonl`, header as line 1) | spool, activity, applied, alerts |
+| `ledger` | append-only records `{id, at_utc, ...}`, JSON array or JSON lines (`.jsonl`, header as line 1), one writer or a declared producer and drainer (below) | spool, activity, applied, alerts, approvals inbox |
 | `store` | `records: {<id>: {...}}` | backlog, projects, ideas, handled, tackle sessions |
 | `kv` | `values: {<key>: <scalar or small object>}` | publish modes, acks, small decisions |
 | `watch` | `targets: {<name>: {status, last_seen_utc, last_ok_utc, detail}}` | heartbeats, sign-in health, collector health |
 | `report` | `generated_utc` plus `sections: {...}` with per-section `error` | action center, awareness, docs queue, freshness |
 | `config` | a parameters-like object, read only at runtime | routing rules, alert sources, job card map |
 
-Markdown logs (plans tree, debt files, decision logs) stay outside the schemas; their front matter
+**Producer and drainer.** A ledger is not always written by one process. An inbox is appended by
+the process that receives the work (the server, under the lock) and later drained by a separate
+job that marks each record as handled (the approvals inbox and the inbound spool are both this
+shape). A ledger schema therefore declares either one `writer` or a pair:
+
+```json
+{"kind": "ledger", "schema": "approvals/1", "producer": "server.approvals", "drainer": "engine.writer", "updated_utc": "..."}
+```
+
+- The producer appends. It never changes a record once written. It is also the only role that
+  prunes: the drainer never removes a record, so something has to expire them, and that is the
+  producer's retention pass. The pass removes whole records only, under the same lock, through
+  `state.py`, and it stamps the producer's name. For the inbound spool the producer is the
+  collector step of the engine (`collect.py`), and it runs the pass at the start of every
+  collection. A record expires when its marker shows it was drained (a final `state`) and its
+  `at_utc` is older than `analyzer.spool_days` days. A record still marked `new` never expires,
+  so unprocessed work is never dropped by age. A ledger that is pruned names its retention
+  parameter in its schema (`spool_days` here), and a ledger that names none is never pruned.
+- The drainer never appends and never removes. It changes only the marker fields a record
+  declares in the schema (`state`, `applied_utc`, `outcome` and the like), through a read modify
+  write under the same lock. The `id`, `at_utc` and every content field stay as the producer
+  wrote them, so the content hash of a record is the same before and after a mark.
+- Both go through `state.py` and stamp their own name in the header's `writer` field of the write
+  they make. A write by any other name is refused.
+- Only a `ledger` may declare a pair. Every other kind keeps exactly one writer.
+
+Acceptance (test): the producer cannot change a marked field of an existing record. The drainer
+cannot append, remove, or change a content field. A third name is refused. The retention pass
+removes a drained record older than `analyzer.spool_days` and leaves a younger one and any record
+still `new`, and a prune by the drainer is refused. An append and a mark
+at the same moment lose neither. A schema that declares a pair on a kind other than `ledger` is
+refused by the conformance checker.
+
+Markdown logs (plans tree, debt files, decision logs) stay outside the schemas, their front matter
 is read by a parser that has its own fixture tests.
 
 ### 3.2 Per-file schemas
 
 - Each state file has one schema in `schemas/state/` that extends its envelope kind
-  (`"extends": "envelopes/store"`), names its one writer, and versions itself (`backlog/1`).
+  (`"extends": "envelopes/store"`), names its one writer (or, for a `ledger`, its producer and
+  drainer, section 3.1), and versions itself (`backlog/1`).
 - The core ships schemas for every core state file. The starting set is the hub consumer's 26
   schemas (12 state, 13 API sections, plus approvals), with the gaps it found filled: activity,
   collector health, sign-in health, analyzer state, plan limits history, docs state, suppressions,
   and the `identity` field typed as an object.
 - A slot ships a schema for every file and payload it produces, in its own `schemas/` folder; the
   slot loader refuses a slot without them.
-- Every state file has exactly one writer, and all writers go through `state.py` (atomic temp file
-  plus `os.replace`, a file lock for read-modify-write, the header stamped on write).
+- Every state file has exactly one writer, except a `ledger` that declares one producer and one
+  drainer (section 3.1). All writers go through `state.py` (atomic temp file plus `os.replace`, a
+  file lock for read-modify-write, the header stamped on write).
 - `state.py` is callable outside the server. The server imports it. Every other process that writes
   the state tree (a scheduled script, a gate script, a skill, a job that keeps state of its own)
   runs it as a command, so it takes the same lock and stamps the same header and nothing needs a
@@ -589,7 +624,7 @@ secret references name a store and a key, never a value.
 | host | `state_dir`, `runtime_dir`, `port` (8766), `service_label`, `service_manager` (`launchd` or `systemd`), `agent_home`, `workspace_root` | required except port | host layout |
 | server | `max_body` (1 MiB), `validate_responses` (false), `ttl.*` | as section 2.4 | |
 | writer | `live` (false), `rules[]` | three core approval rules, live | default deny |
-| analyzer | `min_gap_s` (1800), `retry_after_s` (1200), `daily_audit` (true), `alert_every_s` (14400), `spool_days` (14) | | B-13 |
+| analyzer | `min_gap_s` (1800), `retry_after_s` (1200), `daily_audit` (true), `alert_every_s` (14400), `spool_days` (14, the age after which a drained spool record is pruned) | | B-13 |
 | model | `cmd`, `timeout_s`, `price_table`, `outlier_threshold`, `plan_usage_cmd` | `cmd` null disables the analyzer and briefs | |
 | routing | `rules_file`, `ignore_senders[]`, `ignore_subject_regex[]`, `priority_senders[]` | | collectors |
 | notify | `channel`, `cmd`, `quiet_hours` (`22:00-07:00`), `dedupe_prefix` | | B-12, A-97 |
@@ -727,7 +762,7 @@ Release numbers are assigned at merge in a fixed merge order (D7-19).
 |---|---|---|---|
 | R1 Guard and route registry | `gate.py`, `registry.py`, `app.py` skeleton, `/api/health`, static files | registry walk (bad Host, foreign Origin, body cap, no wildcard CORS, unknown POST 404), traversal 403 | fixture consumer serves the SPA and health; every probe in the walk is refused as specified |
 | R2 Envelope | `envelope.py`, error codes, tolerant client reader for one release, response validation in tests | shape test on every route; error code to status map | fixture consumer and both tolerant and strict readers pass; R3 removes the tolerant reader |
-| R3 Schemas and checker | six envelope kinds, all core state and API schemas, `state.py` with its command line entry, `conformance.py` with `extends` and JSON lines, `migrate.py`, params schema, the estate-literal check | conformance on fixture state; migrate plan and apply on a copy (idempotent, backup, failure report), state.py command line (concurrent appends, header kept, undeclared writer refused, schema violation refused) | fixture state passes; a seeded bad record is reported and not converted |
+| R3 Schemas and checker | six envelope kinds, all core state and API schemas, `state.py` with its command line entry, `conformance.py` with `extends` and JSON lines, `migrate.py`, params schema, the estate-literal check | conformance on fixture state, producer and drainer ledger (roles enforced, marks leave content unchanged, retention pass by the producer only), migrate plan and apply on a copy (idempotent, backup, failure report), state.py command line (concurrent appends, header kept, undeclared writer refused, schema violation refused) | fixture state passes; a seeded bad record is reported and not converted |
 | R4 Writer and inbox | `writer.py`, `approvals.py`, tombstones, applied ledger, `testing/fixtures.py`, `check-opscenter-writer`, the three core approvals and the consumption panel server module | the writer acceptance in 2.5; panel tests from local-ops-app 19 | fixture flows write only through the writer; the consumption panel's three approvals pass against a fake code host |
 | R5 Live reads and engine | `swr.py`, `run.py`, core server modules, collector and analyzer engine with the gate, routing, heartbeats, sign-in loop, notice discipline; the app shell and every core screen in 4.2 | swr single flight and last-good; gate order; heartbeat raise and clear; app unit and e2e smoke on fixture state in both themes | fixture consumer runs every core screen live with no bundle step |
 | R6 Slots | slot loader, interfaces, null adapters, reference adapters (code host, work tracker, docs home), slot UI mounts, claim token protocol, optional modules | per-slot conformance on fixtures; null adapter hides UI; claim token states | fixture consumer runs with all null, then with the three reference adapters against fakes |

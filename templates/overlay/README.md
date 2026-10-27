@@ -21,7 +21,7 @@ only what is specific to that business.
 | `.github/workflows/core-drift.yml` | The offline drift check |
 | `.github/workflows/core-ci.yml` | The CI half of the standard (section "CI workflow") |
 | `.github/workflows/lint-sweep.yml` | Weekly full-tree lint that keeps one issue open while it fails (ci-cd-release.md 2.1, section "Lint sweep") |
-| `standards-local/proofs.json` | Consumer-owned: how the repo proves rules `core-status.py` cannot see |
+| `standards-local/proofs.json` | Consumer-owned: how the repo proves rules `core-status.py` cannot see, and (under `$not_applicable`) which rules or groups have no surface in it, each with a reason; see CONSUMING.md section 8 |
 
 **Who owns what.** Every path above except `standards-local/` is core-owned: the sync writes it,
 `check-core-sync.py` fails on a hand edit, and a consumer never adds files to it. That includes
@@ -224,7 +224,7 @@ values, and any contrast annotations, in the same pull request as the sync.
 ## Hermes content in the overlay
 
 The overlay may carry `core-` skills only as installed copies, placed by the core's
-`hermes/sync_skills.py` run. Never hand-edit an installed core skill and never give a business
+`python3 hermes/sync_skills.py --dest <profile home>/skills/core` run. Never hand-edit an installed core skill and never give a business
 skill the `core-` prefix; shareable improvements come back to the core by pull request. Plugin
 source may be shared, but no plugin configuration, keys, MCP config, gateway tokens, cron or
 board config, vault contents, or `config.yaml` ever leaves the instance. The full split, failure

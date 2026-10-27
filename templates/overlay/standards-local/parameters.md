@@ -22,6 +22,7 @@ Fill in per business. Keep secrets, hostnames and tenant ids out of any repo tha
 | Version files the changelog check reads, comma-separated (default `package.json, pyproject.toml, VERSION`) | | docs-and-changelog.md 1.3 |
 | Changelog entries (`per-pr`: one new entry per pull request, fixed heading, newest first, append-only, checked by core-ci.yml; empty: off) | | docs-and-changelog.md 1.9 |
 | Lint sweep command (the repo's own full-tree lint that lint-sweep.yml runs weekly; empty: only the overlay lints) | | ci-cd-release.md 2.1 |
+| App directory (the folder with the web app's lockfile that lint-sweep.yml installs and lints in; empty: the root, else the first folder one level down that holds a lockfile) | | ci-cd-release.md 2.1 |
 | Trust hold: merged pull requests before an author is no longer new (default 3) | | pr-review-and-merge.md section 4 |
 | Trust hold: device-shipped paths, comma-separated globs (content shipped to managed devices or end-user machines) | | pr-review-and-merge.md section 4 |
 | ASCII check patterns, comma-separated globs that narrow the ASCII check (empty: every tracked text file, the default and the rule; for existing non-ASCII files record a time-boxed exception instead of narrowing) | | pr-review-and-merge.md 1.19, scripting-powershell.md 1.7, wpf-design-system.md 6.1 |

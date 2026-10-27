@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-27 (v1.27.6, ops center design, state writer command line)
+## 2026-10-27 (v1.28.1, ops center design, state writer command line)
 
 - `opscenter/DESIGN.md` sections 1.1, 2.1, 3.2 and the R3 row: `state.py` is callable outside the
   server. It gains a command line entry (`append`, `replace`, `update`, `read`) that takes the same
@@ -8,6 +8,85 @@
   and is refused when the name is not the file's declared writer (for a ledger, the declared
   writer is its producer or its drainer). The R3 row is repaired as a single line. The section
   gives the exit statuses and the acceptance test.
+
+## 2026-10-27 (v1.28.0, a consumer declares which rules do not apply, and opscenter/applicability.json)
+
+- `standards-local/proofs.json` takes a reserved `$not_applicable` list: `{rule, reason, date, reviewed_by,
+  until?}`, where `rule` is a rule id or a group prefix (whole dotted segments, so `rbac` covers `rbac.*`). A
+  covered rule that would read `unverified` reads `not_applicable` with the reason, apart from `waived` and
+  `excepted`; a rule with a result or a proof keeps its status. The report lists every entry (`N/A` lines,
+  `not_applicable_declared` in `--json`). `core-status.py --ci` exits 1 for an entry with no reason,
+  `reviewed_by` or date, one that has expired, one matching no rule, or one covering a protected rule. A
+  consumer that declares nothing sees no change.
+- Guard: no entry may cover `secrets-and-credentials` or `automation-safety` rules unless the registry marks
+  the rule `applicable_optional: true`. CONSUMING.md section 8 has the format and how it differs from a
+  waiver and an exception.
+- `opscenter/applicability.json` is the published list of `standards/rules.json` rule ids that apply to an ops
+  center, so both consumers' ops center reports compute against the same applicable set. It ships empty: a rule
+  is added when the owner decides it applies, and none has been decided yet.
+- `check-rules.py` reads it and fails when the file is missing or malformed, or lists an id that is not in
+  `rules.json` (or lists one twice). Ops center prerequisite P3.
+
+## 2026-10-27 (v1.27.9, four narrow rule amendments)
+
+- `web-ui.20`: announcements are required only for an app with more than one audience; a single-audience
+  app does not owe them (rule text, acceptance and section 20).
+- `identity-and-people-data.1.2`: the team table is keyed by any stable key the directory supplies; a rename
+  or reorganisation never orphaning history stays the acceptance.
+- `identity-and-people-data.1.1`: a fallback copy of the last directory pull is allowed when read only on a
+  failed pull and marked stale on screen; the directory pull wins on success and no copy is hand-edited.
+- `web-client-runtime.3.3`: a page poll interval meets the rule when every cached read is refreshed at least
+  that often; no cached value lives forever.
+- `CONSUMING.md`: a rule whose proof only checks that a risk owner and decision record are named also needs
+  a dated `review` record from the accountable owner.
+
+## 2026-10-27 (v1.27.8, ops center design, ledger producer and drainer)
+
+- `opscenter/DESIGN.md` sections 3.1, 3.2 and the R3 row: the `ledger` kind may declare one
+  producer and one drainer instead of a single writer. The producer appends and never changes a
+  record. The drainer changes only the marker fields a record declares and never appends or
+  removes. The producer is the only role that prunes, by a retention pass that expires a drained
+  record older than `analyzer.spool_days` and never one still `new`. The R3 row is repaired as a
+  single line. Every other kind keeps exactly one writer. The section gives the acceptance test and
+  the conformance rule.
+
+
+## 2026-10-27 (v1.27.7, checker precision: secret names in argv, merge prose)
+
+- `scripting-python.1.3` (RC017): a secret NAME is not the secret. An argument after `-n`, `--name`,
+  `--secret-name` or `--secret_name`, or one ending `.name`, `_name` or `_id`, no longer fails. An f-string is
+  tested per interpolated expression, so `f"origin/main:{SECRETS_PATH}"` passes while `str(api_token)` and
+  `f"{api_token}"` still fail.
+- `pr-review-and-merge.1.6` (RC002): prose is not a merge command. Python docstrings and standalone string
+  statements are skipped (read with `ast`), and adjacent string literals count as one string. A real
+  `["gh", "pr", "merge", ...]` argv or `gh pr merge` line without a head pin still fails.
+
+## 2026-10-27 (v1.27.6, consumer report fixes: gate rename, sweep lockfile, merge sha, report issue)
+
+- Gate rename deadlock: `core-ci.py required-checks --fix` now rewrites a `REQUIRED_CHECKS` list in a gate
+  workflow (one-line and block forms; quoting, separator and own checks kept) and, when it cannot edit the
+  value safely, prints the exact replacement line with its file and line number. `--lists-only` checks only
+  a workflow list, needs no remote read and skips a ruleset-gated repo. `sync-core.py` applies the rewrite in
+  the sync pull request and prints the ordering rule (a newly required job must exist on the default branch
+  before the gate lists it). `core-ci.yml` (template and reusable) gains the step `core-required-checks`,
+  which exits non-zero on a mismatch so a sync pull request fails before merge.
+- New `core-ci.py required-names` and the template `templates/overlay/.github/workflows/automerge.yml`: the
+  gate reads the required core job names from the synced `core-ci.yml`, so a rename reaches it in the same
+  sync. A workflow that calls `required-names` counts as requiring every core-ci job. The template is
+  copied once, not synced. CONSUMING.md section 13 documents the bootstrap (merge the fix pull request once
+  by hand, squash, pinned to the reviewed head sha) and the ordering rule.
+- `ci-cd-release.2.1` weekly lint sweep: the install step looks for a lockfile in the app directory: the new
+  parameters row "App directory", else the root, else the first folder one level down that tracks one. The
+  install and the sweep command run there (`app_dir` and `sweep_web` params). `lint-sweep.yml` stays
+  core-managed, so a consumer needs no local edit.
+- `pr-review-and-merge.1.6` (RC002): the checker reads the whole merge call statement (continuation lines
+  and the neighbouring body construction), so a head sha passed through a jq-built body on another line is
+  accepted. The rule text now says the sha must be in the merge call statement.
+- Docs: `hermes/sync_skills.py` steps now show the required `--dest` argument.
+- Hermes nightly report: the report issue is found by the configured number (`report_issue` in
+  `consumer.json` or `CORE_REPORT_ISSUE`), then the search, then the REST issues listing (no search index)
+  filtered to this account, so a search lag or a missed filter no longer opens a second "Consumer report:
+  candidates for the core" issue next to the existing one.
 
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 
