@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-27 (v1.27.6, ops center design, state writer command line)
+
+- `opscenter/DESIGN.md` sections 1.1, 2.1, 3.2 and the R3 row: `state.py` is callable outside the
+  server. It gains a command line entry (`append`, `replace`, `update`, `read`) that takes the same
+  lock, validates against the file's schema and stamps the same header. A write names its writer
+  and is refused when the name is not the file's declared writer. The section gives the exit
+  statuses and the acceptance test.
+
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 
 - `repo_checks.py` RC012: the import-name to distribution map gains `docx` (`python-docx`), `pptx`, `fitz`,
