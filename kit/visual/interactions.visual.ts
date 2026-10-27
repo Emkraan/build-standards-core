@@ -85,31 +85,20 @@ test('the shell mounts one tip layer: a disabled reason and a term meaning show 
   const specimen = page.locator('#specimen-tips');
   const tip = page.locator('.tooltip');
   const scale = specimen.getByRole('button', { name: 'Scale pool' });
-  await specimen.scrollIntoViewIfNeeded();
   await expect(scale).toHaveAttribute('aria-disabled', 'true');
   await expect(scale).not.toHaveAttribute('disabled', /.*/);
 
-  // The page above the specimen can still settle on a slow runner, and a scroll hides a tip, so hover again until it holds.
-  // The pointer leaves between tries, because a hover over an element the pointer already rests on raises no event.
-  const diag = await page.evaluate(
-    () =>
-      new Promise<string>((resolve) => {
-        let scrolls = 0;
-        let moves = 0;
-        window.addEventListener('scroll', () => (scrolls += 1), true);
-        document.addEventListener('pointerover', () => (moves += 1), true);
-        const y0 = window.scrollY;
-        setTimeout(() => resolve(`scrollY ${y0} -> ${window.scrollY}, scroll events ${scrolls}, tips ${document.querySelectorAll('[data-tip]').length}`), 1500);
-      }),
-  );
-  await page.mouse.move(5, 5);
-  await scale.hover({ force: true });
-  await page.waitForTimeout(1500);
-  const after = await page.evaluate(() => `tooltips ${document.querySelectorAll('.tooltip').length}, hovered ${document.querySelector('#specimen-tips .btn:hover')?.textContent ?? 'none'}`);
-  expect(`${diag} | ${after}`, 'DIAG').toBe('x');
+  // Sections above this one finish rendering late on a slow runner and move the button, so wait for the
+  // page height to hold, centre the button, and hover again from outside until the tip shows.
   await expect(async () => {
+    const before = await page.evaluate(() => document.documentElement.scrollHeight);
+    await page.waitForTimeout(700);
+    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(before);
+  }).toPass({ timeout: 20000 });
+  await expect(async () => {
+    await scale.evaluate((el) => el.scrollIntoView({ block: 'center' }));
     await page.mouse.move(1, 1);
-    await scale.hover({ force: true });
+    await scale.hover();
     await expect(tip).toHaveCount(1, { timeout: 2000 });
   }).toPass({ timeout: 20000 });
   await expect(tip).toHaveText('Choose a host pool first. The size applies to that pool.');
