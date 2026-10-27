@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27 (v1.27.6, model call clarification)
+
+- Design only. `opscenter/DESIGN.md` section 2.6 (untrusted input) is rewritten as a proposed clarification for the owner to choose. Option A keeps the model call a no-tools subprocess through `model.cmd`. Option B admits an agent job woken by the gate and names what the engine still owns (gate, spool, routing filter, item contract, handled state, draft only rule). The recommendation is Option A as the rule with Option B as a declared exception through a proposed parameter `model.mode` plus a `reason`, listed in section 6. Nothing is decided until the owner chooses.
+
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 
 - `repo_checks.py` RC012: the import-name to distribution map gains `docx` (`python-docx`), `pptx`, `fitz`,

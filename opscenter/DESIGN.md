@@ -276,9 +276,26 @@ The engine is `local-ops-app` section 4 made shared code, with the gates as para
   Otherwise skip. `--dry-run` prints the decision and the prompt size and calls nothing.
 - **Fail open with backoff.** Failures never raise; an alert line on the third consecutive failure,
   then at most every `analyzer.alert_every_s` (default 14400).
-- **Untrusted input.** The prompt states that all data is untrusted; the model call runs with no
-  tools, through `model.cmd` (parameter) as a subprocess with a timeout. Draft only: nothing the
-  model writes is sent.
+- **Untrusted input.** The prompt states that all data is untrusted. Draft only: nothing the
+  model writes is sent. Whether the model call must be a no-tools subprocess is an open question,
+  written here as a proposed clarification for the owner to choose (status: proposed, not decided):
+  - **Option A, no-tools subprocess only.** The call runs through `model.cmd` (parameter) as a
+    subprocess with a timeout and no tools. The engine owns the gate, the spool, the routing filter,
+    the item contract and the handled state, and the model is a pure function from prompt to items.
+    A consumer whose analyzer is an agent job cannot adopt the engine without giving up its tools.
+  - **Option B, an agent job is allowed.** The analyzer may be an agent job that the gate wakes, with
+    tools available inside the job. The engine still owns the gate, the spool, the routing filter
+    applied to the job's output, the item contract, the handled state and the draft only rule. The
+    job's prompt and tool list belong to the consumer and are never read by the engine, so the
+    untrusted input guarantee rests on the job's tool policy and not on the engine. The job must
+    reach any outward effect only by queuing a proposal in the approvals inbox (section 2.5).
+  - **Recommended: Option A as the rule, with Option B as a declared exception.** The engine and its
+    conformance checks assume Option A. A consumer that runs an agent job declares it with
+    parameter `model.mode` set to `agent_job` plus a `reason`, the same pattern as `commit_domains`,
+    `ci.runners` and `git.branch_prefix_pattern`. The declaration is visible in the parameters file
+    and the conformance checker, and the untrusted input guarantee is then stated as the job's
+    tool policy. This keeps the safe default for every new consumer and does not force a rewrite
+    on one that already works as an agent job.
 - **Item contract** (the analyzer's only output, `action-center.json`, `report` kind):
 
 ```json
@@ -553,6 +570,7 @@ secret references name a store and a key, never a value.
 | writer | `live` (false), `rules[]` | three core approval rules, live | default deny |
 | analyzer | `min_gap_s` (1800), `retry_after_s` (1200), `daily_audit` (true), `alert_every_s` (14400), `spool_days` (14) | | B-13 |
 | model | `cmd`, `timeout_s`, `price_table`, `outlier_threshold`, `plan_usage_cmd` | `cmd` null disables the analyzer and briefs | |
+| model | `mode` (`subprocess` or `agent_job`) | `subprocess` | proposed with section 2.6 Option B, pending the owner's choice, `agent_job` needs a `reason` |
 | routing | `rules_file`, `ignore_senders[]`, `ignore_subject_regex[]`, `priority_senders[]` | | collectors |
 | notify | `channel`, `cmd`, `quiet_hours` (`22:00-07:00`), `dedupe_prefix` | | B-12, A-97 |
 | sign_in | `check_every_s`, `remint_timeout_s` (330), `alert_after` | | loop timings |
