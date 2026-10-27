@@ -45,6 +45,16 @@ renders exactly as before. The version and the final standards section number ar
   `tests/test_ui_lint_help_layer.py`, the lint fixtures, and gallery specimens `tips` (with the cues) and `when` with visual
   baselines.
 
+## 2026-10-27 (v1.27.7, checker precision: secret names in argv, merge prose)
+
+- `scripting-python.1.3` (RC017): a secret NAME is not the secret. An argument after `-n`, `--name`,
+  `--secret-name` or `--secret_name`, or one ending `.name`, `_name` or `_id`, no longer fails. An f-string is
+  tested per interpolated expression, so `f"origin/main:{SECRETS_PATH}"` passes while `str(api_token)` and
+  `f"{api_token}"` still fail.
+- `pr-review-and-merge.1.6` (RC002): prose is not a merge command. Python docstrings and standalone string
+  statements are skipped (read with `ast`), and adjacent string literals count as one string. A real
+  `["gh", "pr", "merge", ...]` argv or `gh pr merge` line without a head pin still fails.
+
 ## 2026-10-27 (v1.27.6, consumer report fixes: gate rename, sweep lockfile, merge sha, report issue)
 
 - Gate rename deadlock: `core-ci.py required-checks --fix` now rewrites a `REQUIRED_CHECKS` list in a gate

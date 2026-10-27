@@ -559,6 +559,65 @@ class TestBatch3(Tree):
             "RC017", {"t.py": "import subprocess\nsubprocess.run(['tool', str(api_token)])\n"}
         )
 
+    def test_rc017_secret_name_is_not_the_secret(self):
+        self.passes(
+            "RC017",
+            {
+                "t.py": "import subprocess\n"
+                'subprocess.run(["az", "keyvault", "secret", "show", "--vault-name", v, "-n", args.secret])\n'
+                'subprocess.run(["tool", "--secret-name", args.secret, "--secret_name", token_name, secret_id])\n'
+            },
+        )
+        self.fails(
+            "RC017",
+            {"t.py": "import subprocess\nsubprocess.run(['tool', '-x', args.secret])\n"},
+        )
+
+    def test_rc017_fstring_per_expression(self):
+        self.passes(
+            "RC017",
+            {
+                "t.py": "import subprocess\n"
+                'subprocess.run(["git", "show", f"origin/main:{SECRETS_PATH}"])\n'
+            },
+        )
+        self.fails(
+            "RC017", {"t.py": 'import subprocess\nsubprocess.run(["tool", f"{api_token}"])\n'}
+        )
+        self.fails(
+            "RC017", {"t.py": 'import subprocess\nsubprocess.run(["tool", f"x:{api_token}"])\n'}
+        )
+
+    def test_rc002_prose_is_not_a_command(self):
+        self.passes(
+            "RC002",
+            {
+                "t.py": '"""Run gh pr merge 1 by hand."""\n\n\ndef f():\n    """Never gh pr merge --auto."""\n'
+                '    # gh pr merge 2\n    "gh pr merge 3"\n'
+            },
+        )
+        self.fails(
+            "RC002",
+            {
+                "t.py": '"""doc"""\nimport subprocess\nsubprocess.run(["gh", "pr", "merge", "1"])\n',
+                "s.sh": "gh pr merge 1 --squash\n",
+            },
+        )
+
+    def test_rc002_implicit_concatenation_is_one_string(self):
+        self.passes(
+            "RC002",
+            {
+                "t.py": "import subprocess\nsubprocess.run(\n    'gh pr merge 1 --squash '\n    '--match-head-commit abc',\n    shell=True,\n)\n"
+            },
+        )
+        self.fails(
+            "RC002",
+            {
+                "t.py": "import subprocess\nsubprocess.run(\n    'gh pr merge 1 '\n    '--squash',\n    shell=True,\n)\n"
+            },
+        )
+
     def test_rc017_clean(self):
         self.passes(
             "RC017",
