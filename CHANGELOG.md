@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27 (v1.27.6, own PR lane)
+
+- Design only. `opscenter/DESIGN.md` section 5.3: the `review_lanes` manifest gains the optional `own_pr_lane` field beside `engine_check`, with the policy reference, what the core shows on the lane page (policy as read, open own pull requests with the policy's decision, last decisions), and the rule that the read never writes and the merge is a writer operation pinned to the head seen.
+
 ## 2026-10-27 (v1.27.5, repo-check false positives and kit capped table)
 
 - `repo_checks.py` RC012: the import-name to distribution map gains `docx` (`python-docx`), `pptx`, `fitz`,
