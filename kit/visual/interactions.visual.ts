@@ -97,7 +97,8 @@ test('the shell mounts one tip layer: a disabled reason and a term meaning show 
   }).toPass({ timeout: 20000 });
   await expect(async () => {
     await scale.evaluate((el) => el.scrollIntoView({ block: 'center' }));
-    await page.mouse.move(1, 1);
+    // Away from the left edge, where the rail blooms open over the specimen.
+    await page.mouse.move(1100, 450);
     await scale.hover();
     await expect(tip).toHaveCount(1, { timeout: 2000 });
   }).toPass({ timeout: 20000 });
