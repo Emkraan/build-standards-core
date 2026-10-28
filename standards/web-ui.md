@@ -1437,7 +1437,8 @@ horizontal overflow exists at 390px.
 
 ## 20. Announcements, the pulse feed, and the presenter
 
-Every app with an admin area ships announcements.
+Every app with an admin area and more than one audience ships announcements. An app with a single
+audience does not owe them, and the rule does not apply to it.
 
 - **Contract:** a table with `title` (120 characters), `body` (500), `tone` (`info`, `success`,
   `warning`, `critical`), `starts_on` and `ends_on` as inclusive local calendar days (a future
@@ -1462,7 +1463,8 @@ Every app with an admin area ships announcements.
   the rotation without the next tick cutting the chosen item short. A health line shows even when the backend is down. Clicking an item opens its
   page.
 
-**Acceptance:** static plus unit. The migration exists on every database dialect the app ships,
+**Acceptance:** static plus unit, for an app with more than one audience (a single-audience app owes
+none of this). The migration exists on every database dialect the app ships,
 the permission is in the RBAC registry and in the Admin role seed and grant map, and a unit test
 asserts the window, the ordering, the cap and the 403 on each write.
 

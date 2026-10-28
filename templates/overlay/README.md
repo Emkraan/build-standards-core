@@ -21,7 +21,7 @@ only what is specific to that business.
 | `.github/workflows/core-drift.yml` | The offline drift check |
 | `.github/workflows/core-ci.yml` | The CI half of the standard (section "CI workflow") |
 | `.github/workflows/lint-sweep.yml` | Weekly full-tree lint that keeps one issue open while it fails (ci-cd-release.md 2.1, section "Lint sweep") |
-| `standards-local/proofs.json` | Consumer-owned: how the repo proves rules `core-status.py` cannot see |
+| `standards-local/proofs.json` | Consumer-owned: how the repo proves rules `core-status.py` cannot see, and (under `$not_applicable`) which rules or groups have no surface in it, each with a reason; see CONSUMING.md section 8 |
 
 **Who owns what.** Every path above except `standards-local/` is core-owned: the sync writes it,
 `check-core-sync.py` fails on a hand edit, and a consumer never adds files to it. That includes
@@ -156,6 +156,45 @@ passes, the hits fail again and `check-exceptions.py` fails the row. An exceptio
 covers a `.ps1`, `.psm1`, `.psd1` or `.xaml` file: those stay under scripting-powershell.md 1.7 and
 wpf-design-system.md 6.1. The core runs the same selection over its own files
 (`checks/check-ascii.py`), with no narrowing and no exception.
+
+### Secret scanners and token files
+
+WPF and XAML token files hold many `#RRGGBB` literals, which generic high-entropy rules report as secrets.
+Allow those files in your scanner config, not by switching the scanner off:
+
+```toml
+# .gitleaks.toml (gitleaks 8.25 or newer: [[allowlists]] with paths, regexes and targetRules)
+[extend]
+useDefault = true          # keep every default rule; this file only adds allowances
+
+[[allowlists]]
+description = "design token files hold colour hex values, not secrets"
+paths = [
+  '''(^|/)tokens-core/''',
+  '''(^|/)[^/]*[Tt]okens?[^/]*\.(xaml|css|json)$''',
+  '''(^|/)Themes?/[^/]*\.xaml$''',
+]
+
+[[allowlists]]
+description = "a bare colour literal is never a credential"
+targetRules = ["generic-api-key"]
+regexes = ['''#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?\b''']
+```
+
+Keep the paths to the token and theme files only. Do not allowlist `**/*.xaml`, a whole folder of code,
+or the `[extend]` default rules: a secret pasted next to a colour must still be found. For other scanners
+the same two allowances apply: exclude the token file paths (trufflehog `--exclude-paths FILE`, detect-secrets
+`--exclude-files REGEX`, a generic `paths-ignore` list) and, where the scanner supports it, one regex for a
+`#RRGGBB` or `#AARRGGBB` literal scoped to its generic high-entropy rule. The core does not weaken its own
+secret scan: this snippet is for a consumer repo's scanner config only.
+
+### Existing non-ASCII content
+
+Fix the source with escapes first, then a time-boxed exception for generated or vendor files, then the
+`ascii_ignore` table below the parameters in `standards-local/parameters.md` (columns `Path` and `Reason`,
+every row needs a reason, script and XAML files cannot be listed). CONSUMING.md has the order and an example.
+The `UI adoption stage` parameter (`none`, `partial`, `adopted`; empty keeps the gate on) makes the drift
+workflow report the UI adoption step as N/A until the UI series lands.
 
 ## Staying current
 

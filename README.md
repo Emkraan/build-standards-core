@@ -193,7 +193,9 @@ and section an exception names, the statement, the acceptance line and how a con
 releases to raise new and changed rules. What each status means (pass, proved, attested, waived,
 not_applicable, excepted, unverified, fail) and how a consumer records a proof is in
 [CONSUMING.md](CONSUMING.md#8-rule-status-proofs-and-the-repo-checks).
-Docs without registered rules are listed by the check until they have them. A consumer lists its
+Docs without registered rules are listed by the check until they have them. `opscenter/applicability.json`
+is the published list of rule ids that apply to an ops center; `check-rules.py` fails when an id in it is not
+in the registry. A consumer lists its
 stacks in the `Stacks` row of `standards-local/parameters.md`, and `core-status.py` then leaves out the
 rules for stacks it does not have. With the row empty every rule is reported.
 

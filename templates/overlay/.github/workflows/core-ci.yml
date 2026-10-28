@@ -1,4 +1,5 @@
 name: core-ci
+# core-managed: this file is refreshed from the core release by scripts/sync-core.py
 # The CI half of the core standard. ONE job, core-checks, runs every check as a named step; each step
 # proves one or more overlay-ci rules in standards-core/rules.json (check.workflow is this file,
 # check.jobs names the steps). Every check is a subcommand of scripts/core-ci.py (standard library

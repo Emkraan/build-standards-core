@@ -1,0 +1,5 @@
+{
+  "$description": "The published list of rules (ids from standards/rules.json) that apply to an ops center, so every consumer's ops center report computes against the same applicable set (opscenter/DESIGN.md 9.1, P3). check-rules fails when an id listed here is not in rules.json, is listed twice, or the file is malformed. A rule is added only when the owner has decided it applies; the list starts empty because none has been decided yet.",
+  "format": "build-standards-opscenter-applicability/1",
+  "rules": []
+}
