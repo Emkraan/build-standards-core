@@ -1,0 +1,63 @@
+{
+  "maintenance_window": {
+    "timezone": "America/New_York",
+    "timezone_label": "Eastern",
+    "restricted_systems": [],
+    "stale_grace_minutes": 30,
+    "classes": {
+      "standard": {
+        "windows": [
+          {
+            "start_day": "Mon",
+            "start": "21:00",
+            "end": "06:00"
+          },
+          {
+            "start_day": "Tue",
+            "start": "21:00",
+            "end": "06:00"
+          },
+          {
+            "start_day": "Wed",
+            "start": "21:00",
+            "end": "06:00"
+          },
+          {
+            "start_day": "Thu",
+            "start": "21:00",
+            "end": "06:00"
+          },
+          {
+            "start_day": "Fri",
+            "start": "21:00",
+            "end": "06:00"
+          }
+        ]
+      },
+      "restricted": {
+        "windows": [
+          {
+            "start_day": "Thu",
+            "start": "22:00",
+            "end": "04:00"
+          },
+          {
+            "start_day": "Sat",
+            "start": "22:00",
+            "end": "04:00"
+          }
+        ]
+      }
+    },
+    "extra_deploys": [
+      {
+        "system": "automation-logic",
+        "enabled": false,
+        "paths": [
+          "logic-apps/"
+        ],
+        "reason": "deploys the automation logic apps, which restarts them for a few seconds"
+      }
+    ]
+  }
+}

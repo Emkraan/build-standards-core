@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-28 (v1.35.0, ops center lane modules: maintenance windows, merge queue, run jobs)
+
+Second piece of the ops center lift (opscenter/DESIGN.md section 12.3, items 1, 2, 6 and 24). Opt in: no rule is
+added and nothing a consumer runs today changes.
+
+- Code: `opscenter/lanes/maintenance_window.py` (downtime classifier, change class, DST safe window math,
+  hold comment), `merge_queue.py` (enqueue and prove it entered the queue), `gh_run_jobs.py` (run jobs in pages
+  of 50 with one retry) and `opscenter/testing/hermetic_home.py` (a throwaway HOME for tests). Stdlib only,
+  Python 3.9. Change classes are `standard` and `restricted`; windows, zone and restricted systems are policy data.
+- Tests: 70 unit tests beside the modules, run in CI by `tests/test_opscenter_lanes.py`, and a fixture policy.
+- Not lifted yet, listed in `opscenter/lanes/README.md`: the review lane engine, own pull request lane and plan
+  gate, which call these modules.
+
 ## 2026-10-28 (v1.34.0, ops center design: what the shell consumer runs today)
 
 First piece of the ops center lift. Design text only: no rule is added and no code changes.
