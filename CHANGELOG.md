@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-28 (v1.49.0, ops center docs write guard)
+
+Fourteenth piece of the ops center lift (opscenter/DESIGN.md sections 5.2 and 12.3, item 7). Opt in: no rule is added and
+nothing a consumer runs today changes.
+
+- Code: `opscenter/lanes/docs_write_guard.py`, the scope proof of the `docs_home` slot's `api` variant. A write is allowed only
+  when the target page's ancestor chain reaches an allowed root and never passes through an excluded root (a folder is proven
+  downward, a move needs both ends), only create and update are allowed, a body or title that matches a forbidden pattern is
+  refused, every decision is logged, and anything it cannot prove is refused. Allowed and excluded roots, tenant, endpoint and
+  patterns are parameters (`DOCS_GUARD_CONFIG`); the bearer token comes from the sign-in slot (`set_token_provider`), so no token
+  file path and no borrowed credential is read, and with none plugged in every write is refused.
+- Tests: 16 unit tests with a fake connector (new, the source had none), run in CI.
+
 ## 2026-10-28 (v1.48.0, ops center auto-fix starter)
 
 Thirteenth piece of the ops center lift (opscenter/DESIGN.md sections 12.3 and 12.9). Opt in: no rule is added and nothing a
