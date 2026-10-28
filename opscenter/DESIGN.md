@@ -1305,20 +1305,24 @@ the standard drops: it is waiting on something named here.
 | 8 | change freeze gate | lifted: `lanes/freeze_gate.py` |
 | 9, 10 | plan gate, privileged apply review | plan gate lifted: `lanes/tfplan_gate.py` with a reference sign-off store; the privileged lane is a plug-in seam (`set_privileged_gate`) |
 | 11 | dark launches | lifted: `server/modules/dark_launches.py` |
-| 12 | cron card map, run now | not lifted: `cron_pulse` needs a repository to lane parameter design |
-| 13 | builds page | not lifted (app page) |
-| 14, 15, 16 | image watch and pool, runbook releases, browser status | image watch and browser status lifted; the pool read and runbook releases wait on a parameter design |
-| 17 | model accounts, spend, fallback | not lifted |
+| 12 | cron card map, run now | lifted: `server/modules/cron_pulse.py` (parameters in 12.8) |
+| 13 | builds page | lifted as an app page; its server module (`builds.py`) is not |
+| 14, 15, 16 | image watch and pool, runbook releases, browser status | lifted: `image_watch.py`, `desktop_pool.py`, `runbook_releases.py`, `browser_status.py` |
+| 17 | model accounts, spend, fallback | not lifted, by decision: the running module reads another tool's OAuth tokens from the agent's credential pool and calls an undocumented usage endpoint with a borrowed client user agent. The standard keeps the `spend` and `plan_limits` slots (section 5.3); an adapter is the consumer's own, on a documented usage source. The spend page is lifted in the app |
 | 18 | sprint close, retro, ticket progress, needs me | sprint close gate lifted (`gates/`); the rest not lifted |
-| 19 | 1:1 board, yearly export | not lifted (people slot) |
-| 20 | links check | not lifted: needs a catalog file parameter |
-| 21 | knowledge proposals | proposal rewrite gate and the applied log lifted; `publish_mode` and the page are not |
+| 19 | 1:1 board, yearly export | not lifted: the module is built on a directory pull, calendar and meeting adapters and a roster; it waits on the people slot interface (roster, calendar, meetings) and on the exception for a document export library. The pages are lifted in the app |
+| 20 | links check | lifted: `server/modules/link_health.py` (catalog is the consumer's file) |
+| 21 | knowledge proposals | lifted: proposal rewrite gate, applied log, `engine/publish_mode.py`; the queued approvals applier is not |
 | 22 | plans reconcile | lifted: `gates/plans_reconcile_gate.py` |
-| 23 | pull request dependencies, search | not lifted |
-| 24 | cron catalog gate, sitrep, hermetic home, visibility check | cron catalog gate and hermetic home lifted; the sitrep and the visibility check are not |
+| 23 | pull request dependencies, search | lifted: `server/modules/pr_deps.py`, `ops_search.py` |
+| 24 | cron catalog gate, sitrep, hermetic test home, reviews visibility check | cron catalog gate and hermetic home lifted; the sitrep and the visibility check scripts are not in the snapshot |
 | (2.4) | swr, alerts, review tombstones, paths | lifted: `server/modules/` |
-| (2.6) | analyzer: contract, handled match, first seen | lifted: `engine/`; routing, the collector and the bundle builder are not |
-| (4) | the app (about 400 files of pages, components and tests) | not started |
+| (2.6) | analyzer: contract, handled match, first seen | lifted: `engine/`; routing, the collector and the bundle builder are not in the snapshot or need the collector |
+| (4) | the app | lifted: `opscenter/app`, all 114 source files, typecheck, unit tests and build in CI; the browser tests are `npm run test:browser` |
+
+Server modules and pages that exist in the running app but whose server half is not lifted (people, tracker, review engine
+pages) render only when their slot is on; the app reads the running API shapes until the envelope and registry (R1, R2)
+land.
 
 ### 12.8 Module parameters (the five modules that named estate repositories or files)
 
