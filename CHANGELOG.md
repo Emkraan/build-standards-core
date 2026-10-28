@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-28 (v1.76.0, ops center debt and improvements)
+
+The Debt and improvements page server half. Opt in: new `server/modules/eng_backlog.py` and routes.
+
+- The markdown files stay the source of truth; decisions rewrite one Status line under a lock (DESIGN.md 12.25). Tackle goes through the runtime slot. Tests: 10.
+
 ## 2026-10-28 (v1.74.0, ops center runtime slot)
 
 The runtime slot behind Tackle now, Discuss and the session list. Opt in: new `server/runtime_slot.py` and routes.

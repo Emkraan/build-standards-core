@@ -1322,6 +1322,7 @@ the standard drops: it is waiting on something named here.
 | (collector) | inbound mail and chat monitor gates | lifted: `gates/inbound_mail_gate.py`, `inbound_chat_gate.py`, `inbound_score.py` (12.19) |
 | (2.4) | swr, alerts, review tombstones, paths | lifted: `server/modules/` |
 | (2.6) | analyzer: contract, handled match, first seen, routing, collector, bundle builder, wake gate | lifted: `engine/` (`contract`, `handled`, `first_seen`, `routing`, `collect`, `analysis_bundle`, `board_build`), `gates/action_center_gate.py`, `server/modules/routing_api.py` (12.13) |
+| (server modules, debt page) | debt and improvements page server half | lifted: `server/modules/eng_backlog.py` (12.25) |
 | (server) | the running server and its routes | lifted as a generic server: `server/` (12.21); the agent session routes and some page halves are not lifted |
 | (4) | the app | lifted: `opscenter/app`, all 114 source files, typecheck, unit tests and build in CI; the browser tests are `npm run test:browser` |
 
@@ -1705,3 +1706,16 @@ the app shows; the consumer supplies one command, `OPSCENTER_RUNTIME_CMD` (a JSO
 - Routes: `GET /api/tackle`, `POST /api/tackle {fp, context, mode}`, `POST /api/tackle/resolve`, `POST /api/jira/tackle {key, context}`,
   `POST /api/pr/discuss {repo, pr, context}` (a discussion of the pull request by repository and number). Differences from the running code:
   it launched one agent's desktop chat and matched sessions by prompt in that agent's database; that is the consumer's command now.
+
+### 12.25 Debt and improvements
+
+`server/modules/eng_backlog.py` parses every `TD-NNN` (technical debt) and `IMP-NNN` (improvement) heading of two markdown files
+(`ENGBL_TD`, default `<root>/engineering-state/technical-debt.md`; `ENGBL_IMP`, default `<root>/state/improvement-backlog.md`) into the
+page's rows: bucket (decide, todo, parked, done), outcome, severity (debt), goals and effort (improvements), owner, date, body. The files stay
+the source of truth. A decision (approve, park, decline, reopen for improvements; accept, resolve for debt) rewrites only that entry's
+Status line in place under a file lock and keeps the old text after "Earlier:"; accepting a risk or closing debt needs a reason, and an entry
+whose heading is not unique is refused. Snooze is page-only (7 days, `ENGBL_HANDLED`). Routes: `GET /api/eng-backlog`, `POST
+/api/eng-backlog/decide`, `/handle` and `/tackle`. Tackle goes through the runtime slot (12.23): the entry as written and its source file
+become the session's prompt, and with no runtime configured the route answers 501. Differences from the running code: the long first-person
+session prompt (skills to load, message and comment rules, a resolve script path) was the agent's own and is not in core; the session's
+instructions are the runtime command's.

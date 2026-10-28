@@ -346,6 +346,7 @@ class Routes(unittest.TestCase):
             ("/api/tackle", {"fp": "x"}),
             ("/api/jira/tackle", {"key": "A-1"}),
             ("/api/pr/discuss", {"repo": "o/r", "pr": 1}),
+            ("/api/eng-backlog/tackle", {"uid": "x"}),
         ):
             s, body = self.js("POST", path, payload)
             self.assertEqual((s, body["error"]), (501, "no runtime configured"), path)
