@@ -12,6 +12,15 @@ caller in the docstring.
 - Source ids are generic (`chat.*`, `tracker.assigned`); the seed routing file is an example.
 - Tests: routing (22), collect (12), board_build (8), the gate (8), routing_api (5).
 
+## 2026-10-28 (v1.60.0, ops center sitrep)
+
+Item 24 remainder: the daily sitrep, lifted with its tests. Opt in: two new files under `opscenter/gates`, nothing existing changes.
+
+- `sitrep.py`: the one daily owner message, built from the badge endpoints with no model call. Review sources are a parameter
+  (`SITREP_REVIEWS`); exit 1 when the ops center cannot be read.
+- `sitrep_prerun.py`: the pre-run block for an agent written brief. The health command, the state files and the live ref check
+  are optional parameters or a plug-in (`ref_status` stays out). Tests: `sitrep_test.py` (9, against an in-process server).
+
 ## 2026-10-28 (v1.59.0, ops center review lane engine)
 
 Item 1 and the lane half of item 3 of the ops center standard, lifted with their tests. Opt in: new files under `opscenter/lanes`,
