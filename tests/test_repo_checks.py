@@ -68,6 +68,24 @@ class TestChecks(Tree):
     def test_rc002_continuation_and_api(self):
         self.fails("RC002", {"ops/m.sh": "gh api repos/o/r/pulls/1/merge -X PUT\n"})
 
+    def test_rc002_sha_in_body_built_on_neighbouring_line(self):
+        self.passes(
+            "RC002",
+            {
+                "ops/m.sh": 'body=$(jq -n --arg sha "$HEAD" \'{merge_method:"squash",sha:$sha}\')\n'
+                'gh api -X PUT repos/o/r/pulls/1/merge --input - <<< "$body"\n',
+                "ops/n.sh": "gh api -X PUT repos/o/r/pulls/1/merge \\\n  --input <(jq -n --arg sha \"$H\" '{sha:$sha}')\n",
+            },
+        )
+
+    def test_rc002_sha_not_adjacent_is_still_flagged(self):
+        self.fails(
+            "RC002",
+            {
+                "ops/m.sh": "sha=abc\n\ngh api -X PUT repos/o/r/pulls/1/merge -f merge_method=squash\n"
+            },
+        )
+
     def test_rc002_python_list(self):
         self.fails("RC002", {"tools/m.py": 'run(["gh", "pr", "merge", "1", "--squash"])\n'})
 
@@ -539,6 +557,65 @@ class TestBatch3(Tree):
     def test_rc017_wrapped_secret_still_fails(self):
         self.fails(
             "RC017", {"t.py": "import subprocess\nsubprocess.run(['tool', str(api_token)])\n"}
+        )
+
+    def test_rc017_secret_name_is_not_the_secret(self):
+        self.passes(
+            "RC017",
+            {
+                "t.py": "import subprocess\n"
+                'subprocess.run(["az", "keyvault", "secret", "show", "--vault-name", v, "-n", args.secret])\n'
+                'subprocess.run(["tool", "--secret-name", args.secret, "--secret_name", token_name, secret_id])\n'
+            },
+        )
+        self.fails(
+            "RC017",
+            {"t.py": "import subprocess\nsubprocess.run(['tool', '-x', args.secret])\n"},
+        )
+
+    def test_rc017_fstring_per_expression(self):
+        self.passes(
+            "RC017",
+            {
+                "t.py": "import subprocess\n"
+                'subprocess.run(["git", "show", f"origin/main:{SECRETS_PATH}"])\n'
+            },
+        )
+        self.fails(
+            "RC017", {"t.py": 'import subprocess\nsubprocess.run(["tool", f"{api_token}"])\n'}
+        )
+        self.fails(
+            "RC017", {"t.py": 'import subprocess\nsubprocess.run(["tool", f"x:{api_token}"])\n'}
+        )
+
+    def test_rc002_prose_is_not_a_command(self):
+        self.passes(
+            "RC002",
+            {
+                "t.py": '"""Run gh pr merge 1 by hand."""\n\n\ndef f():\n    """Never gh pr merge --auto."""\n'
+                '    # gh pr merge 2\n    "gh pr merge 3"\n'
+            },
+        )
+        self.fails(
+            "RC002",
+            {
+                "t.py": '"""doc"""\nimport subprocess\nsubprocess.run(["gh", "pr", "merge", "1"])\n',
+                "s.sh": "gh pr merge 1 --squash\n",
+            },
+        )
+
+    def test_rc002_implicit_concatenation_is_one_string(self):
+        self.passes(
+            "RC002",
+            {
+                "t.py": "import subprocess\nsubprocess.run(\n    'gh pr merge 1 --squash '\n    '--match-head-commit abc',\n    shell=True,\n)\n"
+            },
+        )
+        self.fails(
+            "RC002",
+            {
+                "t.py": "import subprocess\nsubprocess.run(\n    'gh pr merge 1 '\n    '--squash',\n    shell=True,\n)\n"
+            },
         )
 
     def test_rc017_clean(self):
