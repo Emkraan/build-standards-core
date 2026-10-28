@@ -1,0 +1,33 @@
+name: opscenter-app
+on:
+  pull_request:
+    paths:
+      - 'opscenter/app/**'
+      - 'kit/**'
+      - 'tokens/**'
+      - '.github/workflows/opscenter-app.yml'
+permissions:
+  contents: read
+jobs:
+  app:
+    runs-on: ${{ fromJSON(vars.CORE_RUNNER || '"ubuntu-latest"') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            kit/package-lock.json
+            opscenter/app/package-lock.json
+      # The app builds against the kit source (alias @kit), so the kit's own dependencies are installed too.
+      - run: npm ci
+        working-directory: kit
+      - run: npm ci
+        working-directory: opscenter/app
+      - run: npm run typecheck
+        working-directory: opscenter/app
+      - run: npm test
+        working-directory: opscenter/app
+      - run: npm run build
+        working-directory: opscenter/app

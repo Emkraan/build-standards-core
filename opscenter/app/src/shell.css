@@ -1,0 +1,246 @@
+/* Ops Center shell chrome on top of the kit (AppShell, Rail, Header, FeedStrip, BuildCard).
+   Tokens only: no colour literals, raw durations or raw z-index.
+
+   CSS ownership map (each page group migrates touching only its own sheet):
+     src/index.css               app-wide base and the old-name aliases onto core tokens
+     src/App.css                 app-wide shared rules (hub and page heads, buttons, chips, list rows,
+                                 the small modal, the in-Hermes pill), used by more than one group
+     src/shell.css               this file: the shell chrome
+     src/components/ui.css       the ui.tsx compatibility layer (progress, tkt, tables, spinner)
+     src/components/ActionTable.css  ActionTable (Action Center)
+     src/pages/Action.css        ActionHub, ActionCenter, Completed
+     src/pages/Jira.css          JiraHub, Sprint, Backlog, Approvals, TackleJira
+     src/pages/ReviewsHub.css    Reviews, platformReviews, AresReviews, TfReviews, PrivilegedReviews,
+                                 OwnerRoots, DiscussPr, TriagePr
+     src/pages/EngBacklog.css    EngBacklog
+     src/pages/OneOnOnes.css     OneOnOnes
+     src/pages/Team.css          TeamHub, TeamPerformance, TeamHistory
+     src/pages/MemberReviews.css MemberReviews, YearlyReview
+     src/pages/Knowledge.css     Knowledge, DocCoverage
+     src/pages/Search.css        Search
+     src/pages/Drafts.css        Drafts
+     src/pages/Infrastructure.css Infrastructure
+*/
+
+/* Page width: the content column keeps the old 1400px reading width on wide screens. */
+.oc-page {
+  max-width: 1400px;
+}
+
+/* System alerts (FallbackBanner, BrowserBanner) sit above the page on every route. */
+.oc-alerts {
+  display: grid;
+  gap: var(--space-2);
+}
+.oc-alerts:not(:empty) {
+  margin-bottom: var(--space-5);
+}
+.oc-alert {
+  align-items: center;
+}
+.oc-alert-text {
+  flex: 1;
+}
+.oc-alert-action {
+  flex: none;
+  margin-left: auto;
+}
+.oc-alert-action .btn {
+  text-decoration: none;
+}
+
+/* ---- rail: nav items keep the kit look (the app-wide a:hover underline stays off the rail) ---- */
+.sidebar a:hover,
+.sidebar a:focus-visible,
+.app-header a:hover {
+  text-decoration: none;
+}
+
+/* ---- rail: nav counts ---- */
+.nav-badge {
+  gap: 6px;
+}
+.nb-soft {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+}
+.nb-count + .nb-soft {
+  padding-left: 6px;
+  border-left: 1px solid var(--border-strong);
+}
+.nb-soft.working {
+  color: var(--info);
+}
+.nav-badge .spin {
+  width: 8px;
+  height: 8px;
+}
+/* The collapsed rail hides the kit badge, so the count rides on the icon as a bubble (App.tsx .nav-ic).
+   The expanded rail shows the kit badge instead, so the bubble hides there. */
+.nav-ic {
+  position: relative;
+  display: inline-flex;
+}
+.nav-ic-count {
+  display: none;
+}
+@media (min-width: 901px) {
+  .shell[data-rail="collapsed"] .nav-ic-count {
+    position: absolute;
+    top: -7px;
+    right: -10px;
+    z-index: var(--z-content);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    background: rgb(var(--hue-red-d));
+    color: var(--text-inverse);
+    box-shadow: 0 0 0 2px var(--surface-1);
+    animation: nav-ic-pop var(--dur-slow) var(--ease-out) both;
+  }
+}
+@keyframes nav-ic-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell[data-rail="collapsed"] .nav-ic-count {
+    animation: none;
+  }
+}
+
+/* ---- rail footer: build card and the data refresh time ---- */
+.rail-foot {
+  display: grid;
+  gap: var(--space-2);
+}
+.rail-foot-line {
+  margin: 0;
+  padding: 0 var(--space-1);
+  font-size: var(--fs-micro);
+  color: var(--text-tertiary);
+  line-height: 1.4;
+}
+/* The collapsed rail is icon-only, so the refresh line shows only when the rail is open. */
+@media (min-width: 901px) {
+  .shell[data-rail="collapsed"] .rail-foot-line {
+    display: none;
+  }
+}
+
+/* ---- header: next 1:1 chip and the sync indicator ---- */
+.next-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+  background: var(--surface-1);
+  border: 1px solid var(--border-default);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    border-color var(--dur-fast),
+    color var(--dur-fast);
+}
+.next-chip b {
+  color: var(--text-primary);
+}
+.next-chip:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+.next-chip.soon {
+  border-color: var(--warning-border);
+}
+.next-chip.live {
+  border-color: var(--success-border);
+  background: var(--success-dim);
+  color: var(--text-primary);
+}
+.next-chip.idle {
+  opacity: 0.75;
+}
+.next-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--info);
+  flex: none;
+}
+.next-chip.soon .next-dot {
+  background: var(--warning);
+}
+.next-chip.live .next-dot {
+  background: var(--success);
+}
+.sync-chip {
+  font-size: var(--fs-micro);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.sync-chip.stale {
+  color: var(--warning);
+}
+
+/* ---- route tabs (components/Tabs.tsx on the kit Tabs) ---- */
+.tab-spin {
+  width: 8px;
+  height: 8px;
+  color: var(--info);
+}
+.tab-badge {
+  gap: 5px;
+}
+.oc-tabs-sm {
+  margin-bottom: var(--space-3);
+}
+
+/* ---- phones and small windows (web-ui.md section 11) ---- */
+@media (max-width: 900px) {
+  .sync-chip {
+    display: none;
+  }
+}
+@media (max-width: 640px) {
+  /* The next 1:1 is on the 1:1 Board and in the feed strip, so the phone header drops the chip. */
+  .next-chip {
+    display: none;
+  }
+  .app-header .header-sub {
+    display: none;
+  }
+  /* The search trigger shrinks to its icon (kit SearchTrigger has no compact form). */
+  .app-header .search-btn {
+    padding: 0;
+    width: 36px;
+    justify-content: center;
+  }
+  .app-header .search-btn > span {
+    display: none;
+  }
+  .app-header .header-center {
+    flex: none;
+    margin-left: auto;
+  }
+}

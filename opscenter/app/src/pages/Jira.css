@@ -1,0 +1,410 @@
+/* Jira hub: Sprint board, Backlog, Approvals tables and Tackle on Jira items. Owned by JiraHub,
+   Sprint, Backlog, Approvals and TackleJira. Built on the kit (Card, Table, StatTile, Toolbar);
+   these rules only lay the pieces out. Tokens only: no colour literals, raw durations or z-index. */
+
+/* ---- shared page pieces ---- */
+.jr-lede {
+  margin: 0 0 var(--space-4);
+  max-width: 82ch;
+  color: var(--text-secondary);
+  font-size: var(--fs-body);
+}
+.jr-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+.jr-filter {
+  width: 280px;
+  max-width: 100%;
+}
+.jr-group {
+  margin: var(--space-5) 0 var(--space-2);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.jr-group:first-of-type {
+  margin-top: var(--space-2);
+}
+
+/* ---- Backlog and Approvals tables (bk-*) ---- */
+.bk-table .table {
+  table-layout: fixed;
+}
+.bk-table td {
+  vertical-align: top;
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-3);
+}
+.bk-key {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+.bk-sum {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.bk-title {
+  font-weight: 500;
+  line-height: var(--lh-snug);
+}
+.bk-sub,
+.bk-faint {
+  font-size: var(--fs-label);
+  color: var(--text-tertiary);
+}
+.bk-sub a {
+  color: var(--accent-bright);
+}
+.table-row.is-selected .bk-sub,
+.table-row.is-selected .bk-faint {
+  color: var(--text-secondary);
+}
+.bk-status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  max-width: 100%;
+}
+.bk-status .badge {
+  height: auto;
+  min-height: 22px;
+  max-width: 100%;
+  padding-block: 3px;
+  line-height: var(--lh-tight);
+  white-space: normal;
+}
+.bk-type {
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.bk-btns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* ---- Sprint (sp-*) ---- */
+.sp-loading {
+  display: grid;
+  gap: var(--space-4);
+}
+.sp-band {
+  margin-bottom: var(--space-5);
+}
+.sp-band .card-head {
+  margin-bottom: var(--space-3);
+}
+.sp-bars {
+  display: grid;
+  grid-template-columns: 120px 1fr 44px;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+.sp-bars-n {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.sp-bar {
+  height: 8px;
+  background: var(--surface-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.sp-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  transition: width var(--dur-slower) var(--ease-out);
+}
+.sp-fill.time {
+  background: var(--text-quaternary);
+}
+.sp-fill.good {
+  background: var(--success);
+}
+.sp-fill.warn {
+  background: var(--warning);
+}
+.sp-fill.alert {
+  background: var(--danger);
+}
+.sp-goal {
+  margin: var(--space-3) 0 0;
+  font-size: var(--fs-body);
+  color: var(--text-secondary);
+}
+
+.sp-people {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+.sp-person {
+  text-align: left;
+  font: inherit;
+  color: var(--text-primary);
+  background: var(--surface-1);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+.sp-person:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+.sp-person:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.sp-person-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.sp-person-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.sp-person-top > span:last-child,
+.sp-person-sub {
+  color: var(--text-tertiary);
+  font-size: var(--fs-label);
+}
+.sp-person.is-selected .sp-person-top > span:last-child,
+.sp-person.is-selected .sp-person-sub {
+  color: var(--text-secondary);
+}
+.sp-person-sub {
+  margin-top: var(--space-2);
+}
+.sp-person-top > span:last-child {
+  flex: none;
+  white-space: nowrap;
+}
+
+.sp-stats {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+.sp-board-ctl {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-5) 0 var(--space-3);
+}
+.sp-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+.sp-col {
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-3);
+  min-height: 96px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sp-col-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px var(--space-1) var(--space-1);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.sp-col-pts {
+  margin-left: auto;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-tertiary);
+}
+.sp-col-empty {
+  margin: 0;
+  padding: var(--space-2) var(--space-1);
+  font-size: var(--fs-label);
+  color: var(--text-tertiary);
+}
+.sp-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  box-shadow: var(--elev-1);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+.sp-card:hover {
+  border-color: var(--border-strong);
+}
+.sp-card.done {
+  opacity: 0.62;
+  box-shadow: none;
+}
+.sp-card-top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1) 6px;
+  margin-bottom: 6px;
+}
+.sp-pts {
+  margin-left: auto;
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.sp-sum {
+  font-size: var(--fs-body);
+  line-height: var(--lh-snug);
+  color: var(--text-primary);
+}
+.sp-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--space-2);
+  font-size: var(--fs-label);
+  color: var(--text-tertiary);
+}
+.sp-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.sp-type {
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.sp-epic {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--accent-bright);
+  text-decoration: none;
+}
+.sp-epic:hover {
+  text-decoration: underline;
+}
+.sp-act {
+  margin-top: var(--space-3);
+}
+.sp-act-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.sp-menu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+}
+.sp-menu .skeleton {
+  flex-basis: 100%;
+}
+.sp-note {
+  flex-basis: 100%;
+  margin: 2px 0 0;
+  font-size: var(--fs-label);
+  color: var(--text-tertiary);
+}
+.sp-board-ctl .sp-note {
+  flex-basis: auto;
+}
+.sp-note a {
+  color: var(--accent-bright);
+}
+.sp-err,
+.tj-err {
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--danger);
+}
+
+/* ---- Tackle on a Jira item (tj-*) ---- */
+.tj {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tj-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bk-btns .tj-row {
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .sp-bars {
+    grid-template-columns: 96px 1fr 40px;
+  }
+  .bk-table .table {
+    table-layout: auto;
+  }
+}
+
+/* ---- Needs me (nm-*): sprint tickets the close-out could not settle ---- */
+.nm-q {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+.nm-act {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+.nm-act > .pill {
+  align-self: flex-end;
+}

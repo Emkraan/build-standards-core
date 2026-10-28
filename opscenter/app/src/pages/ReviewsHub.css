@@ -1,0 +1,766 @@
+/* Reviews hub (platform and team): every review item, plan and privileged deployment detail, owner
+   roots, triage and discuss. Owned by Reviews, platformReviews, AresReviews, reviews/parts and their
+   components. Tokens only, no edge bars: tone, .is-selected and status dots carry colour. */
+
+/* ---- Layout ---- */
+.rh-body {
+  margin-top: var(--space-4);
+}
+.rh-stack {
+  display: grid;
+  gap: var(--space-5);
+}
+.rh-alerts {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.rh-foot {
+  margin: var(--space-4) 0 0;
+  font-size: var(--fs-label);
+  color: var(--text-tertiary);
+}
+.rh-foot code {
+  font-size: var(--fs-micro);
+}
+.rh-title-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.rh-filter {
+  width: 200px;
+  height: 30px;
+}
+.rh-after {
+  margin-top: var(--space-4);
+}
+
+/* ---- Review items: a raised sub-panel per PR, run or root inside its card ---- */
+.rh-list {
+  display: grid;
+  gap: var(--space-3);
+}
+.rh-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-5);
+  align-items: start;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background-color: var(--surface-2);
+  box-shadow: var(--shadow-inset-top);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
+}
+.rh-item:hover {
+  border-color: var(--border-strong);
+}
+/* Card state colour: a full tinted fill and outline (never an edge bar), strong enough to read the
+   board at a glance. The hue comes from the hue-<name> class the state maps to. */
+.rh-item[data-state] {
+  border-color: rgb(var(--hue) / 0.55);
+  background-color: rgb(var(--hue) / 0.07);
+}
+.rh-item[data-state]:hover {
+  border-color: rgb(var(--hue) / 0.8);
+}
+
+.rh-item-main {
+  min-width: 0;
+}
+.rh-item-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.rh-item-title {
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: var(--track-title);
+  color: var(--text-primary);
+}
+.rh-item-title a {
+  color: inherit;
+}
+.rh-meta {
+  margin-top: var(--space-1);
+  font-size: var(--fs-label);
+  color: var(--text-tertiary);
+}
+.rh-meta code {
+  font-size: var(--fs-micro);
+}
+.rh-line {
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-label);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.rh-item-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  width: 196px;
+}
+.rh-item-actions .btn,
+.rh-item-actions a.btn {
+  justify-content: center;
+  text-decoration: none;
+}
+.rh-locked {
+  font-size: var(--fs-micro);
+  line-height: 1.45;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+/* The PR or run number: a mono chip in the accent ink. */
+.rh-ref {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-accent);
+  background: var(--accent-dim);
+  color: var(--accent-bright);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.rh-ref:hover,
+.rh-ref:focus-visible {
+  border-color: var(--border-accent-strong);
+  text-decoration: none;
+}
+
+/* Spinner ring inside a status tag while work runs. */
+.rh-tag-live {
+  gap: 6px;
+}
+.rh-spin {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-pill);
+  border: 1.6px solid currentColor;
+  border-right-color: transparent;
+  flex-shrink: 0;
+  animation: kit-spin calc(var(--dur-slower) * 3) linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rh-spin {
+    animation-duration: calc(var(--dur-slower) * 8);
+  }
+}
+
+/* Inline text toggle inside a sentence (show files, hide resources, copy link). */
+.rh-textbtn {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.rh-textbtn:hover,
+.rh-textbtn:focus-visible {
+  color: var(--text-primary);
+  text-decoration-color: currentColor;
+}
+
+/* Result of an action, and inline errors: a status dot and the message. */
+.rh-note {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-label);
+  line-height: 1.5;
+}
+.rh-note .status-dot {
+  transform: translateY(-1px);
+}
+.rh-note[data-tone="success"] {
+  color: var(--success);
+}
+.rh-note[data-tone="danger"] {
+  color: var(--danger);
+}
+
+.rh-bad {
+  color: var(--danger);
+}
+.rh-muted {
+  color: var(--text-tertiary);
+}
+.rh-mono {
+  font-family: var(--font-mono);
+}
+
+/* Reasons a run is held (danger ink) or rules I am signing off on (primary ink). */
+.rh-reasons {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-5);
+  font-size: var(--fs-label);
+  line-height: 1.55;
+  color: var(--danger);
+}
+.rh-reasons[data-tone="neutral"] {
+  color: var(--text-primary);
+}
+.rh-reasons code,
+.rh-files code {
+  font-size: var(--fs-micro);
+}
+.rh-files {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-5);
+  font-size: var(--fs-label);
+}
+
+/* Assessment and breakdown: an inset well under the item. */
+.rh-inset {
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+  font-size: var(--fs-label);
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.rh-inset p {
+  margin: var(--space-1) 0;
+}
+.rh-inset b {
+  color: var(--text-primary);
+}
+.rh-inset ul {
+  margin: var(--space-1) 0;
+  padding-left: var(--space-5);
+}
+.rh-h {
+  margin: var(--space-3) 0 var(--space-1);
+  font-size: var(--fs-micro);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* Approval brief: three labelled prose paragraphs on a card that asks me to decide. */
+.rh-brief {
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+  font-size: var(--fs-body);
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+.rh-brief p {
+  margin: 0;
+  max-width: 82ch;
+}
+.rh-brief .rh-h {
+  margin-top: var(--space-3);
+}
+.rh-brief p.rh-brief-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  font-size: var(--fs-micro);
+  color: var(--text-tertiary);
+}
+/* Deterministic warning above the brief paragraphs: an open PR changes the same Terraform root.
+   A full outline and a tinted fill, never an edge bar (web-ui 0.1). */
+.rh-brief-warn {
+  margin-top: var(--space-3);
+  padding: var(--space-1) var(--space-3) var(--space-2);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-md);
+  background: var(--danger-dim);
+  color: var(--text-primary);
+}
+.rh-brief-warn .rh-h {
+  margin-top: var(--space-2);
+  color: var(--danger);
+}
+.rh-brief p.rh-brief-wait {
+  margin-top: var(--space-1);
+  font-size: var(--fs-label);
+  font-weight: 600;
+}
+/* Structured ask (owner 2026-10-20): title, labelled facts, the grant table. */
+.rh-brief p.rh-brief-title {
+  margin-top: var(--space-2);
+  font-size: var(--fs-title, 1.05em);
+  font-weight: 600;
+}
+.rh-brief-facts {
+  margin: 0;
+  display: grid;
+  gap: var(--space-1);
+  max-width: 82ch;
+}
+.rh-brief-facts > div {
+  display: grid;
+  grid-template-columns: 9.5em 1fr;
+  gap: var(--space-2);
+}
+.rh-brief-facts dt {
+  color: var(--text-tertiary);
+  font-size: var(--fs-label);
+  padding-top: 0.15em;
+}
+.rh-brief-facts dd {
+  margin: 0;
+}
+.rh-grants-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.rh-grants {
+  border-collapse: collapse;
+  font-size: var(--fs-label);
+  line-height: 1.45;
+  min-width: 640px;
+}
+.rh-grants th,
+.rh-grants td {
+  text-align: left;
+  vertical-align: top;
+  padding: var(--space-1) var(--space-3) var(--space-1) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.rh-grants th {
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+.rh-grant-chg {
+  font-weight: 600;
+}
+.rh-grant-chg.add {
+  color: var(--warning, var(--text-primary));
+}
+.rh-grant-chg.remove {
+  color: var(--success, var(--text-primary));
+}
+.rh-brief p.rh-brief-note {
+  margin-top: var(--space-2);
+}
+.rh-brief p.rh-brief-auto {
+  margin-top: var(--space-2);
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+.rh-brief p.rh-brief-auto.fits {
+  color: var(--success, var(--text-secondary));
+}
+.rh-brief-click {
+  margin-top: var(--space-3);
+  font-size: var(--fs-label);
+}
+.rh-brief-click summary {
+  cursor: pointer;
+  color: var(--text-tertiary);
+}
+/* Apply stays available, de-emphasised, with the reason beside it. */
+.rh-apply-warn {
+  margin-top: var(--space-2);
+  font-size: var(--fs-label);
+  color: var(--danger);
+}
+/* The raw rule list and findings, collapsed under the brief. */
+.rh-details {
+  margin-top: var(--space-2);
+}
+.rh-details summary {
+  cursor: pointer;
+  width: fit-content;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-radius: var(--radius-xs);
+  user-select: none;
+}
+.rh-details summary:hover {
+  color: var(--text-primary);
+}
+.rh-details summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.rh-details-body > :first-child {
+  margin-top: var(--space-1);
+}
+
+/* Plan counts and the resource list (privileged runs and owner roots). */
+.rh-plan {
+  margin-top: var(--space-2);
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+.rh-plan b {
+  color: var(--text-primary);
+}
+.rh-plan b.rh-bad {
+  color: var(--danger);
+}
+/* what a app_e release ships (CHANGELOG text). */
+.rh-pre {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  white-space: pre-wrap;
+  max-height: 16rem;
+  overflow: auto;
+  color: var(--text-primary);
+}
+.rh-res {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  list-style: none;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+  font-size: var(--fs-label);
+}
+.rh-res li {
+  padding: 2px 0;
+}
+.rh-res code {
+  font-size: var(--fs-micro);
+}
+.rh-act {
+  display: inline-block;
+  min-width: 58px;
+  font-size: var(--fs-micro);
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.rh-res li[data-act="create"] .rh-act {
+  color: var(--success);
+}
+.rh-res li[data-act="update"] .rh-act {
+  color: var(--warning);
+}
+.rh-res li[data-act="delete"] .rh-act,
+.rh-res li[data-act="replace"] .rh-act {
+  color: var(--danger);
+}
+.rh-grants {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-label);
+}
+.rh-grants li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  padding: 2px 0;
+}
+
+/* Typed confirmation for an owner apply. */
+.rh-confirm {
+  margin-top: var(--space-3);
+  max-width: 420px;
+}
+.rh-confirm-input {
+  font-family: var(--font-mono);
+}
+
+/* Request changes note. */
+.rh-rc {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  max-width: 640px;
+}
+.rh-rc .field {
+  width: 100%;
+}
+/* ECR override buttons under the reason box. */
+.rh-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Privileged confirm dialog. */
+.rh-modal-text {
+  margin: 0;
+  font-size: var(--fs-body);
+  color: var(--text-secondary);
+}
+.rh-modal-hint {
+  font-size: var(--fs-micro);
+  color: var(--text-tertiary);
+}
+
+/* Tables (shipped, auto-approvals, pending secrets). */
+.rh-cell-title {
+  color: var(--text-primary);
+}
+.rh-cell-links {
+  white-space: nowrap;
+}
+
+/* ---- Discuss with ops_center (DiscussPr, rh-discuss): sits in the item's action column ---- */
+.rh-discuss {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+.rh-discuss-ask {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* ---- Triage reply form on my held platform PRs (TriagePr) ---- */
+.rh-tri-form {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+.rh-tri-head {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+.rh-tri-row {
+  display: grid;
+  gap: var(--space-2);
+}
+.rh-tri-title {
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+}
+.rh-tri-title code {
+  font-size: var(--fs-micro);
+}
+.rh-tri-verdicts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.rh-tri-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.rh-tri-choice:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+.rh-tri-choice.is-selected {
+  color: var(--text-primary);
+}
+.rh-tri-choice input {
+  margin: 0;
+}
+.rh-tri-btns {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* ---- Phones: the action column drops under the item ---- */
+@media (max-width: 760px) {
+  .rh-item {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+  .rh-item-actions {
+    width: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .rh-locked {
+    text-align: left;
+  }
+  .rh-filter {
+    width: 100%;
+  }
+}
+
+/* Secondary heading inside a card (in-flight items under the ones that need me). */
+.rh-subhead {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Just acted on: PRs I merged or approved here, hidden from Needs me until GitHub agrees. */
+.rh-acted ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.rh-acted li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-body);
+}
+.rh-acted-meta {
+  color: var(--text-muted);
+  font-size: var(--fs-micro);
+}
+
+/* ---- Cron pulse: the watcher chip on a card and the strip of jobs feeding the page ---- */
+.rh-watch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background-color: var(--surface-1);
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+.rh-watch[data-working] {
+  border-color: var(--border-default);
+}
+.rh-watch-text {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.rh-watch-text b {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.rh-watch-also {
+  color: var(--text-tertiary);
+}
+.rh-watch-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.rh-watch-err {
+  flex-basis: 100%;
+  font-size: var(--fs-micro);
+  color: var(--text-secondary);
+}
+.rh-watch-note {
+  flex-basis: 100%;
+}
+.rh-watch-none {
+  color: var(--text-tertiary);
+  background-color: transparent;
+  border-style: dashed;
+}
+.rh-pulse {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background-color: var(--surface-1);
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+.rh-pulse-label {
+  margin: 0;
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.rh-pulse-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Fixed columns so name, next run and buttons line up row to row. */
+.rh-pulse-job {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 9.5rem auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 2.25rem;
+  padding: var(--space-1) 0;
+}
+.rh-pulse-job + .rh-pulse-job {
+  border-top: 1px solid var(--border-subtle);
+}
+.rh-pulse-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.rh-pulse-when {
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.rh-pulse-actions {
+  display: inline-flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-2);
+}
+@media (max-width: 640px) {
+  .rh-pulse-job {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .rh-pulse-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}

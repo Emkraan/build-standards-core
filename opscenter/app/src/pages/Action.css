@@ -1,0 +1,295 @@
+/* Action Center hub: the overview strip, Completed, the tackle meta line and the page banners. Owned by ActionHub, ActionCenter and Completed. */
+
+/* ---- overview ---- */
+.ov-eng {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 0;
+  font-size: 13px;
+}
+.ov-eng > span {
+  min-width: 130px;
+}
+.ov-eng-bar {
+  flex: 1;
+  height: 7px;
+  background: var(--bg);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.ov-eng b {
+  min-width: 40px;
+  text-align: right;
+}
+.ov-link {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ---- action buttons (Action Center + Drafts) ---- */
+.ac-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 16px;
+  flex-wrap: wrap;
+}
+.ac-controls .muted {
+  font-size: 12.5px;
+  color: var(--text-faint);
+  margin-right: auto;
+}
+
+/* Replied chips: 1:1 cards I already wrote about, one click reopens */
+.ac-replied {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin: 0 0 var(--space-4);
+}
+.ac-replied-text {
+  display: block;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- Completed log (Action Center > Completed): kit StatTiles, Toolbar, day Cards ---- */
+.cmp-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+.cmp-filter {
+  width: 340px;
+  max-width: 100%;
+}
+.cmp-days {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.cmp-day {
+  padding: var(--space-4) var(--space-4) var(--space-2);
+}
+.cmp-day .card-head {
+  margin-bottom: var(--space-2);
+  padding: 0 var(--space-1);
+}
+.cmp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.cmp-row {
+  border-radius: var(--radius-md);
+  border-top: 1px solid var(--border-subtle);
+}
+.cmp-row:first-child {
+  border-top-color: transparent;
+}
+.cmp-row.is-selected,
+.cmp-row.is-selected + .cmp-row {
+  border-top-color: transparent;
+}
+.cmp-main {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.cmp-main:hover {
+  background: var(--surface-2);
+}
+.cmp-row.is-selected .cmp-main:hover {
+  background: transparent;
+}
+.cmp-main:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.cmp-time {
+  width: 68px;
+  flex: none;
+  font-size: var(--fs-label);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.cmp-row.is-selected .cmp-time {
+  color: var(--text-secondary);
+}
+.cmp-pri {
+  width: 84px;
+  flex: none;
+}
+.cmp-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cmp-row.is-selected .cmp-title {
+  white-space: normal;
+}
+.cmp-faint {
+  color: var(--text-tertiary);
+  font-size: var(--fs-label);
+}
+.cmp-row.is-selected .cmp-faint {
+  color: var(--text-secondary);
+}
+.cmp-owner,
+.cmp-act {
+  flex: none;
+}
+.cmp-caret {
+  flex: none;
+  display: inline-flex;
+  color: var(--text-tertiary);
+  transition: transform var(--dur-base) var(--ease-out);
+}
+.cmp-main[aria-expanded="true"] .cmp-caret {
+  transform: rotate(90deg);
+}
+.cmp-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-4) var(--space-4) calc(68px + var(--space-5));
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+.cmp-detail p {
+  margin: 2px 0 0;
+  color: var(--text-primary);
+}
+.cmp-outcome {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+}
+.cmp-label {
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+  color: var(--text-secondary);
+}
+.cmp-refs {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.cmp-btns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+@media (max-width: 800px) {
+  .cmp-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cmp-detail {
+    padding-left: var(--space-3);
+  }
+  .cmp-pri,
+  .cmp-owner {
+    display: none;
+  }
+}
+
+/* platform reviews page + Action Center pointer (private) */
+.oly-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 10px 14px;
+  border: 1px solid var(--alert);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--danger-dim);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 13.5px;
+}
+.oly-banner:hover {
+  filter: brightness(1.08);
+}
+.oly-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--alert);
+  flex-shrink: 0;
+}
+.oly-go {
+  margin-left: auto;
+  color: var(--alert);
+  font-weight: 650;
+}
+/* one Now row per platform Needs me item, right under the Reviews banner */
+.oly-now {
+  list-style: none;
+  margin: -10px 0 18px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.oly-now a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm, 8px);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 13px;
+}
+.oly-now a:hover {
+  background: var(--danger-dim);
+}
+.oly-now-tag {
+  color: var(--alert);
+  font-weight: 650;
+  font-size: var(--fs-label);
+  text-transform: uppercase;
+}
+.oly-now-what {
+  font-weight: 600;
+}
+.oly-now-title {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- Alerts tab (pages/Alerts.tsx): script output keeps its lines ---- */
+.al-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  color: var(--text-primary);
+}

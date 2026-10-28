@@ -1,0 +1,93 @@
+/* The ui.tsx compatibility layer. Card, Kpi (StatTile), Pill and Empty are kit components now and
+   take their look from kit.css and hub-layer.css; what stays here is the app's own small pieces:
+   the progress bar, the ticket chip, the grids, plain tables and the working spinner. */
+
+.progress {
+  height: 8px;
+  background: var(--surface-inset);
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width var(--dur-travel) var(--ease-out);
+  background: var(--accent);
+}
+.progress-fill.good {
+  background: var(--success);
+}
+.progress-fill.warn {
+  background: var(--warning);
+}
+.progress-fill.alert {
+  background: var(--danger);
+}
+
+.tkt {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--accent-dim);
+  color: var(--accent-bright);
+  padding: 1px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+/* Element defaults sit in @layer base (declared below core in src/layers.css), so the kit's own
+   classes always win over them, as they did before the kit moved into @layer core. */
+@layer base {
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th {
+    text-align: left;
+    color: var(--text-tertiary);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border-default);
+  }
+  td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+  }
+  tr:last-child td {
+    border-bottom: none;
+  }
+  tr.total td {
+    font-weight: 700;
+    border-top: 1px solid var(--border-default);
+  }
+}
+
+/* ---- working indicator: the spinner inside a live Pill, a tab or a nav count ---- */
+.ui-pill-live {
+  gap: 6px;
+}
+.spin {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.6px solid currentColor;
+  border-right-color: transparent;
+  flex-shrink: 0;
+  animation: spin-rot calc(var(--dur-slower) * 3) linear infinite;
+}
+@keyframes spin-rot {
+  to {
+    transform: rotate(360deg);
+  }
+}

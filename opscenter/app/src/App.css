@@ -1,0 +1,154 @@
+/* App-wide rules shared by more than one page group: hub and page heads, buttons, chips, list rows,
+   modals and working indicators. Page-only rules live in the page sheets (map in src/shell.css).
+   Every colour, duration and layer comes from a core token. */
+
+/* ---- hub and page heads ---- */
+.hub-head {
+  margin-bottom: var(--space-5);
+}
+.hub-head .page-header {
+  margin-bottom: var(--space-3);
+}
+/* The hub supplies the h1, so pages embedded in a hub keep only their own subtitle. */
+.hub-body .page-head {
+  margin-bottom: 18px;
+}
+.hub-body .page-head h1 {
+  display: none;
+}
+.hub-body .page-head p {
+  font-size: 13px;
+}
+.page-head {
+  margin-bottom: 24px;
+}
+.page-head h1 {
+  font-size: var(--fs-h1);
+  font-weight: 600;
+  letter-spacing: var(--track-title);
+  margin-bottom: 5px;
+}
+.page-head p {
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  margin: 0;
+}
+/* Eyebrow over a page title that is not yet a kit PageHeader (same recipe as .page-eyebrow). */
+.eyebrow {
+  margin: 0 0 var(--space-1);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.note {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: 99px;
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chip span {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.chip:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+.chip.active {
+  background: var(--surface-3);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+.chip.active span {
+  color: var(--text-secondary);
+}
+
+.sp-act-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+/* "in Hermes" marker on Jira tickets (Sprint, Backlog, Action Center). Links to the session. */
+.ih-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 20px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  vertical-align: middle;
+  background: var(--accent-dim);
+  color: var(--accent-bright);
+  border: 1px solid var(--border-accent);
+  text-decoration: none;
+}
+a.ih-pill:hover {
+  border-color: var(--border-accent-strong);
+  color: var(--text-primary);
+}
+.ih-pill.opening {
+  opacity: 0.75;
+}
+.ih-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+}
+.at-title .ih-pill {
+  margin-right: 8px;
+}
+.ih-hint a {
+  font-weight: 600;
+}
+
+/* ---- live markers (1:1 board, Infrastructure) on top of the kit .live-dot ---- */
+.live-dot.stale {
+  background: var(--warning);
+  animation: none;
+}
+
+/* ui.css styles bare th as uppercase micro labels, kit tables keep their own header type. */
+.table th {
+  text-transform: none;
+  letter-spacing: normal;
+}
+/* Kit confirm dialogs: keep the line breaks of the original question text. */
+.confirm-body {
+  white-space: pre-line;
+}

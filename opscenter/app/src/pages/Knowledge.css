@@ -1,0 +1,313 @@
+/* Knowledge hub: curation proposals, diffs, wiki health and documentation coverage. Owned by
+   Knowledge and DocCoverage. Built on kit Cards, Tables, Badges and Modals, tokens only. */
+
+/* ---- page pieces ---- */
+.kc-lede {
+  margin: 0 0 var(--space-4);
+  max-width: 90ch;
+  color: var(--text-secondary);
+  font-size: var(--fs-body);
+}
+.kc-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.kc-section,
+.dc-section {
+  margin: var(--space-6) 0 var(--space-3);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.kc-faint {
+  font-size: var(--fs-label);
+  color: var(--text-tertiary);
+}
+.kc-mono {
+  font-family: var(--font-mono);
+}
+.kc-strong {
+  font-weight: 600;
+}
+.kc-note {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+  line-height: var(--lh-body);
+}
+.kc-pre {
+  white-space: pre-wrap;
+  margin-top: var(--space-2);
+}
+
+/* ---- proposals ---- */
+.kc-prop .card-head {
+  margin-bottom: var(--space-2);
+}
+.kc-prop.is-decided {
+  opacity: 0.86;
+}
+.kc-summary {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-primary);
+}
+.kc-meta {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: var(--fs-label);
+  margin: var(--space-3) 0;
+  color: var(--text-secondary);
+}
+.kc-flash {
+  margin: var(--space-3) 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-primary);
+}
+.kc-btns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.kc-reject {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  background: var(--surface-inset);
+}
+.kc-reject .kc-btns {
+  margin-top: var(--space-2);
+}
+.kc-diffwrap {
+  margin: var(--space-2) 0 2px;
+}
+.kc-diffwrap summary {
+  cursor: pointer;
+  width: fit-content;
+  font-size: var(--fs-label);
+  color: var(--accent-bright);
+  font-weight: 600;
+  user-select: none;
+  border-radius: var(--radius-xs);
+}
+.kc-diffwrap summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.kc-diff {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--surface-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  line-height: var(--lh-body);
+  margin: var(--space-2) 0 0;
+  max-height: 340px;
+  overflow: auto;
+}
+.kc-line {
+  display: block;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-xs);
+}
+.kc-line.add {
+  background: var(--success-dim);
+  color: var(--success);
+}
+.kc-line.del {
+  background: var(--danger-dim);
+  color: var(--danger);
+}
+.kc-line.hunk {
+  color: var(--text-tertiary);
+}
+
+/* ---- history ---- */
+.kc-applied {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.kc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ---- documentation coverage (DocCoverage) ---- */
+.dc-banner {
+  margin-bottom: var(--space-3);
+  font-size: var(--fs-body);
+}
+.dc-table .table {
+  table-layout: fixed;
+}
+.dc-table td {
+  vertical-align: top;
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-3);
+}
+.dc-thing {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.dc-name {
+  font-weight: 600;
+}
+.dc-faint {
+  font-size: var(--fs-label);
+  color: var(--text-tertiary);
+  overflow-wrap: anywhere;
+}
+.dc-soft {
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+.table-row.is-selected .dc-faint {
+  color: var(--text-secondary);
+}
+.dc-note {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+.dc-gaps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.dc-gaps li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--fs-body);
+  line-height: var(--lh-snug);
+}
+.dc-meta {
+  margin: var(--space-3) 0 0;
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+.dc-meta + .btn,
+.dc-gaps + .dc-meta + .btn {
+  margin-top: var(--space-3);
+}
+.dc-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.dc-btns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.dc-ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  background: var(--surface-inset);
+}
+.dc-ask-btns {
+  justify-content: flex-end;
+}
+.dc-err {
+  margin: 0;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--danger);
+}
+
+/* Registry and cron catalog housekeeping, collapsed by default */
+.dc-house {
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-3);
+  font-size: var(--fs-label);
+}
+.dc-house summary {
+  cursor: pointer;
+  width: fit-content;
+  color: var(--text-secondary);
+  font-weight: 600;
+  border-radius: var(--radius-xs);
+}
+.dc-house summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.dc-house summary span,
+.dc-house-name span {
+  color: var(--text-tertiary);
+  font-weight: 400;
+  margin-left: 6px;
+}
+.dc-house-group {
+  margin-top: var(--space-3);
+}
+.dc-house-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.dc-house ul {
+  margin: 4px 0 0 18px;
+  padding: 0;
+}
+.dc-house li {
+  margin: 4px 0;
+  color: var(--text-secondary);
+}
+.dc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.dc-chips code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  background: var(--surface-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  padding: 1px 6px;
+  color: var(--text-secondary);
+}
+
+/* ---- per-class publish mode and the auto-publish digest ---- */
+.kc-mode {
+  margin-bottom: var(--space-4);
+}
+.kc-digest {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--fs-body);
+}

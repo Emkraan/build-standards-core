@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-28 (v1.46.0, ops center app)
+
+Twelfth piece of the ops center lift (opscenter/DESIGN.md section 4). Opt in: no rule is added and nothing a consumer
+runs today changes.
+
+- Code: `opscenter/app`, the whole app of the running ops center (114 source files: the shell and rail, every page and
+  component, the data reader and its types) on the shared kit through the `@kit` alias to `kit/src` and the core tokens.
+  It lifts as one unit because the pages import one another and the data reader; a partial lift would not build.
+  Repository names and the sidebar subtitle are build parameters (`VITE_PRIMARY_REPO`, `VITE_APP_SUBTITLE`), the links
+  catalog is an example, and estate names are gone (the two review lanes are `platform` and `team`).
+- CI: `.github/workflows/opscenter-app.yml` installs the kit and the app, runs the node unit tests and builds (with the bundle size budget check). The browser accessibility and live action tests
+  are `npm run test:browser`, for a consumer's own CI.
+- Left to the consumer: wiring the build variables, and pointing the data reader's endpoints at the core server modules
+  as each lands (the envelope and the registry, R1 and R2).
+
 ## 2026-10-28 (v1.45.1, stat tile help icon corner)
 
 - Kit: on a stat tile or `Stat` that is itself a button, the help icon sits at `var(--space-2)` from the top and right of

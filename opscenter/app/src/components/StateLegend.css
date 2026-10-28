@@ -1,0 +1,23 @@
+/* The card and row state colour key, shared by the review lists and the Action Center. */
+.rh-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+.rh-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.rh-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgb(var(--hue) / 0.7);
+  background-color: rgb(var(--hue) / 0.3);
+}

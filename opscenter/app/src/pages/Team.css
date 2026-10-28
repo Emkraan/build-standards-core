@@ -1,0 +1,98 @@
+/* Team Performance hub: This cycle (TeamPerformance) and Trends (TeamHistory). Shared People
+   pieces (person cards, meters, chart callouts) live in pages/people/people.css. Tokens only. */
+
+.tp-read {
+  margin-bottom: var(--space-2);
+}
+.tp-read .card-head {
+  margin-bottom: var(--space-3);
+}
+.tp-read-text {
+  margin: 0;
+  max-width: 120ch;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-primary);
+}
+
+.tp-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+@media (max-width: 1000px) {
+  .tp-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.tp-verdict {
+  margin: 0 0 var(--space-4);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  line-height: var(--lh-body);
+  color: var(--text-primary);
+}
+.tp-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin-top: var(--space-4);
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+.tp-strip b {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.tp-note {
+  margin: var(--space-3) 0 0;
+  font-size: var(--fs-label);
+  line-height: var(--lh-body);
+  color: var(--text-secondary);
+}
+.tp-dim {
+  color: var(--text-secondary);
+}
+.tp-bullets {
+  margin-bottom: var(--space-2);
+}
+.tp-bullets .card-head {
+  margin-bottom: var(--space-3);
+}
+.tp-act-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+  font-size: var(--fs-body);
+}
+.tp-do {
+  margin: var(--space-3) 0 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+.tp-do b {
+  color: var(--text-primary);
+}
+.tp-filter {
+  width: 220px;
+}
+
+/* ---- Trends ---- */
+.th .toolbar {
+  margin-bottom: var(--space-4);
+}
+.th-period {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+.th-period b {
+  font-weight: 600;
+}
+.th-period small {
+  font-size: var(--fs-micro);
+  color: var(--text-secondary);
+}

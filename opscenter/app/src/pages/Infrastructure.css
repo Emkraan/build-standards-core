@@ -1,0 +1,579 @@
+/* Infrastructure hub (src/pages/Infrastructure.tsx and src/pages/infra/*). Page-local layout on
+   top of the kit: stacks and grids, notes, the usage meter, chart tooltip and legend, key and value
+   lists, table cell text, and the live job run blocks. Tokens only, no edge bars. */
+
+.infra-stack {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.infra-stack-lg {
+  gap: var(--space-8);
+}
+.infra-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+.infra-block {
+  margin-top: var(--space-4);
+}
+.infra-block > .infra-eyebrow {
+  margin-bottom: var(--space-2);
+}
+.infra-eyebrow {
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.infra-eyebrow-gap {
+  margin: var(--space-6) 0 var(--space-2);
+}
+.infra-note {
+  margin: var(--space-3) 0 0;
+  max-width: 110ch;
+  font-size: var(--fs-label);
+  line-height: var(--lh-body);
+  color: var(--text-secondary);
+}
+.infra-stack > .infra-note {
+  margin-top: 0;
+}
+.infra-muted {
+  color: var(--text-secondary);
+  font-size: var(--fs-label);
+}
+.infra-prose {
+  margin: 0;
+  line-height: var(--lh-body);
+  color: var(--text-primary);
+}
+.infra-num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.infra-big {
+  font-size: var(--fs-h1);
+  font-weight: 700;
+  letter-spacing: var(--track-display);
+}
+.infra-mono {
+  font-family: var(--font-mono);
+}
+.infra-push {
+  margin-left: auto;
+}
+.infra-nowrap {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+.infra-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.infra-pills + .modal-section {
+  margin-top: var(--space-3);
+}
+.infra-list {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  color: var(--text-secondary);
+  font-size: var(--fs-label);
+}
+.infra-list code,
+.infra-kv code,
+.infra .table code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  padding: 1px var(--space-1);
+  border-radius: var(--radius-xs);
+  background: var(--surface-inset);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+
+/* Inline alert line: the tone recipe in red, an icon and the message. */
+.infra-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  margin: 0 0 var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  font-size: var(--fs-label);
+}
+.infra-alert svg {
+  flex: none;
+  margin-top: 1px;
+  color: rgb(var(--hue-red));
+}
+
+/* ---- Table cell text ---- */
+.infra-cell {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.infra-cell-title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.infra-cell-text {
+  font-weight: 500;
+}
+.infra-inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.infra .toolbar .field {
+  min-width: min(100%, 320px);
+}
+.infra-cell-title a,
+.infra-red-list a,
+.infra-run-name {
+  color: var(--text-primary);
+  text-decoration: none;
+}
+.infra-cell-title a:hover,
+.infra-red-list a:hover,
+.infra-run-name:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.infra-cell-sub,
+.infra-cell-meta {
+  font-size: var(--fs-label);
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+.infra-cell-err {
+  font-size: var(--fs-label);
+  color: var(--danger);
+}
+.infra-trunc {
+  display: block;
+  max-width: 520px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.infra-billed {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* ---- Key and value list (job details, backup) ---- */
+.infra-kv {
+  margin: 0;
+  display: grid;
+}
+.infra-kv-row {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.infra-kv-row:last-child {
+  border-bottom: 0;
+}
+.infra-kv dt {
+  color: var(--text-secondary);
+  font-size: var(--fs-label);
+}
+.infra-kv dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.infra-error {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--danger-border);
+  background: var(--danger-dim);
+  color: var(--danger);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---- Totals strip under a table (the kit Table has no footer row) ---- */
+.infra-totals {
+  margin: var(--space-3) 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
+}
+.infra-totals dt {
+  font-size: var(--fs-micro);
+  color: var(--text-secondary);
+}
+.infra-totals dd {
+  margin: 2px 0 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* ---- Usage meter ---- */
+.infra-meter {
+  --meter: var(--hue-green);
+  height: 8px;
+  margin: var(--space-1) 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-inset);
+  border: 1px solid var(--border-default);
+  overflow: hidden;
+}
+.infra-meter[data-level="warn"] {
+  --meter: var(--hue-amber);
+}
+.infra-meter[data-level="alert"] {
+  --meter: var(--hue-red);
+}
+.infra-meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: rgb(var(--meter));
+  transition: width var(--dur-travel) var(--ease-out);
+}
+
+/* ---- Account cards ---- */
+.infra-limit {
+  margin-bottom: var(--space-4);
+}
+.infra-limit-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+/* ---- Overview area cards ---- */
+.infra-area {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+.infra-area-list {
+  flex: 1;
+}
+.infra-area-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-3);
+}
+
+/* Cost by month: the month table and the selected month's jobs side by side. */
+.infra-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+.infra-split-title {
+  margin-bottom: var(--space-2);
+}
+
+/* ---- Charts ---- */
+.infra-chart {
+  height: 240px;
+}
+.infra-legend {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+.infra-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.infra-swatch {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-xs);
+}
+.infra-swatch[data-line] {
+  height: 3px;
+  width: 14px;
+  border-radius: var(--radius-pill);
+}
+.infra-tip {
+  min-width: 180px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-pop);
+  color: var(--text-primary);
+  font-size: var(--fs-label);
+}
+.infra-tip-label {
+  margin-bottom: var(--space-1);
+  font-weight: 600;
+}
+.infra-tip-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 1px 0;
+}
+.infra-tip-name {
+  flex: 1;
+  color: var(--text-secondary);
+}
+.infra-tip-row b {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- GitHub red on main ---- */
+.infra-red-list {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.infra-red-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  font-size: var(--fs-label);
+  font-weight: 600;
+}
+
+/* ---- Live jobs: run blocks, job rows, step bars and the log tail ---- */
+.infra-run {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+}
+.infra-run-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.infra-run-head[data-clickable] {
+  cursor: pointer;
+}
+.infra-run-toggle {
+  margin-left: calc(var(--space-2) * -1);
+}
+.infra-run-name {
+  font-weight: 600;
+}
+.infra-run-head + .infra-job {
+  margin-top: var(--space-2);
+}
+.infra-job {
+  border-top: 1px solid var(--border-subtle);
+  padding: var(--space-2) 0;
+}
+.infra-job:last-child {
+  padding-bottom: 0;
+}
+.infra-job-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  width: calc(100% + var(--space-4));
+  padding: var(--space-1) var(--space-2);
+  margin: 0 calc(var(--space-2) * -1);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.infra-job-head:hover {
+  background: var(--surface-3);
+}
+.infra-job-head:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.infra-job-name {
+  font-weight: 600;
+}
+.infra-steps {
+  display: flex;
+  gap: 2px;
+  margin: var(--space-2) 0 var(--space-1) var(--space-5);
+}
+/* Step segments are data marks (one per step, coloured by result), not an accent. */
+.infra-step {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-4);
+}
+.infra-step[data-tone="success"] {
+  background: rgb(var(--hue-green));
+}
+.infra-step[data-tone="warning"] {
+  background: rgb(var(--hue-amber));
+}
+.infra-step[data-tone="danger"] {
+  background: rgb(var(--hue-red));
+}
+.infra-step[data-tone="info"] {
+  background: rgb(var(--hue-blue));
+  animation: infra-step-pulse var(--dur-pulse) var(--ease-in-out) infinite;
+}
+@keyframes infra-step-pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .infra-step[data-tone="info"] {
+    animation: none;
+  }
+}
+.infra-job-body {
+  margin: var(--space-2) 0 var(--space-1) var(--space-5);
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+.infra-step-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+}
+.infra-step-list li {
+  display: grid;
+  grid-template-columns: 28px 1fr auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.infra-step-list li:last-child {
+  border-bottom: 0;
+}
+.infra-step-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.infra-log {
+  width: 100%;
+  margin: 0;
+  max-height: 260px;
+  overflow: auto;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  background: var(--surface-inset);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+@media (max-width: 640px) {
+  /* Card heads wrap their controls under the title on phones (web-ui.md section 7). */
+  .infra .card-head {
+    flex-wrap: wrap;
+  }
+  .infra-kv-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .infra-trunc {
+    max-width: 260px;
+  }
+  .infra-step-list li {
+    grid-template-columns: 22px 1fr auto;
+  }
+  .infra-step-list li > .infra-mono:not(.infra-step-n) {
+    display: none;
+  }
+}
+
+/* ---- Hermes engine card (restart control with live progress) ---- */
+.hermes-line {
+  margin: 0 0 var(--space-3);
+}
+.hermes-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  font-size: 0.875rem;
+}
+.hermes-steps li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--muted-foreground, inherit);
+  opacity: 0.6;
+}
+.hermes-steps li[data-state="done"],
+.hermes-steps li[data-state="current"] {
+  opacity: 1;
+}
+.hermes-steps li[data-state="current"] {
+  font-weight: 600;
+  color: var(--foreground, inherit);
+}
+.hermes-step-dot {
+  display: inline-grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-size: 0.7rem;
+}
+.hermes-steps li[data-state="done"] .hermes-step-dot {
+  background: var(--success-dim);
+  border-color: var(--success-border);
+  color: var(--success);
+}
+.hermes-actions {
+  gap: var(--space-2);
+}

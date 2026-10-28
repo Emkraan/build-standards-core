@@ -1,0 +1,4 @@
+/* Cascade layer order for the whole app. Must load before every other sheet (first import in
+   main.tsx). base = the app's bare element defaults, core = the UI standard's hub and kit sheets
+   (they declare @layer core themselves). Unlayered app CSS (classes) wins over both. */
+@layer base, core;
