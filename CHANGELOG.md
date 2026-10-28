@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-28 (v1.47.0, ops center app)
+## 2026-10-28 (v1.46.0, ops center app)
 
 Twelfth piece of the ops center lift (opscenter/DESIGN.md section 4). Opt in: no rule is added and nothing a consumer
 runs today changes.
