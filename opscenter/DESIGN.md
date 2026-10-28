@@ -1316,6 +1316,7 @@ the standard drops: it is waiting on something named here.
 | 22 | plans reconcile | lifted: `gates/plans_reconcile_gate.py` |
 | 23 | pull request dependencies, search | lifted: `server/modules/pr_deps.py`, `ops_search.py` |
 | 24 | cron catalog gate, sitrep, hermetic test home, reviews visibility check | cron catalog gate, hermetic home, reviews visibility check and the sitrep (`gates/sitrep.py`, `sitrep_prerun.py`) lifted; the live ref check is a plug-in the consumer supplies (`ref_status` is not lifted) |
+| (tools) | export path map, per pull request changelog tool | lifted: `tools/livepath.py`, `tools/changelog.py` (both configured by JSON files, `tools/README.md`) |
 | (2.4) | swr, alerts, review tombstones, paths | lifted: `server/modules/` |
 | (2.6) | analyzer: contract, handled match, first seen, routing, collector, bundle builder, wake gate | lifted: `engine/` (`contract`, `handled`, `first_seen`, `routing`, `collect`, `analysis_bundle`, `board_build`), `gates/action_center_gate.py`, `server/modules/routing_api.py` (12.13) |
 | (4) | the app | lifted: `opscenter/app`, all 114 source files, typecheck, unit tests and build in CI; the browser tests are `npm run test:browser` |
