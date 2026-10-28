@@ -1,0 +1,48 @@
+{
+  "groups": [
+    {
+      "id": "g",
+      "title": "Examples",
+      "hue": "teal",
+      "links": [
+        {
+          "name": "Example 0",
+          "url": "https://example0.example.com/"
+        },
+        {
+          "name": "Example 1",
+          "url": "https://example1.example.com/"
+        },
+        {
+          "name": "Example 2",
+          "url": "https://example2.example.com/"
+        },
+        {
+          "name": "Example 3",
+          "url": "https://example3.example.com/"
+        },
+        {
+          "name": "Example 4",
+          "url": "https://example4.example.com/"
+        },
+        {
+          "name": "Example 5",
+          "url": "https://example5.example.com/"
+        },
+        {
+          "name": "Example 6",
+          "url": "https://example6.example.com/"
+        },
+        {
+          "name": "Example 7",
+          "url": "https://example7.example.com/"
+        },
+        {
+          "name": "Intranet",
+          "url": "https://intranet.example.com/",
+          "note": "On network"
+        }
+      ]
+    }
+  ]
+}

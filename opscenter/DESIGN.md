@@ -1320,3 +1320,25 @@ the standard drops: it is waiting on something named here.
 | (2.6) | analyzer: contract, handled match, first seen | lifted: `engine/`; routing, the collector and the bundle builder are not |
 | (4) | the app (about 400 files of pages, components and tests) | not started |
 
+### 12.8 Module parameters (the five modules that named estate repositories or files)
+
+Each of these modules was tied to named repositories or one estate file. They lift as optional modules whose estate
+facts are parameters (section 6): a value in `local/params.json`, or the environment variable the module header names
+(the server reads the params file and sets them). No default names an estate; a required value that is missing makes
+the module report `unavailable` and hide its UI (section 1.3), never guess.
+
+| Module (item) | Parameter | Default | Meaning |
+|---|---|---|---|
+| `cron_pulse` (12) | `cron_pulse.repos` | `{"primary": "owner/primary", "secondary": "owner/secondary"}` | repo key to `owner/name`: the repositories whose Reviews pages carry a jobs strip; a job that names exactly one of them is mapped to its page |
+| `cron_pulse` | `cron_pulse.branch_key` | `[A-Z][A-Z0-9]+-\d{3,5}` | regex of the ticket key at the start of a branch name, so a job that names `KEY-1234-slug` watches `KEY-1234-*` |
+| `link_health` (20) | `links.catalog_file`, `links.catalog_rel` | `<root>/local/links-catalog.json`, same | the consumer's catalog file and its path in the repo; the catalog is the consumer's data, never core |
+| `link_health` | `links.repo`, `links.repo_dir` | `owner/ops-center`, `<repos>/ops-center` | where a Swap or Remove edit opens its pull request |
+| `link_health` | `links.git_name`, `links.git_email`, `links.changelog_tool` | `ops-center`, a noreply address, none | identity of the edit commit; an optional script that writes the changelog entry before the commit |
+| `runbook_releases` (15) | `releases.repo`, `releases.self_login` | `owner/repo`, `owner-login` | the repo and the owner's login recorded as the dispatcher |
+| `runbook_releases` | `releases.workflow`, `releases.plan_job`, `releases.tier`, `releases.watch[]` | `deploy-runbooks.yml`, `terraform plan (runbooks {tier})`, `prod`, runbook paths | the guarded deploy workflow, its plan job name, the tier whose deletes it releases, and the paths whose change alters what a dispatch plans |
+| `desktop_pool` (14) | `pool.subscription`, `pool.resource_group` | none (required) | the cloud scope the read only host pool GET runs in |
+| `desktop_pool` | `pool.prefix`, `pool.host_prefix`, `pool.roll_workflow` | `hostpool-`, `host`, `.github/workflows/pool-roll.yml` | pool and session host naming, and the workflow that marks a card as a pool roll |
+| `publish_mode` (21) | `docs.host`, `docs.changelog_title`, `docs.digest_tz` | `https://docs.example.invalid/wiki`, `(?i)\bchangelog$`, `UTC` | base URL of version and history links, the title a changelog page must match, and the zone the digest groups days in |
+
+Behaviour that is not a parameter: a failed read is `unknown` and never a pass; every edit goes through a pull request
+and CI is the gate (no `--no-verify`); a class of proposal is `staged` unless the owner set it to `auto`.
