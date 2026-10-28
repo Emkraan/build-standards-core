@@ -193,7 +193,9 @@ and section an exception names, the statement, the acceptance line and how a con
 releases to raise new and changed rules. What each status means (pass, proved, attested, waived,
 not_applicable, excepted, unverified, fail) and how a consumer records a proof is in
 [CONSUMING.md](CONSUMING.md#8-rule-status-proofs-and-the-repo-checks).
-Docs without registered rules are listed by the check until they have them. A consumer lists its
+Docs without registered rules are listed by the check until they have them. `opscenter/applicability.json`
+is the published list of rule ids that apply to an ops center; `check-rules.py` fails when an id in it is not
+in the registry. A consumer lists its
 stacks in the `Stacks` row of `standards-local/parameters.md`, and `core-status.py` then leaves out the
 rules for stacks it does not have. With the row empty every rule is reported.
 
@@ -564,7 +566,7 @@ host or id in the core.
 whose result was not read) is `unverified` until the consumer records how it is proved in the overlay's
 `standards-local/proofs.json` (consumer-owned). There are four kinds: `ci` and `test` turn the rule
 `proved`, a dated `review` turns it `attested`, and a dated `waiver` with a reason turns it `waived`
-(never counted as proof). A test proof names its rule with a `core-rule: <id>` comment. The record
+(never counted as proof). A rule may carry a list of records, so a test and a dated review sit together and the rule stays `proved`. A test proof names its rule with a `core-rule: <id>` comment. The record
 format, expiry, the other statuses (`pass`, `not_applicable`, `excepted`, `fail`) and the `repo-check`
 rules RC001 to RC022 are in [CONSUMING.md](CONSUMING.md#8-rule-status-proofs-and-the-repo-checks).
 
@@ -615,7 +617,7 @@ best-practice patterns.
 3. Validate zero leaks of instance context, secrets, or board references.
 4. Run the checks; a nonconformant submission is fixed or rejected. Any consumer account may merge
    its own pull request once `ci` and `visual` pass, since every consumer is the same owner.
-5. On acceptance, every consumer picks the skill up on its next `hermes/sync_skills.py` run.
+5. On acceptance, every consumer picks the skill up on its next `python3 hermes/sync_skills.py --dest <profile home>/skills/core` run (the nightly passes it).
 
 ## Contributing back
 

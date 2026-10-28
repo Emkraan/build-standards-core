@@ -2,7 +2,7 @@
    width is the --progress custom property, so the bar animates on --dur-slow and holds still under
    reduced motion. Always labelled, because a bar alone says nothing to a screen reader. `meter`
    turns it into a measured quantity (disk used, quota spent): role meter, a deeper inset well, a
-   tone gradient with a glow, and a fill that grows from zero on mount. */
+   flat tone gradient (no glow), and a fill that grows from zero on mount. */
 
 import type { CSSProperties, HTMLAttributes } from 'react';
 import { cx } from '../lib/env';

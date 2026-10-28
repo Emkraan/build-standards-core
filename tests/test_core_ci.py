@@ -320,6 +320,23 @@ class AsciiNodePython(Overlay):
         self.params("web", "| Node major version | 20 | x |\n")
         self.assertIn("node=20", self.ci("params")[1])
 
+    def test_params_app_dir_finds_a_lockfile_one_level_down(self):
+        self.assertIn("app_dir=.\n", self.ci("params")[1] + "\n")
+        self.commit("chore: app", {"web/package.json": "{}\n", "web/pnpm-lock.yaml": "x\n"})
+        out = self.ci("params")[1]
+        self.assertIn("app_dir=web", out)
+        self.assertIn("sweep_web=true", out)
+        self.commit("chore: root lock", {"package-lock.json": "{}\n"})
+        self.assertIn("app_dir=.", self.ci("params")[1])
+
+    def test_params_app_dir_row_overrides(self):
+        self.commit("chore: app", {"a/yarn.lock": "x\n", "b/package.json": "{}\n"})
+        self.params("", "| App directory | b | x |\n")
+        out = self.ci("params")[1]
+        self.assertIn("app_dir=b", out)
+        self.params("", "| App directory | ../evil | x |\n")
+        self.assertIn("app_dir=a", self.ci("params")[1])
+
     def test_python_config_monorepo(self):
         self.params("python", "| Python interpreter floor | 3.12 | x |\n")
         self.commit(

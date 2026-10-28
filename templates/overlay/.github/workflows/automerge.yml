@@ -1,0 +1,69 @@
+name: automerge
+# core-managed: copied from the core template once (the repo owns it after that)
+# The merge gate as a workflow, for a repo whose plan has no rulesets or branch protection (ci-cd-release.md
+# section 5). COPY this file once; it is not refreshed by sync-core.py, because the repo owns its own
+# checks. What is different from a hand-written gate: the core job names are NOT listed here. The
+# step "core" reads them from the synced core-ci.yml (`core-ci.py required-names`), so a core-ci job
+# rename or addition reaches the gate in the same sync pull request and can never deadlock it.
+# REQUIRED_CHECKS lists only the repo's own checks (space separated; empty when it has none).
+#
+# Merging: a pull request is merged with the declared method once every check on its head sha is
+# success, skipped or neutral, every required name is present, and the pull request is mergeable and
+# not a draft. The label no-automerge opts out. The merge call carries the head sha it reviewed, so a
+# head that moved since is refused. The job checks out the default branch only and never runs pull
+# request code. Bootstrap, when this file on the default branch and the fix pull request disagree:
+# CONSUMING.md section 13, "Gate and workflow disagree" (merge the fix pull request once by hand, squash, pinned to the head sha).
+on:
+  workflow_run:
+    workflows: [core-ci]  # add the repo's own CI workflow names here
+    types: [completed]
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+  schedule:
+    - cron: "7 6,18 * * *"
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: automerge
+  cancel-in-progress: false
+env:
+  OVERLAY: .
+  MERGE_METHOD: squash
+  REQUIRED_CHECKS: ""
+jobs:
+  merge:
+    runs-on: ${{ fromJSON(vars.CORE_CI_RUNNER || '"ubuntu-latest"') }}
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+      statuses: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - id: core
+        run: python3 "$OVERLAY/scripts/core-ci.py" required-names --github-output
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          CORE_CHECKS: ${{ steps.core.outputs.names }}
+          REPO: ${{ github.repository }}
+        run: |
+          required="$CORE_CHECKS $REQUIRED_CHECKS"
+          gh pr list -R "$REPO" --state open --json number,headRefOid,isDraft,labels,mergeable \
+            --jq '.[] | select(.isDraft | not) | select(any(.labels[]; .name == "no-automerge") | not) | select(.mergeable == "MERGEABLE") | [.number, .headRefOid] | @tsv' |
+          while IFS=$'\t' read -r n sha; do
+            runs=$(gh api "repos/$REPO/commits/$sha/check-runs?per_page=100" --paginate \
+              --jq '.check_runs[] | [.name, .status, (.conclusion // "")] | @tsv')
+            bad=$(printf '%s\n' "$runs" | awk -F'\t' 'NF && ($2 != "completed" || ($3 != "success" && $3 != "skipped" && $3 != "neutral"))' | wc -l)
+            [ "$bad" -eq 0 ] || { echo "PR $n: checks not green yet"; continue; }
+            missing=""
+            for name in $required; do
+              printf '%s\n' "$runs" | cut -f1 | grep -Fxq "$name" || missing="$missing $name"
+            done
+            [ -z "$missing" ] || { echo "PR $n: required checks missing:$missing"; continue; }
+            body=$(jq -n --arg sha "$sha" --arg method "$MERGE_METHOD" '{sha: $sha, merge_method: $method}')
+            gh api -X PUT "repos/$REPO/pulls/$n/merge" --input - <<< "$body" && echo "PR $n merged at $sha" || echo "PR $n: merge refused"
+          done

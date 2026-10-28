@@ -23,7 +23,8 @@ Usage:
 A UI consumer also gets a ui_adoption verdict (web-ui.md 0.11): adopted when the kit is imported from
 kit-core, no local stylesheet redefines a token (UI007, UI008, UI010), the lint has zero findings and
 ui-lint.json sets no baseline. Otherwise partial, or excepted while an active exception names web-ui.md 0.11. An overlay with no UI lint config and no kit-core is
-not_applicable. --require-ui-adopted exits 1 on partial, for the drift workflow.
+not_applicable. --require-ui-adopted exits 1 on partial, for the drift workflow, unless the parameters sheet's "UI
+adoption stage" is none or partial (then it reports N/A and exits 0).
 
 A stack declared in the Stacks row needs its lint config: web needs standards-local/ui-lint.json,
 powershell, python and iac need standards-local/script-lint.json. A declared stack with no config is
@@ -48,6 +49,9 @@ Each registered rule gets a status:
   proved      a test or review rule (or an overlay-ci rule with no result read) that a valid ci or test entry in
               standards-local/proofs.json proves; counted apart from pass
   not_applicable  a core-ci rule that needs the kit (check.requires ui-adoption) in an app whose UI is not adopted
+              Also a rule a consumer declares not applicable in proofs.json under "$not_applicable" (a rule id or
+              group prefix, with reason, date, reviewed_by, optional until): shown with its reason, and only for
+              a rule that would otherwise be unverified. --ci fails on an entry with no reason or one expired.
   unverified  a test or review rule with no proof record, an overlay-ci rule whose workflow is installed
               but whose result was not read, or a script lint rule while the overlay has no
               standards-local/script-lint.json; prove it in the app
@@ -71,7 +75,8 @@ warning, then it is a problem and proves nothing.
 
 standards-local/proofs.json (consumer-owned, optional) records how the app proves a rule the script
 cannot see: {"<rule id>": {"kind": "ci|test|review", "ref": "...", "date": "YYYY-MM-DD",
-"reviewed_by": "..."}}. ref is "<workflow file>#<job>" for ci, a test file path for test, and the
+"reviewed_by": "..."}}; the value may also be a list of such records (a test plus a dated review reads
+proved, a review alone attested). ref is "<workflow file>#<job>" for ci, a test file path for test, and the
 review record's path for review (relative to the repo root). A proof's kind must be the rule's check
 kind or stronger (ci > test > review); a review needs a date within "$max_review_age_days" (default
 180). A broken or stale entry is listed under problems and proves nothing.
@@ -209,6 +214,23 @@ def declared_scopes() -> tuple[set[str] | None, list[str]]:
     return None, [STACKS_MISSING]
 
 
+UI_STAGES = ("none", "partial", "adopted")
+
+
+def ui_stage() -> str:
+    """The "UI adoption stage" parameter: none, partial or adopted ("" when the row is absent, empty or
+    not one of those, which keeps the original behaviour: a partly adopted UI fails the drift gate).
+    none and partial mark a repo that has not finished adopting the UI yet, so the gate reports N/A."""
+    if not PARAMETERS.is_file():
+        return ""
+    for line in PARAMETERS.read_text(encoding="utf8").splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) >= 2 and cells[0].lower().startswith("ui adoption stage"):
+            v = cells[1].strip("`").strip().lower()
+            return v if v in UI_STAGES else ""
+    return ""
+
+
 # ---------------------------------------------------------------- overlay-ci results
 
 
@@ -235,6 +257,7 @@ CORE_CI_STEPS = (
     "core-powershell",
     "core-node-pin",
     "core-kit-peers",
+    "core-required-checks",
 )
 
 
@@ -534,8 +557,68 @@ PROOF_TAG_ENFORCED = False
 PROOF_WARNINGS: list = []
 
 
+def check_proof(rid, p, where, rule, root, today, max_days, strength_check=True):
+    """One proof record: None when it is valid, else the problem line."""
+    import datetime
+
+    if (
+        not isinstance(p, dict)
+        or p.get("kind") not in PROOF_KINDS
+        or not isinstance(p.get("ref"), str)
+        or not p["ref"]
+    ):
+        return f"{where}: needs kind (ci, test, review or waiver) and ref"
+    kind, ref = p["kind"], p["ref"]
+    if (
+        strength_check
+        and kind != "waiver"
+        and STRENGTH[kind] < STRENGTH.get(rule["check"]["kind"], 0)
+    ):
+        return f"{where}: a {kind} proof is weaker than the rule's {rule['check']['kind']} check"
+    if kind == "ci":
+        wf, _, job = ref.partition("#")
+        jobs = workflow_jobs(wf) if wf and job else None
+        if jobs is None or job not in jobs:
+            return f"{where}: ref must be <workflow file>#<job> of an installed workflow; {ref} not found"
+    elif kind == "test":
+        if not (root / ref).is_file():
+            return f"{where}: test file {ref} does not exist"
+        try:
+            tagged = rid in (root / ref).read_text(encoding="utf8", errors="replace")
+        except OSError:
+            tagged = False
+        if not tagged:
+            msg = (
+                f"{where}: test file {ref} does not name the rule; add the comment core-rule: {rid}"
+            )
+            if PROOF_TAG_ENFORCED:
+                return msg
+            PROOF_WARNINGS.append(msg)
+    else:
+        if not (root / ref).is_file():
+            return f"{where}: {kind} record {ref} does not exist"
+        if kind == "waiver" and not (
+            str(p.get("reason", "")).strip() and str(p.get("reviewed_by", "")).strip()
+        ):
+            return f"{where}: a waiver needs a reason and reviewed_by"
+        if kind == "review" and not str(p.get("reviewed_by", "")).strip():
+            PROOF_WARNINGS.append(f"{where}: a review proof should name reviewed_by")
+        try:
+            when = datetime.date.fromisoformat(str(p.get("date", "")))
+        except ValueError:
+            return f"{where}: a {kind} proof needs date YYYY-MM-DD"
+        age = (today - when).days
+        if age > max_days:
+            return f"{where}: review of {when} is {age} days old, over the {max_days}-day limit"
+    return None
+
+
 def load_proofs(registry, today=None) -> tuple[dict, list[str]]:
-    """Valid proof records by rule id, and a problem line for every broken or stale one."""
+    """Valid proof records by rule id, and a problem line for every broken or stale one.
+
+    A rule's value is one record or a list of records (for example a test plus a dated review). The result
+    holds one record per rule: the strongest valid ci or test record, else the first valid one. When a
+    ci or test record is accompanied by a valid review record, that review is attached under "_review"."""
     import datetime
 
     PROOF_WARNINGS.clear()
@@ -549,75 +632,161 @@ def load_proofs(registry, today=None) -> tuple[dict, list[str]]:
         return {}, ["proofs.json: the top level must be an object of rule id -> proof"]
     max_days = data.pop("$max_review_age_days", REVIEW_MAX_DAYS)
     data.pop("$description", None)
+    data.pop(NA_KEY, None)
     rules = {r["id"]: r for r in registry.get("rules", [])}
     today = today or datetime.date.today()
     root = repo_root()
     good, problems = {}, []
-    for rid, p in data.items():
+    for rid, value in data.items():
         where = f"proofs.json {rid}"
         if rid not in rules:
             problems.append(f"{where}: no such rule in the registry")
             continue
-        if (
-            not isinstance(p, dict)
-            or p.get("kind") not in PROOF_KINDS
-            or not isinstance(p.get("ref"), str)
-            or not p["ref"]
-        ):
-            problems.append(f"{where}: needs kind (ci, test, review or waiver) and ref")
+        if isinstance(value, list):
+            if not value:
+                problems.append(f"{where}: a list needs at least one record")
+                continue
+            entries = [(f"{where}[{i}]", p) for i, p in enumerate(value)]
+            # a review beside a ci or test record is a companion, not a weaker proof of the rule
+            strong = any(isinstance(p, dict) and p.get("kind") in ("ci", "test") for p in value)
+        else:
+            entries, strong = [(where, value)], False
+        valid = []
+        for label, p in entries:
+            companion = strong and isinstance(p, dict) and p.get("kind") == "review"
+            problem = check_proof(rid, p, label, rules[rid], root, today, max_days, not companion)
+            if problem:
+                problems.append(problem)
+            else:
+                valid.append(p)
+        if not valid:
             continue
-        kind, ref = p["kind"], p["ref"]
-        if kind != "waiver" and STRENGTH[kind] < STRENGTH.get(rules[rid]["check"]["kind"], 0):
+        primary = max(
+            valid, key=lambda p: STRENGTH[p["kind"]] if p["kind"] in ("ci", "test") else -1
+        )
+        record = dict(primary)
+        if primary["kind"] in ("ci", "test"):
+            review = next((p for p in valid if p["kind"] == "review"), None)
+            if review:
+                record["_review"] = review
+        good[rid] = record
+    return good, problems
+
+
+def proof_status(rule, proof):
+    """(status, note) a valid proof record gives a rule that would otherwise be unverified; status is
+    unverified when the rule requires a review (registry requires_review) and no current one came with it."""
+    kind = proof["kind"]
+    note = f"{kind}: {proof['ref']}"
+    if kind in ("review", "waiver"):
+        return {"review": "attested", "waiver": "waived"}[kind], note
+    review = proof.get("_review")
+    if review:
+        return "proved", f"{note}; review: {review['ref']}"
+    if rule.get("requires_review"):
+        return "unverified", f"{note}; needs a dated review record from the accountable owner too"
+    return "proved", note
+
+
+# Rules a consumer declares do not apply to it (no real surface), in the same proofs.json under one reserved key:
+# "$not_applicable": [{"rule": "<rule id or group prefix>", "reason", "date", "reviewed_by", "until" (optional)}].
+# A prefix matches whole dotted segments ("rbac" covers rbac and rbac.1.2, "web-api-runtime.1" does not cover
+# web-api-runtime.10). Guard: no entry may cover a rule of a protected doc (secrets and automation safety)
+# unless the registry marks that rule "applicable_optional": true. Only a rule that would otherwise be
+# unverified is set aside; a rule with a result or a proof keeps it.
+NA_KEY = "$not_applicable"
+NA_PROTECTED_DOCS = ("secrets-and-credentials", "automation-safety")
+NA_EXPIRING_DAYS = 30
+
+
+def na_matches(prefix, rid) -> bool:
+    return rid == prefix or rid.startswith(prefix + ".")
+
+
+def na_protected(rule) -> bool:
+    return rule["id"].split(".")[0] in NA_PROTECTED_DOCS and not rule.get("applicable_optional")
+
+
+def na_applies(status, rid, na_by_id) -> bool:
+    """Only a rule that is still unverified (no result, no proof) is set aside; anything else keeps its status."""
+    return status == "unverified" and rid in na_by_id
+
+
+def load_not_applicable(registry, today=None) -> tuple[list, list[str]]:
+    """Valid applicability entries (each with the rule ids it covers) and a problem line for each broken,
+    expired, unmatched or guarded one. A problem entry applies to nothing."""
+    import datetime
+
+    if not PROOFS.is_file():
+        return [], []
+    try:
+        data = json.loads(PROOFS.read_text(encoding="utf8"))
+    except (OSError, ValueError):
+        return [], []  # load_proofs already reports an unreadable file
+    entries = data.get(NA_KEY) if isinstance(data, dict) else None
+    if entries is None:
+        return [], []
+    if not isinstance(entries, list):
+        return [], [f"proofs.json {NA_KEY}: must be a list of entries"]
+    today = today or datetime.date.today()
+    rules = registry.get("rules", [])
+    good, problems = [], []
+    for i, e in enumerate(entries):
+        pre = e.get("rule") if isinstance(e, dict) else None
+        where = f"proofs.json {NA_KEY} [{pre or i}]"
+        if (
+            not isinstance(e, dict)
+            or not isinstance(pre, str)
+            or not re.fullmatch(r"[A-Za-z0-9._-]+", pre)
+        ):
+            problems.append(f"{where}: needs rule, a rule id or group prefix such as rbac")
+            continue
+        if not str(e.get("reason", "")).strip():
+            problems.append(f"{where}: needs a reason")
+            continue
+        if not str(e.get("reviewed_by", "")).strip():
+            problems.append(f"{where}: needs reviewed_by")
+            continue
+        try:
+            when = datetime.date.fromisoformat(str(e.get("date", "")))
+        except ValueError:
+            problems.append(f"{where}: needs date YYYY-MM-DD")
+            continue
+        until = None
+        if e.get("until") not in (None, ""):
+            try:
+                until = datetime.date.fromisoformat(str(e["until"]))
+            except ValueError:
+                problems.append(f"{where}: until must be YYYY-MM-DD")
+                continue
+            if until < today:
+                problems.append(
+                    f"{where}: expired on {until}; renew it with a new review or remove it"
+                )
+                continue
+        covered = [r for r in rules if na_matches(pre, r["id"])]
+        if not covered:
+            problems.append(f"{where}: matches no rule in the registry")
+            continue
+        guarded = [r["id"] for r in covered if na_protected(r)]
+        if guarded:
             problems.append(
-                f"{where}: a {kind} proof is weaker than the rule's {rules[rid]['check']['kind']} check"
+                f"{where}: covers protected rule(s) {', '.join(guarded[:3])}"
+                f"{' ...' if len(guarded) > 3 else ''}; secrets and automation safety rules cannot be "
+                "declared not applicable unless the registry marks them applicable_optional"
             )
             continue
-        if kind == "ci":
-            wf, _, job = ref.partition("#")
-            jobs = workflow_jobs(wf) if wf and job else None
-            if jobs is None or job not in jobs:
-                problems.append(
-                    f"{where}: ref must be <workflow file>#<job> of an installed workflow; {ref} not found"
-                )
-                continue
-        elif kind == "test":
-            if not (root / ref).is_file():
-                problems.append(f"{where}: test file {ref} does not exist")
-                continue
-            try:
-                tagged = rid in (root / ref).read_text(encoding="utf8", errors="replace")
-            except OSError:
-                tagged = False
-            if not tagged:
-                msg = f"{where}: test file {ref} does not name the rule; add the comment core-rule: {rid}"
-                if PROOF_TAG_ENFORCED:
-                    problems.append(msg)
-                    continue
-                PROOF_WARNINGS.append(msg)
-        else:
-            doc = root / ref
-            if not doc.is_file():
-                problems.append(f"{where}: {kind} record {ref} does not exist")
-                continue
-            if kind == "waiver" and not (
-                str(p.get("reason", "")).strip() and str(p.get("reviewed_by", "")).strip()
-            ):
-                problems.append(f"{where}: a waiver needs a reason and reviewed_by")
-                continue
-            if kind == "review" and not str(p.get("reviewed_by", "")).strip():
-                PROOF_WARNINGS.append(f"{where}: a review proof should name reviewed_by")
-            try:
-                when = datetime.date.fromisoformat(str(p.get("date", "")))
-            except ValueError:
-                problems.append(f"{where}: a {kind} proof needs date YYYY-MM-DD")
-                continue
-            age = (today - when).days
-            if age > max_days:
-                problems.append(
-                    f"{where}: review of {when} is {age} days old, over the {max_days}-day limit"
-                )
-                continue
-        good[rid] = p
+        good.append(
+            {
+                "rule": pre,
+                "reason": str(e["reason"]).strip(),
+                "date": str(when),
+                "reviewed_by": str(e["reviewed_by"]).strip(),
+                "until": str(until) if until else None,
+                "days_left": (until - today).days if until else None,
+                "ids": {r["id"] for r in covered},
+            }
+        )
     return good, problems
 
 
@@ -842,6 +1011,12 @@ def main(argv):
     results, ci_problems = ci_results(argv)
     ci_problems = ci_problems + required_problems(argv)
     proofs, proof_problems = load_proofs(registry)
+    na_entries, na_problems = load_not_applicable(registry)
+    na_by_id = {}
+    for e in na_entries:
+        for rid in e["ids"]:
+            na_by_id.setdefault(rid, e)
+    na_hits = {id(e): 0 for e in na_entries}
     gaps = missing_lint_config(scopes)
     scope_problems = scope_problems + gaps
     gap_stacks = {g.split()[1] for g in gaps}
@@ -916,9 +1091,13 @@ def main(argv):
                 if n:
                     status = "fail" if n_over else "excepted"
         proof = proofs.get(r["id"])
-        if proof and status == "unverified":
-            status = {"review": "attested", "waiver": "waived"}.get(proof["kind"], "proved")
-            note = f"{proof['kind']}: {proof['ref']}"
+        pstatus, pnote = proof_status(r, proof) if proof and status == "unverified" else (None, "")
+        if pstatus and (pstatus != "unverified" or not na_applies(status, r["id"], na_by_id)):
+            status, note = pstatus, pnote
+        elif na_applies(status, r["id"], na_by_id):
+            na = na_by_id[r["id"]]
+            status, note = "not_applicable", f"not applicable: {na['reason']}"
+            na_hits[id(na)] += 1
         rules.append(
             {
                 "id": r["id"],
@@ -964,6 +1143,14 @@ def main(argv):
             dict(e, expiring=e.get("days_left") is not None and e["days_left"] <= EXPIRING_DAYS)
             for e in exceptions
         ],
+        "not_applicable_declared": [
+            {k: v for k, v in e.items() if k != "ids"}
+            | {
+                "covers": na_hits[id(e)],
+                "expiring": e["days_left"] is not None and e["days_left"] <= NA_EXPIRING_DAYS,
+            }
+            for e in na_entries
+        ],
         "warnings": list(PROOF_WARNINGS),
         "problems": (
             exc.get("problems", [])
@@ -973,6 +1160,7 @@ def main(argv):
             + scope_problems
             + ci_problems
             + proof_problems
+            + na_problems
         ),
         "fixed_since_baseline": lint.get("fixed_since_baseline", 0)
         + slint.get("fixed_since_baseline", 0),
@@ -1000,11 +1188,16 @@ def main(argv):
                 report["new_rules"], report["changed_rules"], report["removed_rules"] = a, c, rm
 
     require_ui = "--require-ui-adopted" in argv
-    ui_bad = report["ui_adoption"]["status"] == "partial"
+    stage = ui_stage()
+    report["ui_adoption_stage"] = stage or None
+    # none and partial: the repo is still on the way to the UI, so the adoption gate reports N/A, not red.
+    ui_pending = stage in ("none", "partial")
+    ui_bad = report["ui_adoption"]["status"] == "partial" and not ui_pending
     lint_bad = "--require-lint-config" in argv and (bool(gaps) or stacks_missing)
+    na_bad = "--ci" in argv and bool(na_problems)
     if "--json" in argv:
         print(json.dumps(report, indent=2))
-        return 1 if (require_ui and ui_bad) or lint_bad else 0
+        return 1 if (require_ui and ui_bad) or lint_bad or na_bad else 0
     c, s = report["core"], report["summary"]
     print(
         f"core-status: core pinned at {c['pinned_ref']}"
@@ -1020,7 +1213,9 @@ def main(argv):
             f"  stacks: {', '.join(report['scopes']) or 'none'} ({len(out_of_scope)} rule(s) for other stacks not reported)"
         )
     ui = report["ui_adoption"]
-    if ui["status"] != "not_applicable":
+    if require_ui and ui_pending:
+        print(f"  ui: N/A (UI adoption stage: {stage}; the adoption gate is skipped until adopted)")
+    elif ui["status"] != "not_applicable":
         print(f"  ui: {ui['status']}" + (f" ({'; '.join(ui['reasons'])})" if ui["reasons"] else ""))
     for x in rules:
         if x["status"] in ("fail", "error"):
@@ -1031,6 +1226,14 @@ def main(argv):
     for e in report["exceptions"]:
         if e["expiring"]:
             print(f"  EXPIRING {e['id']} ({e['rule']}) in {e['days_left']} day(s)")
+    for e in report["not_applicable_declared"]:
+        print(
+            f"  N/A {e['rule']} ({e['covers']} rule(s)): {e['reason']}"
+            f" [{e['reviewed_by']}, {e['date']}"
+            + (f", until {e['until']}" if e["until"] else "")
+            + "]"
+            + (" EXPIRING" if e["expiring"] else "")
+        )
     for w in report["warnings"]:
         print(f"  WARNING {w}")
     for p in report["problems"]:
@@ -1046,7 +1249,7 @@ def main(argv):
             "::error::the UI is only partly adopted (web-ui.md 0.11): " + "; ".join(ui["reasons"])
         )
         return 1
-    return 1 if lint_bad else 0
+    return 1 if lint_bad or na_bad else 0
 
 
 if __name__ == "__main__":
