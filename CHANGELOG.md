@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-28 (v1.75.0, ops center core consumption panel)
+
+The core consumption panel server half. Opt in: new `server/modules/core_consumption.py` and routes.
+
+- Reads the consumption feed only; approvals are single gh calls gated on live checks (DESIGN.md 12.24). Tests: 28.
+
 ## 2026-10-28 (v1.73.0, python-docx in core CI)
 
 CI installs the pinned `python-docx` so the yearly review export test runs instead of skipping; in CI a missing package fails the test.

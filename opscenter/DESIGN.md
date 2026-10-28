@@ -1322,6 +1322,7 @@ the standard drops: it is waiting on something named here.
 | (collector) | inbound mail and chat monitor gates | lifted: `gates/inbound_mail_gate.py`, `inbound_chat_gate.py`, `inbound_score.py` (12.19) |
 | (2.4) | swr, alerts, review tombstones, paths | lifted: `server/modules/` |
 | (2.6) | analyzer: contract, handled match, first seen, routing, collector, bundle builder, wake gate | lifted: `engine/` (`contract`, `handled`, `first_seen`, `routing`, `collect`, `analysis_bundle`, `board_build`), `gates/action_center_gate.py`, `server/modules/routing_api.py` (12.13) |
+| (server modules, core consumption) | the core consumption panel's server half | lifted: `server/modules/core_consumption.py` (12.24) |
 | (server) | the running server and its routes | lifted as a generic server: `server/` (12.21); the agent session routes and some page halves are not lifted |
 | (4) | the app | lifted: `opscenter/app`, all 114 source files, typecheck, unit tests and build in CI; the browser tests are `npm run test:browser` |
 
@@ -1685,3 +1686,13 @@ Core has no network call and no credential store read, and a test asserts the mo
 (tested both ways). The running code's `llm_accounts.accounts()` is `list_accounts()` split in two (provider reads, core shapes); the interface
 of C2 is `list_accounts`, `fallback_order`, `account_kinds` and `spend_history` on core, with `credentials` and `read_usage` on the provider.
 The ledger writer (an agent plugin) and the cron wrapper (`python3 model_fallback.py` prints a new incident's message) are the consumer's.
+
+### 12.24 The core consumption panel
+
+`server/modules/core_consumption.py` reads only the consumption feed (`~/.config/build-standards-core/consumption.json`, or
+`CORE_CONSUMPTION_FILE`; format `build-standards-consumption/1`, any other format is an error state with no rows) and turns it into the panel's
+rows; the read path makes no gh call, and the result is cached 60 s. Approvals are the only writes, each a single gh call (`CORE_CONSUMPTION_GH`
+names the binary): `pr ready`, `pr merge` (only when the live checks pass, by the repository's declared method, pinned to the head the owner
+saw) or `issue comment` with the owner's decision text. It never pushes, never writes another app's files and never bypasses a merge gate. An
+approval stays shown as done until a newer feed replaces the snapshot that still lists the item. Routes: `GET /api/core-consumption`,
+`POST /api/core-consumption/approve-pr` and `approve-item`. The module needed no change beyond the formatter: it already had no estate names.
