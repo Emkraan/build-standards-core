@@ -1388,3 +1388,20 @@ Lane parameters (`local/params.json` `reviews_visibility`, or the environment va
 Thresholds (privileged assessment 20 minutes, plan never parsed 10, in flight 20, the owner's pull request waiting 30, an owner root
 in flight 30, a runbook release 60, a waiting deployment 6, a new pull request not picked up 20 and 15) are constants in the module.
 
+### 12.11 The pre-push gate and the build procedure (items 3 to 5)
+
+The auto-fix starter (12.9) runs a consumer's pre-push gate as a command, and the build procedure (`opscenter/pr-build/PROCEDURE.md`)
+says when. The gate is the contract below; a consumer's own gate implements it, and a reference implementation of the checks lifts
+as `lanes/preflight.py` in its own piece.
+
+| Part | Contract |
+|---|---|
+| command | `AUTOFIX_PREFLIGHT_CMD` and `AUTOFIX_REVIEW_CMD`, templates with `{target}` and `{worktree}`; `run`, `review`, `review-template` and `design-template` are the four verbs |
+| exit | 0 pass (warnings allowed), 1 failures printed with the fix, 2 environment problem (a failure, fail closed); `review`: 0 clean or round budget spent, 1 unrefuted highs, 2 reviewers unavailable |
+| writes | only `<worktree git dir>/preflight-*.json`, the self review file, `local-review.json` and `design-check.md`; never a push, never a code host write |
+| checks | repository gates for what changed, hygiene (ASCII and dashes, version bump, branch rule, conflict, attribution, secrets), the lane dry run as expected sign offs, overlap with other open pull requests, the catalog's scriptable rules, the self review gate (diff hash file with `FIXED` and `PRE-TRIAGE` lines), the local independent review (at most 3 rounds, `REFUTED` and `OPEN-HIGH` lines), and the design check for acting automation (eight questions) |
+| per repository | a profile in the targets file (12.9): repo, policy file, whether the plan matcher applies, review prompt paths, branch rule, identity |
+
+`finding-catalog.md` is the learning loop: the auto-fix starter appends `CATALOG ADD` lines from a session's result to a target's
+catalog file.
+
