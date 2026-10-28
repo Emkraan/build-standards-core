@@ -27,12 +27,7 @@ jobs:
         working-directory: opscenter/app
       - run: npm run typecheck
         working-directory: opscenter/app
-      - run: npm run build
-        working-directory: opscenter/app
-      # The browser tests (accessibility, live actions) need the built app and a browser. Ubuntu 24.04 restricts
-      # the user namespaces Chrome's sandbox needs, so the runner states CHROME_NO_SANDBOX.
       - run: npm test
         working-directory: opscenter/app
-        env:
-          CHROME_BIN: /usr/bin/google-chrome
-          CHROME_NO_SANDBOX: '1'
+      - run: npm run build
+        working-directory: opscenter/app

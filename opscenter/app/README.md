@@ -23,11 +23,12 @@ whose backend slot is null hides (section 1.3).
 ## Commands
 
 ```bash
-npm ci && npm run typecheck && npm test && npm run build
+npm ci && npm run typecheck && npm test && npm run build   # then: npm run test:browser
 ```
 
-CI runs the same in `.github/workflows/opscenter-app.yml`, with the build first and Chrome for the browser tests
-(accessibility and live actions). Without a browser on a laptop those tests skip; in CI they never do.
+CI runs typecheck, the unit tests and the build in `.github/workflows/opscenter-app.yml`. The accessibility and live
+action tests drive Chrome and run with `npm run test:browser` after a build (set `CHROME_BIN`; they skip on a machine
+with no browser and never skip when `CI` is set); a consumer runs them in its own CI.
 
 ## Notes
 
