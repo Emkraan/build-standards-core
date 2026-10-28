@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-28 (v1.45.1, stat tile help icon corner)
+
+- Kit: on a stat tile or `Stat` that is itself a button, the help icon sits at `var(--space-2)` from the top and right of
+  the corner again, and the label keeps `padding-right: var(--space-6)` so a long label never runs under the icon.
+  Restores the look of v1.27.5 for consumers that use the tip layer. No other change.
+
 ## 2026-10-28 (v1.45.0, ops center search and pull request dependencies)
 
 Eleventh piece of the ops center lift (opscenter/DESIGN.md section 12.3, item 23). Opt in: no rule is added and nothing a
