@@ -1309,7 +1309,7 @@ the standard drops: it is waiting on something named here.
 | 13 | builds page | lifted as an app page; its server module (`builds.py`) is not |
 | 14, 15, 16 | image watch and pool, runbook releases, browser status | lifted: `image_watch.py`, `desktop_pool.py`, `runbook_releases.py`, `browser_status.py` |
 | 17 | model accounts, spend, fallback | not lifted, by decision: the running module reads another tool's OAuth tokens from the agent's credential pool and calls an undocumented usage endpoint with a borrowed client user agent. The standard keeps the `spend` and `plan_limits` slots (section 5.3); an adapter is the consumer's own, on a documented usage source. The spend page is lifted in the app |
-| 18 | sprint close, retro, ticket progress, needs me | sprint close gate lifted (`gates/`); the rest not lifted |
+| 18 | sprint close, retro, ticket progress, needs me | lifted: `gates/sprint_close_gate.py`, `tracker/` (`work.py`, `needs_me.py`, `ticket_progress.py`, `retro_row.py`, the reference `driver.py`) and `gates/retro_row_gate.py` (12.15) |
 | 19 | 1:1 board, yearly export | not lifted: the module is built on a directory pull, calendar and meeting adapters and a roster; it waits on the people slot interface (roster, calendar, meetings) and on the exception for a document export library. The pages are lifted in the app |
 | 20 | links check | lifted: `server/modules/link_health.py` (catalog is the consumer's file) |
 | 21 | knowledge proposals | lifted: proposal rewrite gate, applied log, `engine/publish_mode.py`; the queued approvals applier is not |
@@ -1443,3 +1443,42 @@ Differences from the running lane, marked honestly:
 - The default forbidden word list no longer names the estate's tools; a consumer adds its own through the environment.
 - The policy fixtures are examples with neutral names; the running policies stay the consumer's data.
 - `model_bump.py` had no test in the snapshot; `model_bump_test.py` covers the target settings only.
+
+### 12.15 The work tracker adapter (item 18)
+
+`tracker/work.py` is the one place the ops center talks to the issue tracker; the sprint close gate's scanner, the Needs me tab,
+the ticket progress job and the retro row all use it (or the same driver). It runs one command per call:
+`<driver_cmd> <tool> '<json args>'`, which prints the JSON-RPC result of one tool call (`{"result": {"content": [{"text": ...}],
+"isError"?: ...}}`) and exits 0; a non zero exit, non JSON output or `isError` raises `TrackerError` (HTTP 502 on the server).
+The tool names are the tracker connector's (`searchJiraIssuesUsingJql`, `getJiraIssue`, `editJiraIssue`,
+`getTransitionsForJiraIssue`, `transitionJiraIssue`, `atlassianUserInfo`, `addCommentToJiraIssue`, and the wiki tools the retro row
+uses); `tracker/driver.py` is the reference driver for the Atlassian MCP endpoint and reads its endpoint and token file from
+`TRACKER_ENDPOINT` and `TRACKER_TOKEN_FILE`.
+
+Parameters (`OPSCENTER_TRACKER_PARAMS`, default `<state>/tracker-params.json`, every key optional, no default naming an estate):
+
+| Key | Default | Meaning |
+|---|---|---|
+| `site_id`, `browse_url` | none | the tracker site and the browse URL prefix |
+| `driver_cmd` | the reference driver | the command list that runs one call |
+| `project`, `team_clause` | none | the project the active sprint is read from, and a JQL clause that scopes a view to the owner's team |
+| `sprint_field`, `points_field` | `customfield_10020`, `customfield_10016` | the Sprint and story points field ids |
+| `email_domain` | any | the address domain a roster email must have to be used in a query |
+| `owner_name` | `the owner` | assignee match, tracker owner match, card owner |
+| `change_jql`, `change_pending_statuses`, `change_inflight_statuses`, `change_fields`, `portal_url_template` | none | the changes pending the owner's approval (read only); no `change_jql` means no data |
+| `intake_parent`, `tz`, `banned_words`, `model_cmd` | none, `UTC`, none, none | ticket progress: the epic whose children are intake, the working day zone, extra words a posted comment may never contain, the model command (a prompt on stdin, JSON reply on stdout) |
+| `close_out_cmd` | none | needs me: starts the close-out job now (without it the scheduler's gate picks the decision up) |
+| `retro` | none | the retro row: `parent_page`, `board_id`, `row_name`, `repos`, `gh_author`, `title_match`, `page_url`, `rules`, `banned_words` |
+| `reauth_cmd` | none | an optional command that refreshes the tracker sign-in after a 401 |
+
+The roster for a report's sprint items comes from the people plug-in (`OPSCENTER_PEOPLE`, 12.14). Writes are limited to issues
+assigned to the owner, confirmed on read-back, and never close a ticket (closing runs through the closure comment process);
+`what_if` runs every guard read and skips the write.
+
+Differences from the running code, marked honestly: the site and board ids, the team and change field ids, the browse and portal
+URLs, the owner name and the intake epic were literals and are parameters; the retro rules default to a neutral list (the
+running rules are the owner's own wording and stay the consumer's `retro.rules`); the posted progress comment keeps the owner's
+first person voice (the draft is posted as the owner); the running code reached the model through another module of the app and
+now reaches it through `model_cmd`, so the model draft is off until a command is configured; the retro row had no test in the
+snapshot and `retro_row_test.py` is new. The fingerprint parity test between a card id and the board skips when the board
+composer (12.13) is not in the tree.
