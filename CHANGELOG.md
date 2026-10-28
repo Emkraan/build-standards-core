@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-27 (v1.29.2, ops center design, api backed docs home)
+
+- `opscenter/DESIGN.md` sections 5.2, 5.3, 6 and the R6 row: the `docs_home` reference adapter gains
+  an `api` variant for a docs home that is not a git repo. Every write passes a scope proof against
+  the allowed roots (`docs.allowed_roots`), deletes are refused, the body hash is checked and the
+  page is read back. Parameter `docs.adapter` picks the variant (`git` stays the default). The
+  section gives the acceptance test.
+
 ## 2026-10-27 (v1.29.1, ops center design, writer rule live switch)
 
 - `opscenter/DESIGN.md` sections 2.5, 4.2, 6 and the R4 row: a "Writer rules" card on the Core page
