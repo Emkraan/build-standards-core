@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-28 (v1.71.0, ops center server)
+
+The ops center server, written for the core. Opt in: new `opscenter/server/` (`gate.py`, `registry.py`, `app.py`, `stores.py`, `routes.py`).
+
+- Host and Origin guard with no wildcard CORS, body cap, jailed static serving with fallback, ETag and gzip, error mapping that never leaks detail
+  (DESIGN.md 12.21). Routes for the action handled and approvals stores and for every lifted module. Tests: 19, run in CI.
+- Not lifted: the agent session routes (need a runtime slot) and the server halves of the pages listed in 12.21.
+
 ## 2026-10-28 (v1.70.0, ops center builds module)
 
 The Builds page server module (item 13), lifted with its tests. Opt in: new `server/modules/builds.py` and `ghview.py`.
