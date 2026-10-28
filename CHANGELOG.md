@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-10-28 (v1.34.0, ops center design: what the shell consumer runs today)
+
+First piece of the ops center lift. Design text only: no rule is added and no code changes.
+
+- `opscenter/DESIGN.md` section 12 records what the shell consumer's running ops center does, row by row
+  against R1 to R9 and every design section (runs as designed, runs differently, not built), without
+  weakening any existing section. It lists the 24 modules that run today and are not designed
+  (review lane with downtime classification, maintenance windows, own pull request lane, own sync
+  auto fix, core pull request lane, merge queue, queued docs approvals, change freeze, plan gate with a held
+  queue, privileged apply review, dark launches, cron card map, builds, image watch and pool, runbook
+  releases, browser status, model accounts and spend, sprint close and retro, 1:1 and yearly export, links
+  check, knowledge proposals, plans reconcile, pull request dependencies and search, cron catalog and
+  sitrep and hermetic test home), each with its state files, the slot or parameter it maps to and what
+  turns it off. The differences the standard keeps are stated (no wildcard CORS, the envelope, the
+  single writer, stdlib only, state outside the repo).
+- Owner decision 7 (section 11): every module the shell consumer runs goes into the standard as it
+  runs; a consumer leaves out only what it does not use. Section 9.2 points at section 12.
+
 ## 2026-10-28 (v1.33.0, shell API and gateway, sign-in and rights, build and deploy)
 
 Third piece of the multi-module shell lift. Standards text only: no rule is added and no code changes.

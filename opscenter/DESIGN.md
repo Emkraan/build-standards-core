@@ -1,6 +1,8 @@
 # Core ops center: design
 
-Status: draft for owner review. Design only; no code exists yet.
+Status: draft for owner review. Design only; no code exists yet. Section 12 records what the shell
+consumer's running ops center does today, row by row against sections 2 to 9, and the owner's
+decision (section 11, item 7) that every module it runs belongs in the standard.
 
 Inputs: `standards/local-ops-app.md` (the ops center rules today), `standards/web-ui.md`,
 `standards/web-shell.md`, `standards/web-api-runtime.md`, `standards/rules.json`, `kit/README.md`,
@@ -984,6 +986,10 @@ Release numbers are assigned at merge in a fixed merge order (D7-19).
 | R8 Deploy | `deploy.py` with both strategies, rollback, drift check, service definitions | failed health rolls back; drift raises one item; keep_releases prunes; a custom `health_path` is the one probed; companions install only after the probe, a drifted destination is left alone with one board item, an unchanged one is untouched, and a destination outside the agent home is refused; both strategies | fixture consumer deploys, fails a seeded health check and rolls back, then deploys with `checkout` and `copy`, a custom `health_path` and a changed companion, and the agent home file is replaced only after the probe passes and left alone when seeded with drift |
 | R9 Adopt | `hermes/adopt.py`, discovery, report-only registration, migration step, downstream app card, daily report-back rows | dry run on a fixture workspace; rerun is a no-op; unconverted record stops adopt; `--ops-center` given as a repo root, an app folder and a symbolic link to each resolves to one top level; a path outside any git repo or without an ops center app is refused with the resolved path; the recorded `path` is the resolved top level and survives a retargeted link; the link is never changed; a live checkout keeps its branch and working tree and the sync lands by pull request | a clean machine fixture goes from nothing to a running, conformant ops center, and a fixture whose ops center is reached through a symbolic link is adopted in place, with the link, the branch and the working tree unchanged |
 
+Status of each release against the shell consumer's running ops center, and what it already runs that
+no release above covers: section 12. A release is built from the running code where section 12 says it
+runs, so the running behaviour is the reference and this table is the order of work.
+
 ## 10. Migration path per consumer
 
 Each consumer first moves its pin to the release before R1 (shell consumer: v0.80.0, hub consumer:
@@ -1050,3 +1056,234 @@ Then the same swap PR as 10.1. The hub consumer's standards repo retires in favo
    file, and nothing it runs afterwards reaches the board except through the engine's
    validation. Its output is still validated against the item contract and the routing filter, so the engine keeps that
    guarantee (section 2.6).
+7. **Everything the shell consumer runs belongs in the standard (2026-10-28).** The 24 modules in
+   section 12.3 run today and go into the standard as they run, not as a trimmed subset. A consumer
+   leaves out only what it does not use, by turning the module off in `app.modules` (section 6) or by
+   leaving its slot null. Where the running behaviour differs from this design, section 12 says so and
+   the design is not weakened to match; the difference is the shell consumer's migration work
+   (section 10.1) unless the owner decides the running form is better, in which case the design
+   changes in its own PR.
+
+## 12. What the shell consumer's ops center runs today
+
+Source: a read of the running code at the time of the lift (2026-10-28), not a design. Nothing here
+loosens a rule above. Each row says whether the running ops center **runs as designed**, **runs
+differently** (and how) or has **not built** the item. A row marked `not read` was not read closely
+enough to state a fact; it is a gap in this section, not a statement that the item is absent.
+
+### 12.1 What it is
+
+A loopback single operator app: a stdlib Python HTTP server, a React single page app on the kit, file
+based state with no database, and no auth layer. The scheduler (the agent runtime's cron) drives every
+writer, lane and gate. It deploys by a fast forward onto a live checkout and restarts its service.
+Its backend is about 100 modules, 43 of them tests, one module per page or lane, stdlib only except
+a word processor library for the yearly review export (a time boxed exception to
+`scripting-python.md`, see 12.6). Core copies of the kit, the lint config and a lock file sit inside
+the app, exactly as section 1.2 describes for the synced kit.
+
+Two read patterns coexist, which section 2.4 forbids as a steady state: live reads behind a
+stale-while-revalidate cache (14 modules: reviews, runners, builds, cost and spend, plans, PR
+dependencies, runbook releases, jobs, work tracker, account pool) and a bundle step that writes
+static JSON into the app's public folder every 10 minutes for the board, people and knowledge data.
+The design's direction (live reads, no bundle) stands; the bundle is the migration the consumer
+finishes in its own steps 8 and 9 (section 10.1).
+
+### 12.2 Status of R1 to R9 and of each design section
+
+| Row | Design item | What runs today | Status |
+|---|---|---|---|
+| R1 | gate, registry, health, static files | Host check called per route (13 call sites and more), the Origin header read inside each POST handler, one allowlist tuple for POST routes, hand written `if path ==` chains (about 70 routes), `/api/health` returns `{"ok": true}`, unknown POST is 404, and a wildcard `Access-Control-Allow-Origin: *` is still sent on some responses (the defect section 2.2 closes). Body cap constant, traversal check and the one time token route class: not read | runs differently |
+| R2 | envelope, error codes, tolerant reader | plain JSON objects per route, the client reads bundled files and API JSON directly | not built |
+| R3 | six envelope kinds, schemas, `state.py`, `conformance.py`, `migrate.py`, params schema | one schema for the board file, validated by the contract module; lint config files. No envelope header on state files (121 distinct state file names are referenced by code), no conformance checker, no migrate tool | runs differently |
+| R4 | writer, inbox, tombstones, applied ledger, three core approvals, consumption panel | writers are spread across the review, consumption and lane modules and the queued approvals script. Inbox (`approve-inbox.jsonl`), applied ledger (`approve-applied.jsonl`), tombstones, head pin on merges (`--match-head-commit`), consumption panel with its three approvals and typed confirm all exist. No single outward writer, no operation object | runs differently |
+| R5 | swr, run helper, engine, gate, routing, heartbeats, sign-in loop, screens | swr (single flight, last good, invalidate after a write), the collector and analyzer chain and its wake gate (12.4), routing rules from a seeded file, job health read from the runtime's jobs file, sign-in health files, the shell, rail, palette and screens. No heartbeat file: liveness comes from the runtime's jobs file (`last_run_at`, `last_status`, `failure_streak`) and one board item per failing job, closed by the next success | runs differently |
+| R6 | slot loader, interfaces, null adapters, reference adapters, claim token protocol | none. Integrations are hard wired modules (code host calls spread over modules, the work tracker, the docs home, the agent runtime). The tackle verb binds a board item to an agent session | not built |
+| R7 | `automerge.yml`, newest run per check, hold label, draft skip, head pin | merge lanes merge by script with a head pin, honouring freeze and hold (12.3 items 1 to 3). No workflow template. Newest run per check: not read | runs differently |
+| R8 | `deploy.py`, both strategies, rollback, drift check, health path | strategy `checkout` only: fast forward the live checkout, install changed scripts atomically (temp file, then move, mode from git), `npm ci` only if the lock changed, build only if a non Python file changed, restart only if Python changed, reset to the previous commit and rebuild when the install or build fails, exit 1 when a live script drifted. No health probe, no releases folder, no `keep_releases` | runs differently |
+| R9 | `adopt`, discovery, registration, migration step, downstream app card, report-back | none; adoption was by hand from the core clone. The consumption panel lists consumers | not built |
+| 0 | owner rules | estate names are literals in modules | not built (the lift removes them) |
+| 1.1, 1.2 | layout, synced copy | server modules and engine are mixed in two folders; only the kit, tokens and lint are synced, the ops center code is the repo itself | runs differently |
+| 1.3, 5.1 to 5.3 | slots, null adapters | not built (R6) | not built |
+| 2.1 | runtime | stdlib plus three pinned packages with hashes for the export and the agent call; bind address is an environment variable defaulting to loopback; port is not 8766; state lives in a git tracked tree, not outside the repo | runs differently |
+| 2.2 | route registry, auth classes, cache class | hand written routes; read is the Host check, write is Host plus Origin; people endpoints send `no-store`, everything else ETag, 304 and gzip | runs differently |
+| 2.3 | envelope and error code list | sections return an error key, the shape is per module | not built |
+| 2.4 | live reads, TTLs as parameters, no bundle | swr as designed, TTLs are module constants, the bundle remains. Whether every read path is free of writes: not read | runs differently |
+| 2.5 | single outward writer | not built; related guards exist (typed confirm, head pin, tombstones, decisions log, fail closed on any code host error) | not built |
+| 2.6 | cost gated analyzer | collectors never call a model; a rules file seeded from a seed file; a bundle builder for the model input; output validated against the board schema; a wake gate on a weekday schedule. Gate order and retry constants against 2.6: not read | runs differently |
+| 2.7 | job manifest and heartbeats | see R5; no `expected_every_s` or grace manifest | runs differently |
+| 3.1 to 3.4 | envelopes, per file schemas, conformance, migrate | not built | not built |
+| 4.1 | shell | the rail, header, palette, letter keys and a hash router adapter for kit links; `/api/badges` polled | runs as designed (it is the reference the design copies) |
+| 4.2 | screens | the board has Now, Completed, Routing and Alerts; Awareness and Drafts are merged into the board; no Overview page; the work tracker lives at `/jira`; reviews, debt, people, team, knowledge, plans, links, builds, core and infrastructure pages exist | runs differently |
+| 4.3 | home route | hard coded to the board | runs differently |
+| 4.4 | consumption panel | `core_consumption` module and page, three approvals with typed confirm | runs as designed (it is the source of the design) |
+| 4.5 | downstream apps card | not built | not built |
+| 6 | params file | none; values live in module constants, environment variables, and state config files (own PR policy, review policy, alert sources, knowledge curation config, cron card map) | not built |
+| 7.1, 7.2 | deploy, automerge | see R8 and R7 | runs differently |
+| 8 | adopt | not built | not built |
+
+### 12.3 The 24 modules the shell consumer runs
+
+The design's Table A and sections 4 and 5 cover the screens and slots most of these need. This list
+is what runs beyond or inside them, so none is dropped. For each: what it does, the state it keeps
+(a file name here is a state file under `host.state_dir`), where it sits in the design and the
+parameter or slot that turns it off. A consumer that does not use one leaves it off; it is never a
+reason to change the module.
+
+1. **Review lane with downtime classification.** Reviews engineer pull requests on a schedule (every
+   3 minutes): reads the PR with its head, runs the engine's check, approves, and queues for merge. A
+   PR classified as downtime waits for its window (item 2). State: `policy.json`, `queue.json`,
+   `health.json`, `held-for-window.json`, `decisions.jsonl` (append only). Rules: the head is
+   pinned on every merge, the PR is re-read before an in-app approval and a closed or red PR is
+   refused, a tombstone keeps a card from reappearing after an action, any code host error fails
+   closed. Maps to slot `review_lanes` and the Reviews screen (A-44, A-45); off with
+   `app.modules.lanes`.
+2. **Maintenance windows.** Classifies a change as downtime (a deployable app whose kind serves
+   traffic, a plan that replaces or deletes a serving or data resource, or an unreadable plan, which
+   fails closed) and gives the window math per change class. A held PR shows "Waiting for the
+   maintenance window" with "Merge now (override)", which needs a reason and is recorded in
+   `window-overrides.json` and `decisions.jsonl`. An own pull request is never held. Maps to the
+   `override_window` verb of `gated_deploys` (section 5.3) and the `freeze_source` slot; the
+   classifier is core code and the window table is a parameter.
+3. **Own pull request lane with sign off cards.** A bounded standing lane that merges the owner's own
+   pull requests under a policy file: never a red check, a freeze or a hold. Sign off cards and
+   directions (the two state files below) record the owner's decision. State: `own-pr-policy.json`, `own-pr-merge.json`, `own-pr-signoffs.json`,
+   `own-pr-directions.json`. Maps to the `own_pr_lane` field of the lane manifest (section 5.3); the
+   merge is a writer operation once R4 ships.
+4. **Own sync pull request auto fix.** For the ops center repo's own nightly sync pull requests: every
+   5 minutes the lane lists them, classifies each, and for a fixable problem (a red check, a merge
+   conflict) starts one fix session under the same caps as item 1. It never merges, approves, labels
+   or comments; the code host's auto merge lands the pull request once the checks are green. Kill
+   switch `autofix.own_sync_pr` (section 6).
+5. **Core pull request lane.** Every 5 minutes lists the owner's open pull requests on the core
+   (base main, not draft, no hold label, branch not on the deny list) and merges one only when every
+   check on the head is green with none pending, the merge state is clean, and the head has been
+   quiet for a minimum age and was seen unchanged on a previous pass; the first failing reason wins
+   and is recorded. Parameter `automerge.hold_label`.
+6. **Merge queue.** Puts a pull request into the main branch's merge queue and proves it got there: it
+   reads the pull request, cancels a stale auto merge request (which would make a later auto merge a
+   silent no-op), enqueues, then re-reads until the pull request is queued, merged or (a repo with no
+   merge queue only) has an auto merge request. Anything else raises. Review threads the owner left
+   open must be resolved first because the branch requires it.
+7. **Queued docs approvals.** Drains an approval inbox into the docs home every minute and appends an
+   applied ledger (`approve-inbox.jsonl`, `approve-applied.jsonl`). Sent back proposals are rewritten
+   by a gate every 30 minutes (item 21). Maps to the writer and approvals inbox (sections 2.5, 4.5) and
+   slot `docs_home`.
+8. **Change freeze gate.** Syncs freeze windows from the work tracker into `change-freeze.json`; the
+   board shows a freeze strip and the lanes refuse to merge inside a window. Maps to slot
+   `freeze_source` (A-26).
+9. **Terraform plan gate with a held queue.** Finds workflow runs waiting on the plan environment.
+   An ordinary plan is approved automatically. A pull request that changes how the pipeline works
+   (workflow code, the owners file, the exclusions list, or constructs that run code or reach the
+   network during plan) is held in `queue.json` for the owner's review, and the agent is woken only to
+   write a private assessment for a held pull request and sha that has none. It fails closed and
+   backs off after 3 consecutive failures (1 hour, then 4 hours). Runs every minute. Maps to slot
+   `gated_deploys` (A-47) with the verbs in section 5.3.
+10. **Privileged apply review and owner roots.** A queue (`privileged-queue.json`,
+    `privileged-health.json`) for applies that change identity or rights, and a table of which
+    infrastructure roots a given owner may apply (`terraform-roots.json`). Maps to `gated_deploys`
+    (`accept_risk`, `decide_fix`, `approve`); roots are a parameter.
+11. **Dark launches.** Acting automation ships with its switch off (a repository variable). One Enable
+    click on the board turns it on after a dry run; Disable turns it off. State: `dark-launches.json`
+    and `dark-launches-log.jsonl`. Routes `/api/dark-launches/dry-run`, `/enable`, `/disable`. This is
+    the shell consumer's form of the writer's `live` switch (section 2.5): the core adopts it as the
+    standard way a rule goes live, so a rule's `live` flag and a dark launch are one mechanism.
+12. **Cron card map, run now and watcher chip.** Maps each scheduled job to the board card it feeds,
+    offers Run now, and shows a watcher chip when a job is failing. State: `cron-card-map.json`. Reads
+    the runtime's jobs file read only. Maps to slot `runtime` (A-80, A-89) and section 2.7.
+13. **Builds page and update from main.** Lists the pipelines the consumer builds and what landed
+    on each, and offers `update-from-main` for a pipeline branch. Maps to slot `pipelines` (A-88);
+    off with `app.modules.builds`.
+14. **Image watch and desktop pool.** A failed image build raises one board item with the failing job
+    and step, the result line from the log and the buttons Rerun failed jobs, Close the window and Open
+    run; nothing reruns or closes by itself, the buttons go through the approval path. The pool read
+    gives the evidence for the destroy approval of a pool roll: every retiring host in drain mode with
+    no sessions and at least one new host available, from one read only cloud call per pool, cached for
+    a minute, bounded by a timeout; a failed read says so and never turns into a pass. State:
+    `avd-image-watch.json`. Optional module; a consumer without a desktop pool leaves it off.
+15. **Runbook releases.** After the owner approves and merges a pull request that removes runbooks,
+    records the delete set approved from that pull request's plan, follows the deploy runs on main,
+    and offers Release deletes only when the newest main run failed on the destroy guard alone. Optional
+    module; the releases go through the approval path.
+16. **Browser status.** Flags the shared automation browser when its window has been visible longer than
+    an alert age or the service has been down longer than another, and offers a one click hide. The
+    launcher is the single source of the mode; this module only reads it and times it. Optional
+    module; the service label is a parameter.
+17. **Model accounts, spend and fallback.** Reads the ledger of model usage (`anthropic-ledger.jsonl`),
+    the account kinds, and the fallback state (`llm-fallback.json`, `anthropic-account-kinds.json`),
+    and shows spend per account. Maps to slots `spend`, `plan_limits` and `runtime` (A-85, A-86, A-90).
+18. **Sprint close, retro row, ticket progress and needs me.** Nightly sprint close out, a drafted
+    retro row, per ticket progress notes and a "needs me" list from the work tracker. State:
+    `sprint-watch-snapshot.json`, `sprint-close-state.json`, `ticket-progress.json`,
+    `retro-rows.json`. Maps to slot `work_tracker` (A-35 to A-39); the gates are collectors.
+19. **1:1 board and yearly review export.** The people group: a topic board per report, team
+    performance, and a yearly review exported to a word processor file. State: `one-on-one-topics.json`,
+    `team-performance.json`, `history-master.json`. People data stays local, never passes the writer
+    and is deleted after `people.retention_days` (section 11 item 5). Slot `people`, off by default
+    (B-30); the export is the one place a non stdlib package is needed (12.6).
+20. **Links reachability check.** Weekly: resolves every catalog host and sends one HEAD per link
+    without following redirects (a sign in redirect counts as alive). A link is dead at once when its
+    host does not resolve or it answers 404 or 410; a timeout, refusal or TLS failure counts only if the
+    previous run also failed for that link, and links flagged on network are skipped. The Links page
+    shows a Not reachable pill. State: `link-health.json`, `link-edits.json`. The link catalog is a
+    parameter file and holds no estate names in core.
+21. **Knowledge proposals, queued approvals and sent back rewrite.** The Knowledge screen (A-70 to
+    A-74) with publish mode per class, the approval inbox of item 7, and a gate that rewrites a sent
+    back proposal. State: `confluence-proposals.json` (renamed `docs-proposals.json` in core),
+    `knowledge-curation-config.json`, `doc-gaps.json`, `doc-inventory.json`, `doc-handled.json`.
+22. **Plans tracker reconcile.** A gate that reconciles the plans library with the tracker, on a weekday
+    schedule. Maps to the Plans screen (A-77).
+23. **Dependency graph of pull requests and the ops search.** One dependency model for the open pull
+    requests so the board never asks for an approval that cannot pass yet because the pull request
+    waits on another. A child waits on a parent through a line in its body ("Waits on", "Lands after",
+    "Stacked on"), through its commits containing another open pull request's head, or through a
+    destroy attributed to the parent by the own pull request lane. The search fans one query out across
+    the board items (open and completed), tackle sessions, plans, 1:1 topics, state notes and the agent
+    runtime's chat sessions and returns grouped, ranked hits with a deep link; the tracker is searched
+    live in a separate scope. Stdlib only and read only. Maps to the Reviews dependency wait (section
+    4.2) and the Search screen (A-9).
+24. **Cron catalog fixer, sitrep, hermetic test home, reviews visibility check.** A nightly wake gate
+    that wakes the model only when an enabled job has a name outside "<Area> - <what it does>" or no
+    catalog description, so quiet nights cost no model run; a weekday morning sitrep of what waits on
+    the owner; a hermetic test home, a throwaway home that mirrors the installed layout from the
+    checkout so no test reads or writes the real agent home or state tree; and a reviews visibility
+    check every 30 minutes (its script is live only and was not read). Maps to the core engine jobs in
+    section 4.2 (sitrep, visibility, A-54 and A-93). The hermetic home becomes
+    `opscenter/testing/hermetic_home.py`, the base of `testing/fixtures.py` (section 1.1).
+
+Deploy and update jobs that run beside the 24 are in 12.5.
+
+### 12.4 The analyzer chain as it runs
+
+Collectors (no model call) write candidates; routing rules from a rules file (seeded from a seed
+file) filter them; a bundle builder assembles the model input; a wake gate on a weekday schedule
+(every 15 minutes in working hours) decides whether the model runs and wakes the agent only when
+there is something to do (the last output line `{"wakeAgent": false}` is the contract); the output
+is validated against the board schema, then the handled state is merged (`action-handled.json`: a
+handled item stays handled unless new evidence arrives) and the bundle is published. The board
+verbs are Resolve, Snooze, Ignore, Ignore forever, Undo, Route elsewhere and Tackle
+(`action-tackle.json`). This is section 2.6 with a different shape; the gate order and retry
+constants have not been diffed and R5 does that diff before it ships.
+
+### 12.5 Deploy, refresh and kit sync as they run
+
+- Refresh: every 10 minutes rebuilds the bundle. Daily full build: 06:00 rebuilds the app. Deploy: every
+  5 minutes, silent when the main branch has not moved (R8 row above).
+- Kit and lint sync: the consumer's sync script and the nightly in the app, with a lock file, a sync
+  check, an exceptions check and a UI lint in the build's `prebuild` step, and a bundle size budget in
+  `build`. A kit drift sync job that opens an upgrade pull request exists and is paused.
+- Self hosted runners: 11 CI jobs run on a consumer's own runners; the runner label is overridable
+  by a repository variable (parameter `ci.runner_labels`).
+
+### 12.6 Differences the standard keeps, and why
+
+- **No wildcard CORS, a gate on every verb, the envelope, the single writer.** The running code does
+  not meet these (R1, R2, R4); the design stands and the consumer migrates (section 10.1).
+- **One non stdlib package.** The yearly review export needs a word processor library, and one import
+  comes from the agent's own checkout. The design keeps stdlib only for the core; the export is a
+  declared exception recorded with `scripting-python.md` and lives in the optional people module
+  only, so a consumer that does not use it has no third party code.
+- **State outside the repo.** The running state tree is inside a git tracked repo, which section 2.1
+  forbids for a deploy that must not touch data. The consumer's deploy copes because it only fast
+  forwards code; the design keeps the rule and `deploy.py` (R8) enforces it.
+- **A hard coded home route and estate literals.** Both go to parameters (section 6) when the module
+  is lifted; a lifted module never carries a literal.
