@@ -11,6 +11,27 @@ optional people module (off by default). Opt in: new files under `opscenter/peop
 - The yearly `.docx` export imports python-docx lazily (the declared exception); its test is skipped when the package is missing.
 - Tests: board 11, slots 9, identity 11, team away 4, yearly 9.
 
+## 2026-10-28 (v1.61.0, ops center analyzer inputs)
+
+Item (2.6) of the ops center standard: the routing, the collector, the bundle builder, the board composer and the wake gate, lifted
+with their tests. Opt in: new files under `opscenter/engine`, `gates` and `server/modules`; `engine/contract.py` only renames its
+caller in the docstring.
+
+- `routing.py` (rules as data, first match wins, a person who addressed the owner is considered by default), `collect.py`,
+  `analysis_bundle.py`, `board_build.py`, `action_center_gate.py`, `routing_api.py`. Every path and name is a parameter
+  (`OPSCENTER_COLLECT_CONFIG`) and the roster, extra board items, ref check and team away strip are optional plug-ins (DESIGN.md 12.13).
+- Source ids are generic (`chat.*`, `tracker.assigned`); the seed routing file is an example.
+- Tests: routing (22), collect (12), board_build (8), the gate (8), routing_api (5).
+
+## 2026-10-28 (v1.60.0, ops center sitrep)
+
+Item 24 remainder: the daily sitrep, lifted with its tests. Opt in: two new files under `opscenter/gates`, nothing existing changes.
+
+- `sitrep.py`: the one daily owner message, built from the badge endpoints with no model call. Review sources are a parameter
+  (`SITREP_REVIEWS`); exit 1 when the ops center cannot be read.
+- `sitrep_prerun.py`: the pre-run block for an agent written brief. The health command, the state files and the live ref check
+  are optional parameters or a plug-in (`ref_status` stays out). Tests: `sitrep_test.py` (9, against an in-process server).
+
 ## 2026-10-28 (v1.59.0, ops center review lane engine)
 
 Item 1 and the lane half of item 3 of the ops center standard, lifted with their tests. Opt in: new files under `opscenter/lanes`,
