@@ -55,7 +55,7 @@ def snap(prs, bodies, files=None, applies=None):
     }
 
 
-def avd(state347="open", state348="open"):
+def stack(state347="open", state348="open"):
     prs = {347: pr(state347), 348: pr(state348), 349: pr(), 350: pr(), 351: pr()}
     files = {
         347: ["infrastructure/terraform/pipeline-identities/desktop.tf", "infrastructure/policy/desktop.tf"]
@@ -146,7 +146,7 @@ class BodyParse(unittest.TestCase):
 
 class StackedChain(unittest.TestCase):
     def test_349_held_while_347_open(self):
-        v = d.evaluate(avd(), OWNER_PENDING)[349]
+        v = d.evaluate(stack(), OWNER_PENDING)[349]
         self.assertEqual(v["first"], [347])
         self.assertEqual(v["waiting"][0]["stage"], "open")
         self.assertTrue(v["lines"][0].startswith("Waiting on #347: "))
@@ -154,7 +154,7 @@ class StackedChain(unittest.TestCase):
         self.assertEqual(v["first_line"], "Do this first: #347.")
 
     def test_349_held_when_347_merged_but_not_owner_applied(self):
-        s = avd(state347="merged")
+        s = stack(state347="merged")
         for owner in (OWNER_PENDING, OWNER_CLEAN_BEFORE, []):
             v = d.evaluate(s, owner).get(349)
             self.assertIsNotNone(v, owner)
@@ -165,7 +165,7 @@ class StackedChain(unittest.TestCase):
             self.assertEqual(v["first_line"], "Do this first: #347 Owner apply.")
 
     def test_stacked_child_names_the_merged_parent_step(self):
-        s = avd(state347="merged")
+        s = stack(state347="merged")
         s["prs"]["361"] = dict(s["prs"]["349"], state="open")
         s["deps"]["361"] = [{"pr": 349, "kind": "merged", "source": "body", "text": ""}]
         v = d.evaluate(s, OWNER_PENDING)[361]
@@ -196,18 +196,18 @@ class StackedChain(unittest.TestCase):
         self.assertEqual(d._apply_for("m" * 40, runs, {})["id"], 1)
 
     def test_downstream_of_root_walks_the_chain(self):
-        s = avd(state347="merged")
+        s = stack(state347="merged")
         s["prs"]["361"] = dict(s["prs"]["349"], state="open")
         s["deps"]["361"] = [{"pr": 349, "kind": "merged", "source": "body", "text": ""}]
         self.assertEqual(d.downstream_of_root(349, "pipeline-identities", "prod", s), 347)
         self.assertEqual(d.downstream_of_root(361, "pipeline-identities", "prod", s), 347)
         self.assertIsNone(d.downstream_of_root(361, "state-backend", "prod", s))
         self.assertIsNone(
-            d.downstream_of_root(349, "pipeline-identities", "prod", avd())
+            d.downstream_of_root(349, "pipeline-identities", "prod", stack())
         )  # #347 still open
 
     def test_merged_owner_parent_also_owes_its_waiting_main_apply(self):
-        s = avd(state347="merged")
+        s = stack(state347="merged")
         mc = s["prs"]["347"].get("merge_commit") or "c" * 40
         s["prs"]["347"]["merge_commit"] = mc
         s["applies"] = {mc: {"status": "waiting", "conclusion": None}}
@@ -223,27 +223,27 @@ class StackedChain(unittest.TestCase):
         self.assertNotIn(349, d.evaluate(s, OWNER_APPLIED))
 
     def test_349_clears_on_a_recorded_owner_apply_after_merge(self):
-        self.assertNotIn(349, d.evaluate(avd(state347="merged"), OWNER_APPLIED))
+        self.assertNotIn(349, d.evaluate(stack(state347="merged"), OWNER_APPLIED))
 
     def test_349_clears_on_a_clean_main_plan_after_merge(self):
-        self.assertNotIn(349, d.evaluate(avd(state347="merged"), OWNER_CLEAN_AFTER))
+        self.assertNotIn(349, d.evaluate(stack(state347="merged"), OWNER_CLEAN_AFTER))
 
     def test_owner_marker_is_the_fallback_only_for_untracked_roots(self):
-        s = avd(state347="merged")
+        s = stack(state347="merged")
         s["files"]["347"] = ["infrastructure/policy/desktop.tf"]  # no Owner root the Ops Center plans
         self.assertIn(349, d.evaluate(s, OWNER_PENDING))
         s["prs"]["347"]["owner_marker"] = True
         self.assertNotIn(349, d.evaluate(s, OWNER_PENDING))
-        s2 = avd(state347="merged")
+        s2 = stack(state347="merged")
         s2["prs"]["347"]["owner_marker"] = True  # a marker never overrides a pending tracked root
         self.assertIn(349, d.evaluate(s2, OWNER_PENDING))
 
     def test_350_held_while_348_open_and_cleared_once_merged(self):
-        self.assertIn(350, d.evaluate(avd(), OWNER_PENDING))
-        self.assertNotIn(350, d.evaluate(avd(state348="merged"), OWNER_PENDING))
+        self.assertIn(350, d.evaluate(stack(), OWNER_PENDING))
+        self.assertNotIn(350, d.evaluate(stack(state348="merged"), OWNER_PENDING))
 
     def test_351_held_on_347(self):
-        v = d.evaluate(avd(state348="merged"), OWNER_PENDING)
+        v = d.evaluate(stack(state348="merged"), OWNER_PENDING)
         self.assertEqual(v[351]["first"], [347])
         self.assertEqual(sorted(v), [349, 351])
 
@@ -269,7 +269,7 @@ class StackedChain(unittest.TestCase):
             {"pr": 349, "labels": [], "hold": {"kind": "policy", "summary": "s"}},
         ]
         needs = [{"pr": 347, "sources": ["tfplan"]}]
-        need = d.evaluate(avd(), OWNER_PENDING, mine, needs)[349]["waiting"][0]["need"]
+        need = d.evaluate(stack(), OWNER_PENDING, mine, needs)[349]["waiting"][0]["need"]
         self.assertTrue(
             need.startswith(
                 "Approve its terraform-plan runs on Needs me, then remove its do-not-merge label"
@@ -281,7 +281,7 @@ class StackedChain(unittest.TestCase):
         mine = [
             {"pr": 347, "labels": [], "hold": {"kind": "problem", "summary": "Red checks; lint."}}
         ]
-        for s, owner in ((avd(), OWNER_PENDING), (avd(state347="merged"), [])):
+        for s, owner in ((stack(), OWNER_PENDING), (stack(state347="merged"), [])):
             for v in d.evaluate(s, owner, mine).values():
                 for line in v["lines"] + [v["first_line"]] + [w["need"] for w in v["waiting"]]:
                     self.assertNotIn("\u2014", line)
