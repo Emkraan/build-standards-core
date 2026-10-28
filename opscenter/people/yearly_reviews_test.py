@@ -154,6 +154,8 @@ class Reviews(unittest.TestCase):
         try:
             import docx  # noqa: F401
         except ImportError:
+            if os.environ.get("CI"):
+                self.fail("python-docx must be installed in CI (opscenter/people/requirements.txt)")
             self.skipTest("python-docx is not installed")
         k = self.keys()[0]
         self.y.upsert({"year": YEAR, "person": PERSON, "sections": {k: "A line"}})
