@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-28 (v1.53.0, shell client package as code)
+## 2026-10-28 (v1.54.0, shell client package as code)
 
 Third lift of the shell shared packages ([standards/web-shell-packages.md](standards/web-shell-packages.md) section 4).
 
@@ -10,6 +10,18 @@ Third lift of the shell shared packages ([standards/web-shell-packages.md](stand
   or product value is baked in. Peer dependencies: React, `@azure/msal-browser` and the kit.
 - Tests: `kit/tests/app-client/` (162 checks with a fake MSAL client) run in the kit workflow. The kit gains `@azure/msal-browser` as a dev
   dependency, a `paths` entry and a vitest alias so the package, which sits outside the kit folder, resolves the kit's own copies.
+## 2026-10-28 (v1.53.0, ops center pre-push gate)
+
+Seventeenth piece of the ops center lift (opscenter/DESIGN.md section 12.11). Opt in: no rule is added and nothing a consumer runs
+today changes.
+
+- Code: `opscenter/lanes/preflight.py`, the reference pre-push gate of the build procedure: repo gates, hygiene, version bump, branch
+  rule, conflict, commit attribution, the lane dry run as expected sign-offs, overlap with other open pull requests, the finding
+  catalog's scriptable rules, the self-review gate, the local independent review and the design check for acting automation. Exit 0
+  pass, 1 failures, 2 environment problem (fail closed). Repositories, identity, branch rule, version file, catalog, the lane engine
+  and the plan matcher come from the targets file of the auto-fix starter; the OpenAI reviewer's key comes from a command, so no
+  1Password reference, keychain service or token is in the code.
+- Tests: 57 unit tests on scratch git repos with a fake code host CLI and fake reviewers, run in CI (about four minutes).
 
 ## 2026-10-28 (v1.52.0, shell server package as code)
 
