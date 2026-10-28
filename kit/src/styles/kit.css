@@ -366,7 +366,8 @@ div.tone:not(.card):not(.announce) { padding: var(--space-4); border-radius: var
 .kpi-label-info { display: inline-flex; flex: none; }
 /* A tile or Stat that is itself a button keeps its help icon outside it, in the corner. */
 .kpi-tile-wrap, .stat-wrap { position: relative; display: grid; min-width: 0; }
-.kpi-tile-corner, .stat-corner { position: absolute; top: var(--space-1); right: var(--space-1); display: inline-flex; }
+.kpi-tile-corner, .stat-corner { position: absolute; top: var(--space-2); right: var(--space-2); display: inline-flex; }
+.kpi-tile-wrap .kpi-label, .stat-wrap .stat-label { padding-right: var(--space-6); }
 .kpi-value { font-family: var(--font-display); font-size: var(--fs-display); line-height: var(--lh-tight); }
 .kpi-hint { margin-top: var(--space-1); }
 .kpi-delta { display: inline-flex; align-items: center; gap: var(--space-1); margin-top: var(--space-1); font-size: var(--fs-label); font-weight: var(--fw-semibold); }
