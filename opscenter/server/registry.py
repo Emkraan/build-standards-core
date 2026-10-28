@@ -38,6 +38,7 @@ class Route:
 class Registry:
     def __init__(self):
         self.routes = []
+        self.background = []  # (function, interval seconds) run by the server on daemon threads
 
     def add(self, method, path, handler, kind=None, name=""):
         kind = kind or ("write" if method == "POST" else "read")

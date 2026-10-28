@@ -198,6 +198,11 @@ def _table():
                 )
             ),
         ),
+        # model accounts (server/modules/model_accounts.py, provider slot)
+        (G, "/api/infra/accounts", "model_accounts", "get", None),
+        (G, "/api/llm-fallback", "model_fallback", "get", None),
+        (G, "/api/infra/fallback-order", "model_accounts", "order_get", None),
+        (P, "/api/infra/fallback-order", "model_accounts", "order_set", None),
         # people slot (people/)
         (G, "/api/one-on-ones", "one_on_ones", "board", None),
         (
@@ -345,6 +350,9 @@ def build(registry=None):
             lambda q: cron.run(q.groups[0], q.payload().get("note")),
             name="cron_pulse.run",
         )
+    acc = load("model_accounts")
+    if acc is not None and hasattr(acc, "sample"):
+        r.background.append((acc.sample, 600))
     return r
 
 

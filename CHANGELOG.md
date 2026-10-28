@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-28 (v1.72.0, ops center model accounts)
+
+The Spend page server half (item 17), as a provider slot. Opt in: new `server/modules/model_accounts.py` and `model_fallback.py`, routes in `server/routes.py`.
+
+- Core ships the shaping, routing and cooldown, caching, last good copy, spend history, ledger reader and fallback watch; a `ModelAccountsProvider` (null by default)
+  supplies the accounts. No network call and no credential store read in core; a provider declaring a pool read is refused at load unless the consumer enables it (DESIGN.md 12.22).
+  Tests: 28 plus 2 route tests, run in CI.
+
 ## 2026-10-28 (v1.71.0, ops center server)
 
 The ops center server, written for the core. Opt in: new `opscenter/server/` (`gate.py`, `registry.py`, `app.py`, `stores.py`, `routes.py`).

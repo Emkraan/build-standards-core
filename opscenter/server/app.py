@@ -17,6 +17,8 @@ import json
 import mimetypes
 import os
 import sys
+import threading
+import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -221,7 +223,18 @@ def main():
         f"ops center on http://{host}:{srv.server_address[1]}/ ({len(registry.routes)} routes)",
         flush=True,
     )
+    for fn, every in registry.background:
+        threading.Thread(target=_loop, args=(fn, every), daemon=True).start()
     srv.serve_forever()
+
+
+def _loop(fn, every):
+    while True:
+        try:
+            fn()
+        except Exception as exc:  # a sampler must never end the thread
+            print(f"background {getattr(fn, '__name__', 'job')}: {exc}", flush=True)
+        time.sleep(every)
 
 
 if __name__ == "__main__":
