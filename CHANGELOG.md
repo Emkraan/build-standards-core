@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-28 (v1.63.0, ops center work tracker)
+
+Item 18 remainder of the ops center standard: the work tracker adapter and the three jobs on it, lifted with their tests. Opt in: new
+files under `opscenter/tracker` and `opscenter/gates`; the test loader gains the `tracker` area.
+
+- `work.py` (the adapter, guarded writes, changes pending approval), `needs_me.py`, `ticket_progress.py`, `retro_row.py`, the reference
+  `driver.py` and `retro_row_gate.py`. Site, field ids, project, team clause, owner, intake epic and the retro settings are parameters
+  (`OPSCENTER_TRACKER_PARAMS`, DESIGN.md 12.15); the model draft and the close-out trigger are optional commands.
+- The posted progress comment keeps the owner's first person voice. The retro row now has a test (the snapshot had none).
+- Tests: work 8, needs me 8, ticket progress 45, retro row 9, retro gate 2.
+
 ## 2026-10-28 (v1.62.0, ops center people slot)
 
 Item 19 of the ops center standard: the 1:1 board, the team away strip and the yearly review store, lifted with their tests as the
