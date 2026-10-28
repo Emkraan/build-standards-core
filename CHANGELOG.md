@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-28 (v1.37.0, ops center dark launches)
+
+Fourth piece of the ops center lift (opscenter/DESIGN.md section 12.3, item 11). Opt in: no rule is added and
+nothing a consumer runs today changes.
+
+- Code: `opscenter/server/modules/dark_launches.py`, the backend of the dark launch card. Acting automation ships with
+  its switch (a code host variable) off and runs in report mode; Run dry run dispatches the workflow with its dry run
+  input, Enable needs the typed variable name and a green dry run read live, Disable is always allowed, a failed read
+  is `unknown` and never `off`, and every change is read back. Registry and append only log under the state dir.
+- Tests: 27 unit tests with a stateful fake code host CLI, run in CI by `tests/test_opscenter_lanes.py`, which now
+  also covers `opscenter/server/modules` and `opscenter/gates`.
+
 ## 2026-10-28 (v1.36.0, ops center change freeze gate)
 
 Third piece of the ops center lift (opscenter/DESIGN.md section 12.3, item 8). Opt in: no rule is added and nothing
