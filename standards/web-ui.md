@@ -1463,6 +1463,26 @@ already shows it, so the version never appears twice. The gliding marker is desc
 back with real mouse movement and the `[` key, that the pin persists across a reload, and that no
 horizontal overflow exists at 390px.
 
+**Second level (`ContextPanel`).** The rail is one level: it picks the tool. A tool with several
+sections of its own (a calendar with month, schedule and requests, an admin area with access and
+audit) lists them in a `ContextPanel` that the app passes to `AppShell contextPanel`. Rules:
+
+- The shell lays the panel out as a fixed `--sidebar-w` column beside the header and the page. It
+  is never an overlay, never opens on hover and has no pin, so the page reflows around it and the
+  rail keeps those behaviours for itself. Left out, the shell renders exactly as before.
+- Its children are the rail's own `NavGroup` and `NavItem`, so the active item wears the same
+  gliding highlight. Set `iconBadge={false}` on its items: the count on the icon is for the
+  collapsed rail.
+- One panel per page. It names the tool (`title`), may carry one line under it (`subtitle`) and
+  a `footer`, and its list is a `nav` named `<title> sections` (or `navLabel`).
+- Below 900px the panel stacks above the page and its list folds behind a button (`toggleLabel`,
+  `aria-expanded`), closed unless `defaultOpen`. The rail's drawer is not involved.
+
+**Acceptance:** a component test asserts the panel is a direct sibling of `.shell-main` inside the
+shell, that it names itself and its list, that the active item carries `aria-current="page"`, that the
+fold button toggles `aria-expanded`, and that a shell without the prop is unchanged. The gallery
+specimen `context-panel` carries baselines in both themes.
+
 ## 20. Announcements, the pulse feed, and the presenter
 
 Every app with an admin area and more than one audience ships announcements. An app with a single
