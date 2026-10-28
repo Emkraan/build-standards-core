@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-28 (v1.39.0, ops center wake gates)
+
+Sixth piece of the ops center lift (opscenter/DESIGN.md section 12.3, items 21, 22 and 24). Opt in: no rule is added
+and nothing a consumer runs today changes.
+
+- Code: `opscenter/gates/gatelib.py` (the wake gate contract in one place: silent or wake, exit 0 always, failure
+  backoff through a health file, the accumulate and drain model for inbound monitors, an inbound files store hook)
+  and four gates built on it: `cron_catalog_gate.py`, `proposal_rewrite_gate.py`, `sprint_close_gate.py` and
+  `plans_reconcile_gate.py`. Every path, tool, port and issue type is an environment variable (listed in
+  `opscenter/gates/README.md`); the proposals file is `docs-proposals.json`. Stdlib only, Python 3.9.
+- Tests: 51 unit tests with fake scanners and trackers, run in CI by `tests/test_opscenter_lanes.py`.
+- Not lifted: the scanners and catalog tool the gates call (slot code), and the two inbound monitor gates that
+  depend on a mail and chat scorer tuned to one estate's vendors; the accumulate and drain model they use is in
+  `gatelib.py`.
+
 ## 2026-10-28 (v1.38.0, ops center own pull request lane read model and decision cards)
 
 Fifth piece of the ops center lift (opscenter/DESIGN.md section 12.3, item 3). Opt in: no rule is added and nothing
