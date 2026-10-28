@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "board.schema.json",
+  "title": "Board analysis item file",
+  "description": "The one file the analysis job writes (state/dashboard/action-center.json). The engine enforces it in contract.py before the routing filter runs. Coverage rule the schema cannot express: every candidates_must cid of the run appears in some items[].cids or in dropped[].cid. A file that fails is rejected and the board keeps the last good file.",
+  "type": "object",
+  "required": [
+    "generated_utc",
+    "headline",
+    "items",
+    "dropped"
+  ],
+  "properties": {
+    "generated_utc": {
+      "type": "string",
+      "minLength": 1
+    },
+    "headline": {
+      "type": "string"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "key",
+          "priority",
+          "title",
+          "why",
+          "action",
+          "owner",
+          "refs",
+          "sources",
+          "cids"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "not": {
+              "pattern": "^(oo-|file-|auto-)"
+            },
+            "description": "Stable lowercase issue slug, unique in the file. oo-, file- and auto- belong to the Ops Center."
+          },
+          "priority": {
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "why": {
+            "type": "string",
+            "minLength": 1
+          },
+          "action": {
+            "type": "string",
+            "minLength": 1
+          },
+          "owner": {
+            "type": "string",
+            "description": "Empty when the item is mine."
+          },
+          "refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "dropped": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "cid",
+          "reason"
+        ],
+        "properties": {
+          "cid": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}
