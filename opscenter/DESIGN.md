@@ -43,7 +43,8 @@ opscenter/
     run.py             the one subprocess helper (timeout, missing binary, nonzero exit)
     writer.py          the single default-deny outward writer (applier)
     approvals.py       the approvals inbox at /api/approvals
-    state.py           atomic state read and write helper, the only writer of state files
+    state.py           atomic state read and write helper and command line entry, the only
+                       writer of state files
     heartbeats.py      job liveness against the job manifest
     modules/           one file per core screen's API (action, awareness, drafts, work, reviews,
                        knowledge, plans, debt, activity, search, core, infra, overview, badges)
@@ -132,6 +133,9 @@ The ops center is consumed the way the kit is: a synced copy, never hand edited.
 - State directory from parameter `host.state_dir`; runtime directory from `host.runtime_dir`. Both
   live outside the repo, so a deploy never touches data or identity.
 - No auth layer. The loopback bind plus the gate is the boundary.
+- `state.py` is callable outside the server (section 3.2). The server imports it, and any other
+  process that writes the state tree runs it as a command, so the lock and the header have one
+  implementation and no second write path exists.
 
 ### 2.2 Route registry and the gate
 
@@ -229,15 +233,46 @@ an outward call site outside `writer.py` and the slot `act` methods it invokes.
 4. Re-read the target live through the slot's `read`. `base_hash` still matches, and for pull
    request actions the head equals `pin.head_sha` and the required checks are green. A mismatch is
    `stale`: nothing is written and the UI says what moved.
-5. Write, unless dry run. `writer.live` is a parameter, default `false`, with per-rule override.
-   The three core approvals (section 4.4) ship with explicit rules that are live by default, so they
-   never silently dry run (hub consumer risk).
+5. Write, unless dry run. A rule is live when its effective flag is on. The effective flag is the
+   rule's switch in `writer-rules.json` when one has been set from the screen, else the rule's
+   own `live`, else `writer.live` (a parameter, default `false`). The three core approvals
+   (section 4.4) ship with explicit rules that are live by default, so they never silently dry
+   run (hub consumer risk).
 6. Read back and verify the effect.
 7. Record the outcome in the applied ledger and write a tombstone (section 2.5.1).
 
 **Tombstones.** An applied or refused-as-already-done operation leaves a tombstone keyed by target.
 The UI shows the item as done until the next source read confirms it, so a double click or a stale
 poll never offers the same act twice.
+
+**Live switch.** Parameters are read once at start, so a rule's live flag needs its own way to
+change at runtime. The Core page carries a "Writer rules" card (section 4.2) that lists every
+rule with its scope, action, direction, effective flag, where the flag comes from (parameter or
+switch), and the result of its last dry run. Each rule offers three actions:
+
+- **Dry run.** The writer replays the rule's pending approved operations through every applier
+  step with the write forced off, and the card shows each step's result and the outcome the
+  operation would have recorded. Nothing outward is written and no operation changes state. One
+  activity record notes the dry run.
+- **Enable.** Allowed only when a dry run of that rule finished after the rule last changed (its
+  rule hash), replayed at least one operation, and had no refused step. A dry run that replayed
+  no operation never qualifies, because it passes with nothing tested. It needs a typed confirm (section 4.4) of the text
+  `<scope>.<action> live`, and the server re-checks the text and the dry run before it flips
+  the flag.
+- **Disable.** Always allowed, one click, no dry run needed.
+
+The switch is itself a writer operation (scope `core`, action `rule.live`, requested by the owner
+click only, never by an engine job or session). Its state is a `kv` file, `writer-rules.json`
+(schema `writer-rules/1`, writer `server.writer`), holding the flag and the rule hash it was set
+for. A rule that changes in `local/params.json` drops its switch, so a changed rule starts from
+its parameter value and needs a new dry run. Every switch is one activity ledger record. The
+three core approval rules appear in the card and can be switched off, never silently.
+
+Acceptance (test): enable is refused with no dry run, with a dry run older than the rule, with a
+dry run that replayed no operation, and with a dry run that had a refused step. Enable with a matching dry run and the typed text flips the
+flag. Disable needs neither. A dry run writes nothing through the fake slot. A rule edited in
+parameters loses its switch. A session or engine caller is refused. Each switch leaves one
+activity record.
 
 **Approvals inbox, `/api/approvals`.** `GET` lists pending, approved, rejected and applied entries.
 `POST` queues one entry `{operation, decision: approve|reject}`; it refuses missing fields, a
@@ -328,28 +363,97 @@ starts with the same header:
 
 | Kind | Shape | Use |
 |---|---|---|
-| `ledger` | append-only records `{id, at_utc, ...}`; JSON array or JSON lines (`.jsonl`, header as line 1) | spool, activity, applied, alerts |
+| `ledger` | append-only records `{id, at_utc, ...}`, JSON array or JSON lines (`.jsonl`, header as line 1), one writer or a declared producer and drainer (below) | spool, activity, applied, alerts, approvals inbox |
 | `store` | `records: {<id>: {...}}` | backlog, projects, ideas, handled, tackle sessions |
 | `kv` | `values: {<key>: <scalar or small object>}` | publish modes, acks, small decisions |
 | `watch` | `targets: {<name>: {status, last_seen_utc, last_ok_utc, detail}}` | heartbeats, sign-in health, collector health |
 | `report` | `generated_utc` plus `sections: {...}` with per-section `error` | action center, awareness, docs queue, freshness |
 | `config` | a parameters-like object, read only at runtime | routing rules, alert sources, job card map |
 
-Markdown logs (plans tree, debt files, decision logs) stay outside the schemas; their front matter
+**Producer and drainer.** A ledger is not always written by one process. An inbox is appended by
+the process that receives the work (the server, under the lock) and later drained by a separate
+job that marks each record as handled (the approvals inbox and the inbound spool are both this
+shape). A ledger schema therefore declares either one `writer` or a pair:
+
+```json
+{"kind": "ledger", "schema": "approvals/1", "producer": "server.approvals", "drainer": "engine.writer", "updated_utc": "..."}
+```
+
+- The producer appends. It never changes a record once written. It is also the only role that
+  prunes: the drainer never removes a record, so something has to expire them, and that is the
+  producer's retention pass. The pass removes whole records only, under the same lock, through
+  `state.py`, and it stamps the producer's name. For the inbound spool the producer is the
+  collector step of the engine (`collect.py`), and it runs the pass at the start of every
+  collection. A record expires when its marker shows it was drained (a final `state`) and its
+  `at_utc` is older than `analyzer.spool_days` days. A record still marked `new` never expires,
+  so unprocessed work is never dropped by age. A ledger that is pruned names its retention
+  parameter in its schema (`spool_days` here), and a ledger that names none is never pruned.
+- The drainer never appends and never removes. It changes only the marker fields a record
+  declares in the schema (`state`, `applied_utc`, `outcome` and the like), through a read modify
+  write under the same lock. The `id`, `at_utc` and every content field stay as the producer
+  wrote them, so the content hash of a record is the same before and after a mark.
+- Both go through `state.py` and stamp their own name in the header's `writer` field of the write
+  they make. A write by any other name is refused.
+- Only a `ledger` may declare a pair. Every other kind keeps exactly one writer.
+
+Acceptance (test): the producer cannot change a marked field of an existing record. The drainer
+cannot append, remove, or change a content field. A third name is refused. The retention pass
+removes a drained record older than `analyzer.spool_days` and leaves a younger one and any record
+still `new`, and a prune by the drainer is refused. An append and a mark
+at the same moment lose neither. A schema that declares a pair on a kind other than `ledger` is
+refused by the conformance checker.
+
+Markdown logs (plans tree, debt files, decision logs) stay outside the schemas, their front matter
 is read by a parser that has its own fixture tests.
 
 ### 3.2 Per-file schemas
 
 - Each state file has one schema in `schemas/state/` that extends its envelope kind
-  (`"extends": "envelopes/store"`), names its one writer, and versions itself (`backlog/1`).
+  (`"extends": "envelopes/store"`), names its one writer (or, for a `ledger`, its producer and
+  drainer, section 3.1), and versions itself (`backlog/1`).
 - The core ships schemas for every core state file. The starting set is the hub consumer's 26
   schemas (12 state, 13 API sections, plus approvals), with the gaps it found filled: activity,
   collector health, sign-in health, analyzer state, plan limits history, docs state, suppressions,
   and the `identity` field typed as an object.
 - A slot ships a schema for every file and payload it produces, in its own `schemas/` folder; the
   slot loader refuses a slot without them.
-- Every state file has exactly one writer, and all writers go through `state.py` (atomic temp file
-  plus `os.replace`, a file lock for read-modify-write, the header stamped on write).
+- Every state file has exactly one writer, except a `ledger` that declares one producer and one
+  drainer (section 3.1). All writers go through `state.py` (atomic temp file plus `os.replace`, a
+  file lock for read-modify-write, the header stamped on write).
+- `state.py` is callable outside the server. The server imports it. Every other process that writes
+  the state tree (a scheduled script, a gate script, a skill, a job that keeps state of its own)
+  runs it as a command, so it takes the same lock and stamps the same header and nothing needs a
+  second write path:
+
+  ```text
+  python3 state.py [--state-dir DIR] [--writer NAME] [--lock-timeout-s N] <command> <file> [args]
+    append  <file> <record>        ledger kinds: add one record (id and at_utc stamped when absent)
+    replace <file> <document>      store, kv, watch, report and config kinds: write the whole file
+    update  <file> <key> <patch>   read modify write of one record or value, under the lock
+    read    <file> [key]           read the file or one key, no write
+  ```
+
+  - The state directory is `--state-dir`, else parameter `host.state_dir`. A record, document or
+    patch is JSON text, `@<path>` or `-` for standard input.
+  - A write command needs `--writer`. The value must equal the writer the file's schema declares.
+    For a ledger that declares a producer and a drainer, the declared writer means
+    either of the two, so the producer's name and the drainer's name are both accepted and any
+    other value is not. A script that owns a file is declared as its writer in that schema, for
+    example `script.<name>`. Any other value is refused with `denied` and the file is untouched.
+  - The document is validated against the file's schema before the write. A violation is refused
+    with `bad_request` and the file is untouched. The header (`kind`, `schema`, `writer`,
+    `updated_utc`) is stamped by the command and never taken from the caller.
+  - The lock wait is bounded by `--lock-timeout-s` (default 10). A held lock past it is refused
+    with `conflict`.
+  - Output is one JSON line, `{"ok": true, "file": ..., "written": <n>}` or `{"ok": false,
+    "code": ..., "message": ...}`, with a code from the envelope list (section 2.3). The exit
+    status is 0 for success, 1 for a refused write and 2 for bad usage.
+  - Reads take the same lock in shared mode and never write.
+
+Acceptance (test): two processes appending to one ledger at the same moment lose no record. A
+replace keeps the header and stamps `updated_utc`. A `--writer` that is not the declared writer (for a
+ledger, its producer or its drainer) is refused and the file is byte for byte unchanged. A schema violation is refused and the file is
+unchanged. A held lock past the timeout exits 1 with `conflict`. A read never changes the file.
 
 ### 3.3 The conformance checker
 
@@ -411,7 +515,7 @@ Only Table A rows marked core. Slot-supplied tabs mount into these screens when 
 | Knowledge | Plans | `/plans` | trackers and library, reader, archive and restore | 77 |
 | Knowledge | Debt | `/debt` | Needs decision, To do, Parked, Snoozed, Done | 78 |
 | Platform | Infrastructure | `/infra` | Overview roll up, Scheduled jobs, Live jobs, Code host, Runners, Spend, Heartbeats | 79 to 83, 85, 87 |
-| Platform | Core | `/core` | consumption panel (section 4.4) | 57 to 61, 64, 65 |
+| Platform | Core | `/core` | consumption panel (section 4.4), writer rules card (section 2.5) | 57 to 61, 64, 65 |
 | Platform | Activity | `/activity` | every change, newest first | 14 |
 | (palette) | Search | `/search` | full search across providers | 9 |
 
@@ -445,7 +549,8 @@ contract text; the feed writer stays `hermes/consumption.py`).
   2. **Merge:** merge the sync PR by the repo's declared method, pinned to the head seen.
   3. **Approve item:** post `approve <id>` on this account's own report issue.
 - **Typed confirm** (B-10): the confirm dialog requires the exact text, `<repo>#<number>` for a PR
-  action and `<id> on issue #<n>` for an item. The server re-checks the text.
+  action, `<id> on issue #<n>` for an item, and `<scope>.<action> live` to enable a writer rule
+  (section 2.5). The server re-checks the text.
 - The server re-reads live before acting: a PR that is not open records a tombstone and says
   already done; a moved head or failing checks refuses; an item not in the awaiting list or an
   issue that is not this account's report refuses.
@@ -579,8 +684,8 @@ secret references name a store and a key, never a value.
 | app | `poll` | badges 30 s, board 30 s, core 60 s | per screen |
 | host | `state_dir`, `runtime_dir`, `port` (8766), `service_label`, `service_manager` (`launchd` or `systemd`), `agent_home`, `workspace_root` | required except port | host layout |
 | server | `max_body` (1 MiB), `validate_responses` (false), `ttl.*` | as section 2.4 | |
-| writer | `live` (false), `rules[]` | three core approval rules, live | default deny |
-| analyzer | `min_gap_s` (1800), `retry_after_s` (1200), `daily_audit` (true), `alert_every_s` (14400), `spool_days` (14) | | B-13 |
+| writer | `live` (false), `rules[]` (each with its own `live`) | three core approval rules, live | default deny, the screen switch (section 2.5) overrides both at runtime |
+| analyzer | `min_gap_s` (1800), `retry_after_s` (1200), `daily_audit` (true), `alert_every_s` (14400), `spool_days` (14, the age after which a drained spool record is pruned) | | B-13 |
 | model | `cmd`, `timeout_s`, `price_table`, `outlier_threshold`, `plan_usage_cmd` | `cmd` null disables the analyzer and briefs | |
 | routing | `rules_file`, `ignore_senders[]`, `ignore_subject_regex[]`, `priority_senders[]` | | collectors |
 | notify | `channel`, `cmd`, `quiet_hours` (`22:00-07:00`), `dedupe_prefix` | | B-12, A-97 |
@@ -719,8 +824,8 @@ Release numbers are assigned at merge in a fixed merge order (D7-19).
 |---|---|---|---|
 | R1 Guard and route registry | `gate.py`, `registry.py`, `app.py` skeleton, `/api/health`, static files | registry walk (bad Host, foreign Origin, body cap, no wildcard CORS, unknown POST 404), traversal 403 | fixture consumer serves the SPA and health; every probe in the walk is refused as specified |
 | R2 Envelope | `envelope.py`, error codes, tolerant client reader for one release, response validation in tests | shape test on every route; error code to status map | fixture consumer and both tolerant and strict readers pass; R3 removes the tolerant reader |
-| R3 Schemas and checker | six envelope kinds, all core state and API schemas, `state.py`, `conformance.py` with `extends` and JSON lines, `migrate.py`, params schema, the estate-literal check | conformance on fixture state; migrate plan and apply on a copy (idempotent, backup, failure report) | fixture state passes; a seeded bad record is reported and not converted |
-| R4 Writer and inbox | `writer.py`, `approvals.py`, tombstones, applied ledger, `testing/fixtures.py`, `check-opscenter-writer`, the three core approvals and the consumption panel server module | the writer acceptance in 2.5; panel tests from local-ops-app 19 | fixture flows write only through the writer; the consumption panel's three approvals pass against a fake code host |
+| R3 Schemas and checker | six envelope kinds, all core state and API schemas, `state.py` with its command line entry, `conformance.py` with `extends` and JSON lines, `migrate.py`, params schema, the estate-literal check | conformance on fixture state, producer and drainer ledger (roles enforced, marks leave content unchanged, retention pass by the producer only), migrate plan and apply on a copy (idempotent, backup, failure report), state.py command line (concurrent appends, header kept, undeclared writer refused, schema violation refused) | fixture state passes; a seeded bad record is reported and not converted |
+| R4 Writer and inbox | `writer.py`, `approvals.py`, tombstones, applied ledger, `testing/fixtures.py`, `check-opscenter-writer`, the three core approvals and the consumption panel server module | the writer acceptance in 2.5, the live switch acceptance in 2.5, panel tests from local-ops-app 19 | fixture flows write only through the writer; the consumption panel's three approvals pass against a fake code host |
 | R5 Live reads and engine | `swr.py`, `run.py`, core server modules, collector and analyzer engine with the gate, routing, heartbeats, sign-in loop, notice discipline; the app shell and every core screen in 4.2 | swr single flight and last-good; gate order; heartbeat raise and clear; app unit and e2e smoke on fixture state in both themes | fixture consumer runs every core screen live with no bundle step |
 | R6 Slots | slot loader, interfaces, null adapters, reference adapters (code host, work tracker, docs home), slot UI mounts, claim token protocol, optional modules | per-slot conformance on fixtures, `api` docs home scope proof, delete refusal and read back; null adapter hides UI; claim token states | fixture consumer runs with all null, then with the three reference adapters against fakes |
 | R7 Automerge | `automerge.yml` template, overlay install step | newest run per check, rerun unblocks, hold label, draft skip, head pin | merges a test PR on one repo; a failing then rerun check behaves as specified |

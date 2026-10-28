@@ -14,9 +14,12 @@ Related: [First-Party Build Standard](web-build.md) (auth and RBAC),
 ## 1. Rules
 
 1. **The identity provider directory is the source of truth for identity:** object id, display name,
-   email and job title. The app stores a cached copy, never a competing one.
+   email and job title. The app stores a cached copy, never a competing one. A fallback copy of the
+   last directory pull is allowed: it is read only when the directory pull fails, it is marked stale on
+   screen, the directory pull wins whenever it succeeds, and no copy is edited by hand.
 2. **One roster.** A single `team_members` table is the only list of people. On-call, RACI, OOF,
-   schedules and audit rows link to it by `member_id`. No feature keeps its own private list of
+   schedules and audit rows link to it by member id, any stable key the directory supplies (a rename or
+   reorganisation never orphans history). No feature keeps its own private list of
    names.
 3. **Directory-only adds.** New members are added only by picking a user from the directory
    (Graph). If Graph is unavailable, adding is refused with a clear message; there is no free-text
