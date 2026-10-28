@@ -7,6 +7,13 @@ The Builds page server module (item 13), lifted with its tests. Opt in: new `ser
 - Pipelines, owner, branch pattern and the per product landed commands are `BUILDS_CONFIG` (DESIGN.md 12.20); the guarded Update from main keeps its
   live re-reads. Tests: 9 against a fake gh.
 
+## 2026-10-28 (v1.69.0, ops center inbound monitor gates)
+
+The inbound monitor gates and their noise filter, lifted with their tests. Opt in: three new files under `opscenter/gates`.
+
+- `inbound_score.py` (rules are a JSON file, almost nothing is dropped without one), `inbound_mail_gate.py` and `inbound_chat_gate.py` (one gate for any number of chat
+  sources). Pullers are command lists the consumer supplies (DESIGN.md 12.19). Tests: 17.
+
 ## 2026-10-28 (v1.68.0, ops center tools)
 
 The two small tools of the ops center handoff, lifted with their tests. Opt in: new `opscenter/tools`; the test loader gains the `tools` area.
