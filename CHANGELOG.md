@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-28 (v1.64.0, ops center lift status)
+
+Documentation only. DESIGN.md 12.7 had two rows each for items 18 and 19 after the last three merges: the stale ones are gone, the
+rows for items 4, 5, 7 and 17 say exactly what each waits on, and the closing paragraph no longer says the server halves of the
+people, tracker and review lane modules are missing (they are lifted; the server routes that call them follow the envelope and
+registry).
+
 ## 2026-10-28 (v1.63.0, ops center work tracker)
 
 Item 18 remainder of the ops center standard: the work tracker adapter and the three jobs on it, lifted with their tests. Opt in: new
