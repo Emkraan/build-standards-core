@@ -1327,7 +1327,7 @@ the standard drops: it is waiting on something named here.
 | (4) | the app | lifted: `opscenter/app`, all 114 source files, typecheck, unit tests and build in CI; the browser tests are `npm run test:browser` |
 
 The server (12.21) is lifted as a generic one: the gate, the registry, static serving, the action handled and approvals stores and the
-routes of every lifted module. The routes that start agent sessions, and the server halves of the pages named in 12.21, are not lifted.
+routes of every lifted module. The routes that start agent sessions are the runtime slot (12.23); the server halves of the pages named in 12.21 land one by one.
 The pages whose server half is optional (people, tracker, review lanes) render only when their slot is on.
 
 ### 12.8 Module parameters (the five modules that named estate repositories or files)
@@ -1686,6 +1686,26 @@ Core has no network call and no credential store read, and a test asserts the mo
 (tested both ways). The running code's `llm_accounts.accounts()` is `list_accounts()` split in two (provider reads, core shapes); the interface
 of C2 is `list_accounts`, `fallback_order`, `account_kinds` and `spend_history` on core, with `credentials` and `read_usage` on the provider.
 The ledger writer (an agent plugin) and the cron wrapper (`python3 model_fallback.py` prints a new incident's message) are the consumer's.
+
+### 12.23 The runtime slot
+
+`server/runtime_slot.py` serves Tackle now, Discuss and the session list. The core owns the store, the prompt, the routes and the states
+the app shows; the consumer supplies one command, `OPSCENTER_RUNTIME_CMD` (a JSON list or a shell-split string; default none).
+
+- Null default: `GET /api/tackle` answers `{sessions: {}, runtime: {configured: false, state: "no runtime configured"}}` and every start
+  answers 501 `no runtime configured`, before anything is read or run.
+- `<cmd> start '<json>'`, in `{fp, kind (item, jira, pr, doc), title, prompt, context, mode}`, out `{session_id, pid?, log?, surface?}`.
+  The prompt is built in core from the served board item (or the tracker row for `jira-<KEY>`, mine and open only), never from client text,
+  and ends with how the session resolves itself (`POST /api/tackle/resolve {fp, summary}` on `OPSCENTER_PUBLIC_URL`).
+- `<cmd> status '{session_ids: [...]}'`, optional, out `{session_id: {state, last_active, archived}}`; a command that cannot answer (nonzero
+  exit) leaves the stored states as they are. Both verbs have a 60 s timeout; a nonzero exit, bad JSON or a missing binary records the
+  session as `failed` with the error and a retry starts a new one.
+- Store `<state>/dashboard/action-tackle.json` keyed by fp (the app's `TackleSession` shape: `title, session, pid, state, resolved, archived,
+  started, log, surface, session_id, has_context, error, ticket, last_active, live`). `live` is launching or running, not archived, active
+  within 72 hours. A start for an fp with a live session returns it.
+- Routes: `GET /api/tackle`, `POST /api/tackle {fp, context, mode}`, `POST /api/tackle/resolve`, `POST /api/jira/tackle {key, context}`,
+  `POST /api/pr/discuss {repo, pr, context}` (a discussion of the pull request by repository and number). Differences from the running code:
+  it launched one agent's desktop chat and matched sessions by prompt in that agent's database; that is the consumer's command now.
 
 ### 12.24 The core consumption panel
 

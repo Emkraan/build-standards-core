@@ -360,6 +360,19 @@ def build(registry=None):
             lambda q: cron.run(q.groups[0], q.payload().get("note")),
             name="cron_pulse.run",
         )
+    import runtime_slot as rt
+
+    r.get("/api/tackle", lambda q: rt.get(), name="runtime_slot.get")
+    r.post("/api/tackle", lambda q: rt.post_tackle(q.payload()), name="runtime_slot.post_tackle")
+    r.post(
+        "/api/tackle/resolve",
+        lambda q: rt.post_resolve(q.payload()),
+        name="runtime_slot.post_resolve",
+    )
+    r.post("/api/jira/tackle", lambda q: rt.post_jira(q.payload()), name="runtime_slot.post_jira")
+    r.post(
+        "/api/pr/discuss", lambda q: rt.post_discuss(q.payload()), name="runtime_slot.post_discuss"
+    )
     acc = load("model_accounts")
     if acc is not None and hasattr(acc, "sample"):
         r.background.append((acc.sample, 600))
