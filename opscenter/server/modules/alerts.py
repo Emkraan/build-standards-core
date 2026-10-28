@@ -356,7 +356,7 @@ def sync(now=None):
         why = "{} failed {}, last run {}. Last output: {}".format(
             a["name"],
             times,
-            local.strftime("%a %b %d %the owner:%M %p"),
+            local.strftime("%a %b %d %I:%M %p"),
             _excerpt(a["body"]),
         )
         prev = store.get(iid)
