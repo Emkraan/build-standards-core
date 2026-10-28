@@ -16,7 +16,7 @@ The cost gated analyzer's deterministic parts (opscenter/DESIGN.md section 2.6 a
 | `analysis_bundle.py` | The analysis job's input: must consider candidates, context (capped per source), routed away, items already on the board, people, handled decisions, the previous synthesis and the optional live ref status. A broken routing file fails the build, so the gate fails open | `collect_test.py` |
 | `board_build.py` | The board composer and the bundle step: the contract check, items the ops center adds itself, the routing filter, handled aliasing, first seen stamps, fingerprints, freeze status, monitors, the team away strip. Writes the app's data files | `board_build_test.py` (8) |
 
+| `ref_status.py` | The live ref check plug-in (`OPSCENTER_REF_STATUS`): the state of the pull requests and tracker tickets a text names (`resolve`), the finished ones (`done_lines`), and which automation cards have no cause left (`finished`), including the approve the apply check. Read only through `gh` and a tracker driver; repositories, key pattern and driver are parameters (DESIGN.md 12.18) | `ref_status_test.py` (20) |
+
 Plug-ins are files named by environment variables (`OPSCENTER_PEOPLE`, `OPSCENTER_BOARD_SOURCES`, `OPSCENTER_REF_STATUS`,
 `OPSCENTER_TEAM_AWAY`), each optional; DESIGN.md 12.13 lists their contracts.
-
-Not lifted: `ref_status` (tied to named repositories; a plug-in seam stands in for it).

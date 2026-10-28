@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-28 (v1.67.0, ops center live ref check)
+
+The live ref check plug-in (item 24 remainder), lifted with its tests. Opt in: new `engine/ref_status.py`.
+
+- State of the pull requests and tracker tickets a text names, the finished ones, the approve the apply check and the automation card close rule.
+  Repositories, key pattern and the tracker driver are parameters (DESIGN.md 12.18). Tests: 20.
+
 ## 2026-10-28 (v1.65.0, ops center core and sync pull request lanes)
 
 Items 4 and 5 of the ops center standard, lifted with their tests. Opt in: two new lanes under `opscenter/lanes`; `autofix.problem_of`

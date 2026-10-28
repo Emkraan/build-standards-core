@@ -1315,7 +1315,7 @@ the standard drops: it is waiting on something named here.
 | 21 | knowledge proposals | lifted: proposal rewrite gate, applied log, `engine/publish_mode.py`; the queued approvals applier is not |
 | 22 | plans reconcile | lifted: `gates/plans_reconcile_gate.py` |
 | 23 | pull request dependencies, search | lifted: `server/modules/pr_deps.py`, `ops_search.py` |
-| 24 | cron catalog gate, sitrep, hermetic test home, reviews visibility check | cron catalog gate, hermetic home, reviews visibility check and the sitrep (`gates/sitrep.py`, `sitrep_prerun.py`) lifted; the live ref check is a plug-in the consumer supplies (`ref_status` is not lifted) |
+| 24 | cron catalog gate, sitrep, hermetic test home, reviews visibility check | cron catalog gate, hermetic home, reviews visibility check and the sitrep (`gates/sitrep.py`, `sitrep_prerun.py`) lifted; the live ref check is `engine/ref_status.py` (12.18) |
 | (2.4) | swr, alerts, review tombstones, paths | lifted: `server/modules/` |
 | (2.6) | analyzer: contract, handled match, first seen, routing, collector, bundle builder, wake gate | lifted: `engine/` (`contract`, `handled`, `first_seen`, `routing`, `collect`, `analysis_bundle`, `board_build`), `gates/action_center_gate.py`, `server/modules/routing_api.py` (12.13) |
 | (4) | the app | lifted: `opscenter/app`, all 114 source files, typecheck, unit tests and build in CI; the browser tests are `npm run test:browser` |
@@ -1581,3 +1581,13 @@ environment variables (`CORELANE_*`, `MXLANE_*`); no default names a repository 
 (`core`, `sync`, and `sync-feature` for a feature branch) in `AUTOFIX_TARGETS`; for `core` the entry carries `extra_fixable`
 (`[["local checks fail", "local-checks"], ["version needs a bump", "version-bump"], ["changelog entry", "changelog"]]`), which this
 lift added to `autofix.problem_of` (a target's own needles, tried after the built in ones).
+
+### 12.18 The live ref check (item 24 remainder)
+
+`engine/ref_status.py` is the plug-in behind `OPSCENTER_REF_STATUS` (12.13) and the sitrep's reference block (12.7 item 24). It
+extracts the pull requests (`<prefix> PR #12`, a bare `PR #12` means the default repository) and tracker keys a text names, reads
+their state live (the code host through `gh`, the tracker through a driver command) and reports which are finished. Parameters:
+`REF_STATUS_REPOS` (JSON prefix to `owner/repo`, plus `default`), `REF_STATUS_KEY_REGEX`, `REF_STATUS_TRACKER_CMD` and
+`REF_STATUS_SITE` (the 12.15 driver contract; none means ticket lookups report an error), `REF_STATUS_APPLY_WORKFLOW`. A read error never
+marks anything finished. Differences from the running code: the repository and prefix map, the driver path and the key pattern were
+literals and are parameters.
