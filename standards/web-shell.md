@@ -58,7 +58,9 @@ default resolved), `ICONS` (module id to icon name) and `FALLBACK_ICON` (`--fall
 
 The shell's own per-module manifest (rail pages, links, tiles, Home feeds, API and permission read) is
 documented in [web-shell-manifest.md](web-shell-manifest.md); it is a host extension of this manifest. The shared packages a shell keeps its cross-module logic in are in
-[web-shell-packages.md](web-shell-packages.md).
+[web-shell-packages.md](web-shell-packages.md); its API and gateway, sign-in and rights, and build and deploy are
+[web-shell-gateway.md](web-shell-gateway.md), [web-shell-auth.md](web-shell-auth.md) and
+[web-shell-deploy.md](web-shell-deploy.md).
 
 ### Host extensions (opt in)
 
@@ -291,3 +293,22 @@ buttons and the dots, never moves on its own under reduced motion, and gives foc
 button on close. The account menu shows the identity and facts it is given, changes the theme,
 signs out and keeps its panel open with an alert when sign out fails. `/` opens search from the
 page and does nothing in a field, an editable region, with a modifier or over another dialog.
+
+## 11. Documented differences
+
+A shell that predates this document can differ from it in the places below. Each is recorded as `excepted`
+with its reason, never counted as a gap, and none blocks adoption of the rest.
+
+| Clause | A shell may instead | Reason |
+|---|---|---|
+| 3. Generator flags | Use its own generator with fixed paths and only `--check`, and no unknown-key check | The shell's own validator covers the checks; [web-shell-manifest.md](web-shell-manifest.md) allows unknown keys |
+| 3. Output | Write `MODULES` only, with defaults resolved when the registry is read, and keep the icon map by hand with a fallback component | Defaults are applied at read time ([web-shell-manifest.md](web-shell-manifest.md) section 3) |
+| 3. Manifest keys | Carry many more keys than the seven kit keys and have no `route` (the path is `/<id>`) | The shell manifest is a host extension |
+| 4. Descriptor location | Declare the code-side descriptor in the shell app, with the manifest types in the contract package | Declared once either way |
+| 4. Manifest test | One package test validates every manifest together, plus tests for a permission source | Same coverage, coarser grain |
+| 5. Keyframes | Keep keyframe names global with no `<id>-` prefix rule or warning | Not enforced where the module sheets are small; the prefix remains the recommendation |
+| 5. Scope root | Put `data-module` on the `html` element (the plugin's `root: 'document'` option) and also on a wrapper | Portaled dialogs and toasts must still match |
+| 6. App id | Use a product name for the console module's `appId` rather than its id | Storage keys already shipped |
+| 9. Home | Make the console module the hub, so its pages sit at the root with an empty basename | The hub and the console are one module |
+| 10. Brand | Give each module its own mark and name beside the accent | The launcher shows them |
+| 10. Adding a module | Touch the manifest, the registry, the loader and host hook, the API env table, the build env pair, the static host rewrites, the icon map and a package dependency | Lists the shell still holds by hand; a change that removes one is welcome but not required |

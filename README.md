@@ -165,6 +165,9 @@ value of the doc's registered rules (see the rules registry below).
 | App types | `standards/web-shell.md` | Several tools on one origin: registry generated from manifests, per-module CSS scope, storage and accent, safe return target, home as the hub | web |
 | App types | `standards/web-shell-manifest.md` | The per-module `console.module.json` a multi-module shell reads, its JSON schema and the static-manifest exception | web (no rules yet) |
 | App types | `standards/web-shell-packages.md` | The shared packages of a multi-module shell: the module contract validator and the RBAC core (code in `shell-packages/`), the client and server packages (standard only) | web (no rules yet) |
+| App types | `standards/web-shell-gateway.md` | The shell's own API and the gateway per tier: middleware order, route areas, the gateway token, layout and call path | web (no rules yet) |
+| App types | `standards/web-shell-auth.md` | Shell sign-in (PKCE), one scope per API, token checks, where rights are enforced, registering a permission | web (no rules yet) |
+| App types | `standards/web-shell-deploy.md` | Shell build and deploy: bundle and API pipelines, gates, the dev tier guard, fix-forward recovery | web (no rules yet) |
 | App types | `standards/web-api-runtime.md` | Node and Express APIs behind a gateway: group caching, directory token, CORS max age and origin guard, Server-Timing, request log, telemetry, the shared runtime package | web |
 | App types | `standards/web-client-runtime.md` | Single page apps with an OIDC library: one auth boot, renewal without iframes, the API client, lazy bundles, the shared client package, the live feed strip | web |
 | App types | `standards/local-ops-app.md` | Locally hosted operations apps: contract, cost-gated analyzer, loopback server | local-ops |
