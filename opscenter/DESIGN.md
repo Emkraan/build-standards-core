@@ -716,7 +716,7 @@ Every other slot ships an interface and the null adapter.
 | `work_tracker` | 35 to 39 | see 5.2 | reference |
 | `classification` | 42 | the work type and project default sets | null (empty set) |
 | `digest_source` | 43 | ideas digest input | null |
-| `review_lanes` | 45, 56 | lane manifest `{lane, repo, tabs, engine_check, gates, canary}`; mounts `/reviews/<lane>` on the core PR card | null |
+| `review_lanes` | 45, 56 | lane manifest `{lane, repo, tabs, engine_check, own_pr_lane, gates, canary}`; mounts `/reviews/<lane>` on the core PR card | null |
 | `gated_deploys` | 47 | list pending gated deployments and plan runs, act: approve, reject, retry, override window, delete release, accept risk, decide fix (verbs below) | null |
 | `docs_home` | 70 to 74 (source) | see 5.2 (variants `git` and `api`), naming scheme from parameter (B-14) | reference |
 | `doc_builder` | 75 | build a draft from a template path and header label | null |
@@ -756,6 +756,21 @@ session; the session fetches the prompt once (`plugin` auth), binds with a claim
 with it; the server verifies the reporting session is the bound one. States: launching, claimed,
 running, resolved, failed; unclaimed after `tackle.claim_timeout_s` (default 360) is failed. One
 launch at a time. The prompt says draft only.
+
+Review lane manifest fields. `engine_check` names the check the lane's engine reports. `own_pr_lane`
+is optional and names the lane that merges the owner's own pull requests under a policy file:
+
+```json
+{"lane": "...", "repo": "owner/name", "own_pr_lane": {"policy_ref": "path of the policy file in the repo"}}
+```
+
+- The core reads the lane and shows it on `/reviews/<lane>`: the policy as read, the open own pull
+  requests and what the policy decides for each, and the last decisions.
+- The read never writes. The merge itself is a writer operation (scope `code_host`, action
+  `pr.merge`) under a rule in parameter `writer.rules`, pinned to the head seen and gated on the
+  required checks, so a lane never merges outside the writer.
+- A lane without `own_pr_lane` shows no own pull request section. The field is a data declaration,
+  and the policy file stays the consumer's own.
 
 ## 6. Parameters
 

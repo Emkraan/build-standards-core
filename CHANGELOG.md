@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27 (v1.30.5, own PR lane)
+
+- Design only. `opscenter/DESIGN.md` section 5.3: the `review_lanes` manifest gains the optional `own_pr_lane` field beside `engine_check`, with the policy reference, what the core shows on the lane page (policy as read, open own pull requests with the policy's decision, last decisions), and the rule that the read never writes and the merge is a writer operation pinned to the head seen.
+
 ## 2026-10-27 (v1.30.4, gated deploy verbs)
 
 - Design only. `opscenter/DESIGN.md` section 5.3: the `gated_deploys` slot lists the verbs it needs beyond approve, reject and retry (`override_window`, `delete_release`, `accept_risk`, `decide_fix`) in a table with direction and the extra rule for each. Every verb in the table is a writer operation and a declared capability, a delete is default deny with its own rule, and accepting a risk is an owner decision only. Triage is a state-only change with no outward effect, so it is not a verb of the slot and not a writer operation.
