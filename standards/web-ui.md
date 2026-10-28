@@ -55,8 +55,11 @@ exceptions name them.
    primary buttons and active markers take the accent).
 3. **One glow recipe.** Glow is a single theme-gated recipe, a `box-shadow` driven by the
    element's `--hue` and the theme-gated `--glow-a` alpha
-   ([section 18](#18-stat-tile-glow-and-count-up) holds the recipe). It is applied ONLY to hero
-   KPI tiles, the active nav marker, selected cards and chart bars. Never per row or on ordinary
+   ([section 18](#18-stat-tile-glow-and-count-up) holds the recipe). It is applied ONLY to these
+   named uses: hero KPI tiles, the active nav marker, selected cards, chart bars, the search field
+   focus ring glow (beside the focus ring, never replacing it), the progress bar fill glow, and the
+   brand mark glow (the art mark glow layer, `.art-mark .am-glow`). The rule is closed to any other
+   glow (meter fills, flow graph nodes and status dots carry none). Never per row or on ordinary
    cards, whose hover uses lift and a neutral shadow.
 4. **One stat system.** Hero KPIs use the kit's `StatTile` only
    ([section 18](#18-stat-tile-glow-and-count-up)). No second parallel stat-card implementation may
