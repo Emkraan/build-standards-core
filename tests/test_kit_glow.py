@@ -7,10 +7,10 @@ import unittest
 from support import ROOT
 
 FILES = ["kit/src/styles/kit.css", "kit/src/graph/graph.css"]
-# Hero stat tile, selected cards and nodes, chart bars, the active nav marker, and the art mark's own
+# Hero stat tile, the progress bar fill, the search focus, selected cards and nodes, chart bars, the active nav marker, and the art mark's own
 # picture effect layers (an art asset, not chrome).
 ALLOWED = re.compile(
-    r"kpi-tile|is-selected|data-selected|health-bar|chart-bar|nav-glider|nav-item\[aria-current|\.am-|\.art-mark|am-ember"
+    r"^\.progress-fill$|search-field\[data-focus|kpi-tile|is-selected|data-selected|health-bar|chart-bar|nav-glider|nav-item\[aria-current|\.am-|\.art-mark|am-ember"
 )
 TOKEN = re.compile(r"--accent-glow|--shadow-glow|--shadow-accent|text-shadow")
 
@@ -40,10 +40,18 @@ class KitGlow(unittest.TestCase):
                         bad.append(f"{rel}: {sel[:50]} -> {decl.strip()[:70]}")
         self.assertEqual(bad, [], "glow outside the allowed uses (web-ui.0.3)")
 
-    def test_search_focus_uses_the_focus_ring(self):
+    def test_search_focus_has_ring_and_glow(self):
         css = (ROOT / "kit/src/styles/kit.css").read_text()
         m = re.search(r'\.search-field\[data-focus="true"\]\s*\{([^}]*)\}', css)
         self.assertIn("var(--focus-ring)", m.group(1))
+        self.assertIn("var(--accent-glow)", m.group(1))
+
+    def test_progress_fill_glow_only_on_the_plain_fill(self):
+        css = (ROOT / "kit/src/styles/kit.css").read_text()
+        m = re.search(r"\n\.progress-fill\s*\{([^}]*)\}", css)
+        self.assertIn("var(--shadow-glow)", m.group(1))
+        m = re.search(r"\.progress\.meter \.progress-fill\s*\{([^}]*)\}", css)
+        self.assertNotIn("box-shadow", m.group(1))
 
 
 if __name__ == "__main__":

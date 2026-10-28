@@ -233,15 +233,46 @@ an outward call site outside `writer.py` and the slot `act` methods it invokes.
 4. Re-read the target live through the slot's `read`. `base_hash` still matches, and for pull
    request actions the head equals `pin.head_sha` and the required checks are green. A mismatch is
    `stale`: nothing is written and the UI says what moved.
-5. Write, unless dry run. `writer.live` is a parameter, default `false`, with per-rule override.
-   The three core approvals (section 4.4) ship with explicit rules that are live by default, so they
-   never silently dry run (hub consumer risk).
+5. Write, unless dry run. A rule is live when its effective flag is on. The effective flag is the
+   rule's switch in `writer-rules.json` when one has been set from the screen, else the rule's
+   own `live`, else `writer.live` (a parameter, default `false`). The three core approvals
+   (section 4.4) ship with explicit rules that are live by default, so they never silently dry
+   run (hub consumer risk).
 6. Read back and verify the effect.
 7. Record the outcome in the applied ledger and write a tombstone (section 2.5.1).
 
 **Tombstones.** An applied or refused-as-already-done operation leaves a tombstone keyed by target.
 The UI shows the item as done until the next source read confirms it, so a double click or a stale
 poll never offers the same act twice.
+
+**Live switch.** Parameters are read once at start, so a rule's live flag needs its own way to
+change at runtime. The Core page carries a "Writer rules" card (section 4.2) that lists every
+rule with its scope, action, direction, effective flag, where the flag comes from (parameter or
+switch), and the result of its last dry run. Each rule offers three actions:
+
+- **Dry run.** The writer replays the rule's pending approved operations through every applier
+  step with the write forced off, and the card shows each step's result and the outcome the
+  operation would have recorded. Nothing outward is written and no operation changes state. One
+  activity record notes the dry run.
+- **Enable.** Allowed only when a dry run of that rule finished after the rule last changed (its
+  rule hash), replayed at least one operation, and had no refused step. A dry run that replayed
+  no operation never qualifies, because it passes with nothing tested. It needs a typed confirm (section 4.4) of the text
+  `<scope>.<action> live`, and the server re-checks the text and the dry run before it flips
+  the flag.
+- **Disable.** Always allowed, one click, no dry run needed.
+
+The switch is itself a writer operation (scope `core`, action `rule.live`, requested by the owner
+click only, never by an engine job or session). Its state is a `kv` file, `writer-rules.json`
+(schema `writer-rules/1`, writer `server.writer`), holding the flag and the rule hash it was set
+for. A rule that changes in `local/params.json` drops its switch, so a changed rule starts from
+its parameter value and needs a new dry run. Every switch is one activity ledger record. The
+three core approval rules appear in the card and can be switched off, never silently.
+
+Acceptance (test): enable is refused with no dry run, with a dry run older than the rule, with a
+dry run that replayed no operation, and with a dry run that had a refused step. Enable with a matching dry run and the typed text flips the
+flag. Disable needs neither. A dry run writes nothing through the fake slot. A rule edited in
+parameters loses its switch. A session or engine caller is refused. Each switch leaves one
+activity record.
 
 **Approvals inbox, `/api/approvals`.** `GET` lists pending, approved, rejected and applied entries.
 `POST` queues one entry `{operation, decision: approve|reject}`; it refuses missing fields, a
@@ -274,10 +305,30 @@ The engine is `local-ops-app` section 4 made shared code, with the gates as para
   shape (local-ops-app section 16): `{id, source, sender, sender_role, addressed: direct|mention|
   team|none, title, text, refs, owner, received_utc}`. The engine applies the noise filter and
   routing rules, then appends to the inbound spool (`ledger` kind) with `state: new`.
-- **Gate,** checked in order: `--force`; daily audit (no successful run today); retry after a run
-  that started and never finished, after `analyzer.retry_after_s` (default 1200); bundle hash
-  changed and new inbound and at least `analyzer.min_gap_s` (default 1800) since the last wake.
-  Otherwise skip. `--dry-run` prints the decision and the prompt size and calls nothing.
+- **Gate,** checked in order: `--force`, daily audit (no successful run today), retry after a run
+  that started and never finished (after `analyzer.retry_after_s`, default 1200), then the change
+  test: the bundle hash changed, there is new inbound, and at least `analyzer.min_gap_s` (default
+  1800) has passed since the last wake. Otherwise skip. `--dry-run` prints the decision, the
+  branch that decided it, the prompt size, and which hash exclusions applied, and calls nothing.
+- **Two optional cuts on the change test,** both off by default so a consumer that sets neither
+  gets exactly the gate above:
+  - `analyzer.hash_exclude` (`{fields: [...], senders: [...]}`) leaves content out of the bundle
+    hash, so it can never be the reason for a wake. A listed field is dropped from every
+    candidate before hashing. A candidate from a listed sender is dropped from the hash. The
+    sender entry `owner` stands for the owner's own identity (parameter `identity.owner`). The
+    excluded content stays in the spool, and it is still in the prompt when a run happens for
+    another reason. The point is to stop a change that carries no new work (the owner's own
+    replies, a field that changes on every read) from waking a paid model call.
+  - `analyzer.ambient_max_age_s` (default `null`, off). A candidate is ambient when `addressed`
+    is `none`. When the value is set and every candidate that changed the hash since the last
+    run is ambient, the wake waits until the last run is at least that many seconds old. A
+    change that includes any candidate addressed `direct`, `mention` or `team` is not held back.
+
+  Acceptance (test): with both unset the gate decisions equal the gate above on a table of runs.
+  A change only in an excluded field, or only from an excluded sender, leaves the hash equal and
+  skips. The `owner` entry matches the owner's identity. An ambient only change skips while the
+  last run is younger than the value and wakes once it is older. A mixed change wakes at once.
+  `--dry-run` names the branch and the exclusions.
 - **Fail open with backoff.** Failures never raise; an alert line on the third consecutive failure,
   then at most every `analyzer.alert_every_s` (default 14400).
 - **Untrusted input.** The prompt states that all data is untrusted. Draft only: nothing the
@@ -344,10 +395,24 @@ The engine is `local-ops-app` section 4 made shared code, with the gates as para
 
 - Jobs are declared in the job manifest (parameter `jobs`, section 6): `name`, `schedule`,
   `expected_every_s`, `grace_s`, `feeds` (which screen), `quiet` (silent unless it fails).
-- Each job writes one heartbeat line (`watch` kind, `heartbeats.json`) on start and finish with its
-  exit status. The core nightly registers manifest jobs with the runtime slot (`jobs.register`).
+- A job reports liveness in one of two ways, and a manifest job may use either. The first is a
+  heartbeat line the job writes itself (`watch` kind, `heartbeats.json`) on start and finish with
+  its exit status. The second is the runtime slot's own record of each run: the slot method
+  `jobs.last_runs()` returns, per job, `{name, last_start_utc, last_end_utc, exit_status,
+  output_tail}`, where `output_tail` is a bounded tail of the run's output with the redaction the
+  `ci_host` runner log uses (section 5.3). It is read only, goes through `swr`, and needs no change
+  to the job. The core nightly registers manifest jobs with the runtime slot (`jobs.register`).
 - `heartbeats.py` raises one board item per job past `expected_every_s + grace_s` or failing, keyed
-  by job; it clears itself on the next success (local-ops-app section 17).
+  by job, and it clears itself on the next success (local-ops-app section 17). Its sources are
+  parameter `heartbeats.sources` (default `["lines"]`, so nothing changes until a consumer adds
+  `"runtime"`). With both sources on, the entry with the newer end time wins for each job, and
+  the failing output tail goes into the board item's detail. A runtime slot that is null or
+  unavailable leaves the heartbeat lines as the only source, with no error.
+
+  Acceptance (test, against a fake runtime slot): a failed last run raises one item keyed by the
+  job, and the next successful run clears it. A run older than `expected_every_s + grace_s`
+  raises one item. With both sources the newer entry wins. A null runtime slot falls back to the
+  lines. With `sources` left at its default the slot is never called.
 - Runner lost: a run queued with no runner past `ci.queued_alert_s` raises one item; cancelled and
   timed-out runs count as failures (section 18).
 - Sign-in heal loop (B-11): check, proactive remint, paired failure and recovery notices sharing one
@@ -522,7 +587,7 @@ Only Table A rows marked core. Slot-supplied tabs mount into these screens when 
 | Knowledge | Plans | `/plans` | trackers and library, reader, archive and restore | 77 |
 | Knowledge | Debt | `/debt` | Needs decision, To do, Parked, Snoozed, Done | 78 |
 | Platform | Infrastructure | `/infra` | Overview roll up, Scheduled jobs, Live jobs, Code host, Runners, Spend, Heartbeats | 79 to 83, 85, 87 |
-| Platform | Core | `/core` | consumption panel (section 4.4) | 57 to 61, 64, 65 |
+| Platform | Core | `/core` | consumption panel (section 4.4), writer rules card (section 2.5) | 57 to 61, 64, 65 |
 | Platform | Activity | `/activity` | every change, newest first | 14 |
 | (palette) | Search | `/search` | full search across providers | 9 |
 
@@ -556,7 +621,8 @@ contract text; the feed writer stays `hermes/consumption.py`).
   2. **Merge:** merge the sync PR by the repo's declared method, pinned to the head seen.
   3. **Approve item:** post `approve <id>` on this account's own report issue.
 - **Typed confirm** (B-10): the confirm dialog requires the exact text, `<repo>#<number>` for a PR
-  action and `<id> on issue #<n>` for an item. The server re-checks the text.
+  action, `<id> on issue #<n>` for an item, and `<scope>.<action> live` to enable a writer rule
+  (section 2.5). The server re-checks the text.
 - The server re-reads live before acting: a PR that is not open records a tombstone and says
   already done; a moved head or failing checks refuses; an item not in the awaiting list or an
   issue that is not this account's report refuses.
@@ -605,7 +671,36 @@ Every slot is a folder with:
 |---|---|---|
 | `code_host` | over the code host CLI, read paths through `swr` | list repos, PRs, runs, checks; read PR with head and checks; act: comment, ready, merge pinned to head, rerun, review approve or request changes, label |
 | `work_tracker` | over the tracker's REST API with a token from the sign-in slot | list (sprint, backlog, needs me, change approvals), read, act: transition, comment, move |
-| `docs_home` | over a git-backed docs repo through `code_host` | list pages, read page with hash, act: publish by pull request, update |
+| `docs_home` (variant `git`, default) | over a git-backed docs repo through `code_host` | list pages, read page with hash, act: publish by pull request, update |
+| `docs_home` (variant `api`) | over the docs home's own API, for a consumer whose docs home is not a git repo | list pages under the allowed roots, read page with hash and ancestor chain, act: publish, update (never delete), each with a scope proof and a read back (below) |
+
+**The `api` docs home variant.** A docs home that is not a git repo has no pull request to review,
+so the adapter itself must prove what a review would. Parameter `docs.adapter` picks the variant
+(`git` by default) and parameter `docs.allowed_roots[]` lists the page roots a write may touch.
+The adapter refuses any write it cannot prove, in this order, each a hard stop with the code in
+section 2.3:
+
+1. **Scope proof.** The target is resolved live to its ancestor chain, and one ancestor must be an
+   allowed root. A target that cannot be resolved, whose chain cannot be read, or that sits
+   outside every root is `denied`. A new page needs a parent that passes the same proof. A move
+   out of a root is a write on the destination and the source, and both must pass.
+2. **No delete.** Direction `delete` is not in the variant's capabilities, so the writer refuses it
+   before the adapter is called, and the adapter refuses it again if called.
+3. **Body hash.** The hash of the body the adapter is about to send equals the operation's
+   `content_hash`, and for an update the live page's hash equals `base_hash`. A mismatch is
+   `stale`, nothing is written.
+4. **Write,** unless dry run (section 2.5).
+5. **Read back.** The page is read again and its body hash must equal `content_hash`. A mismatch
+   is recorded as `failed` with both hashes, never as applied.
+
+The `api` variant uses the same operation shape, approval and applied ledger as every other slot.
+Credentials come from the sign-in slot and never appear in a parameter or an operation.
+
+Acceptance (test, against a fake docs API): a target outside every root is denied. A target whose
+ancestor chain cannot be read is denied. A delete is refused. A body whose hash differs from
+`content_hash` is refused. A moved base is `stale`. A read back that differs is `failed`. A
+target inside a root with matching hashes is applied and read back. The `git` variant behaves
+as before.
 
 Every other slot ships an interface and the null adapter.
 
@@ -614,7 +709,7 @@ Every other slot ships an interface and the null adapter.
 | Slot | Table A | Interface summary | Shipped |
 |---|---|---|---|
 | `people` | 7, 27, 67, 68, 69 | roster from parameter; list 1:1 topics, team read, member profiles, yearly records; act: schedule, save; chip "next 1:1", strip "team away" | null, off by default |
-| `runtime` | 12, 24, 51, 52, 80, 89, 90 | jobs list and run now, register manifest jobs, sessions (tackle launch with claim token protocol, B-09), discuss session, restart, spend ledgers, account pool, fallback watch, banners | null |
+| `runtime` | 12, 24, 51, 52, 80, 89, 90 | jobs list, last runs (`jobs.last_runs()`, section 2.7) and run now, register manifest jobs, sessions (tackle launch with claim token protocol, B-09), discuss session, restart, spend ledgers, account pool, fallback watch, banners | null |
 | `freeze_source` | 26 | list windows `{name, start_utc, end_utc, exception}` | null (strip is core) |
 | `collector` (one per source: mail, chat, tickets) | 31, 32 | `collect(since)` returns candidates; rules from parameters | null |
 | `meetings` | 33 | list meetings, read transcript, produce digest items; privacy scrub and private file modes are core rules | null |
@@ -623,7 +718,7 @@ Every other slot ships an interface and the null adapter.
 | `digest_source` | 43 | ideas digest input | null |
 | `review_lanes` | 45, 56 | lane manifest `{lane, repo, tabs, engine_check, gates, canary}`; mounts `/reviews/<lane>` on the core PR card | null |
 | `gated_deploys` | 47 | list pending gated deployments and plan runs; act: approve, reject, retry | null |
-| `docs_home` | 70 to 74 (source) | see 5.2; naming scheme from parameter (B-14) | reference |
+| `docs_home` | 70 to 74 (source) | see 5.2 (variants `git` and `api`), naming scheme from parameter (B-14) | reference |
 | `doc_builder` | 75 | build a draft from a template path and header label | null |
 | `doc_archive` | 76 | list and read documents from a folder of one doc kind | null |
 | `resilience` | 84 | watchdog, self heal, backup and restore drill status | null |
@@ -661,8 +756,8 @@ secret references name a store and a key, never a value.
 | app | `poll` | badges 30 s, board 30 s, core 60 s | per screen |
 | host | `state_dir`, `runtime_dir`, `port` (8766), `service_label`, `service_manager` (`launchd` or `systemd`), `agent_home`, `workspace_root` | required except port | host layout |
 | server | `max_body` (1 MiB), `validate_responses` (false), `ttl.*` | as section 2.4 | |
-| writer | `live` (false), `rules[]` | three core approval rules, live | default deny |
-| analyzer | `min_gap_s` (1800), `retry_after_s` (1200), `daily_audit` (true), `alert_every_s` (14400), `spool_days` (14, the age after which a drained spool record is pruned) | | B-13 |
+| writer | `live` (false), `rules[]` (each with its own `live`) | three core approval rules, live | default deny, the screen switch (section 2.5) overrides both at runtime |
+| analyzer | `min_gap_s` (1800), `retry_after_s` (1200), `daily_audit` (true), `alert_every_s` (14400), `spool_days` (14, the age after which a drained spool record is pruned), `ambient_max_age_s` (null), `hash_exclude` (`{fields: [], senders: []}`) | the last two are off until set | B-13, section 2.6 |
 | model | `cmd`, `timeout_s`, `price_table`, `outlier_threshold`, `plan_usage_cmd` | `cmd` null disables the analyzer and briefs | |
 | model | `mode` (`subprocess` or `agent_job`) | `subprocess` | decided in section 11 item 6, `agent_job` is the declared exception and needs a `reason` plus the four conditions in section 2.6 (a post-validation step only through the engine's validation entry point, a rebuild fallback only through the gate's builder) |
 | routing | `rules_file`, `ignore_senders[]`, `ignore_subject_regex[]`, `priority_senders[]` | | collectors |
@@ -673,9 +768,10 @@ secret references name a store and a key, never a value.
 | git | `branch_prefix_pattern` | null | declared exception: a ticket prefix before the conventional type, for example `^[A-Z]+-[0-9]+/`; PR title lint still requires a conventional title (D7-15) |
 | git | `pre_push_overlay_only` | true | B-25 |
 | docs | `naming_scheme`, `topic_folders`, `template_path`, `header_label`, `export_folders`, `publish_mode` per class | | B-14, B-15 |
+| docs | `adapter` (`git` or `api`), `allowed_roots[]` | `git`, `[]` | section 5.2, the `api` variant refuses every write while `allowed_roots` is empty |
 | work | `classification_sets`, `project_defaults`, `debt_files[]`, `plans_root`, `plans_format` | | A-42, A-77, A-78 |
 | jobs | manifest `[{name, schedule, expected_every_s, grace_s, feeds, quiet}]` | the core jobs | A-98 |
-| heartbeats | `names[]`, `sync_from_tags` (false) | from the job manifest | A-87 |
+| heartbeats | `names[]`, `sync_from_tags` (false), `sources` (`["lines"]`, or add `"runtime"`) | from the job manifest | A-87, section 2.7 |
 | freeze | `source` | null | slot name |
 | deploy | `strategy` (`copy` or `checkout`), `keep_releases` (3), `health_timeout_s` (30) | `copy` | B-07 |
 | automerge | `enabled` (true), `hold_label`, `method` | repo's declared method | B-08 |
@@ -802,9 +898,9 @@ Release numbers are assigned at merge in a fixed merge order (D7-19).
 | R1 Guard and route registry | `gate.py`, `registry.py`, `app.py` skeleton, `/api/health`, static files | registry walk (bad Host, foreign Origin, body cap, no wildcard CORS, unknown POST 404), traversal 403 | fixture consumer serves the SPA and health; every probe in the walk is refused as specified |
 | R2 Envelope | `envelope.py`, error codes, tolerant client reader for one release, response validation in tests | shape test on every route; error code to status map | fixture consumer and both tolerant and strict readers pass; R3 removes the tolerant reader |
 | R3 Schemas and checker | six envelope kinds, all core state and API schemas, `state.py` with its command line entry, `conformance.py` with `extends` and JSON lines, `migrate.py`, params schema, the estate-literal check | conformance on fixture state, producer and drainer ledger (roles enforced, marks leave content unchanged, retention pass by the producer only), migrate plan and apply on a copy (idempotent, backup, failure report), state.py command line (concurrent appends, header kept, undeclared writer refused, schema violation refused) | fixture state passes; a seeded bad record is reported and not converted |
-| R4 Writer and inbox | `writer.py`, `approvals.py`, tombstones, applied ledger, `testing/fixtures.py`, `check-opscenter-writer`, the three core approvals and the consumption panel server module | the writer acceptance in 2.5; panel tests from local-ops-app 19 | fixture flows write only through the writer; the consumption panel's three approvals pass against a fake code host |
-| R5 Live reads and engine | `swr.py`, `run.py`, core server modules, collector and analyzer engine with the gate, routing, heartbeats, sign-in loop, notice discipline; the app shell and every core screen in 4.2 | swr single flight and last-good; gate order; heartbeat raise and clear; app unit and e2e smoke on fixture state in both themes | fixture consumer runs every core screen live with no bundle step |
-| R6 Slots | slot loader, interfaces, null adapters, reference adapters (code host, work tracker, docs home), slot UI mounts, claim token protocol, optional modules | per-slot conformance on fixtures; null adapter hides UI; claim token states | fixture consumer runs with all null, then with the three reference adapters against fakes |
+| R4 Writer and inbox | `writer.py`, `approvals.py`, tombstones, applied ledger, `testing/fixtures.py`, `check-opscenter-writer`, the three core approvals and the consumption panel server module | the writer acceptance in 2.5, the live switch acceptance in 2.5, panel tests from local-ops-app 19 | fixture flows write only through the writer; the consumption panel's three approvals pass against a fake code host |
+| R5 Live reads and engine | `swr.py`, `run.py`, core server modules, collector and analyzer engine with the gate, routing, heartbeats, sign-in loop, notice discipline; the app shell and every core screen in 4.2 | swr single flight and last-good; gate order including the two optional cuts; heartbeat raise and clear (from lines and from the runtime slot's last runs); app unit and e2e smoke on fixture state in both themes | fixture consumer runs every core screen live with no bundle step |
+| R6 Slots | slot loader, interfaces, null adapters, reference adapters (code host, work tracker, docs home), slot UI mounts, claim token protocol, optional modules | per-slot conformance on fixtures, `api` docs home scope proof, delete refusal and read back; null adapter hides UI; claim token states | fixture consumer runs with all null, then with the three reference adapters against fakes |
 | R7 Automerge | `automerge.yml` template, overlay install step | newest run per check, rerun unblocks, hold label, draft skip, head pin | merges a test PR on one repo; a failing then rerun check behaves as specified |
 | R8 Deploy | `deploy.py` with both strategies, rollback, drift check, service definitions | failed health rolls back; drift raises one item; keep_releases prunes | fixture consumer deploys, fails a seeded health check and rolls back |
 | R9 Adopt | `hermes/adopt.py`, discovery, report-only registration, migration step, downstream app card, daily report-back rows | dry run on a fixture workspace; rerun is a no-op; unconverted record stops adopt | a clean machine fixture goes from nothing to a running, conformant ops center |
