@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-28 (v1.30.11, stray file removed)
+
+- Removed `CHANGELOG.md-e`, a backup file a BSD `sed -i` left at the repo root in v1.29.0. Nothing read it.
+
 ## 2026-10-27 (v1.30.10, page help, Stepper and Timeline)
 
 Every part here is off by default or inert until an app uses it, so a consumer that uses none of them renders exactly
