@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-28 (v1.70.0, ops center builds module)
+
+The Builds page server module (item 13), lifted with its tests. Opt in: new `server/modules/builds.py` and `ghview.py`.
+
+- Pipelines, owner, branch pattern and the per product landed commands are `BUILDS_CONFIG` (DESIGN.md 12.20); the guarded Update from main keeps its
+  live re-reads. Tests: 9 against a fake gh.
+
 ## 2026-10-28 (v1.68.0, ops center tools)
 
 The two small tools of the ops center handoff, lifted with their tests. Opt in: new `opscenter/tools`; the test loader gains the `tools` area.
