@@ -9,6 +9,20 @@ Item 24 remainder: the daily sitrep, lifted with its tests. Opt in: two new file
 - `sitrep_prerun.py`: the pre-run block for an agent written brief. The health command, the state files and the live ref check
   are optional parameters or a plug-in (`ref_status` stays out). Tests: `sitrep_test.py` (9, against an in-process server).
 
+## 2026-10-28 (v1.59.0, ops center review lane engine)
+
+Item 1 and the lane half of item 3 of the ops center standard, lifted with their tests. Opt in: new files under `opscenter/lanes`,
+nothing existing changes except the reference sign-off store, which gained four functions.
+
+- `pr_review.py`, `own_pr_merge.py`, `destroy_followup.py` and `model_bump.py`. The policy is data with a documented schema
+  (`lanes/REVIEW_POLICY.md`, DESIGN.md 12.12) and two example policies under `lanes/fixtures`. Repository, owner login, tier
+  names, branch prefix, lane label and forbidden words are policy keys or `OPSCENTER_*` variables, not code. The draft gate is a plug-in.
+- `signoff_store.py` gains `review`, `plan_facts`, `path_of` and `latest_epoch` for the own lane's carry rule.
+- Tests: 7 review check files (132 tests), the own lane (171 checks), the destroy follow-up (37), the bump targets (3), run by
+  `review_lanes_test.py` and `model_bump_test.py` in core CI. The checks build a scratch state tree from the fixtures
+  (`testing/policy_env.py`) and never read a real one.
+- `preflight_test.py`: a key vault test URL no longer names a vault host, so the verification patterns return zero hits.
+
 ## 2026-10-28 (v1.58.0, month grid lane-packed bars)
 
 Third of the generic kit pieces the hub needs (intake issue 115). Opt in: an event without `endDate`, and a grid without `laneBars`,

@@ -1,0 +1,62 @@
+{
+  "_comment": "secondary own-PR lane policy (my PRs only, author owner-account). Read by own_pr_merge.py --target secondary through the review engine (OPRG_POLICY). A rule hit means the PR waits for my sign-off in the Ops Center (Reviews > secondary > Approve and merge). Everything else merges on its own once green, and fixable problems start an auto-fix session. Engineer PRs are never handled here: the secondary-pr-review lane owns them and escalates to me for direction.",
+  "version": 1,
+  "repo": "owner/secondary-repo",
+  "self_login": "owner-account",
+  "skip_authors_regex": "(\\[bot\\]$|^dependabot|^renovate|^github-actions|^copilot)",
+  "skip_drafts": true,
+  "own_pr_merge": {
+    "enabled": true,
+    "hold_labels": ["do-not-merge", "hold"],
+    "max_high": 0,
+    "respect_freeze": true,
+    "notify_on_merge": false,
+    "residual_risk_rule": {
+      "id": "RR-1",
+      "enabled": true,
+      "title": "Residual risk: a one-second race with a named recovery",
+      "text": "A review finding is auto-accepted and logged as technical debt ONLY when BOTH hold: (i) it needs a concurrent event inside the same instant (a race window of about a second or less, for example a merge landing between a main check and the apply or delete), AND (ii) a working recovery already exists and is named (Terraform refuses a stale saved plan, a deleted grant has a restore line). Everything else still goes to the owner.",
+      "conditions": {
+        "race_window_max_s": 1,
+        "needs_concurrent_event": true,
+        "recovery_exists_and_named": true
+      },
+      "examples": {
+        "race": "a merge landing between a main check and the apply or delete",
+        "recovery": [
+          "Terraform refuses a stale saved plan",
+          "a deleted grant has a restore line"
+        ]
+      },
+      "citation_required": [
+        "rule id",
+        "race window",
+        "recovery",
+        "file:line evidence for the race and for the recovery"
+      ],
+      "td_file": "the state root/engineering-state/technical-debt.md",
+      "td_status_line": "- **Status**: ",
+      "approved_by": "the owner 2026-10-23 (part 3)",
+      "_note": "The lane still clears only the ids named in a triage marker. This rule only lets a fix session triage a high as accepted, it never widens what the lane merges."
+    },
+    "autofix": {
+      "enabled": true,
+      "max_sessions_per_day": 3,
+      "run_budget_s": 5400
+    },
+    "_note": "Same gates as the primary lane. Approved by owner decision 2026-10-09 ()."
+  },
+  "reuse_tfplan_gate_matcher": false,
+  "_reuse_note": "The tfplan gate matcher is prod-only. secondary has no terraform-ci workflow, so plan rules never fire here.",
+  "inherit_line_rules_from": "review/policy.json",
+  "_inherit_note": "line_rules and role_assignment_scope come from the primary policy at load time, so the IaC sign-off rules (role grants, identities, federated credentials, policy exemptions, Key Vaults) are one list for both repos.",
+  "scan_suffixes": [".tf", ".tf.json", ".hcl", ".tfvars"],
+  "ignore_checks_regex": "^Vercel",
+  "_ignore_note": "Vercel preview checks are expected and non-blocking on secondary (fork protection, per-app ignored build step). The lane never holds a PR on them.",
+  "path_rules": [
+    {"id": "github-dir", "pattern": "^\\.github/", "reason": "changes .github/ (workflows, actions, CI scripts)"},
+    {"id": "codeowners", "pattern": "(^|/)CODEOWNERS$", "reason": "changes CODEOWNERS"},
+    {"id": "key-material", "pattern": "\\.(pem|pfx|p12|key|snk)$", "reason": "adds or changes key or certificate material"}
+  ],
+  "plan_rules": {}
+}
