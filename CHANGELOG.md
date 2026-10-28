@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-28 (v1.74.0, ops center runtime slot)
+
+The runtime slot behind Tackle now, Discuss and the session list. Opt in: new `server/runtime_slot.py` and routes.
+
+- One consumer command (`OPSCENTER_RUNTIME_CMD`: `start` and `status`) starts and follows sessions; with none configured every route says "no runtime configured" (DESIGN.md 12.23).
+  Tests: 10 against a fake command, plus 1 route test.
+
 ## 2026-10-28 (v1.73.0, python-docx in core CI)
 
 CI installs the pinned `python-docx` so the yearly review export test runs instead of skipping; in CI a missing package fails the test.
