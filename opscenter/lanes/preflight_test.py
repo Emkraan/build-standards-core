@@ -221,7 +221,7 @@ class PreflightTest(Base):
     def test_key_vault_reference_is_not_a_secret(self):
         self.write(
             "infrastructure/terraform/core/kv.tf",
-            'locals {\n  secret = "@Microsoft.KeyVault(SecretUri=https://x.vault.azure.net/secrets/y)"\n}\n',
+            'locals {\n  secret = "@Microsoft.KeyVault(SecretUri=https://${var.vault}.vault.azure.net/secrets/y)"\n}\n',
         )
         self.commit("feat(core): kv ref")
         rc, data, _ = self.run_pf()

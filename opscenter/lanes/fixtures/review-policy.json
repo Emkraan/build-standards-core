@@ -1,0 +1,408 @@
+{
+ "_comment": "primary engineer-PR review policy. Read by pr_review.py (gate + check). Edit freely: the next run picks it up. A rule hit means DO NOT APPROVE: the PR is escalated to the Ops Center (Needs me card). Regexes are Python re, matched case-insensitively. path rules match repo-relative changed paths; line rules match ADDED lines of the listed file types; plan rules read the terraform-ci plan job logs on the PR head.",
+ "version": 1,
+ "repo": "owner/primary-repo",
+ "self_login": "owner-account",
+ "approve_as": "owner-account",
+ "skip_authors_regex": "(\\[bot\\]$|^dependabot|^renovate|^github-actions|^copilot)",
+ "skip_drafts": true,
+ "merge": {
+  "method": "rebase",
+  "use_merge_queue": true,
+  "admin": false,
+  "_note": "Engineer PRs: gh pr review --approve, then gh pr merge --rebase --auto (merge queue). Never --admin unless the owner says so for that PR."
+ },
+ "own_pr_merge": {
+  "residual_risk_rule": {
+   "id": "RR-1",
+   "enabled": true,
+   "title": "Residual risk: a one-second race with a named recovery",
+   "text": "A review finding is auto-accepted and logged as technical debt ONLY when BOTH hold: (i) it needs a concurrent event inside the same instant (a race window of about a second or less, for example a merge landing between a main check and the apply or delete), AND (ii) a working recovery already exists and is named (Terraform refuses a stale saved plan, a deleted grant has a restore line). Everything else still goes to the owner.",
+   "conditions": {
+    "race_window_max_s": 1,
+    "needs_concurrent_event": true,
+    "recovery_exists_and_named": true
+   },
+   "examples": {
+    "race": "a merge landing between a main check and the apply or delete",
+    "recovery": [
+     "Terraform refuses a stale saved plan",
+     "a deleted grant has a restore line"
+    ]
+   },
+   "citation_required": [
+    "rule id",
+    "race window",
+    "recovery",
+    "file:line evidence for the race and for the recovery"
+   ],
+   "td_file": "the state root/engineering-state/technical-debt.md",
+   "td_status_line": "- **Status**: ",
+   "approved_by": "the owner 2026-10-23 (part 3)",
+   "_note": "The lane still clears only the ids named in a triage marker. This rule only lets a fix session triage a high as accepted, it never widens what the lane merges."
+  },
+  "autofix": {
+   "enabled": true,
+   "max_sessions_per_day": 3,
+   "run_budget_s": 5400,
+   "_note": "owner decision 2026-10-09: one fix session at once for my held PRs only. See skill own-pr-autofix."
+  },
+  "enabled": true,
+  "hold_labels": [
+   "do-not-merge",
+   "hold"
+  ],
+  "max_high": 0,
+  "respect_freeze": true,
+  "notify_on_merge": false,
+  "_note": "My own PRs (author owner-account). GitHub forbids self-approval, so own_pr_merge.py (every review-gate tick) bypass-merges one (--rebase --admin --match-head-commit) only when: not draft, no hold label, no conflict, every check green incl. ai-review result, 0 blocking, high findings <= max_high unless I replied on the PR after that head's review (triage), no escalation from the engineer-lane check above, 0 unresolved threads, no active change-freeze window. Everything else stays on Ops Center My PRs with the reason. Approved by owner decision 2026-10-09."
+ },
+ "reuse_tfplan_gate_matcher": true,
+ "_reuse_note": "When true, the HOLD_PATHS / DENY_LINE / non-relative source / new lockfile provider rules from tfplan_gate.py also escalate (rule id tfplan-matcher).",
+ "scan_suffixes": [
+  ".tf",
+  ".tf.json",
+  ".hcl",
+  ".tfvars"
+ ],
+ "path_rules": [
+  {
+   "id": "github-dir",
+   "pattern": "^\\.github/",
+   "reason": "changes .github/ (workflows, actions, CI scripts)"
+  },
+  {
+   "id": "codeowners",
+   "pattern": "(^|/)CODEOWNERS$",
+   "reason": "changes CODEOWNERS"
+  },
+  {
+   "id": "tf-exclusions",
+   "pattern": "^infrastructure/terraform-exclusions\\.json$",
+   "reason": "changes the Terraform coverage exclusions list"
+  },
+  {
+   "id": "policy-dir",
+   "pattern": "^infrastructure/policy/",
+   "reason": "changes Azure Policy (infrastructure/policy/)"
+  },
+  {
+   "id": "identity-root",
+   "pattern": "^infrastructure/identity/",
+   "reason": "changes the federated-credential identity root"
+  },
+  {
+   "id": "forbidden-patterns",
+   "pattern": "^\\.github/forbidden-patterns\\.json$",
+   "reason": "changes the forbidden-patterns scanner config"
+  }
+ ],
+ "line_rules": [
+  {
+   "id": "rbac-privileged-role",
+   "pattern": "role_definition_(name\\s*=\\s*\"(Owner|Contributor|User Access Administrator|Role Based Access Control Administrator)\"|id\\s*=.*(<object id>|<object id>|<object id>|<object id>))",
+   "reason": "grants Owner / Contributor / User Access Administrator / RBAC Administrator"
+  },
+  {
+   "id": "rbac-user-or-group",
+   "pattern": "principal_type\\s*=\\s*\"(User|Group)\"",
+   "reason": "role assignment to a user or group"
+  },
+  {
+   "id": "rbac-user-or-group-lookup",
+   "pattern": "data\\s+\"azuread_(user|users|group|groups)\"",
+   "reason": "looks up a user or group (usually for a grant)"
+  },
+  {
+   "id": "rbac-custom-role",
+   "pattern": "resource\\s+\"azurerm_role_definition\"",
+   "reason": "adds or changes a custom role definition"
+  },
+  {
+   "id": "graph-app-role",
+   "pattern": "resource\\s+\"azuread_(app_role_assignment|service_principal_delegated_permission_grant|directory_role_assignment|group_member)\"",
+   "reason": "Entra grant (Graph app role, delegated grant, directory role, group membership)"
+  },
+  {
+   "id": "postgres-aad-admin",
+   "pattern": "resource\\s+\"azurerm_postgresql_flexible_server_active_directory_administrator\"",
+   "reason": "adds an Entra admin on the shared Postgres server"
+  },
+  {
+   "id": "new-identity",
+   "pattern": "resource\\s+\"(azurerm_user_assigned_identity|azuread_application|azuread_application_registration|azuread_service_principal)\"",
+   "reason": "creates a new identity"
+  },
+  {
+   "id": "new-system-identity",
+   "pattern": "^\\s*type\\s*=\\s*\"(SystemAssigned|UserAssigned|SystemAssigned, ?UserAssigned)\"",
+   "reason": "adds a managed identity block",
+   "path_exceptions": [
+    {
+     "path_regex": "^functions/[^/]+/infra/",
+     "line_regex": "^\\s*type\\s*=\\s*\"SystemAssigned\"\\s*$",
+     "_why": "owner decision 2026-10-20: every function app gets its own system-assigned identity. UserAssigned still escalates, and its grants are checked by the RBAC and Graph rules."
+    }
+   ]
+  },
+  {
+   "id": "federated-credential",
+   "pattern": "(resource\\s+\"(azurerm_federated_identity_credential|azuread_application_federated_identity_credential)\"|federatedIdentityCredentials)",
+   "reason": "adds or changes a federated credential"
+  },
+  {
+   "id": "policy-exemption",
+   "pattern": "(resource\\s+\"azurerm_[a-z_]*policy_exemption\"|Microsoft\\.Authorization/policyExemptions)",
+   "reason": "adds a policy exemption / waiver"
+  },
+  {
+   "id": "policy-not-scopes",
+   "pattern": "^\\s*not_scopes\\s*=",
+   "reason": "adds a policy assignment exclusion (not_scopes)"
+  },
+  {
+   "id": "check-waiver",
+   "pattern": "(checkov:skip|tflint-ignore|#\\s*nosec|tfsec:ignore)",
+   "reason": "waives a static check (checkov / tflint / tfsec)"
+  },
+  {
+   "id": "new-storage-account",
+   "pattern": "(resource\\s+\"azurerm_storage_account\"\\s|Microsoft\\.Storage/storageAccounts@)",
+   "reason": "creates a storage account"
+  },
+  {
+   "id": "new-postgres-server",
+   "pattern": "(resource\\s+\"azurerm_postgresql_flexible_server\"\\s|resource\\s+\"azurerm_postgresql_server\"\\s|Microsoft\\.DBforPostgreSQL/flexibleServers@)",
+   "reason": "creates a Postgres server (ADR 0007: one per tier)"
+  },
+  {
+   "id": "new-app-service-plan",
+   "pattern": "(resource\\s+\"azurerm_(service_plan|app_service_plan)\"\\s|Microsoft\\.Web/serverfarms@)",
+   "reason": "creates an App Service plan",
+   "path_exceptions": [
+    {
+     "path_regex": "^functions/[^/]+/infra/",
+     "block_regex": "(sku_name|name)\\s*=\\s*\"FC1\"",
+     "_why": "owner decision 2026-10-20: every Flex function app has its own FC1 plan by design. Any other SKU still escalates."
+    }
+   ]
+  },
+  {
+   "id": "new-front-door",
+   "pattern": "(resource\\s+\"azurerm_(cdn_frontdoor_profile|frontdoor)\"\\s|Microsoft\\.Cdn/profiles@)",
+   "reason": "creates a Front Door profile"
+  },
+  {
+   "id": "new-apim",
+   "pattern": "(resource\\s+\"azurerm_api_management\"\\s|Microsoft\\.ApiManagement/service@)",
+   "reason": "creates an API Management instance"
+  },
+  {
+   "id": "new-key-vault",
+   "pattern": "(resource\\s+\"azurerm_key_vault\"\\s|Microsoft\\.KeyVault/vaults@)",
+   "reason": "creates a Key Vault"
+  },
+  {
+   "id": "lifecycle-weakened",
+   "pattern": "prevent_destroy\\s*=\\s*false",
+   "reason": "turns prevent_destroy off"
+  }
+ ],
+ "role_assignment_scope": {
+  "id": "rbac-scope-outside-app",
+  "_note": "Every ADDED azurerm_role_assignment / azapi roleAssignments block escalates when its scope does not point at a Key Vault, storage account/container, Postgres server/database, DCR or Web PubSub, or when its role is not data-plane (privileged roles are caught by rbac-privileged-role).",
+  "allowed_scope_regex": "(Microsoft\\.KeyVault/vaults/|Microsoft\\.Storage/storageAccounts/|Microsoft\\.DBforPostgreSQL/flexibleServers/|Microsoft\\.Insights/dataCollectionRules/|Microsoft\\.SignalRService/webPubSub/|azurerm_key_vault\\.|azurerm_storage_(account|container)\\.|azurerm_postgresql_flexible_server|azurerm_monitor_data_collection_rule\\.|azurerm_web_pubsub\\.|azapi_resource\\.(dcr|wps|webpubsub|web_pubsub))",
+  "reason": "role assignment scoped beyond the app's own Key Vault / storage / Postgres / DCR / Web PubSub",
+  "path_exceptions": [
+   {
+    "_note": "owner decision 2026-10-16: a function app root's own grants are routine. Scope AND role must match a listed pair. Roles are the tfapply ABAC list (tfapply-roles.json), which terraform-ci also enforces, so a role outside it fails CI before it can be applied. Anything else in a functions/<app>/infra root still escalates (rbac-scope-outside-app). Other app kinds are unchanged.",
+    "path_regex": "^functions/[^/]+/infra/",
+    "pairs": [
+     {
+      "scope_regex": "^\"?\\$\\{local\\.store_id\\}/blobServices/default/containers/",
+      "role_regex": "role_definition_name\\s*=\\s*\"Storage Blob Data Contributor\""
+     },
+     {
+      "scope_regex": "^\"?\\$\\{local\\.store_id\\}/queueServices/default/queues/",
+      "role_regex": "role_definition_name\\s*=\\s*\"Storage Queue Data Contributor\""
+     },
+     {
+      "scope_regex": "^\"?\\$\\{local\\.store_id\\}/tableServices/default/tables/",
+      "role_regex": "role_definition_name\\s*=\\s*\"Storage Table Data (Reader|Contributor)\""
+     },
+     {
+      "scope_regex": "^local\\.store_id$",
+      "role_regex": "role_definition_id\\s*=\\s*local\\.host_container_lister_role_id"
+     },
+     {
+      "scope_regex": "^\"?\\$\\{local\\.vault_id\\}/secrets/",
+      "role_regex": "role_definition_name\\s*=\\s*\"Key Vault Secrets User\""
+     },
+     {
+      "scope_regex": "^module\\.app_insights\\.id$",
+      "role_regex": "role_definition_name\\s*=\\s*\"Monitoring Metrics Publisher\""
+     },
+     {
+      "scope_regex": "^azapi_resource\\.func\\.id$",
+      "role_regex": "role_definition_id\\s*=.*<object id>"
+     }
+    ]
+   }
+  ]
+ },
+ "plan_rules": {
+  "destroy": {
+   "id": "plan-destroy",
+   "reason": "terraform-ci plan destroys resources"
+  },
+  "replace": {
+   "id": "plan-replace",
+   "reason": "terraform-ci plan replaces resources"
+  },
+  "plan_error": {
+   "id": "plan-error",
+   "reason": "terraform-ci plan errored (cannot read the plan)",
+   "escalate": false
+  },
+  "_note": "plan_error does not escalate by itself: it is a normal finding for the author. It blocks approval because checks are red."
+ },
+ "judgement_rules": [
+  "Escalate (do not approve) when the PR cannot be brought to standard in the review loop: a hard stop with no fix I can give, a true design ambiguity only the owner can settle, or the author has gone 3 rounds without converging on the same finding.",
+  "Escalate when access is granted beyond the app's own Key Vault, storage, Postgres database, DCR or Web PubSub, even if the deterministic rules miss it (for example a grant on the resource group or subscription, a Graph permission, or an access policy on a shared vault).",
+  "Escalate when a resource is destroyed or replaced, even if the terraform-ci destroy guard did not catch it (moved/removed blocks, import of something that already lives in another root).",
+  "A deterministic rule hit is binding. Judgement can only add escalations, never remove one."
+ ],
+ "standards": [
+  "repos/primary/docs/adr/0008-terraform-standard.md",
+  "repos/primary/docs/adr/0007-one-postgres-server-per-tier.md",
+  "repos/primary/docs/adr/0006-ticket-azure-naming.md",
+  "repos/primary/docs/adr/0002-type-based-layout.md",
+  "repos/primary/docs/adr/0005-logging-convention.md",
+  "repos/primary/CONTRIBUTING.md",
+  "repos/primary/CLAUDE.md",
+  "the state root/references/engineering-standards.md",
+  "repos/secondary/buildguidelines/pr-standards.md",
+  "repos/secondary/buildguidelines/security.md",
+  "repos/secondary/buildguidelines/backend-node.md",
+  "repos/secondary/buildguidelines/frontend-react.md",
+  "repos/secondary/buildguidelines/entra-auth.md",
+  "repos/secondary/buildguidelines/admin-rbac.md",
+  "repos/secondary/buildguidelines/terraform.md",
+  "repos/secondary/buildguidelines/cicd.md"
+ ],
+ "review": {
+  "marker": "primary-pr-review",
+  "max_rounds_before_escalation": 3,
+  "stale_escalation_hours": 2
+ },
+ "trust_rules": {
+  "_note": "owner decision 2026-10-15: engineer app-code PRs stay automatic, except a new app's first PR (e.g. the UC portal migration) and each engineer's first 3 merged PRs, which escalate to Needs me. A failed lookup escalates (rule trust-check-failed). approval_paths (owner decision 2026-10-15): endpoint-agent and the endpoint agent ship to devices, so any engineer PR touching them goes to Needs me regardless of history. My own PRs skip all trust rules. owner decision 2026-10-16: a new function app's first PR (a new folder under functions/, rule new-app-first-pr) and a new runbook's first PR (a .ps1 or .py directly in runbooks/<automation account>/ that main does not have, a new account folder included, rule new-runbook-first-pr) also go to Needs me. new_file_roots are file-level roots, checked against a listing of each account folder on main. owner decision 2026-10-16: a rename is not new. A file the PR files API reports as status renamed, whose previous_filename is itself a runbook file under runbooks/, is exempt from new-runbook-first-pr. Added files, copies and renames from outside runbooks/ or from tests/ still take the listing check, and a failed listing still escalates as trust-check-failed.",
+  "new_app_roots": [
+   "apps",
+   "services",
+   "agents",
+   "functions"
+  ],
+  "new_file_roots": [
+   "runbooks"
+  ],
+  "new_file_extensions": [
+   ".ps1",
+   ".py"
+  ],
+  "first_prs_to_review": 3,
+  "approval_paths": [
+   "apps/endpoint-agent/",
+   "apps/endpoint-agent/",
+   ".github/workflows/release-endpoint-agent.yml",
+   ".github/workflows/release-endpoint-agent.yml",
+   ".github/workflows/rollout-endpoint-agent.yml"
+  ],
+  "dev_tier_only": {
+   "enabled": true,
+   "prod_tier": "prod",
+   "kinds": [
+    "function-app",
+    "app-service",
+    "container-app"
+   ],
+   "_note": "owner decision 2026-10-20: dev-only branches do not come to me, only if they affect production resources. A PR is dev-only when every non-Markdown file sits in an app folder, no file is on an approval path, each touched app's deploy.json declares no production tier at the head or on main and is a kind that cannot deploy to prod without it, and terraform-ci is green with every production root at No changes. Then the trust rules and the app-resource rules (WAIVABLE_dev_tier in pr_review.py) are waived. Entra/Graph grants, federated credentials, custom roles, RBAC outside the app, the shared Postgres server, policy, plan destroy/replace/error, tfplan-matcher and ai-review blocks still escalate. The first PR that adds infra.prod to an existing app's deploy.json escalates as prod-wiring-first-pr."
+  }
+ },
+ "maintenance_window": {
+  "_note": "Engineer PRs that take a production system down when merged (an app code deploy that restarts a service, a plan on a production root that replaces or deletes a serving or data resource or changes an attribute the cloud applies with a restart, any plan that cannot be read) are approved as usual but merge only inside the maintenance window of their change class. The owner's own PRs are never held. Outside a class window only an emergency override with a reason may merge. Windows are nightly: start_day at start until end the next morning, in timezone, DST safe.",
+  "enabled": true,
+  "timezone": "America/New_York",
+  "timezone_label": "Eastern",
+  "tier": "prod",
+  "classes": {
+   "standard": {
+    "windows": [
+     {
+      "start_day": "Mon",
+      "start": "21:00",
+      "end": "06:00"
+     },
+     {
+      "start_day": "Tue",
+      "start": "21:00",
+      "end": "06:00"
+     },
+     {
+      "start_day": "Wed",
+      "start": "21:00",
+      "end": "06:00"
+     },
+     {
+      "start_day": "Thu",
+      "start": "21:00",
+      "end": "06:00"
+     },
+     {
+      "start_day": "Fri",
+      "start": "21:00",
+      "end": "06:00"
+     }
+    ]
+   },
+   "restricted": {
+    "windows": [
+     {
+      "start_day": "Thu",
+      "start": "22:00",
+      "end": "04:00"
+     },
+     {
+      "start_day": "Sat",
+      "start": "22:00",
+      "end": "04:00"
+     }
+    ]
+   }
+  },
+  "restricted_systems": [],
+  "_restricted_systems_note": "Entries are deploy.json tool names or Terraform root names. A held PR is restricted when any downtime hit touches one, else standard. A hit whose system is unknown waits for a window open to both classes.",
+  "restart_kinds": [
+   "app-service",
+   "function-app",
+   "container-app"
+  ],
+  "_restart_kinds_note": "Kinds whose deploy restarts a running service (deploy-apps.yml, no deployment slots). web-client ships through Vercel (atomic switch), desktop-agent (endpoint-agent) does not deploy on merge, runbooks publish a new version without stopping running jobs.",
+  "extra_deploys": [
+   {
+    "system": "automation-logic",
+    "enabled": false,
+    "paths": [
+     "logic-apps/"
+    ],
+    "reason": "deploys the automation logic apps, which restarts them for a few seconds"
+   }
+  ],
+  "stale_grace_minutes": 30,
+  "_defaults_note": "serving_types, restart_attrs and postgres_static_parameters default to the lists in maintenance_window.py. Add any of those keys here to override them."
+ },
+ "ai_review": {
+  "escalate_blocking": false,
+  "_note": "owner decision 2026-10-16: a confirmed blocking ai-review finding goes back to the engineer to fix. The red ai-review result check already stops approval and merge, and a new push re-runs it, so it no longer lands on Needs me by itself. Non-convergence after max_rounds_before_escalation still escalates through judgement_rules. The ai-review-override label stays the owner's."
+ }
+}
