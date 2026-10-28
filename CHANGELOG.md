@@ -74,6 +74,48 @@ renders exactly as before. The version and the final standards section number ar
   `tests/test_ui_lint_help_layer.py`, the lint fixtures, and gallery specimens `tips` (with the cues) and `when` with visual
   baselines.
 
+## 2026-10-27 (v1.30.0, glow restored for three named uses)
+
+- Kit: the search field focus ring glow and the progress bar fill glow are back, as they shipped before v1.28.2.
+  The search field keeps the visible `--focus-ring` alongside the glow, so keyboard focus stays clear in both
+  themes. The meter fill and flow graph node glows stay removed, and the status dot ring stays removed.
+- Rule `web-ui.0.3` now lists its allowed uses by name and stays closed to any other glow: hero stat tiles, the
+  active nav marker, selected cards, chart bars, the search field focus ring glow, the progress bar fill glow and
+  the brand mark glow. The brand mark glow is the art mark glow layer (`.art-mark .am-glow`); the plain
+  `.sidebar-brand-mark` tile has no glow and none was added.
+- `tests/test_kit_glow.py` allows the two restored selectors and checks the meter fill stays flat.
+
+## 2026-10-27 (v1.29.3, a rule carries a test and a review together)
+
+- `standards-local/proofs.json`: a rule's value may be a list of records, so a test (or ci) proof and a
+  dated `review` record sit on the same rule and the rule stays `proved` instead of dropping to
+  `attested`. The single-object form is unchanged. A review beside a test is a companion and is not held
+  to the "weaker than the rule's check" limit; an expired or broken review is a problem line and the test
+  still counts; a malformed list entry is a problem line naming its place (`rule[1]`); an empty list is a
+  problem. The reserved keys are untouched.
+- New optional registry field `requires_review: true`: such a rule with a test alone reads `unverified`
+  with a note until a current review is also recorded. No rule carries it yet, so nothing changes for a
+  consumer that changes nothing.
+- CONSUMING.md documents the list form with a neutral example and the reporting table.
+
+## 2026-10-27 (v1.29.2, ops center design, api backed docs home)
+
+- `opscenter/DESIGN.md` sections 5.2, 5.3, 6 and the R6 row: the `docs_home` reference adapter gains
+  an `api` variant for a docs home that is not a git repo. Every write passes a scope proof against
+  the allowed roots (`docs.allowed_roots`), deletes are refused, the body hash is checked and the
+  page is read back. Parameter `docs.adapter` picks the variant (`git` stays the default). The
+  section gives the acceptance test.
+
+## 2026-10-27 (v1.29.1, ops center design, writer rule live switch)
+
+- `opscenter/DESIGN.md` sections 2.5, 4.2, 6 and the R4 row: a "Writer rules" card on the Core page
+  lists every writer rule and offers dry run, enable and disable. Enable needs a dry run finished
+  after the rule last changed that replayed at least one operation with no refused step (an empty
+  dry run never qualifies), plus a typed confirm. Section 4.4 lists the typed confirm format
+  `<scope>.<action> live`. Disable is always one
+  click. The flag lives in a `kv` state file and overrides the parameter at runtime. The section
+  gives the acceptance test.
+
 ## 2026-10-27 (v1.29.0, six consumer gaps: latest by semver, gate ordering, workflow collisions, UI stage, scanner allowlist, ASCII ignore)
 
 - `sync-core.py latest` and `update-core.py` resolve the highest strict `vX.Y.Z` tag by semantic version,

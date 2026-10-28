@@ -35,7 +35,7 @@
       "id": "web-ui.0.3",
       "ref": "web-ui.md 0.3",
       "title": "One glow recipe",
-      "statement": "Glow is one theme-gated recipe driven by the element hue, applied only to hero stat tiles, the active nav marker, selected cards and chart bars.",
+      "statement": "Glow is one theme-gated recipe driven by the element hue, applied only to the named uses: hero stat tiles, the active nav marker, selected cards, chart bars, the search field focus ring glow, the progress bar fill glow and the brand mark glow (the art mark glow layer). Closed to any other glow.",
       "level": "must",
       "applies_to": [
         "web"
