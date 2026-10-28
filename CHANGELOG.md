@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-10-28 (v1.33.0, shell API and gateway, sign-in and rights, build and deploy)
+
+Third piece of the multi-module shell lift. Standards text only: no rule is added and no code changes.
+
+- Standards: `web-shell-gateway.md` (the shell API's middleware order and route areas, the sign-in-only floor, the
+  gateway token, the layout per tier and the call path), `web-shell-auth.md` (sign-in and rights are separate, PKCE,
+  tokens go only to their own base URL, one scope per API and how a module gets its token, delegated-token and
+  audience checks, the enforcement layers, the permission grammar, the wildcard and break-glass, how a caller's
+  permissions are computed, registering a permission) and `web-shell-deploy.md` (one bundle and separate API
+  pipelines, which change redeploys what, gates including the stale registry check, vendoring shared packages, the
+  dev tier behind-main guard, fix-forward recovery). Each links the existing section where the core already
+  states a rule (client runtime, API runtime, ci-cd-release, rbac) instead of repeating it.
+- Documented exceptions: `web-shell.md` section 11 lists where a shell may differ (its own generator, global keyframe
+  names, the console as the hub, per-module marks and the hand-held lists for adding a module), and
+  `web-shell-deploy.md` records a forward-only shell as an exception to the rollback workflow.
+- `web-shell.md` and the README link the three documents.
+
 ## 2026-10-28 (v1.32.0, shell shared packages: module contract validator and RBAC core)
 
 Second piece of the multi-module shell lift. Opt in: no rule is added, nothing a consumer runs today changes.
