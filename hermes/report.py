@@ -210,7 +210,33 @@ def report_target(report_repo: str, core_repo: str, sh: Sh) -> tuple[str, str]:
     return target, ""
 
 
-def find_issue(core_repo: str, sh: Sh) -> dict | None:
+TITLE = "Consumer report: candidates for the core"
+
+
+def _loads(out: str):
+    try:
+        return json.loads(out or "null")
+    except ValueError:
+        return None
+
+
+def find_issue(core_repo: str, sh: Sh, configured: int | str | None = None) -> dict | None:
+    """The account's open report issue. Looked up in this order, first hit wins, so one night's
+    search-index lag or a changed label never opens a second issue next to the existing report:
+
+    1. the configured number (cfg report_issue or CORE_REPORT_ISSUE), read directly, when it is open;
+    2. the open issues labelled consumer-report authored by this account (gh search, may lag);
+    3. the same through the REST issues listing (no search index), filtered to this account's login,
+       preferring the issue titled "Consumer report: candidates for the core" when several match.
+    """
+    num = str(configured or "").strip().lstrip("#")
+    if num.isdigit():
+        rc, out = sh(
+            ["gh", "issue", "view", num, "-R", core_repo, "--json", "number,body,url,state"]
+        )
+        data = _loads(out) if rc == 0 else None
+        if isinstance(data, dict) and str(data.get("state", "OPEN")).upper() == "OPEN":
+            return data
     rc, out = sh(
         [
             "gh",
@@ -232,12 +258,31 @@ def find_issue(core_repo: str, sh: Sh) -> dict | None:
     )
     if rc != 0:
         raise RuntimeError(f"cannot list report issues: {out[-200:]}")
-    issues = json.loads(out or "[]")
-    return issues[0] if issues else None
+    issues = _loads(out) or []
+    if issues:
+        return issues[0]
+    rc, login = sh(["gh", "api", "user", "--jq", ".login"])
+    if rc != 0 or not login.strip():
+        return None
+    rc, out = sh(
+        [
+            "gh",
+            "api",
+            f"repos/{core_repo}/issues?labels={LABEL}&state=open&creator={login.strip()}&per_page=30",
+            "--jq",
+            "[.[] | select(.pull_request == null) | {number, body, url: .html_url, title}]",
+        ]
+    )
+    rows = _loads(out) if rc == 0 else None
+    rows = (
+        [r for r in rows if isinstance(r, dict) and "number" in r] if isinstance(rows, list) else []
+    )
+    rows.sort(key=lambda r: (r.get("title") != TITLE, r["number"]))
+    return rows[0] if rows else None
 
 
 def current_issue(core_repo: str, sh: Sh, run: dict | None) -> dict | None:
-    """The account's open report issue: the one this run created, read by number, else the list."""
+    """The account's open report issue: the one this run created, read by number, else find_issue."""
     if run and run.get("number"):
         rc, out = sh(
             [
@@ -256,7 +301,7 @@ def current_issue(core_repo: str, sh: Sh, run: dict | None) -> dict | None:
                 return json.loads(out)
             except ValueError:
                 pass
-    return find_issue(core_repo, sh)
+    return find_issue(core_repo, sh, (run or {}).get("configured"))
 
 
 def create_issue(core_repo: str, body: str, sh: Sh, run: dict | None) -> tuple[int, str]:
@@ -276,7 +321,7 @@ def create_issue(core_repo: str, body: str, sh: Sh, run: dict | None) -> tuple[i
             "--label",
             LABEL,
             "--title",
-            "Consumer report: candidates for the core",
+            TITLE,
             "--body",
             body,
         ]
