@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-28 (v1.68.0, ops center tools)
+
+The two small tools of the ops center handoff, lifted with their tests. Opt in: new `opscenter/tools`; the test loader gains the `tools` area.
+
+- `livepath.py` (repo path to live path, the map is a JSON file) and `changelog.py` (per pull request changelog entries: check, new, areas; area rules and overlay
+  sync paths are a JSON file). Tests: 2 and 8 (scratch git repositories).
+
 ## 2026-10-28 (v1.67.0, ops center live ref check)
 
 The live ref check plug-in (item 24 remainder), lifted with its tests. Opt in: new `engine/ref_status.py`.
