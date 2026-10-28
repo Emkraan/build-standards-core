@@ -56,6 +56,9 @@ deterministic: modules sort by `order`, then id. The generated file exports `MOD
 default resolved), `ICONS` (module id to icon name) and `FALLBACK_ICON` (`--fallback-icon`, default
 `Box`).
 
+The shell's own per-module manifest (rail pages, links, tiles, Home feeds, API and permission read) is
+documented in [web-shell-manifest.md](web-shell-manifest.md); it is a host extension of this manifest.
+
 ### Host extensions (opt in)
 
 A shell often needs more per module than the seven kit keys (a tagline, a client folder, links,

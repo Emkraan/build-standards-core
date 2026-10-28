@@ -1,0 +1,18 @@
+{
+  "id": "fleet",
+  "name": "Fleet",
+  "tagline": "The device fleet and the connections behind it",
+  "accent": "teal",
+  "icon": "MonitorSmartphone",
+  "order": 25,
+  "client": "apps/shell/client",
+  "api": { "gateway": "console", "prefix": "/api", "scopeEnv": "CONSOLE", "estateKey": "fleet" },
+  "rbac": { "shape": "console", "base": "/admin", "me": "/me", "permissionSource": "console" },
+  "groups": [{ "key": "devices", "label": "Devices", "order": 10 }],
+  "pages": [
+    { "key": "agent", "route": "/agent", "label": "Agent", "icon": "MonitorSmartphone", "hue": "blue", "requires": ["tab:agent", "alerts/action:admin:mailbox"], "group": "devices", "order": 10 }
+  ],
+  "links": [],
+  "tiles": [],
+  "landing": ["/agent"]
+}
