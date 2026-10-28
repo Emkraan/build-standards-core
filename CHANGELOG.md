@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-28 (v1.52.0, ops center pre-push gate)
+
+Seventeenth piece of the ops center lift (opscenter/DESIGN.md section 12.11). Opt in: no rule is added and nothing a consumer runs
+today changes.
+
+- Code: `opscenter/lanes/preflight.py`, the reference pre-push gate of the build procedure: repo gates, hygiene, version bump, branch
+  rule, conflict, commit attribution, the lane dry run as expected sign-offs, overlap with other open pull requests, the finding
+  catalog's scriptable rules, the self-review gate, the local independent review and the design check for acting automation. Exit 0
+  pass, 1 failures, 2 environment problem (fail closed). Repositories, identity, branch rule, version file, catalog, the lane engine
+  and the plan matcher come from the targets file of the auto-fix starter; the OpenAI reviewer's key comes from a command, so no
+  1Password reference, keychain service or token is in the code.
+- Tests: 57 unit tests on scratch git repos with a fake code host CLI and fake reviewers, run in CI (about four minutes).
+
 ## 2026-10-28 (v1.51.0, pull request build procedure and finding catalog)
 
 Sixteenth piece of the ops center lift (opscenter/DESIGN.md section 12.11). Docs only: no rule is added and no code changes.

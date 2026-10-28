@@ -1391,8 +1391,12 @@ in flight 30, a runbook release 60, a waiting deployment 6, a new pull request n
 ### 12.11 The pre-push gate and the build procedure (items 3 to 5)
 
 The auto-fix starter (12.9) runs a consumer's pre-push gate as a command, and the build procedure (`opscenter/pr-build/PROCEDURE.md`)
-says when. The gate is the contract below; a consumer's own gate implements it, and a reference implementation of the checks lifts
-as `lanes/preflight.py` in its own piece.
+says when. The gate is the contract below; a consumer's own gate implements it, and the reference implementation of the checks is
+`lanes/preflight.py`, whose targets come from the same targets file as the auto-fix starter (profile keys: `repo`, `policy`,
+`lane_engine`, `plan_matcher`, `prompts`, `branch_rule`, `catalog`, `version_file`, `version_regex`, `js_gate`, `selftest_paths`; top
+level `self_login`, `author_name`, `author_email`, `attribution_extra`). The lane engine and the plan matcher are modules named by
+path (the plan matcher is `lanes/tfplan_gate.py`), each skipped when unset; the OpenAI reviewer's key comes from a command
+(`PREFLIGHT_OPENAI_KEY_CMD`), never a file or a parameter.
 
 | Part | Contract |
 |---|---|
