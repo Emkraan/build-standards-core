@@ -10,8 +10,8 @@ runs today changes.
   It lifts as one unit because the pages import one another and the data reader; a partial lift would not build.
   Repository names and the sidebar subtitle are build parameters (`VITE_PRIMARY_REPO`, `VITE_APP_SUBTITLE`), the links
   catalog is an example, and estate names are gone (the two review lanes are `platform` and `team`).
-- CI: `.github/workflows/opscenter-app.yml` installs the kit and the app, typechecks, runs the 24 node tests (4 browser
-  tests skip without a browser) and builds. All three pass.
+- CI: `.github/workflows/opscenter-app.yml` installs the kit and the app, builds (with the bundle size budget check), then runs the 28 node tests, which include the browser
+  accessibility and live action tests with Chrome.
 - Left to the consumer: wiring the build variables, and pointing the data reader's endpoints at the core server modules
   as each lands (the envelope and the registry, R1 and R2).
 

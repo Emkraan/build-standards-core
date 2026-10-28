@@ -26,8 +26,8 @@ whose backend slot is null hides (section 1.3).
 npm ci && npm run typecheck && npm test && npm run build
 ```
 
-CI runs the same three in `.github/workflows/opscenter-app.yml`. Four browser tests (accessibility and live actions) skip
-without a browser and run in a consumer's own CI.
+CI runs the same in `.github/workflows/opscenter-app.yml`, with the build first and Chrome for the browser tests
+(accessibility and live actions). Without a browser on a laptop those tests skip; in CI they never do.
 
 ## Notes
 
