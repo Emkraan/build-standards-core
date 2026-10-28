@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-28 (v1.36.0, ops center change freeze gate)
+
+Third piece of the ops center lift (opscenter/DESIGN.md section 12.3, item 8). Opt in: no rule is added and nothing
+a consumer runs today changes.
+
+- Code: `opscenter/lanes/freeze_gate.py` decides whether a pull request may merge now given the freeze windows the
+  `freeze_source` slot writes. In a freeze, a pull request that changes a path that deploys on push to main is held;
+  a quiet path merges. It fails closed: a missing or unreadable freeze file, an open ended window, a code host error
+  and an empty path list are all HOLD. The deploy impact classification (deploy paths, client globs, quiet prefixes,
+  suffixes and top folders) is data in the freeze file, the repo and file location are arguments, and the zone
+  defaults to UTC.
+- Tests: 18 unit tests and a fixture freeze file, run in CI with the other lane tests.
+
 ## 2026-10-28 (v1.35.0, ops center lane modules: maintenance windows, merge queue, run jobs)
 
 Second piece of the ops center lift (opscenter/DESIGN.md section 12.3, items 1, 2, 6 and 24). Opt in: no rule is

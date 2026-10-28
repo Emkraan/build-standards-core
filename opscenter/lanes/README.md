@@ -9,6 +9,7 @@ window table, the restricted systems and the zone are policy data, never code.
 | `maintenance_window.py` | Classifies a pull request as downtime (a deployable app that restarts on deploy, a plan that replaces or deletes a serving or data resource, or an unreadable plan, which fails closed), picks the change class (`standard`, `restricted` or `both`), and does the window math in UTC with DST handled per calendar date | `maintenance_window_test.py` |
 | `merge_queue.py` | Puts a pull request into the main branch's merge queue and proves it got there (cancels a stale auto merge request, enqueues, re-reads, raises when it did not enter) | `merge_queue_test.py` |
 | `gh_run_jobs.py` | Reads every job of a workflow run in pages of 50 with one retry on a 5xx, so every lane reads run jobs one way | `gh_run_jobs_test.py` |
+| `freeze_gate.py` | Change freeze merge gate: reads the freeze windows, classifies the changed paths as deploying or quiet, answers MERGE_OK or HOLD (exit 0 or 10), fails closed | `freeze_gate_test.py` |
 | `../testing/hermetic_home.py` | A throwaway HOME so a test never touches the real agent home or state tree | `hermetic_home_test.py` |
 
 ## Policy data (`maintenance_window` in the lane policy file)
