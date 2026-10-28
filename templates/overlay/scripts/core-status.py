@@ -75,7 +75,8 @@ warning, then it is a problem and proves nothing.
 
 standards-local/proofs.json (consumer-owned, optional) records how the app proves a rule the script
 cannot see: {"<rule id>": {"kind": "ci|test|review", "ref": "...", "date": "YYYY-MM-DD",
-"reviewed_by": "..."}}. ref is "<workflow file>#<job>" for ci, a test file path for test, and the
+"reviewed_by": "..."}}; the value may also be a list of such records (a test plus a dated review reads
+proved, a review alone attested). ref is "<workflow file>#<job>" for ci, a test file path for test, and the
 review record's path for review (relative to the repo root). A proof's kind must be the rule's check
 kind or stronger (ci > test > review); a review needs a date within "$max_review_age_days" (default
 180). A broken or stale entry is listed under problems and proves nothing.
@@ -556,8 +557,68 @@ PROOF_TAG_ENFORCED = False
 PROOF_WARNINGS: list = []
 
 
+def check_proof(rid, p, where, rule, root, today, max_days, strength_check=True):
+    """One proof record: None when it is valid, else the problem line."""
+    import datetime
+
+    if (
+        not isinstance(p, dict)
+        or p.get("kind") not in PROOF_KINDS
+        or not isinstance(p.get("ref"), str)
+        or not p["ref"]
+    ):
+        return f"{where}: needs kind (ci, test, review or waiver) and ref"
+    kind, ref = p["kind"], p["ref"]
+    if (
+        strength_check
+        and kind != "waiver"
+        and STRENGTH[kind] < STRENGTH.get(rule["check"]["kind"], 0)
+    ):
+        return f"{where}: a {kind} proof is weaker than the rule's {rule['check']['kind']} check"
+    if kind == "ci":
+        wf, _, job = ref.partition("#")
+        jobs = workflow_jobs(wf) if wf and job else None
+        if jobs is None or job not in jobs:
+            return f"{where}: ref must be <workflow file>#<job> of an installed workflow; {ref} not found"
+    elif kind == "test":
+        if not (root / ref).is_file():
+            return f"{where}: test file {ref} does not exist"
+        try:
+            tagged = rid in (root / ref).read_text(encoding="utf8", errors="replace")
+        except OSError:
+            tagged = False
+        if not tagged:
+            msg = (
+                f"{where}: test file {ref} does not name the rule; add the comment core-rule: {rid}"
+            )
+            if PROOF_TAG_ENFORCED:
+                return msg
+            PROOF_WARNINGS.append(msg)
+    else:
+        if not (root / ref).is_file():
+            return f"{where}: {kind} record {ref} does not exist"
+        if kind == "waiver" and not (
+            str(p.get("reason", "")).strip() and str(p.get("reviewed_by", "")).strip()
+        ):
+            return f"{where}: a waiver needs a reason and reviewed_by"
+        if kind == "review" and not str(p.get("reviewed_by", "")).strip():
+            PROOF_WARNINGS.append(f"{where}: a review proof should name reviewed_by")
+        try:
+            when = datetime.date.fromisoformat(str(p.get("date", "")))
+        except ValueError:
+            return f"{where}: a {kind} proof needs date YYYY-MM-DD"
+        age = (today - when).days
+        if age > max_days:
+            return f"{where}: review of {when} is {age} days old, over the {max_days}-day limit"
+    return None
+
+
 def load_proofs(registry, today=None) -> tuple[dict, list[str]]:
-    """Valid proof records by rule id, and a problem line for every broken or stale one."""
+    """Valid proof records by rule id, and a problem line for every broken or stale one.
+
+    A rule's value is one record or a list of records (for example a test plus a dated review). The result
+    holds one record per rule: the strongest valid ci or test record, else the first valid one. When a
+    ci or test record is accompanied by a valid review record, that review is attached under "_review"."""
     import datetime
 
     PROOF_WARNINGS.clear()
@@ -576,72 +637,55 @@ def load_proofs(registry, today=None) -> tuple[dict, list[str]]:
     today = today or datetime.date.today()
     root = repo_root()
     good, problems = {}, []
-    for rid, p in data.items():
+    for rid, value in data.items():
         where = f"proofs.json {rid}"
         if rid not in rules:
             problems.append(f"{where}: no such rule in the registry")
             continue
-        if (
-            not isinstance(p, dict)
-            or p.get("kind") not in PROOF_KINDS
-            or not isinstance(p.get("ref"), str)
-            or not p["ref"]
-        ):
-            problems.append(f"{where}: needs kind (ci, test, review or waiver) and ref")
-            continue
-        kind, ref = p["kind"], p["ref"]
-        if kind != "waiver" and STRENGTH[kind] < STRENGTH.get(rules[rid]["check"]["kind"], 0):
-            problems.append(
-                f"{where}: a {kind} proof is weaker than the rule's {rules[rid]['check']['kind']} check"
-            )
-            continue
-        if kind == "ci":
-            wf, _, job = ref.partition("#")
-            jobs = workflow_jobs(wf) if wf and job else None
-            if jobs is None or job not in jobs:
-                problems.append(
-                    f"{where}: ref must be <workflow file>#<job> of an installed workflow; {ref} not found"
-                )
+        if isinstance(value, list):
+            if not value:
+                problems.append(f"{where}: a list needs at least one record")
                 continue
-        elif kind == "test":
-            if not (root / ref).is_file():
-                problems.append(f"{where}: test file {ref} does not exist")
-                continue
-            try:
-                tagged = rid in (root / ref).read_text(encoding="utf8", errors="replace")
-            except OSError:
-                tagged = False
-            if not tagged:
-                msg = f"{where}: test file {ref} does not name the rule; add the comment core-rule: {rid}"
-                if PROOF_TAG_ENFORCED:
-                    problems.append(msg)
-                    continue
-                PROOF_WARNINGS.append(msg)
+            entries = [(f"{where}[{i}]", p) for i, p in enumerate(value)]
+            # a review beside a ci or test record is a companion, not a weaker proof of the rule
+            strong = any(isinstance(p, dict) and p.get("kind") in ("ci", "test") for p in value)
         else:
-            doc = root / ref
-            if not doc.is_file():
-                problems.append(f"{where}: {kind} record {ref} does not exist")
-                continue
-            if kind == "waiver" and not (
-                str(p.get("reason", "")).strip() and str(p.get("reviewed_by", "")).strip()
-            ):
-                problems.append(f"{where}: a waiver needs a reason and reviewed_by")
-                continue
-            if kind == "review" and not str(p.get("reviewed_by", "")).strip():
-                PROOF_WARNINGS.append(f"{where}: a review proof should name reviewed_by")
-            try:
-                when = datetime.date.fromisoformat(str(p.get("date", "")))
-            except ValueError:
-                problems.append(f"{where}: a {kind} proof needs date YYYY-MM-DD")
-                continue
-            age = (today - when).days
-            if age > max_days:
-                problems.append(
-                    f"{where}: review of {when} is {age} days old, over the {max_days}-day limit"
-                )
-                continue
-        good[rid] = p
+            entries, strong = [(where, value)], False
+        valid = []
+        for label, p in entries:
+            companion = strong and isinstance(p, dict) and p.get("kind") == "review"
+            problem = check_proof(rid, p, label, rules[rid], root, today, max_days, not companion)
+            if problem:
+                problems.append(problem)
+            else:
+                valid.append(p)
+        if not valid:
+            continue
+        primary = max(
+            valid, key=lambda p: STRENGTH[p["kind"]] if p["kind"] in ("ci", "test") else -1
+        )
+        record = dict(primary)
+        if primary["kind"] in ("ci", "test"):
+            review = next((p for p in valid if p["kind"] == "review"), None)
+            if review:
+                record["_review"] = review
+        good[rid] = record
     return good, problems
+
+
+def proof_status(rule, proof):
+    """(status, note) a valid proof record gives a rule that would otherwise be unverified; status is
+    unverified when the rule requires a review (registry requires_review) and no current one came with it."""
+    kind = proof["kind"]
+    note = f"{kind}: {proof['ref']}"
+    if kind in ("review", "waiver"):
+        return {"review": "attested", "waiver": "waived"}[kind], note
+    review = proof.get("_review")
+    if review:
+        return "proved", f"{note}; review: {review['ref']}"
+    if rule.get("requires_review"):
+        return "unverified", f"{note}; needs a dated review record from the accountable owner too"
+    return "proved", note
 
 
 # Rules a consumer declares do not apply to it (no real surface), in the same proofs.json under one reserved key:
@@ -1047,9 +1091,9 @@ def main(argv):
                 if n:
                     status = "fail" if n_over else "excepted"
         proof = proofs.get(r["id"])
-        if proof and status == "unverified":
-            status = {"review": "attested", "waiver": "waived"}.get(proof["kind"], "proved")
-            note = f"{proof['kind']}: {proof['ref']}"
+        pstatus, pnote = proof_status(r, proof) if proof and status == "unverified" else (None, "")
+        if pstatus and (pstatus != "unverified" or not na_applies(status, r["id"], na_by_id)):
+            status, note = pstatus, pnote
         elif na_applies(status, r["id"], na_by_id):
             na = na_by_id[r["id"]]
             status, note = "not_applicable", f"not applicable: {na['reason']}"
