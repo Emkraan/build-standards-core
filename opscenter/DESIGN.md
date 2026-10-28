@@ -1319,6 +1319,7 @@ the standard drops: it is waiting on something named here.
 
 | 24 | cron catalog gate, sitrep, hermetic test home, reviews visibility check | cron catalog gate, hermetic home, reviews visibility check and the sitrep (`gates/sitrep.py`, `sitrep_prerun.py`) lifted; the live ref check is a plug-in the consumer supplies (`ref_status` is not lifted) |
 | (tools) | export path map, per pull request changelog tool | lifted: `tools/livepath.py`, `tools/changelog.py` (both configured by JSON files, `tools/README.md`) |
+| (collector) | inbound mail and chat monitor gates | lifted: `gates/inbound_mail_gate.py`, `inbound_chat_gate.py`, `inbound_score.py` (12.19) |
 | (2.4) | swr, alerts, review tombstones, paths | lifted: `server/modules/` |
 | (2.6) | analyzer: contract, handled match, first seen, routing, collector, bundle builder, wake gate | lifted: `engine/` (`contract`, `handled`, `first_seen`, `routing`, `collect`, `analysis_bundle`, `board_build`), `gates/action_center_gate.py`, `server/modules/routing_api.py` (12.13) |
 | (4) | the app | lifted: `opscenter/app`, all 114 source files, typecheck, unit tests and build in CI; the browser tests are `npm run test:browser` |
@@ -1608,3 +1609,17 @@ their state live (the code host through `gh`, the tracker through a driver comma
 `REF_STATUS_SITE` (the 12.15 driver contract; none means ticket lookups report an error), `REF_STATUS_APPLY_WORKFLOW`. A read error never
 marks anything finished. Differences from the running code: the repository and prefix map, the driver path and the key pattern were
 literals and are parameters.
+
+### 12.19 The inbound monitor gates
+
+`gates/inbound_mail_gate.py` and `gates/inbound_chat_gate.py` are the wake gates of the two inbound monitors (the `collector` slot's
+mail and chat feeds); `gates/inbound_score.py` is the noise filter they share. The pullers are the consumer's commands: the mail
+gate runs `GATE_MAIL_PULLER` (a command list printing `{"messages": [...], "checkpoint", "new_checkpoint"}`), the chat gate runs the
+sources of `GATE_CHAT_SOURCES` (each a list of commands printing `{"messages": [...]}`, exit 3 for "another pull holds the lock", optional
+sentinels that wake with a fix text). The contract of the checkpoint handoff is unchanged: the gate pulls once and spools the batch, so
+the agent never re-pulls. Kept items accumulate (`gatelib.accumulate`); an urgent keep reason (`urgent-signal`, `flagged-high-importance`,
+`novel-alert`, `count-spike`, `firing-unresolved`) wakes now, anything else waits for a drain hour (`GATE_DRAIN_HOURS`). Every sender,
+subject shape, bot, channel and name is data in `INBOUND_SCORE_CONFIG`; with none the scorer is a pass through that drops only
+recorder bots. Differences from the running code: the vendor sender and subject lists, the ticket and incident patterns, the second chat
+platform and the owner's name were literals; the Teams and Slack gates are one chat gate with sources; the hard coded interpreter and
+puller paths are parameters. `gates/README.md` lists the variables.
