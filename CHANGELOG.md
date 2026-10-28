@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-28 (v1.61.0, ops center analyzer inputs)
+
+Item (2.6) of the ops center standard: the routing, the collector, the bundle builder, the board composer and the wake gate, lifted
+with their tests. Opt in: new files under `opscenter/engine`, `gates` and `server/modules`; `engine/contract.py` only renames its
+caller in the docstring.
+
+- `routing.py` (rules as data, first match wins, a person who addressed the owner is considered by default), `collect.py`,
+  `analysis_bundle.py`, `board_build.py`, `action_center_gate.py`, `routing_api.py`. Every path and name is a parameter
+  (`OPSCENTER_COLLECT_CONFIG`) and the roster, extra board items, ref check and team away strip are optional plug-ins (DESIGN.md 12.13).
+- Source ids are generic (`chat.*`, `tracker.assigned`); the seed routing file is an example.
+- Tests: routing (22), collect (12), board_build (8), the gate (8), routing_api (5).
+
 ## 2026-10-28 (v1.58.0, month grid lane-packed bars)
 
 Third of the generic kit pieces the hub needs (intake issue 115). Opt in: an event without `endDate`, and a grid without `laneBars`,
