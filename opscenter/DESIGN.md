@@ -1367,3 +1367,24 @@ A `build` target batches fixes into one push per round and loads its build skill
 prefix the notes of `<target>-feature`. The brief tells the session to commit as the target's `identity` (a noreply
 address where the repo rejects real ones), never to merge, approve, label or weaken a check.
 
+### 12.10 The reviews visibility check (item 24)
+
+`lanes/reviews_visibility.py` proves that every open item behind the Reviews pages sits in a tab with an action and that the card
+agrees with the lane that owns it. It raises one board item per finding (`contradiction`, `invisible`, `stuck`), updates it in place
+and closes it when the condition clears; it reads the live Reviews bundles, the lanes' own pull request state and the code host, and
+writes only its own state file and the board store.
+
+Lane parameters (`local/params.json` `reviews_visibility`, or the environment variable):
+
+| Parameter | Variable | Default | Meaning |
+|---|---|---|---|
+| `lanes` | `RV_LANES` | none (required) | `{"primary": {repo, own_state}, "secondary": {repo, own_state}}`: the repo and the own pull request lane's state file of each lane. The primary lane also carries privileged plans, owner roots and runbook releases; a consumer with one lane omits `secondary` |
+| `self_login` | `RV_SELF_LOGIN` | `owner-login` | the owner's login (which pull requests are the owner's) |
+| `owner` | `RV_OWNER` | `owner` | the owner field of the board items it raises |
+| `own_check` | `RV_OWN_CHECK` | none | the lane's live check, a command with `{pr}` and `{lane}` that prints the lane verdict JSON; without it the live read is skipped |
+| `refresh` | `RV_REFRESH` | none | an optional command that refreshes the ops center data after a change |
+| `base` | `RV_BASE` | `http://127.0.0.1:8766` | the ops center base URL |
+
+Thresholds (privileged assessment 20 minutes, plan never parsed 10, in flight 20, the owner's pull request waiting 30, an owner root
+in flight 30, a runbook release 60, a waiting deployment 6, a new pull request not picked up 20 and 15) are constants in the module.
+
