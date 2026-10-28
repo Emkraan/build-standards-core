@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-28 (v1.65.0, ops center core and sync pull request lanes)
+
+Items 4 and 5 of the ops center standard, lifted with their tests. Opt in: two new lanes under `opscenter/lanes`; `autofix.problem_of`
+gains an optional `target` argument.
+
+- `core_pr_lane.py` (merge lane for the owner's green core pull requests, owner mode, release and tag check) and `own_sync_lane.py`
+  (auto-fix lane for nightly sync pull requests). Repository, login, policy and the after merge sync command are parameters.
+- `autofix.py`: a target's `extra_fixable` needles are honoured (they were documented, not read).
+- Tests: 107 and 49 checks, run by `review_lanes_test.py`.
+
 ## 2026-10-28 (v1.64.0, ops center lift status)
 
 Documentation only. DESIGN.md 12.7 had two rows each for items 18 and 19 after the last three merges: the stale ones are gone, the
