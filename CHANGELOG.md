@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-28 (v1.62.0, ops center people slot)
+
+Item 19 of the ops center standard: the 1:1 board, the team away strip and the yearly review store, lifted with their tests as the
+optional people module (off by default). Opt in: new files under `opscenter/people`; the test loader gains the `people` area.
+
+- `one_on_ones.py`, `team_away.py`, `yearly_reviews.py`. The owner, the roster, the zone, the subject format and the ticket and noise
+  patterns are parameters (`OPSCENTER_PEOPLE_PARAMS`). The four adapters (roster, calendar, meetings, message feeds) are commands and
+  files with a null default; the contracts are DESIGN.md 12.14. The yearly drafter is the consumer's command.
+- The yearly `.docx` export imports python-docx lazily (the declared exception); its test is skipped when the package is missing.
+- Tests: board 11, slots 9, identity 11, team away 4, yearly 9.
+
 ## 2026-10-28 (v1.61.0, ops center analyzer inputs)
 
 Item (2.6) of the ops center standard: the routing, the collector, the bundle builder, the board composer and the wake gate, lifted

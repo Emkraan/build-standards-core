@@ -1310,7 +1310,7 @@ the standard drops: it is waiting on something named here.
 | 14, 15, 16 | image watch and pool, runbook releases, browser status | lifted: `image_watch.py`, `desktop_pool.py`, `runbook_releases.py`, `browser_status.py` |
 | 17 | model accounts, spend, fallback | not lifted, by decision: the running module reads another tool's OAuth tokens from the agent's credential pool and calls an undocumented usage endpoint with a borrowed client user agent. The standard keeps the `spend` and `plan_limits` slots (section 5.3); an adapter is the consumer's own, on a documented usage source. The spend page is lifted in the app |
 | 18 | sprint close, retro, ticket progress, needs me | sprint close gate lifted (`gates/`); the rest not lifted |
-| 19 | 1:1 board, yearly export | not lifted: the module is built on a directory pull, calendar and meeting adapters and a roster; it waits on the people slot interface (roster, calendar, meetings) and on the exception for a document export library. The pages are lifted in the app |
+| 19 | 1:1 board, yearly export | lifted: `people/` (`one_on_ones.py`, `team_away.py`, `yearly_reviews.py`) with the four adapters as commands and files with a null default (12.14); the yearly drafter is the consumer's command |
 | 20 | links check | lifted: `server/modules/link_health.py` (catalog is the consumer's file) |
 | 21 | knowledge proposals | lifted: proposal rewrite gate, applied log, `engine/publish_mode.py`; the queued approvals applier is not |
 | 22 | plans reconcile | lifted: `gates/plans_reconcile_gate.py` |
@@ -1481,3 +1481,53 @@ Differences from the running code, marked honestly: the running collector had Te
 its adapters. They are generic here (`chat_feeds`, `tracker`, `owner_name`), so the source ids are `chat.*`, `tracker.assigned`
 and so on and a consumer's routing file renames its own. The seed rules in `engine/fixtures/routing-seed.json` are examples,
 not the running rules. The running wake gate wrote its bundle under a fixed temporary path; it writes under the gate state dir.
+
+### 12.14 The people slot (item 19)
+
+The slot is the code in `opscenter/people` plus four adapters the consumer supplies. Nothing about a person, a tenant or a
+tool is in the code; the parameters file `OPSCENTER_PEOPLE_PARAMS` (default `<state>/people-params.json`) carries it, every
+key optional:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `owner_name`, `owner_email` | `the owner`, none | the owner's identity: their own messages are not topics, their address is not an attendee |
+| `roster` | none | `[{name, first, email, title, group}]`, `group` `report` (default) or `partner`. A report carries no title or address in code: the directory pull owns them |
+| `calendar_tz` | `UTC` | the zone the calendar reads wall clock times in |
+| `feeds` | `<agent home>/feeds/chat.json`, `mail.json` | the message feeds |
+| `roster_pull_file`, `calendar_cmd`, `meetings_cmd` | none | the roster, calendar and meetings adapters |
+| `meeting_subject` | `{owner} and {first}: 1:1` | the invite subject, with `{owner}`, `{first}`, `{name}` |
+| `retention_days` | 45 | how long the ledger keeps a topic (section 11 item 5) |
+| `ticket_regex`, `ticket_url_regex`, `mail_noise_regex`, `partner_invite_regex`, `excluded_title_regex` | generic | what a ticket key is, which mail subjects are never topics, standing invites, and titles that never belong on the board |
+| `team_name`, `drafter_cmd` | `Team`, none | the yearly store's header and the drafting job command (a list; the job is passed as `--job <file>`) |
+
+The four slots, each with its null default (the board renders, and the part that needs it reports itself unavailable):
+
+1. **Roster.** `roster_pull_file` is a JSON list (or `{"value": [...]}`) of `{displayName, jobTitle, mail}` rows from the
+   consumer's directory. The pull wins whenever it parses and writes the last good copy (`roster-last-pull.json`, a digest
+   guards it from hand edits); the copy is read only when the pull fails and the board shows it stale with its age. Never raises.
+2. **Calendar.** `calendar_cmd` prints today's events as JSON (a list, or `{"value": [...]}`) with `subject`,
+   `start.dateTime`, `end.dateTime` (wall clock in `calendar_tz`), `attendees[].emailAddress.address`, `isCancelled`,
+   `onlineMeeting.joinUrl`, `webLink`. Ten minute cache; the last good pull is kept on a failure.
+3. **Meetings.** `meetings_cmd` is run with `upcoming --days N`, `availability --email E --days D --minutes M`,
+   `create` (the request as JSON on stdin) and `away --emails A,B --days D`. The last stdout line is JSON; exit 0 ok, 2 sign in
+   needs a refresh, 3 service error, 4 bad input; an error prints `{"error": ..., "reauth"?: true}`. `create` carries
+   `auto_transcribe` and `what_if` (a dry run) and returns `{id, subject, start, end, join_url, transcription}`. A 90 second guard
+   refuses a second booking for the same person.
+4. **Message feeds.** Read only files `{"updated", "items": [...]}`. Chat items: `created`, `chat_id` or `channel`, `chat_type`
+   (`oneOnOne` marks a 1:1), `from_name`, `id`, `text`, `chat_topic`, `web_url`. Mail items: `received`, `from_addr`, `from_name`,
+   `subject`, `conversation_id`, `id`, `preview`, `web_link`. A missing or corrupt file yields no topics.
+
+Wiring: `one_on_ones.py` is the `OPSCENTER_PEOPLE` plug-in of the collector and the board composer (12.13: `roster()`,
+`agenda_action_items()`, `harvest(force)`), and `team_away.py` is `OPSCENTER_TEAM_AWAY` (`snapshot()`). The server routes
+(`/api/one-on-ones` and its availability, status, topic and schedule writes, the yearly review routes) call the module
+functions `board()`, `availability()`, `schedule()`, `set_status()`, `add_topic()`, `remove_topic()` and the yearly store's
+`upsert()`, `start_job()`, `get_all()` and `export_docx()`; they are loopback and same origin only, and people endpoints send
+`no-store` (section 2.2). State files: `one-on-one-topics.json`, `one-on-ones.json`, `one-on-one-seen.json`,
+`roster-last-pull.json`, `team-away.json` and the `team-performance/yearly-reviews*` files, all written atomically.
+
+Differences from the running code, marked honestly: the roster, the owner identity, the subject format, the zone and the
+ticket and noise patterns were literals and are parameters; the calendar and meetings helpers were scripts of one cloud
+mail and calendar tenant and are commands behind the contract above (the helpers themselves are the consumer's and are not
+in core); the drafter that reads the full year evidence and calls a model is the consumer's command (`drafter_cmd`); the
+topic source names (`teams`, `mail`) and the `teams_updated` field keep the names the app already reads. The yearly export
+could not be run here without python-docx (pinned in `people/requirements.txt` for the pinned requirements rule): its test is skipped when the package is missing.
