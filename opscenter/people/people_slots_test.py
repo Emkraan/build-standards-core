@@ -289,6 +289,7 @@ class Slots(unittest.TestCase):
         sys.path.insert(0, str(HERE.parent / "engine"))
         os.environ["OPSCENTER_PEOPLE"] = str(HERE / "one_on_ones.py")
         os.environ["OPSCENTER_COLLECT_CONFIG"] = str(self.root / "none.json")
+        os.environ["OPSCENTER_OWNER_NAME"] = OWNER
         try:
             sys.modules.pop("collect", None)
             import collect
@@ -301,6 +302,7 @@ class Slots(unittest.TestCase):
         finally:
             os.environ.pop("OPSCENTER_PEOPLE", None)
             os.environ.pop("OPSCENTER_COLLECT_CONFIG", None)
+            os.environ.pop("OPSCENTER_OWNER_NAME", None)
             sys.modules.pop("collect", None)
             sys.path.remove(str(HERE.parent / "engine"))
         self.assertTrue(callable(oo.agenda_action_items) and callable(oo.harvest))

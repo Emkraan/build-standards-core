@@ -172,6 +172,10 @@ class RosterIdentityTest(unittest.TestCase):
         self.dash = self.root / "state" / "dashboard"
         self.dash.mkdir(parents=True)
         os.environ["OPSCENTER_ROOT"] = str(self.root)
+        os.environ["OPSCENTER_STATE_DIR"] = str(
+            self.root / "state"
+        )  # another module may have set its own
+        os.environ.pop("OPSCENTER_PEOPLE_PARAMS", None)
         import one_on_ones
 
         self.oo = importlib.reload(one_on_ones)
