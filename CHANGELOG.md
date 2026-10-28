@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-28 (v1.51.0, pull request build procedure and finding catalog)
+
+Sixteenth piece of the ops center lift (opscenter/DESIGN.md section 12.11). Docs only: no rule is added and no code changes.
+
+- `opscenter/pr-build/PROCEDURE.md`: the generic build procedure behind the own pull request lane and the auto-fix starter (build
+  order, the pre-push gate and its exit codes, the self review gate, the local independent review in at most three rounds, the
+  design check for acting automation, one push per review round, stacking, dark launches, the triage marker rule, recurring
+  pitfalls, the learning loop).
+- `opscenter/pr-build/finding-catalog.md`: the finding catalog rewritten without any repository, ticket or person names: 99
+  rules in seven sections (infrastructure state, identity and access, runtime and scripts, CI and workflows, documentation claims,
+  review state trackers, clients and caches).
+- Section 12.11 records the gate contract (verbs, exit codes, files, checks, per repository profile); the reference implementation
+  lifts later as its own piece.
+
 ## 2026-10-28 (v1.50.0, ops center reviews visibility check)
 
 Fifteenth piece of the ops center lift (opscenter/DESIGN.md sections 12.3 and 12.10, item 24). Opt in: no rule is added and
