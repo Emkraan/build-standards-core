@@ -122,6 +122,8 @@ export { Forbidden, NotFound } from './primitives/PageStates';
 export type { ForbiddenProps, NotFoundProps } from './primitives/PageStates';
 export { SearchInput } from './primitives/SearchInput';
 export type { SearchInputProps } from './primitives/SearchInput';
+export { MatrixGrid } from './primitives/MatrixGrid';
+export type { MatrixColumn, MatrixDensity, MatrixGridProps, MatrixRow, MatrixTone } from './primitives/MatrixGrid';
 export { MonthGrid, addDays, isoDay, monthWeeks } from './primitives/MonthGrid';
 export type { MonthGridDay, MonthGridEvent, MonthGridProps, MonthGridTone } from './primitives/MonthGrid';
 export { LaneBoard } from './primitives/LaneBoard';

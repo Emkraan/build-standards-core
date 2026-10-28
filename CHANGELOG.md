@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-28 (v1.57.0, kit matrix grid)
+
+Second of the generic kit pieces the hub needs (intake issue 115). Opt in: a new part, nothing existing changes.
+
+- New `MatrixGrid`: a dense rows by columns grid for matrices. ARIA grid pattern with one roving tab stop (arrows, Home, End, Ctrl with
+  Home or End, Enter and Space), a sticky head row and sticky first column, three densities (`comfortable`, `compact`, `dense`),
+  group headings, `renderCell`, `cellTone`, `cellLabel` and `onCellActivate` slots, `maxHeight` for a scroll area. It does not sort,
+  and it does not build the matrix itself: a responsibility matrix stays the app's, drawn through the slots.
+- `Table density="compact"` (D-007) already covers a long sorted list and is unchanged.
+- Standard: `standards/web-ui.md` gains Matrices. Tests: `kit/tests/matrix-grid.test.tsx` (7). Specimen `matrix-grid`.
+
 ## 2026-10-28 (v1.56.0, kit context panel)
 
 First of the generic kit pieces the hub needs for its tools to become shell modules (intake issue 115). Opt in: `AppShell` renders
