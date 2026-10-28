@@ -599,7 +599,36 @@ Every slot is a folder with:
 |---|---|---|
 | `code_host` | over the code host CLI, read paths through `swr` | list repos, PRs, runs, checks; read PR with head and checks; act: comment, ready, merge pinned to head, rerun, review approve or request changes, label |
 | `work_tracker` | over the tracker's REST API with a token from the sign-in slot | list (sprint, backlog, needs me, change approvals), read, act: transition, comment, move |
-| `docs_home` | over a git-backed docs repo through `code_host` | list pages, read page with hash, act: publish by pull request, update |
+| `docs_home` (variant `git`, default) | over a git-backed docs repo through `code_host` | list pages, read page with hash, act: publish by pull request, update |
+| `docs_home` (variant `api`) | over the docs home's own API, for a consumer whose docs home is not a git repo | list pages under the allowed roots, read page with hash and ancestor chain, act: publish, update (never delete), each with a scope proof and a read back (below) |
+
+**The `api` docs home variant.** A docs home that is not a git repo has no pull request to review,
+so the adapter itself must prove what a review would. Parameter `docs.adapter` picks the variant
+(`git` by default) and parameter `docs.allowed_roots[]` lists the page roots a write may touch.
+The adapter refuses any write it cannot prove, in this order, each a hard stop with the code in
+section 2.3:
+
+1. **Scope proof.** The target is resolved live to its ancestor chain, and one ancestor must be an
+   allowed root. A target that cannot be resolved, whose chain cannot be read, or that sits
+   outside every root is `denied`. A new page needs a parent that passes the same proof. A move
+   out of a root is a write on the destination and the source, and both must pass.
+2. **No delete.** Direction `delete` is not in the variant's capabilities, so the writer refuses it
+   before the adapter is called, and the adapter refuses it again if called.
+3. **Body hash.** The hash of the body the adapter is about to send equals the operation's
+   `content_hash`, and for an update the live page's hash equals `base_hash`. A mismatch is
+   `stale`, nothing is written.
+4. **Write,** unless dry run (section 2.5).
+5. **Read back.** The page is read again and its body hash must equal `content_hash`. A mismatch
+   is recorded as `failed` with both hashes, never as applied.
+
+The `api` variant uses the same operation shape, approval and applied ledger as every other slot.
+Credentials come from the sign-in slot and never appear in a parameter or an operation.
+
+Acceptance (test, against a fake docs API): a target outside every root is denied. A target whose
+ancestor chain cannot be read is denied. A delete is refused. A body whose hash differs from
+`content_hash` is refused. A moved base is `stale`. A read back that differs is `failed`. A
+target inside a root with matching hashes is applied and read back. The `git` variant behaves
+as before.
 
 Every other slot ships an interface and the null adapter.
 
@@ -617,7 +646,7 @@ Every other slot ships an interface and the null adapter.
 | `digest_source` | 43 | ideas digest input | null |
 | `review_lanes` | 45, 56 | lane manifest `{lane, repo, tabs, engine_check, gates, canary}`; mounts `/reviews/<lane>` on the core PR card | null |
 | `gated_deploys` | 47 | list pending gated deployments and plan runs; act: approve, reject, retry | null |
-| `docs_home` | 70 to 74 (source) | see 5.2; naming scheme from parameter (B-14) | reference |
+| `docs_home` | 70 to 74 (source) | see 5.2 (variants `git` and `api`), naming scheme from parameter (B-14) | reference |
 | `doc_builder` | 75 | build a draft from a template path and header label | null |
 | `doc_archive` | 76 | list and read documents from a folder of one doc kind | null |
 | `resilience` | 84 | watchdog, self heal, backup and restore drill status | null |
@@ -666,6 +695,7 @@ secret references name a store and a key, never a value.
 | git | `branch_prefix_pattern` | null | declared exception: a ticket prefix before the conventional type, for example `^[A-Z]+-[0-9]+/`; PR title lint still requires a conventional title (D7-15) |
 | git | `pre_push_overlay_only` | true | B-25 |
 | docs | `naming_scheme`, `topic_folders`, `template_path`, `header_label`, `export_folders`, `publish_mode` per class | | B-14, B-15 |
+| docs | `adapter` (`git` or `api`), `allowed_roots[]` | `git`, `[]` | section 5.2, the `api` variant refuses every write while `allowed_roots` is empty |
 | work | `classification_sets`, `project_defaults`, `debt_files[]`, `plans_root`, `plans_format` | | A-42, A-77, A-78 |
 | jobs | manifest `[{name, schedule, expected_every_s, grace_s, feeds, quiet}]` | the core jobs | A-98 |
 | heartbeats | `names[]`, `sync_from_tags` (false) | from the job manifest | A-87 |
@@ -797,7 +827,7 @@ Release numbers are assigned at merge in a fixed merge order (D7-19).
 | R3 Schemas and checker | six envelope kinds, all core state and API schemas, `state.py` with its command line entry, `conformance.py` with `extends` and JSON lines, `migrate.py`, params schema, the estate-literal check | conformance on fixture state, producer and drainer ledger (roles enforced, marks leave content unchanged, retention pass by the producer only), migrate plan and apply on a copy (idempotent, backup, failure report), state.py command line (concurrent appends, header kept, undeclared writer refused, schema violation refused) | fixture state passes; a seeded bad record is reported and not converted |
 | R4 Writer and inbox | `writer.py`, `approvals.py`, tombstones, applied ledger, `testing/fixtures.py`, `check-opscenter-writer`, the three core approvals and the consumption panel server module | the writer acceptance in 2.5, the live switch acceptance in 2.5, panel tests from local-ops-app 19 | fixture flows write only through the writer; the consumption panel's three approvals pass against a fake code host |
 | R5 Live reads and engine | `swr.py`, `run.py`, core server modules, collector and analyzer engine with the gate, routing, heartbeats, sign-in loop, notice discipline; the app shell and every core screen in 4.2 | swr single flight and last-good; gate order; heartbeat raise and clear; app unit and e2e smoke on fixture state in both themes | fixture consumer runs every core screen live with no bundle step |
-| R6 Slots | slot loader, interfaces, null adapters, reference adapters (code host, work tracker, docs home), slot UI mounts, claim token protocol, optional modules | per-slot conformance on fixtures; null adapter hides UI; claim token states | fixture consumer runs with all null, then with the three reference adapters against fakes |
+| R6 Slots | slot loader, interfaces, null adapters, reference adapters (code host, work tracker, docs home), slot UI mounts, claim token protocol, optional modules | per-slot conformance on fixtures, `api` docs home scope proof, delete refusal and read back; null adapter hides UI; claim token states | fixture consumer runs with all null, then with the three reference adapters against fakes |
 | R7 Automerge | `automerge.yml` template, overlay install step | newest run per check, rerun unblocks, hold label, draft skip, head pin | merges a test PR on one repo; a failing then rerun check behaves as specified |
 | R8 Deploy | `deploy.py` with both strategies, rollback, drift check, service definitions | failed health rolls back; drift raises one item; keep_releases prunes | fixture consumer deploys, fails a seeded health check and rolls back |
 | R9 Adopt | `hermes/adopt.py`, discovery, report-only registration, migration step, downstream app card, daily report-back rows | dry run on a fixture workspace; rerun is a no-op; unconverted record stops adopt | a clean machine fixture goes from nothing to a running, conformant ops center |
