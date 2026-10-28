@@ -58,7 +58,7 @@ def snap(prs, bodies, files=None, applies=None):
 def avd(state347="open", state348="open"):
     prs = {347: pr(state347), 348: pr(state348), 349: pr(), 350: pr(), 351: pr()}
     files = {
-        347: ["infrastructure/terraform/pipeline-identities/avd.tf", "infrastructure/policy/avd.tf"]
+        347: ["infrastructure/terraform/pipeline-identities/desktop.tf", "infrastructure/policy/desktop.tf"]
     }
     return snap(
         prs, {347: "Foundations, no deps.", 349: BODY_349, 350: BODY_350, 351: BODY_351}, files
@@ -230,7 +230,7 @@ class StackedChain(unittest.TestCase):
 
     def test_owner_marker_is_the_fallback_only_for_untracked_roots(self):
         s = avd(state347="merged")
-        s["files"]["347"] = ["infrastructure/policy/avd.tf"]  # no Owner root the Ops Center plans
+        s["files"]["347"] = ["infrastructure/policy/desktop.tf"]  # no Owner root the Ops Center plans
         self.assertIn(349, d.evaluate(s, OWNER_PENDING))
         s["prs"]["347"]["owner_marker"] = True
         self.assertNotIn(349, d.evaluate(s, OWNER_PENDING))
