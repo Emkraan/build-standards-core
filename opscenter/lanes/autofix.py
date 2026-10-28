@@ -255,11 +255,17 @@ def batch_wait_s(frec, now, others):
     return int(left) if left > 0 else 0
 
 
-def problem_of(status, reason):
-    """Problem key when the lane holds the PR for something a session can fix, else None."""
+def problem_of(status, reason, target=""):
+    """Problem key when the lane holds the PR for something a session can fix, else None. A target adds its own
+    needles through extra_fixable ([[needle, key], ...] in the targets file), tried after the built in ones."""
     if status != "held" or not reason or reason.startswith(("needs me", "draft")):
         return None  # a draft is parked on purpose, never a fix
-    for needle, key in FIXABLE:
+    extra = [
+        tuple(x)
+        for x in (target_cfg(target).get("extra_fixable") or [])
+        if isinstance(x, (list, tuple)) and len(x) == 2
+    ]
+    for needle, key in (*FIXABLE, *extra):
         if needle.lower() in reason.lower():
             return key
     return None
@@ -856,7 +862,7 @@ def consider(
                 "source": "lane",
             }
             frec.pop("reported", None)
-    problem = problem_of(status, reason)
+    problem = problem_of(status, reason, target)
     # Pipeline v2: the owner's choice in the decision card for this head starts a directed fix at once.
     direction = None
     if status == "held" and not frec.get("running"):
