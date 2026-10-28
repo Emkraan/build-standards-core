@@ -40,11 +40,15 @@ class KitGlow(unittest.TestCase):
                         bad.append(f"{rel}: {sel[:50]} -> {decl.strip()[:70]}")
         self.assertEqual(bad, [], "glow outside the allowed uses (web-ui.0.3)")
 
-    def test_search_focus_has_ring_and_glow(self):
+    def test_search_focus_is_glow_only_ring_on_keyboard(self):
         css = (ROOT / "kit/src/styles/kit.css").read_text()
         m = re.search(r'\.search-field\[data-focus="true"\]\s*\{([^}]*)\}', css)
-        self.assertIn("var(--focus-ring)", m.group(1))
-        self.assertIn("var(--accent-glow)", m.group(1))
+        self.assertNotIn("var(--focus-ring)", m.group(1))
+        self.assertIn("0 0 0 3px var(--accent-glow)", m.group(1))
+        keyboard = re.search(
+            r'\.search-field\[data-focus="true"\]:has\(:focus-visible\)\s*\{([^}]*)\}', css
+        )
+        self.assertIn("var(--focus-ring)", keyboard.group(1))
 
     def test_progress_fill_glow_only_on_the_plain_fill(self):
         css = (ROOT / "kit/src/styles/kit.css").read_text()

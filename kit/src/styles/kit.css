@@ -1405,7 +1405,8 @@ button.breadcrumb-link { cursor: pointer; }
   background: var(--bg-card); color: var(--text-tertiary);
   transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
-.search-field[data-focus="true"] { background: var(--surface-2); border-color: var(--border-accent); box-shadow: var(--focus-ring), 0 0 0 7px var(--accent-glow); color: var(--accent-bright); }
+.search-field[data-focus="true"] { background: var(--surface-2); border-color: var(--border-accent); box-shadow: 0 0 0 3px var(--accent-glow); color: var(--accent-bright); }
+.search-field[data-focus="true"]:has(:focus-visible) { box-shadow: var(--focus-ring), 0 0 0 3px var(--accent-glow); }
 .search-field-input { flex: 1; min-width: 0; background: transparent; border: none; outline: none; color: var(--text-primary); font: inherit; font-size: var(--fs-body); }
 .search-field-input::-webkit-search-cancel-button { display: none; }
 .search-field-clear { display: inline-flex; flex-shrink: 0; padding: 2px; border: none; background: transparent; color: var(--text-tertiary); cursor: pointer; }

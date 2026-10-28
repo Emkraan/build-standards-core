@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-28 (v1.30.12, search focus glow exactly as before)
+
+- Kit: the search field focus is `0 0 0 3px var(--accent-glow)` again, as it was before v1.30.0. The always-on `--focus-ring`
+  is gone from it, so a pointer focus looks as it did. The ring shows only when the focus is a keyboard focus
+  (`:focus-visible`). Changes every filter field that uses `SearchField`.
+
 ## 2026-10-28 (v1.30.11, stray file removed)
 
 - Removed `CHANGELOG.md-e`, a backup file a BSD `sed -i` left at the repo root in v1.29.0. Nothing read it.
