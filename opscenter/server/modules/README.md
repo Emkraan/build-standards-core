@@ -15,3 +15,7 @@ One stdlib Python module per page or lane backend (opscenter/DESIGN.md section 1
 | `image_watch.py` | Optional. A failed desktop image build raises one board item with the failing job and step and the buttons Rerun failed jobs, Close the window and Open run; nothing acts by itself | `image_watch_test.py` |
 | `browser_status.py` | Optional. Flags the shared automation browser when its window stays visible or the service stays down, and offers a one click hide | `browser_status_test.py` |
 | `review_acted.py` | Tombstones for review actions the owner took, so a PR just merged or approved is not listed again before the code host catches up; a new push brings it back | `review_acted_test.py` |
+| `cron_pulse.py` | Which scheduled job owns a card, when it runs next, and Run now (auto mapping from a job's script and prompt, override file `cron-card-map.json`); repos and the branch key are parameters (section 12.8) | `cron_pulse_test.py` |
+| `link_health.py` | Weekly Links reachability check, Not reachable pill, Swap and Remove edit pull requests; the catalog is the consumer's data | `link_health_test.py` |
+| `runbook_releases.py` | Optional. Release guarded deletes of a deploy root after the owner approves and merges the pull request, re-checking everything live | `runbook_releases_test.py` |
+| `desktop_pool.py` | Optional. Host pool evidence (drain mode, sessions, a new host serving) for the Destroy approval card of a pool roll | `desktop_pool_test.py` |

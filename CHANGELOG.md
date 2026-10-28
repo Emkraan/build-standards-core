@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-28 (v1.44.0, ops center modules with estate facts as parameters)
+
+Tenth piece of the ops center lift (opscenter/DESIGN.md section 12.8). Opt in: no rule is added and nothing a consumer
+runs today changes.
+
+- Design: section 12.8 lists the parameters, defaults and meaning for the five modules that named estate repositories
+  or files: `cron_pulse`, `link_health`, `runbook_releases`, `desktop_pool` and `publish_mode`. No default names an
+  estate.
+- Code: `server/modules/cron_pulse.py` (repos and the branch key are parameters), `link_health.py` (the catalog is the
+  consumer's file; the edit pull request has no `--no-verify` and an optional changelog tool), `runbook_releases.py`,
+  `desktop_pool.py` and `engine/publish_mode.py`, each with its tests (new for `desktop_pool`) and a fixture links
+  catalog. Stdlib only, Python 3.9.
+- Tests: 79 unit tests, run in CI.
+
 ## 2026-10-28 (v1.43.0, ops center lift status)
 
 Design text only: no rule is added and no code changes. `opscenter/DESIGN.md` section 12.7 records, for each module of
