@@ -1,10 +1,9 @@
 # Changelog
 
-## Pending release (page help, Stepper and Timeline)
+## 2026-10-27 (v1.30.10, page help, Stepper and Timeline)
 
-Unreleased, and stacked on the tip layer entry below, which merges first. Every part here is off by default or inert
-until an app uses it, so a consumer that uses none of them renders exactly as before. The version and the final
-standards section number are assigned when the core merges.
+Every part here is off by default or inert until an app uses it, so a consumer that uses none of them renders exactly
+as before.
 
 - Kit, page help: `usePageHelp({ title, summary, steps, terms, links })`, `HelpProvider`, `useHelp`, `HelpButton`
   (the `Header` shows it while a page has help and the shell mounts the drawer, `help={false}` hides it) and
@@ -28,10 +27,10 @@ standards section number are assigned when the core merges.
   transition or animation), the page help case in the axe composite, and gallery specimens `page-help`, `stepper`
   and `timeline` with visual baselines.
 
-## Pending release (the tip layer: tips that show, disabled reasons, glossary terms, InfoTip and When)
+## 2026-10-27 (v1.30.9, the tip layer: tips that show, disabled reasons, glossary terms, InfoTip and When)
 
-Unreleased. Every part below is off by default or inert until an app uses it, so a consumer that uses none of them
-renders exactly as before. The version and the final standards section number are assigned when the core merges.
+Every part below is off by default or inert until an app uses it, so a consumer that uses none of them
+renders exactly as before.
 
 - Kit, the tip layer: `AppShell` takes `tooltipLayer` (default false). When set it mounts `TooltipLayer`, so
   `data-tip` on a kit `Button`, the feed strip or the launcher shows with no wiring and a native `title` gets the kit
@@ -73,6 +72,46 @@ renders exactly as before. The version and the final standards section number ar
 - Tests and gallery: kit tests `tooltip-shell`, `help-tips`, `help-time` and `help-cues`, the python lint tests in
   `tests/test_ui_lint_help_layer.py`, the lint fixtures, and gallery specimens `tips` (with the cues) and `when` with visual
   baselines.
+
+## 2026-10-27 (v1.30.8, retrying merge)
+
+- Section 7.2 of `opscenter/DESIGN.md` carries a retrying merge (parameters `automerge.merge_attempts` 3 and `automerge.merge_pause_s` 10, listed in section 6). `templates/overlay/scripts/merge-pr.py` implements it for the final merge call and takes the two values as `--attempts` and `--pause`. A transient failure (dropped connection, timeout, 5xx) is retried in this order: sleep, read the pull request state and head, merge. Every retry passes `--match-head-commit` with the head just read, even when the caller passed none. An already merged pull request is a success, a closed one or one whose head moved stops the retry, and a refusal that is not transient is never retried. The retry claims only an open state and an unchanged head and does not read the required runs again, because the code host refuses a merge while a required check is not green. Tests in `tests/test_core_ci.py`.
+
+## 2026-10-27 (v1.30.7, adopt with a linked path)
+
+- Design only. `opscenter/DESIGN.md` section 8.1 step 2: `--ops-center PATH` accepts the repo root, the app folder or a symbolic link to either. `adopt` resolves the link to the git top level, refuses a path outside any git repo or without an ops center app (the message names the resolved path), records the resolved top level as the consumer entry's `path`, prints both paths in the dry run, never changes the link, and takes a live deployed checkout without switching its branch or editing its working tree (the sync lands in a separate worktree by pull request). The R9 acceptance row in section 9.2 gains the linked path cases.
+
+## 2026-10-27 (v1.30.6, deploy health probe and companions)
+
+- Design only. `opscenter/DESIGN.md` section 7.1: the deploy contract defines a health probe (`deploy.health_path`, default `/api/health`, must report the target commit within `deploy.health_timeout_s` and pass the conformance check) and a list of companion paths (`deploy.companions`) installed into the agent home only after the probe passes. Both apply to the `copy` strategy as well as `checkout`, and the `checkout` rollback now states that a failure of the build, the restart or the probe each triggers it. A companion whose destination differs from both the previous and the target commit's file is local drift, is left in place and raises one board item. Both parameters are listed in section 6, and the R8 acceptance in section 9.2 covers the probe path, the companion rules and both strategies.
+
+## 2026-10-27 (v1.30.5, own PR lane)
+
+- Design only. `opscenter/DESIGN.md` section 5.3: the `review_lanes` manifest gains the optional `own_pr_lane` field beside `engine_check`, with the policy reference, what the core shows on the lane page (policy as read, open own pull requests with the policy's decision, last decisions), and the rule that the read never writes and the merge is a writer operation pinned to the head seen.
+
+## 2026-10-27 (v1.30.4, gated deploy verbs)
+
+- Design only. `opscenter/DESIGN.md` section 5.3: the `gated_deploys` slot lists the verbs it needs beyond approve, reject and retry (`override_window`, `delete_release`, `accept_risk`, `decide_fix`) in a table with direction and the extra rule for each. Every verb in the table is a writer operation and a declared capability, a delete is default deny with its own rule, and accepting a risk is an owner decision only. Triage is a state-only change with no outward effect, so it is not a verb of the slot and not a writer operation.
+
+## 2026-10-27 (v1.30.3, model call clarification)
+
+- Design only. `opscenter/DESIGN.md` section 2.6 (untrusted input) now states the owner's decision on the analyzer model call. The rule is a no-tools subprocess through `model.cmd`. A consumer whose analyzer is an agent job declares the exception with `model.mode = agent_job` plus a `reason`, under four conditions: a post-validation step (a board refresh) may run at the end of the job only through the engine's validation entry point, a rebuild fallback inside the job is allowed only when it calls the same builder the gate uses, the engine validates the item file against the item contract before the routing filter runs, and the `reason` states that the tool policy is the prompt and not a technical limit. The job reads the bundle the gate wrote and writes the item file, and nothing it runs afterwards reaches the board except through the engine's validation. Section 6 lists `model.mode` as decided, and section 11 records the decision as item 6.
+
+## 2026-10-27 (v1.30.2, ops center design, heartbeats from the runtime job list)
+
+- `opscenter/DESIGN.md` sections 2.7, 5.3, 6 and the R5 row: job liveness can be read from the
+  runtime slot's own record of each run through a read only `jobs.last_runs()` method (last start,
+  last end, exit status, bounded output tail), as well as from a heartbeat line the job writes.
+  Parameter `heartbeats.sources` picks the sources and defaults to the lines only. The newer entry
+  wins when both are on. The section gives the acceptance test.
+
+## 2026-10-27 (v1.30.1, ops center design, analyzer ambient age and hash exclusion)
+
+- `opscenter/DESIGN.md` sections 2.6, 6 and the R5 row: two optional cuts on the analyzer's change
+  test. `analyzer.ambient_max_age_s` holds a wake caused only by ambient candidates (addressed
+  `none`) until the last run is that old. `analyzer.hash_exclude` leaves listed fields and
+  senders (including the owner's own messages) out of the bundle hash. Both are off by default, so
+  the gate is unchanged until a consumer sets them. The section gives the acceptance test.
 
 ## 2026-10-27 (v1.30.0, glow restored for three named uses)
 
