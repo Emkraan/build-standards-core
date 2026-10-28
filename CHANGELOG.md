@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-10-28 (v1.32.0, shell shared packages: module contract validator and RBAC core)
+
+Second piece of the multi-module shell lift. Opt in: no rule is added, nothing a consumer runs today changes.
+
+- Code: `shell-packages/console-modules/` (`validateManifest`, `validateRegistry`, peer and permission-source
+  helpers, `canOpen`, `autoDescription`) and `shell-packages/rbac/` (accessible tabs, the grant ceiling,
+  assignable roles, view-as, client access helpers, retired-id stripping). Plain ESM with `.d.ts` files, no
+  runtime dependency, no build step.
+- Standards: `standards/web-shell-packages.md` says what each shell package owns, how a shell takes the code, and
+  where the core already states the client and server package rules. The `tab:` and `action:` grammar is recorded
+  as a documented exception next to the `tools.` and `hub.` grammar in `rbac.md`, never a failure. `web-shell.md`
+  links it.
+- Not lifted yet, listed in the document: the client and server packages as code (the rules are in
+  `web-client-runtime.md` and `web-api-runtime.md`) and the admin layout merge, which waits on the ops center.
+- Tests: `kit/tests/shell-console-modules.test.ts` and `kit/tests/shell-rbac.test.ts`. The kit workflow now also
+  runs on changes under `shell-packages/` and the manifest fixtures.
+
 ## 2026-10-28 (v1.31.0, shell module manifest schema)
 
 First piece of the multi-module shell lift. Nothing here is mandatory: no rule is added, and a consumer that

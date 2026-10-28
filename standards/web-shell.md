@@ -57,7 +57,8 @@ default resolved), `ICONS` (module id to icon name) and `FALLBACK_ICON` (`--fall
 `Box`).
 
 The shell's own per-module manifest (rail pages, links, tiles, Home feeds, API and permission read) is
-documented in [web-shell-manifest.md](web-shell-manifest.md); it is a host extension of this manifest.
+documented in [web-shell-manifest.md](web-shell-manifest.md); it is a host extension of this manifest. The shared packages a shell keeps its cross-module logic in are in
+[web-shell-packages.md](web-shell-packages.md).
 
 ### Host extensions (opt in)
 

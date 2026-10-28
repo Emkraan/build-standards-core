@@ -4,6 +4,8 @@ on:
     paths:
       - 'kit/**'
       - 'tokens/**'
+      - 'shell-packages/**'
+      - 'tests/fixtures/console-module/**'
       - '.github/workflows/kit.yml'
 permissions:
   contents: read
