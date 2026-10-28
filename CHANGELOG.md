@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-28 (v1.41.0, ops center server modules: cache, alerts, tombstones, image watch, browser status)
+
+Eighth piece of the ops center lift (opscenter/DESIGN.md section 12.3, items 12, 14, 16 and the shared helpers). Opt in:
+no rule is added and nothing a consumer runs today changes.
+
+- Code in `opscenter/server/modules`: `paths.py` (state, runtime and repo folders from environment variables, never a
+  home path), `swr.py` (the stale while revalidate cache of section 2.4), `automation_actions.py` and `alerts.py` (one
+  board item per failing scheduled job, closed by the next success), `review_acted.py` (tombstones for review actions),
+  and the optional `image_watch.py` and `browser_status.py`. Estate names are environment variables with neutral
+  defaults (`IMAGE_WATCH_REPO`, `BROWSER_LAUNCHER` and others, listed in the module headers).
+- Tests: 67 unit tests (new for `swr`, `paths`, `browser_status` and `review_acted`; the rest lifted), run in CI.
+- Left out for now: `cron_pulse`, `link_health`, `runbook_releases` and `desktop_pool`. Each is tied to two named
+  repositories or an estate file (the links catalog, a privileged lane) and needs a parameter design first.
+
 ## 2026-10-28 (v1.40.0, ops center plan gate)
 
 Seventh piece of the ops center lift (opscenter/DESIGN.md section 12.3, items 9 and 10). Opt in: no rule is added and
