@@ -1,4 +1,5 @@
 name: lint-sweep
+# core-managed: this file is refreshed from the core release by scripts/sync-core.py
 # Weekly full-tree lint (ci-cd-release.md 4.6). Pull requests lint what they change, so a linter
 # upgrade or a new rule can leave older files failing unnoticed; this sweep lints the whole tree once
 # a week and keeps one issue (label lint-sweep) open while it fails: it opens the issue the first

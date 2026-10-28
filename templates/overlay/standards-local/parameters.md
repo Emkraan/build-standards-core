@@ -26,4 +26,15 @@ Fill in per business. Keep secrets, hostnames and tenant ids out of any repo tha
 | Trust hold: merged pull requests before an author is no longer new (default 3) | | pr-review-and-merge.md section 4 |
 | Trust hold: device-shipped paths, comma-separated globs (content shipped to managed devices or end-user machines) | | pr-review-and-merge.md section 4 |
 | ASCII check patterns, comma-separated globs that narrow the ASCII check (empty: every tracked text file, the default and the rule; for existing non-ASCII files record a time-boxed exception instead of narrowing) | | pr-review-and-merge.md 1.19, scripting-powershell.md 1.7, wpf-design-system.md 6.1 |
+| UI adoption stage (`none`, `partial` or `adopted`: with `none` or `partial` the drift workflow's UI adoption gate reports N/A instead of failing, until the UI series lands; empty keeps the gate on, the default) | | web-ui.md 0.11, scripts/core-status.py --require-ui-adopted |
 | Node major version (web; empty takes the first pin found) | | ci-cd-release.md 1 |
+
+## ascii_ignore
+
+Paths the ASCII check skips, each with the reason (generated or vendor files that cannot be fixed at the
+source; prefer escapes in source and a time-boxed exception, see CONSUMING.md). A directory covers what is
+under it; a glob works; script and XAML files can never be listed. Every row needs a reason; an empty table
+ignores nothing.
+
+| Path | Reason |
+|---|---|

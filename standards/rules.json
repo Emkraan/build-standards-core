@@ -332,7 +332,7 @@
       "id": "web-ui.20",
       "ref": "web-ui.md 20",
       "title": "Announcements, pulse feed and presenter",
-      "statement": "Announcements and the pulse feed follow section 20, with storage on every database dialect the app ships.",
+      "statement": "An app with more than one audience ships announcements and the pulse feed per section 20, with storage on every database dialect the app ships. An app with a single audience does not owe them.",
       "level": "must",
       "applies_to": [
         "web"
@@ -340,7 +340,7 @@
       "check": {
         "kind": "test"
       },
-      "acceptance": "The migration exists for every shipped dialect and the feed renders from it."
+      "acceptance": "For an app with more than one audience, the migration exists for every shipped dialect and the feed renders from it; a single-audience app owes nothing."
     },
     {
       "id": "web-ui.21",
@@ -3636,7 +3636,7 @@
       "id": "web-client-runtime.3.3",
       "ref": "web-client-runtime.md 3.3",
       "title": "Stale-while-revalidate with a per-key TTL",
-      "statement": "Cached reads return at once and refresh in the background when older than their TTL, and each key may set its own TTL.",
+      "statement": "Cached reads return at once and refresh in the background when older than their TTL, and each key may set its own TTL. A poll interval on the page counts as meeting this when every cached read is refreshed at least that often; no cached value lives forever.",
       "level": "must",
       "applies_to": [
         "web"
@@ -3962,7 +3962,7 @@
       "id": "identity-and-people-data.1.1",
       "ref": "identity-and-people-data.md 1.1",
       "title": "The directory is the source of truth for identity",
-      "statement": "The identity provider directory owns object id, display name, email and job title. The app stores a cached copy, never a competing one.",
+      "statement": "The identity provider directory owns object id, display name, email and job title. The app stores a cached copy, never a competing one. A fallback copy of the last directory pull is allowed when it is read only if the directory pull fails and is marked stale on screen; the directory pull wins whenever it succeeds and no copy is edited by hand.",
       "level": "must",
       "applies_to": [
         "web"
@@ -3976,7 +3976,7 @@
       "id": "identity-and-people-data.1.2",
       "ref": "identity-and-people-data.md 1.2",
       "title": "One roster",
-      "statement": "A single team_members table is the only list of people and every feature links to it by member_id.",
+      "statement": "A single team_members table is the only list of people and every feature links to it by member id, any stable key the directory supplies.",
       "level": "must",
       "applies_to": [
         "web"
@@ -3984,7 +3984,7 @@
       "check": {
         "kind": "review"
       },
-      "acceptance": "No feature table holds its own list of names."
+      "acceptance": "No feature table holds its own list of names, and a rename or reorganisation never orphans history."
     },
     {
       "id": "identity-and-people-data.1.3",

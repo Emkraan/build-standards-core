@@ -1,4 +1,5 @@
 name: automerge
+# core-managed: copied from the core template once (the repo owns it after that)
 # The merge gate as a workflow, for a repo whose plan has no rulesets or branch protection (ci-cd-release.md
 # section 5). COPY this file once; it is not refreshed by sync-core.py, because the repo owns its own
 # checks. What is different from a hand-written gate: the core job names are NOT listed here. The

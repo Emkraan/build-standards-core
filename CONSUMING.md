@@ -514,7 +514,7 @@ workflow, and `--vendored OWNER/REPO` reads a vendored repo's record. It never c
 | `proved` | a `ci` or `test` proof record is valid; counted apart from `pass`, because the script did not watch it pass | a `ci` or `test` record in `standards-local/proofs.json` |
 | `attested` | a person looked: a dated `review` record that expires | a `review` record |
 | `waived` | the rule is set aside for this repo with a reason; never counted as proof and it expires | a `waiver` record |
-| `not_applicable` | a rule the core proves on the kit, in an app that does not adopt the kit whole (below) | nothing; adopt the UI or leave it |
+| `not_applicable` | a rule the core proves on the kit, in an app that does not adopt the kit whole (below); or a rule or group the repo declares has no surface here, with a reason ("Declaring rules that do not apply") | nothing for the kit case; a `$not_applicable` entry for the declared case |
 | `excepted` | findings sit inside a ratchet baseline or an active exception | a row in `standards-local/exceptions.md` that names the rule (README "Source of truth and explicit exceptions") |
 | `unverified` | nothing proves it yet: a `test` or `review` rule with no record, or an `overlay-ci` result that was not read | record a proof, or leave it on the operator's list |
 | `fail` | a finding above the baseline, a `core-ci.yml` or `lint-sweep.yml` job the rule needs is not installed, or a declared stack has no lint config | fix it; no record can turn a `fail` into anything else |
@@ -544,6 +544,10 @@ repo root, dates are `YYYY-MM-DD`.
 | `review` | the review record | `date` within `$max_review_age_days` (default 180); `reviewed_by` (a missing one is a warning) | `attested` |
 | `waiver` | the waiver record | `date` (same expiry), `reason` and `reviewed_by`, all required | `waived` |
 
+A rule whose proof tests only check that a risk owner and decision record are named (for example
+`secrets-and-credentials.1.9` and `scripting-powershell.1.10`) must also carry a dated `review` record from
+the accountable owner.
+
 A proof's kind must be the rule's own check kind or stronger (`ci`, then `test`, then `review`), so a
 `review` record cannot prove a `test` rule; a `waiver` can set aside any rule that would read `unverified`.
 A missing file, an unknown rule id, a weaker kind, a stale date or a waiver without a reason is listed
@@ -565,6 +569,45 @@ and overlays in both themes), `web-ui.26.1` (per-app dismissal keys), `web-shell
 `web-shell.5` (module CSS scope). An app that adopts the kit whole (the UI verdict `adopted`) reads `pass`
 for them; any other app reads `not_applicable`, counted apart in the summary. A proof record does not
 change a `not_applicable` rule: the way to a `pass` is to adopt the UI (`kit/MIGRATION.md`).
+
+### Declaring rules that do not apply: `$not_applicable`
+
+Scope by stack (the `Stacks` row of `parameters.md`) is coarse: a single-operator local app is `web` and
+still has no role model, no directory surface and no shell. Such a repo lists the rules or groups that have
+no real surface in it, in the same `standards-local/proofs.json`, under one reserved key:
+
+```json
+{
+  "$not_applicable": [
+    {"rule": "rbac", "reason": "one operator, no roles or permissions in the app", "date": "2026-10-27", "reviewed_by": "owner"},
+    {"rule": "web-shell", "reason": "single page, no shell or module registry", "date": "2026-10-27", "reviewed_by": "owner", "until": "2027-04-27"},
+    {"rule": "web-api-runtime.5.3", "reason": "no directory lookups", "date": "2026-10-27", "reviewed_by": "owner"}
+  ]
+}
+```
+
+- `rule` is a rule id or a group prefix. A prefix matches whole dotted segments: `rbac` covers `rbac` and
+  every `rbac.*`; `web-api-runtime.1` covers `web-api-runtime.1` and `web-api-runtime.1.4`, never
+  `web-api-runtime.10`.
+- `reason`, `date` (`YYYY-MM-DD`) and `reviewed_by` are required. `until` is optional; from the day after it
+  the entry is expired.
+- A covered rule that would read `unverified` reads `not_applicable` with the reason beside it, counted apart
+  from `waived`. A rule that has a result (`pass`, `fail`, `excepted`) or a proof (`proved`, `attested`,
+  `waived`) keeps that status: the declaration never hides a finding or replaces a proof.
+- Every entry is listed under `N/A` in the report and as `not_applicable_declared` in `--json`, with how
+  many rules it covers. `core-status.py --ci` exits 1 if an entry lacks a reason, `reviewed_by` or `date`,
+  is expired, matches no rule, or covers a protected rule; an entry with a problem applies to nothing, so
+  its rules go back to `unverified`. Without `--ci` the same lines are `PROBLEM`s and the exit code is
+  unchanged.
+- Guard: no entry may cover a rule of `secrets-and-credentials` or `automation-safety`, whatever the
+  prefix, unless the registry marks that rule `"applicable_optional": true`. Use it only for a rule with no
+  surface at all; a rule the app breaks is an exception, not a declaration.
+
+How it differs: a **waiver** sets aside a rule that applies but the repo will not meet, needs a record file
+and expires like a review. An **exception** (`exceptions.md`) accepts a known finding for a rule that
+applies, with an expiry. A **declaration** says the rule has nothing to apply to; no record file, and it
+is the only one of the three that covers a whole group. A kit rule's `not_applicable` (above) comes from
+the UI verdict, not from a declaration.
 
 ### The `repo-check` kind: RC001 to RC022
 
@@ -699,7 +742,8 @@ This is the flow for a repo on its own GitHub account, with no access to anythin
 1. Check the core is reachable: `git ls-remote --tags https://github.com/OWNER/build-standards-core.git`.
 2. Tell the scripts where the core is. In CI set the repository variable `CORE_REPO` to
    `OWNER/build-standards-core`; on a machine export `CORE_REPO` (or run `hermes/setup.py`, which writes
-   `core_repo` into `consumer.json`). The lock file never names it.
+   `core_repo` into `consumer.json`). The lock file never names it. `CORE_CHECKOUT` is optional (see
+   "Adopting into a repo that has history").
 3. Adopt once: copy `templates/overlay/` into the repo, fill `standards-local/parameters.md`, run
    `python3 scripts/sync-core.py latest`, and commit the lock, the synced copies and the scripts (README
    "Consuming the core"). Put `core-ci.yml` in the root `.github/workflows/` and require `core-checks` in the
@@ -720,6 +764,85 @@ This is the flow for a repo on its own GitHub account, with no access to anythin
    open. GitHub's auto-merge is never used.
 7. Read the `CHANGELOG.md` entries since the old pin, list any rule your apps now violate, land the
    standards first and the code fixes after.
+
+### Adopting into a repo that has history (new repo traps)
+
+- Latest release. `python3 scripts/sync-core.py latest` (and `update-core.py`) pick the highest strict
+  `vX.Y.Z` tag by semantic version. A tag that is not exactly that shape, and the tag GitHub flags as the
+  "latest release", are ignored, so an old release published last cannot win. An explicit tag
+  (`sync-core.py v1.28.0`) needs only `CORE_REPO` (or `consumer.json`). `CORE_CHECKOUT` is optional: set it
+  only to sync from an existing local clone with no network (it must hold the tag: `git fetch --tags`);
+  with it set and no `CORE_REPO`, the name is read from that clone's `origin` remote.
+- Workflows of the same name. A sync refreshes `core-ci.yml`, `core-drift.yml`, `core-update.yml` and
+  `lint-sweep.yml` only when the repo's file is core-managed: it carries the `# core-managed` marker line, or
+  it is an older synced copy (first line `name: <template name>` that refers to the overlay scripts). Any
+  other file with that name is left untouched and the template is written next to it as `<name>.core-new`
+  (GitHub ignores it); the sync prints `diff -u <file> <file>.core-new`. Merge the parts you want, add the
+  `# core-managed` line, and delete the `.core-new` file. `sync-core.py --strict` (or `CORE_SYNC_STRICT=1`)
+  exits 1 after the sync when it skipped a file, for CI. Copy `templates/overlay/` by hand with the same
+  care: never overwrite a workflow that lacks the marker.
+- Merge gate list. The sync rewrites a `REQUIRED_CHECKS` list only when it cannot make the gate wait on a
+  missing check: the default branch already defines the `core-checks` job, or the default branch has no
+  workflow with a `REQUIRED_CHECKS` list (this pull request adds the job and the gate together). In any other
+  case the list is left unchanged and the sync prints `REQUIRED_CHECKS: <exact replacement>` and the order:
+  merge the pull request that adds `core-checks` first, then change the list in a second pull request.
+- UI not adopted yet. Set the parameter `UI adoption stage` in `standards-local/parameters.md` to `none` or
+  `partial`: the drift workflow's `core-status.py --require-ui-adopted` step then prints `ui: N/A` and passes
+  instead of failing, so `core-drift.yml` can land before the UI series. Set it to `adopted` (or empty) when
+  the UI is whole; empty is the default and keeps the original behavior (a partial UI fails).
+
+### Existing non-ASCII content (the ASCII check)
+
+The rule is plain ASCII in every tracked text file (pr-review-and-merge.md 1.19). Get green in this order:
+
+1. Fix the source. Replace the character with an escape that renders the same glyph (`\u00e9` in strings, JSON and
+   JavaScript, `&#233;` in HTML or XAML, `` `u{00e9} `` in PowerShell 7 strings or `[char]0x00e9`). This is the
+   answer for anything you own.
+2. Generated or vendor files you cannot edit: a time-boxed `excepted` row in `standards-local/exceptions.md`
+   for rule `pr-review-and-merge.md 1.19`, with a path or glob in `Scope`, a reason, an owner and a `Review
+   by` date. Hits inside the scope are warnings until that date, then fail again.
+3. A path the check should never read (a vendored folder that is tracked, an imported data dump): list it
+   in the `## ascii_ignore` table of `standards-local/parameters.md` with a reason, one row per path, folder or
+   glob. Every run prints each ignored file and its reason; a row with no reason fails the check. Script and
+   XAML files cannot be listed.
+
+   | Path | Reason |
+   |---|---|
+   | vendor/legacy-docs/ | imported archive, owned upstream |
+
+   Narrowing the check with the `ASCII check patterns` parameter is the blunt tool and is not the way out.
+   A repo that declares nothing sees no change.
+
+### Secret scanners and token files
+
+WPF and XAML token files hold many `#RRGGBB` literals, which generic high-entropy rules report as secrets.
+Allow those files in your scanner config, not by switching the scanner off:
+
+```toml
+# .gitleaks.toml (gitleaks 8.25 or newer: [[allowlists]] with paths, regexes and targetRules)
+[extend]
+useDefault = true          # keep every default rule; this file only adds allowances
+
+[[allowlists]]
+description = "design token files hold colour hex values, not secrets"
+paths = [
+  '''(^|/)tokens-core/''',
+  '''(^|/)[^/]*[Tt]okens?[^/]*\.(xaml|css|json)$''',
+  '''(^|/)Themes?/[^/]*\.xaml$''',
+]
+
+[[allowlists]]
+description = "a bare colour literal is never a credential"
+targetRules = ["generic-api-key"]
+regexes = ['''#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?\b''']
+```
+
+Keep the paths to the token and theme files only. Do not allowlist `**/*.xaml`, a whole folder of code,
+or the `[extend]` default rules: a secret pasted next to a colour must still be found. For other scanners
+the same two allowances apply: exclude the token file paths (trufflehog `--exclude-paths FILE`, detect-secrets
+`--exclude-files REGEX`, a generic `paths-ignore` list) and, where the scanner supports it, one regex for a
+`#RRGGBB` or `#AARRGGBB` literal scoped to its generic high-entropy rule. The core does not weaken its own
+secret scan: this snippet is for a consumer repo's scanner config only.
 
 ## 13. What READY means, and troubleshooting
 
