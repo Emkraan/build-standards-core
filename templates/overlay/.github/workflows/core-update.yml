@@ -1,4 +1,5 @@
 name: core-update
+# core-managed: this file is refreshed from the core release by scripts/sync-core.py
 # Opens a pull request when the core has a newer release than standards.lock. Needs a repository
 # variable CORE_REPO (OWNER/NAME of the core; a variable so no file in the repo names it) and one token
 # that can open pull requests on THIS repo that start CI, and push the refreshed workflow files. The core
