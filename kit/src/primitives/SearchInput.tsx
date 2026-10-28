@@ -1,4 +1,4 @@
-/* SearchInput: an inline filter field with the standard focus ring, an icon that takes the accent on focus and
+/* SearchInput: an inline filter field with the standard focus ring and a glow, an icon that takes the accent on focus and
    a clear button. Controlled by value and onChange. focusHotkey (for example "/") focuses it from
    anywhere, the way a search-first tool should, and is ignored while typing in another field. For
    the global command search use SearchTrigger and the palette instead. */
