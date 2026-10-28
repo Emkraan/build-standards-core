@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-28 (v1.55.0, merge retry tests no longer patch the global sleep)
+
+- Tests only. The two merge retry tests replaced `time.sleep` for the whole interpreter, so a sleep from any other
+  thread landed in their call list and failed them in the merge queue. They now replace only the `time` name inside
+  `merge-pr.py`. No change to the script.
+
 ## 2026-10-28 (v1.54.0, shell client package as code)
 
 Third lift of the shell shared packages ([standards/web-shell-packages.md](standards/web-shell-packages.md) section 4).
