@@ -3,7 +3,7 @@
 The optional people module (opscenter/DESIGN.md sections 12.3 item 19 and 12.14): the 1:1 board, the team away strip and
 the yearly review store. It is off by default (`modules.json`), its data stays local and is deleted after
 `people.retention_days`. Stdlib Python 3.9 except the yearly export, which imports python-docx lazily (the one declared
-exception, DESIGN.md 12.6). No name, address, zone or tool of an estate is in the code: one parameters file
+exception, DESIGN.md 12.6), pinned in `requirements.txt`. No name, address, zone or tool of an estate is in the code: one parameters file
 (`OPSCENTER_PEOPLE_PARAMS`, default `<state>/people-params.json`) holds the owner, the roster and the adapter commands.
 
 | Module | What it does | Tests |

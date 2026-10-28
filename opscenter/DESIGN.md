@@ -1530,4 +1530,4 @@ ticket and noise patterns were literals and are parameters; the calendar and mee
 mail and calendar tenant and are commands behind the contract above (the helpers themselves are the consumer's and are not
 in core); the drafter that reads the full year evidence and calls a model is the consumer's command (`drafter_cmd`); the
 topic source names (`teams`, `mail`) and the `teams_updated` field keep the names the app already reads. The yearly export
-could not be run here without python-docx: its test is skipped when the package is missing.
+could not be run here without python-docx (pinned in `people/requirements.txt` for the pinned requirements rule): its test is skipped when the package is missing.

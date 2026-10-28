@@ -931,12 +931,26 @@ LINK_SINCE = "2026-10-06T00:00:00Z"
 AGENDA_AC_PRIO = {"P1": "high", "P2": "medium", "P3": "low"}
 
 
-def _agenda_ac_fp(agenda_id):
+def _board_fingerprint():
+    """The board's own fingerprint function (engine/board_build.py ac_fingerprint, the single definition, so ids match
+    the Action Center's), or None when the board composer is not in the tree."""
     try:
-        from bundle_data import ac_fingerprint
-    except ImportError:
-        return "ac_" + _h("oo-" + agenda_id)
-    return ac_fingerprint({"key": "oo-" + agenda_id})
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "board_build_fp",
+            str(Path(__file__).resolve().parent.parent / "engine" / "board_build.py"),
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.ac_fingerprint
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _agenda_ac_fp(agenda_id):
+    fn = _board_fingerprint()
+    return fn({"key": "oo-" + agenda_id}) if fn else "ac_" + _h("oo-" + agenda_id)
 
 
 # An agenda item says no decision is owed with decision_owed: false, or with this wording in
@@ -1104,10 +1118,7 @@ def _action_topics(people, now):
     if not items:
         return []
     handled = (_load(AC_HANDLED_PATH, {}) or {}).get("handled") or {}
-    try:
-        from bundle_data import ac_fingerprint  # must match the Action Center's own ids
-    except ImportError:
-        ac_fingerprint = None
+    ac_fingerprint = _board_fingerprint()  # must match the Action Center's own ids
     gen = ac.get("generated_utc")
     out = []
     with _LOCK:
