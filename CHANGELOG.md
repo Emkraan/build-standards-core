@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-28 (v1.66.0, ops center queued approvals applier)
+
+Item 7 of the ops center standard, lifted with its tests. Opt in: new files under `opscenter/lanes`.
+
+- `queued_approvals.py`: drains the approval inbox through the docs write guard, verifies by read back, never creates a title twice, supports
+  the changelog append auto mode. The docs home adapter is `DOCS_HOME_CMD` and defaults to nothing (DESIGN.md 12.17).
+- Tests: the duplicate protection checks, the concurrency tests (3) and the null adapter tests (2).
+
 ## 2026-10-28 (v1.65.0, ops center core and sync pull request lanes)
 
 Items 4 and 5 of the ops center standard, lifted with their tests. Opt in: two new lanes under `opscenter/lanes`; `autofix.problem_of`
