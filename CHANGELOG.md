@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-27 (v1.30.0, glow restored for three named uses)
+
+- Kit: the search field focus ring glow and the progress bar fill glow are back, as they shipped before v1.28.2.
+  The search field keeps the visible `--focus-ring` alongside the glow, so keyboard focus stays clear in both
+  themes. The meter fill and flow graph node glows stay removed, and the status dot ring stays removed.
+- Rule `web-ui.0.3` now lists its allowed uses by name and stays closed to any other glow: hero stat tiles, the
+  active nav marker, selected cards, chart bars, the search field focus ring glow, the progress bar fill glow and
+  the brand mark glow. The brand mark glow is the art mark glow layer (`.art-mark .am-glow`); the plain
+  `.sidebar-brand-mark` tile has no glow and none was added.
+- `tests/test_kit_glow.py` allows the two restored selectors and checks the meter fill stays flat.
+
 ## 2026-10-27 (v1.29.0, six consumer gaps: latest by semver, gate ordering, workflow collisions, UI stage, scanner allowlist, ASCII ignore)
 
 - `sync-core.py latest` and `update-core.py` resolve the highest strict `vX.Y.Z` tag by semantic version,
