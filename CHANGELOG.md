@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-10-28 (v1.38.0, ops center own pull request lane read model and decision cards)
+
+Fifth piece of the ops center lift (opscenter/DESIGN.md section 12.3, item 3). Opt in: no rule is added and nothing
+a consumer runs today changes.
+
+- Code: `opscenter/server/modules/own_lane.py` reads each review lane's own pull request state (fresh or stale,
+  the lane's record for a head, the held rules and which a sign-off covers, what auto-fix is doing: running, deferred,
+  waiting on other pull requests, gave up with a decision, re-armed) and never writes. Lane state files live under
+  `OPSCENTER_LANE_STATE_DIR/<lane>/own-pr-merge.json`, one lane can be pointed elsewhere with `register`, and the
+  runtime slot's session reader is an argument. `decision_cards.py` is the one writer of the lane's direction and
+  sign-off files: a click on an option is a sign-off for that head only (fix records a direction, hold adds the
+  `do-not-merge` label, override applies the override label, posts the prepared triage reply with the marker naming
+  every high and blocking id, and records the sign-off for exactly the rules the card names; a delete rule is never
+  signed off by a click, and a reply that names tooling, is not ASCII or has a semicolon is never posted).
+- Tests: 32 unit tests (the source had none), run in CI by `tests/test_opscenter_lanes.py`.
+
 ## 2026-10-28 (v1.37.0, ops center dark launches)
 
 Fourth piece of the ops center lift (opscenter/DESIGN.md section 12.3, item 11). Opt in: no rule is added and
