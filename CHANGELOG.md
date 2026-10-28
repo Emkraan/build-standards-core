@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-10-28 (v1.40.0, ops center plan gate)
+
+Seventh piece of the ops center lift (opscenter/DESIGN.md section 12.3, items 9 and 10). Opt in: no rule is added and
+nothing a consumer runs today changes.
+
+- Code: `opscenter/lanes/tfplan_gate.py` with `tfplan-gate.sh` and `tfplan-fastpass.sh`, the infrastructure plan gate
+  of the gated deploys lane. Ordinary pull request plans waiting on the plan environment are approved; pull requests
+  that change how the pipeline works are held in a queue for the owner (workflow code, the owners file, the exclusions
+  list, plan-time code or network constructs, provider and backend changes, with narrow rules that release a hold only
+  when the change is provably inert); superseded runs are cancelled; an approval carries to a later head whose held
+  content is identical; any code host error fails closed with a health counter and backoff. The repo, environment name,
+  owner login and paths are `TFGATE_*` environment variables. `signoff_store.py` is the reference sign-off store, and
+  `set_signoff_store` and `set_privileged_gate` are the plug-in seams for the review engine's own store and the
+  privileged lane.
+- Tests: 298 synthetic checks run under unittest in CI (`tfplan_gate_test.py`) and 9 for the store.
+- Not lifted: the privileged plan lane (governance, identity and destroy plans) and the plan card's decide and
+  Approve and merge helper, which are not in the handoff snapshot; the gate runs with the lane off until one is plugged in.
+
 ## 2026-10-28 (v1.39.0, ops center wake gates)
 
 Sixth piece of the ops center lift (opscenter/DESIGN.md section 12.3, items 21, 22 and 24). Opt in: no rule is added
