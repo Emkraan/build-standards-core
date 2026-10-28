@@ -4,7 +4,7 @@ image_watch.py
 
 Purpose: A failed desktop image build (image-build.yml on the platform repo (IMAGE_WATCH_REPO),
          event workflow_dispatch or schedule, branch main, latest attempt concluded failure)
-         raises one Action Center item (automation_actions, key auto-image-failed-<run>-an)
+         raises one Action Center item (automation_actions, key auto-image-failed-<run>-a<n>)
          with the failing job and step, the IMAGE-RESULT or ERROR line from the failed log,
          whether the master image-master-01 is running, and the buttons Rerun failed jobs, Close the
          window and Open run. Nothing here ever reruns or closes by itself: the two buttons post
