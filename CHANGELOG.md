@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-28 (v1.70.0, ops center builds module)
+
+The Builds page server module (item 13), lifted with its tests. Opt in: new `server/modules/builds.py` and `ghview.py`.
+
+- Pipelines, owner, branch pattern and the per product landed commands are `BUILDS_CONFIG` (DESIGN.md 12.20); the guarded Update from main keeps its
+  live re-reads. Tests: 9 against a fake gh.
+
 ## 2026-10-28 (v1.69.0, ops center inbound monitor gates)
 
 The inbound monitor gates and their noise filter, lifted with their tests. Opt in: three new files under `opscenter/gates`.

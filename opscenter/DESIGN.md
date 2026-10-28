@@ -1306,7 +1306,7 @@ the standard drops: it is waiting on something named here.
 | 9, 10 | plan gate, privileged apply review | plan gate lifted: `lanes/tfplan_gate.py` with a reference sign-off store; the privileged lane is a plug-in seam (`set_privileged_gate`) |
 | 11 | dark launches | lifted: `server/modules/dark_launches.py` |
 | 12 | cron card map, run now | lifted: `server/modules/cron_pulse.py` (parameters in 12.8) |
-| 13 | builds page | lifted as an app page; its server module (`builds.py`) is not |
+| 13 | builds page | lifted: the app page and `server/modules/builds.py` (12.20) |
 | 14, 15, 16 | image watch and pool, runbook releases, browser status | lifted: `image_watch.py`, `desktop_pool.py`, `runbook_releases.py`, `browser_status.py` |
 | 17 | model accounts, spend, fallback | not lifted, on the core owner's instruction (the consumer asked for it as a provider slot, a `ModelAccountsProvider` with a null default and the credential pool read staying in its own provider; that design is the open question). Why the running module is not lifted as it is: it reads another tool's OAuth tokens from the agent's credential pool and calls an undocumented usage endpoint with a borrowed client user agent. The standard keeps the `spend` and `plan_limits` slots (section 5.3); an adapter is the consumer's own, on a documented usage source. The spend page is lifted in the app |
 | 18 | sprint close, retro, ticket progress, needs me | lifted: `gates/sprint_close_gate.py`, `tracker/` (`work.py`, `needs_me.py`, `ticket_progress.py`, `retro_row.py`, the reference `driver.py`) and `gates/retro_row_gate.py` (12.15) |
@@ -1623,3 +1623,16 @@ subject shape, bot, channel and name is data in `INBOUND_SCORE_CONFIG`; with non
 recorder bots. Differences from the running code: the vendor sender and subject lists, the ticket and incident patterns, the second chat
 platform and the owner's name were literals; the Teams and Slack gates are one chat gate with sources; the hard coded interpreter and
 puller paths are parameters. `gates/README.md` lists the variables.
+
+### 12.20 The builds module (item 13)
+
+`server/modules/builds.py` reads the runs of the pipelines named in `BUILDS_CONFIG` (default `<state>/builds-config.json`: `repo`,
+`owner`, `branch_regex`, `pipelines[]` of `{key, product, label, workflow, refusal, summary}`, `summary_regex`, `landed`
+(`{product: command list}`), `privileged_queue`); with no pipeline the page is empty. A landed command prints the JSON facts of what
+landed for its product (recorded versus live, a `drift` list, an `errors` list); what it reads (a release record, a device management
+service, a storage account) is the consumer's. The write is the one guarded action: Update from main re-reads the run, the branch and
+the newest run live, refuses unless the run is a refused deploy on a branch matching `branch_regex` whose head the owner wrote, then
+merges main into the branch through the merge API (201 merged, 204 re-run, 409 the conflicting files). Differences from the running
+code: the product pipelines, the landed readers (a release record plus a device management read and a storage blob for one product,
+the release list for another), the owner login and the ticket branch pattern were literals; the shared `infra` helpers it imported are
+now `ghview.py`.
