@@ -163,6 +163,7 @@ value of the doc's registered rules (see the rules registry below).
 | Patterns | `standards/notifications.md` | Message format and channel rules | all (no rules yet) |
 | App types | `standards/web-build.md` | Stack, layout, API envelope, auth, RBAC wiring and the verification gate for first-party web apps | web (no rules yet) |
 | App types | `standards/web-shell.md` | Several tools on one origin: registry generated from manifests, per-module CSS scope, storage and accent, safe return target, home as the hub | web |
+| App types | `standards/web-shell-manifest.md` | The per-module `console.module.json` a multi-module shell reads, its JSON schema and the static-manifest exception | web (no rules yet) |
 | App types | `standards/web-api-runtime.md` | Node and Express APIs behind a gateway: group caching, directory token, CORS max age and origin guard, Server-Timing, request log, telemetry, the shared runtime package | web |
 | App types | `standards/web-client-runtime.md` | Single page apps with an OIDC library: one auth boot, renewal without iframes, the API client, lazy bundles, the shared client package, the live feed strip | web |
 | App types | `standards/local-ops-app.md` | Locally hosted operations apps: contract, cost-gated analyzer, loopback server | local-ops |

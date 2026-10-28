@@ -1,0 +1,471 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/core/console.module.schema.json",
+  "title": "Shell module manifest (console.module.json)",
+  "description": "The per-module manifest a multi-module shell reads (standards/web-shell-manifest.md). Unknown keys are allowed at every level, so a host can add its own. Rules that cross fields or manifests (declared groups, unique routes, folder equals id, permissionSource and peer checks) cannot be written in JSON Schema and are listed in the document, section 5.",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "tagline",
+    "accent",
+    "icon",
+    "order",
+    "client",
+    "api",
+    "rbac",
+    "groups",
+    "pages",
+    "links",
+    "tiles"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional editor hint. The generator deletes it before validating."
+    },
+    "id": {
+      "$ref": "#/$defs/moduleId",
+      "description": "Module id and first URL path segment. Unique across the registry. For apps/<dir>/modules/<id>/ it equals the folder name."
+    },
+    "name": {
+      "$ref": "#/$defs/asciiText160"
+    },
+    "tagline": {
+      "$ref": "#/$defs/asciiText160"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 400,
+      "pattern": "^[!-;=?-~](?:[ -;=?-~]*[!-;=?-~])?$",
+      "description": "Printable ASCII, no angle brackets, no leading or trailing space, 1 to 400 characters. Optional. When absent the launcher shows autoDescription()."
+    },
+    "accent": {
+      "enum": [
+        "brand",
+        "amber",
+        "blue",
+        "cyan",
+        "fuchsia",
+        "gold",
+        "green",
+        "indigo",
+        "orange",
+        "red",
+        "rose",
+        "teal",
+        "violet"
+      ]
+    },
+    "icon": {
+      "$ref": "#/$defs/iconName"
+    },
+    "order": {
+      "$ref": "#/$defs/order"
+    },
+    "client": {
+      "type": "string",
+      "pattern": "^apps/[a-z0-9-]+/client$",
+      "description": "The client package folder of the app that holds the manifest (apps/<dir>/client)."
+    },
+    "api": {
+      "type": "object",
+      "required": [
+        "gateway",
+        "prefix",
+        "scopeEnv"
+      ],
+      "properties": {
+        "gateway": {
+          "$ref": "#/$defs/key",
+          "description": "Gateway name. Also names the API server that serves the module's release notes."
+        },
+        "prefix": {
+          "$ref": "#/$defs/path",
+          "description": "Path prefix of the tool API behind the gateway."
+        },
+        "scopeEnv": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{1,31}$",
+          "description": "Names the build env pair VITE_<SCOPEENV>_API_BASE_URL and VITE_<SCOPEENV>_API_SCOPE."
+        },
+        "estateKey": {
+          "$ref": "#/$defs/key",
+          "description": "Estate health app key when it differs from the gateway."
+        }
+      }
+    },
+    "rbac": {
+      "type": "object",
+      "required": [
+        "shape",
+        "base",
+        "me"
+      ],
+      "properties": {
+        "shape": {
+          "enum": [
+            "console",
+            "hub",
+            "endpoint"
+          ]
+        },
+        "base": {
+          "$ref": "#/$defs/path",
+          "description": "Admin API base on the tool API."
+        },
+        "me": {
+          "$ref": "#/$defs/path",
+          "description": "The caller's own permission read on the tool API."
+        },
+        "permissionSource": {
+          "$ref": "#/$defs/moduleId",
+          "description": "Another module that owns this module's permissions. Shape console only, never the module itself."
+        }
+      },
+      "dependentSchemas": {
+        "permissionSource": {
+          "properties": {
+            "shape": {
+              "const": "console"
+            }
+          }
+        }
+      }
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "order"
+        ],
+        "properties": {
+          "key": {
+            "$ref": "#/$defs/key"
+          },
+          "label": {
+            "type": "string",
+            "pattern": "^[ -~]+$"
+          },
+          "order": {
+            "$ref": "#/$defs/order"
+          }
+        }
+      }
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "key",
+          "route",
+          "label",
+          "icon",
+          "hue",
+          "requires",
+          "group",
+          "order"
+        ],
+        "properties": {
+          "key": {
+            "$ref": "#/$defs/key"
+          },
+          "route": {
+            "$ref": "#/$defs/path",
+            "description": "Route inside the module router. Unique within the manifest."
+          },
+          "label": {
+            "type": "string",
+            "pattern": "^[ -~]+$"
+          },
+          "icon": {
+            "$ref": "#/$defs/iconName"
+          },
+          "hue": {
+            "enum": [
+              "brand",
+              "amber",
+              "blue",
+              "green",
+              "red",
+              "teal",
+              "violet"
+            ]
+          },
+          "requires": {
+            "$ref": "#/$defs/requires"
+          },
+          "group": {
+            "$ref": "#/$defs/key",
+            "description": "Must name a declared group (validator rule)."
+          },
+          "order": {
+            "$ref": "#/$defs/order"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[ -~]+$"
+            }
+          }
+        }
+      }
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "href",
+          "order"
+        ],
+        "properties": {
+          "key": {
+            "$ref": "#/$defs/key",
+            "description": "Unique among pages and links."
+          },
+          "label": {
+            "type": "string",
+            "pattern": "^[ -~]+$"
+          },
+          "href": {
+            "type": "string",
+            "pattern": "^https://[ -~]+$",
+            "description": "An https URL, ASCII only."
+          },
+          "slot": {
+            "enum": [
+              "rail",
+              "account"
+            ],
+            "default": "rail"
+          },
+          "group": {
+            "$ref": "#/$defs/key",
+            "description": "Required when slot is rail or absent. Must name a declared group."
+          },
+          "order": {
+            "$ref": "#/$defs/order"
+          },
+          "icon": {
+            "type": "string",
+            "description": "Not checked by the manifest validator. The shell uses it when it is a valid icon name, else ExternalLink."
+          }
+        },
+        "if": {
+          "properties": {
+            "slot": {
+              "const": "account"
+            }
+          },
+          "required": [
+            "slot"
+          ]
+        },
+        "else": {
+          "required": [
+            "group"
+          ]
+        }
+      }
+    },
+    "tiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "key",
+          "dashboard",
+          "label",
+          "permission",
+          "order"
+        ],
+        "properties": {
+          "key": {
+            "$ref": "#/$defs/key"
+          },
+          "dashboard": {
+            "$ref": "#/$defs/key",
+            "description": "Dashboard the tile belongs to. dashboard/key is unique."
+          },
+          "label": {
+            "type": "string",
+            "pattern": "^[ -~]+$"
+          },
+          "permission": {
+            "type": "string",
+            "pattern": "^(?:tab:[a-z0-9-]+|action:[a-z0-9-]+:[a-z0-9-]+)$",
+            "description": "Own permission id. A peer id is not allowed on a tile."
+          },
+          "order": {
+            "$ref": "#/$defs/order"
+          }
+        }
+      }
+    },
+    "landing": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/path"
+      },
+      "description": "Ordered page routes to land on. Every entry must be a declared page route (validator rule)."
+    },
+    "whatsnew": {
+      "type": "object",
+      "required": [
+        "path",
+        "changelog"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/path",
+          "not": {
+            "pattern": "//"
+          }
+        },
+        "changelog": {
+          "type": "string",
+          "pattern": "^https://[ -~]+$"
+        }
+      }
+    },
+    "home": {
+      "type": "object",
+      "properties": {
+        "actions": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "required": [
+              "key",
+              "label",
+              "icon",
+              "route",
+              "requires",
+              "order"
+            ],
+            "properties": {
+              "key": {
+                "$ref": "#/$defs/key"
+              },
+              "label": {
+                "type": "string",
+                "pattern": "^[ -~]+$",
+                "maxLength": 40
+              },
+              "icon": {
+                "$ref": "#/$defs/iconName"
+              },
+              "route": {
+                "$ref": "#/$defs/path",
+                "description": "Must be a declared page route (validator rule)."
+              },
+              "requires": {
+                "$ref": "#/$defs/requires"
+              },
+              "order": {
+                "$ref": "#/$defs/order"
+              }
+            }
+          }
+        },
+        "feeds": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "required": [
+              "key",
+              "block",
+              "label",
+              "path",
+              "requires",
+              "order"
+            ],
+            "properties": {
+              "key": {
+                "$ref": "#/$defs/key"
+              },
+              "block": {
+                "enum": [
+                  "waiting",
+                  "live",
+                  "fleet"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "pattern": "^[ -~]+$",
+                "maxLength": 60
+              },
+              "path": {
+                "$ref": "#/$defs/path",
+                "not": {
+                  "pattern": "//"
+                },
+                "description": "A path on the module's own API that answers { items }."
+              },
+              "requires": {
+                "$ref": "#/$defs/requires"
+              },
+              "order": {
+                "$ref": "#/$defs/order"
+              },
+              "linkModule": {
+                "$ref": "#/$defs/moduleId",
+                "description": "Module the item routes open in. the shell defaults it to the module's own id."
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "moduleId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,31}$"
+    },
+    "key": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+    },
+    "path": {
+      "type": "string",
+      "pattern": "^/[a-z0-9\\-/]*$"
+    },
+    "iconName": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9]{1,40}$",
+      "description": "A name in the shell icon map . An unknown name renders the fallback icon."
+    },
+    "order": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100000
+    },
+    "asciiText160": {
+      "type": "string",
+      "pattern": "^[ -~]+$",
+      "maxLength": 160
+    },
+    "requires": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^(?:[a-z][a-z0-9-]{1,31}/)?(?:tab:[a-z0-9-]+|action:[a-z0-9-]+:[a-z0-9-]+)$"
+      },
+      "description": "Any-of list of permission ids. tab:<id>, action:<tab>:<id>, or a peer id <module>/<id> that another module's own me read answers."
+    }
+  }
+}

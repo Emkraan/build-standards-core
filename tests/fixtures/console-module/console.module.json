@@ -1,0 +1,25 @@
+{
+  "id": "console",
+  "name": "Console",
+  "tagline": "Home, access and settings for every module",
+  "description": "The console owns Home, the module launcher, people and roles, and the settings every module shares.",
+  "accent": "brand",
+  "icon": "LayoutDashboard",
+  "order": 0,
+  "client": "apps/shell/client",
+  "api": { "gateway": "console", "prefix": "/api", "scopeEnv": "CONSOLE" },
+  "rbac": { "shape": "console", "base": "/admin", "me": "/me" },
+  "groups": [
+    { "key": "overview", "label": "Overview", "order": 10 },
+    { "key": "access", "label": "Access", "order": 20 }
+  ],
+  "pages": [
+    { "key": "home", "route": "/", "label": "Home", "icon": "Home", "hue": "brand", "requires": ["tab:home"], "group": "overview", "order": 10 },
+    { "key": "people", "route": "/people", "label": "People", "icon": "Users", "hue": "blue", "requires": ["tab:people"], "group": "access", "order": 10, "keywords": ["users", "roles"] }
+  ],
+  "links": [],
+  "tiles": [
+    { "key": "waiting", "dashboard": "home", "label": "Waiting on you", "permission": "tab:home", "order": 10 }
+  ],
+  "whatsnew": { "path": "/whatsnew", "changelog": "https://docs.example.com/changelog/console" }
+}

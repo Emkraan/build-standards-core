@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-10-28 (v1.31.0, shell module manifest schema)
+
+First piece of the multi-module shell lift. Nothing here is mandatory: no rule is added, and a consumer that
+uses none of it is unchanged.
+
+- Standards: `standards/web-shell-manifest.md` documents the per-module `console.module.json` a multi-module shell
+  reads: every key with its rule, the defaults the shell applies at read time, the checks a schema cannot make
+  (declared groups, unique routes, `permissionSource` and peer permission ids) and a full example. Unknown keys are
+  allowed at every level.
+- Schema: `standards/schemas/console.module.schema.json` (JSON Schema draft 2020-12) for that file.
+- Documented exception: a host that declares its tools in a static typed array in code instead of one JSON file per
+  module keeps its shape. The document maps the fields of such a manifest onto the JSON shape and names what has no
+  equivalent (a scoped visibility function, a per-tool status, a per-link preview flag); that is recorded as an
+  exception, never a failure.
+- `web-shell.md` section 3 links the document. The generator needs no change: the shell keys pass as `--allow-keys`
+  host extensions and `brand` as `--extra-accents`.
+- Tests: `tests/test_console_module_schema.py` (fixtures valid, unknown keys pass, 24 rejected mutations, run with a
+  stdlib validator because CI has no `jsonschema`) and `kit/tests/console-manifest.test.ts` (the fixtures through the
+  real generator with those flags, and the staleness check). `check-token-names.py` lists `--allow-keys` and
+  `--validate-with` as command-line flags.
+
 ## 2026-10-28 (v1.30.12, search focus glow exactly as before)
 
 - Kit: the search field focus is `0 0 0 3px var(--accent-glow)` again, as it was before v1.30.0. The always-on `--focus-ring`

@@ -1,0 +1,29 @@
+{
+  "id": "alerts",
+  "name": "Alerts",
+  "tagline": "Compose, approve and send alerts",
+  "accent": "orange",
+  "icon": "Megaphone",
+  "order": 10,
+  "client": "apps/alerts/client",
+  "api": { "gateway": "endpoint", "prefix": "/api", "scopeEnv": "ENDPOINT" },
+  "rbac": { "shape": "endpoint", "base": "/notify/admin", "me": "/notify/me" },
+  "groups": [{ "key": "send", "label": "Send", "order": 10 }],
+  "pages": [
+    { "key": "compose", "route": "/compose", "label": "Compose", "icon": "PenLine", "hue": "amber", "requires": ["action:alerts:compose", "tab:alerts"], "group": "send", "order": 10 }
+  ],
+  "links": [
+    { "key": "status", "label": "Status page", "href": "https://status.example.com/", "slot": "account", "order": 40 }
+  ],
+  "tiles": [],
+  "landing": ["/compose"],
+  "home": {
+    "actions": [
+      { "key": "compose-alert", "label": "Compose alert", "icon": "Megaphone", "route": "/compose", "requires": ["action:alerts:compose"], "order": 10 }
+    ],
+    "feeds": [
+      { "key": "to-approve", "block": "waiting", "label": "Alerts awaiting your approval", "path": "/notify/home/waiting", "requires": ["action:alerts:approve"], "order": 10 }
+    ]
+  },
+  "x-host": { "note": "an unknown key is allowed" }
+}

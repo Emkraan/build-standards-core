@@ -33,6 +33,7 @@ VAR_REF = re.compile(rf"var\(\s*({NAME})")
 SPAN_REF = re.compile(rf"`({NAME})(-\*|-?<[a-z-]+>[a-z0-9-]*|\*)?`")
 # Command-line flags the docs name on their own in a code span. They are options, not tokens.
 FLAGS = {
+    "--allow-keys",
     "--body-file",
     "--check",
     "--dry-run",
@@ -41,6 +42,7 @@ FLAGS = {
     "--force",
     "--json",
     "--latest",
+    "--validate-with",
     "--self-test",
     "--server",
     "--squash",
