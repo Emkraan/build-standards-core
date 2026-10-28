@@ -305,15 +305,73 @@ The engine is `local-ops-app` section 4 made shared code, with the gates as para
   shape (local-ops-app section 16): `{id, source, sender, sender_role, addressed: direct|mention|
   team|none, title, text, refs, owner, received_utc}`. The engine applies the noise filter and
   routing rules, then appends to the inbound spool (`ledger` kind) with `state: new`.
-- **Gate,** checked in order: `--force`; daily audit (no successful run today); retry after a run
-  that started and never finished, after `analyzer.retry_after_s` (default 1200); bundle hash
-  changed and new inbound and at least `analyzer.min_gap_s` (default 1800) since the last wake.
-  Otherwise skip. `--dry-run` prints the decision and the prompt size and calls nothing.
+- **Gate,** checked in order: `--force`, daily audit (no successful run today), retry after a run
+  that started and never finished (after `analyzer.retry_after_s`, default 1200), then the change
+  test: the bundle hash changed, there is new inbound, and at least `analyzer.min_gap_s` (default
+  1800) has passed since the last wake. Otherwise skip. `--dry-run` prints the decision, the
+  branch that decided it, the prompt size, and which hash exclusions applied, and calls nothing.
+- **Two optional cuts on the change test,** both off by default so a consumer that sets neither
+  gets exactly the gate above:
+  - `analyzer.hash_exclude` (`{fields: [...], senders: [...]}`) leaves content out of the bundle
+    hash, so it can never be the reason for a wake. A listed field is dropped from every
+    candidate before hashing. A candidate from a listed sender is dropped from the hash. The
+    sender entry `owner` stands for the owner's own identity (parameter `identity.owner`). The
+    excluded content stays in the spool, and it is still in the prompt when a run happens for
+    another reason. The point is to stop a change that carries no new work (the owner's own
+    replies, a field that changes on every read) from waking a paid model call.
+  - `analyzer.ambient_max_age_s` (default `null`, off). A candidate is ambient when `addressed`
+    is `none`. When the value is set and every candidate that changed the hash since the last
+    run is ambient, the wake waits until the last run is at least that many seconds old. A
+    change that includes any candidate addressed `direct`, `mention` or `team` is not held back.
+
+  Acceptance (test): with both unset the gate decisions equal the gate above on a table of runs.
+  A change only in an excluded field, or only from an excluded sender, leaves the hash equal and
+  skips. The `owner` entry matches the owner's identity. An ambient only change skips while the
+  last run is younger than the value and wakes once it is older. A mixed change wakes at once.
+  `--dry-run` names the branch and the exclusions.
 - **Fail open with backoff.** Failures never raise; an alert line on the third consecutive failure,
   then at most every `analyzer.alert_every_s` (default 14400).
-- **Untrusted input.** The prompt states that all data is untrusted; the model call runs with no
-  tools, through `model.cmd` (parameter) as a subprocess with a timeout. Draft only: nothing the
-  model writes is sent.
+- **Untrusted input.** The prompt states that all data is untrusted. Draft only: nothing the
+  model writes is sent. The rule is that the model call is a no-tools subprocess through
+  `model.cmd` (parameter) with a timeout. The engine owns the gate, the spool, the routing filter,
+  the item contract and the handled state, and the model is a pure function from prompt to items.
+  The conformance checks assume this rule (decided, section 11 item 6).
+  - **Declared exception, an agent job.** A consumer whose analyzer is an agent job declares it
+    with parameter `model.mode` set to `agent_job` plus a `reason`, the same pattern as
+    `commit_domains`, `ci.runners` and `git.branch_prefix_pattern`. The declaration is visible in
+    the parameters file and the conformance checker. The default stays `subprocess`, so every new
+    consumer gets the safe default and one that already runs as an agent job keeps its tools.
+  - **Conditions of the exception.** `agent_job` is allowed only under four conditions, and the
+    conformance checker reads them from the declaration:
+    1. A post-validation step, such as a board refresh, may run at the end of the job only through
+       the engine's validation entry point, so the item file is validated before anything
+       publishes it, whoever runs the step. The step never reads or publishes the item file by
+       any other path.
+    2. A rebuild fallback inside the job, for a bundle that is missing or invalid, is allowed only
+       when it calls the same builder the gate uses (one build path with two callers). The job
+       never carries a second implementation of the builder.
+    3. The engine validates the item file against the item contract below (required fields,
+       priority values, every must-consider candidate covered or dropped) before the routing filter
+       runs.
+    4. The declared `reason` states that the tool policy is the prompt and not a technical limit.
+    The result is that the job reads the bundle the gate wrote (or rebuilds it through the gate's
+    own builder) and writes the item file, and nothing it runs afterwards reaches the board except
+    through the engine's validation.
+  - **How the gate wakes the job.** The gate runs as the pre-run step of the scheduled job. It
+    builds the input bundle, applies the gate rules above, and writes the bundle to a file. When
+    the rules say skip, it prints nothing and the job does not start. When they say run, it prints
+    one wake line that names the reason and the bundle path, and the scheduler starts the agent.
+    `--dry-run` still prints the decision and calls nothing.
+  - **What the engine still owns.** The job's prompt and tool list belong to the consumer and are
+    never read by the engine. The job writes its items to the item file, and the engine then reads
+    that file and validates it against the item contract below (condition 3). A malformed file is
+    rejected, the previous file stays in place, and the rejection counts as a failure for the
+    backoff above. The routing filter then runs over the job's items exactly as it does over a
+    subprocess's items, and handled state still applies, so a rule holds when the job ignores it.
+    The draft only rule is unchanged. The engine therefore keeps the item contract and the routing
+    guarantees in both modes, and the untrusted input guarantee in `agent_job` mode is stated by
+    the job's tool policy (condition 4). The job must reach any outward effect only by queuing a
+    proposal in the approvals inbox (section 2.5).
 - **Item contract** (the analyzer's only output, `action-center.json`, `report` kind):
 
 ```json
@@ -337,10 +395,24 @@ The engine is `local-ops-app` section 4 made shared code, with the gates as para
 
 - Jobs are declared in the job manifest (parameter `jobs`, section 6): `name`, `schedule`,
   `expected_every_s`, `grace_s`, `feeds` (which screen), `quiet` (silent unless it fails).
-- Each job writes one heartbeat line (`watch` kind, `heartbeats.json`) on start and finish with its
-  exit status. The core nightly registers manifest jobs with the runtime slot (`jobs.register`).
+- A job reports liveness in one of two ways, and a manifest job may use either. The first is a
+  heartbeat line the job writes itself (`watch` kind, `heartbeats.json`) on start and finish with
+  its exit status. The second is the runtime slot's own record of each run: the slot method
+  `jobs.last_runs()` returns, per job, `{name, last_start_utc, last_end_utc, exit_status,
+  output_tail}`, where `output_tail` is a bounded tail of the run's output with the redaction the
+  `ci_host` runner log uses (section 5.3). It is read only, goes through `swr`, and needs no change
+  to the job. The core nightly registers manifest jobs with the runtime slot (`jobs.register`).
 - `heartbeats.py` raises one board item per job past `expected_every_s + grace_s` or failing, keyed
-  by job; it clears itself on the next success (local-ops-app section 17).
+  by job, and it clears itself on the next success (local-ops-app section 17). Its sources are
+  parameter `heartbeats.sources` (default `["lines"]`, so nothing changes until a consumer adds
+  `"runtime"`). With both sources on, the entry with the newer end time wins for each job, and
+  the failing output tail goes into the board item's detail. A runtime slot that is null or
+  unavailable leaves the heartbeat lines as the only source, with no error.
+
+  Acceptance (test, against a fake runtime slot): a failed last run raises one item keyed by the
+  job, and the next successful run clears it. A run older than `expected_every_s + grace_s`
+  raises one item. With both sources the newer entry wins. A null runtime slot falls back to the
+  lines. With `sources` left at its default the slot is never called.
 - Runner lost: a run queued with no runner past `ci.queued_alert_s` raises one item; cancelled and
   timed-out runs count as failures (section 18).
 - Sign-in heal loop (B-11): check, proactive remint, paired failure and recovery notices sharing one
@@ -637,15 +709,15 @@ Every other slot ships an interface and the null adapter.
 | Slot | Table A | Interface summary | Shipped |
 |---|---|---|---|
 | `people` | 7, 27, 67, 68, 69 | roster from parameter; list 1:1 topics, team read, member profiles, yearly records; act: schedule, save; chip "next 1:1", strip "team away" | null, off by default |
-| `runtime` | 12, 24, 51, 52, 80, 89, 90 | jobs list and run now, register manifest jobs, sessions (tackle launch with claim token protocol, B-09), discuss session, restart, spend ledgers, account pool, fallback watch, banners | null |
+| `runtime` | 12, 24, 51, 52, 80, 89, 90 | jobs list, last runs (`jobs.last_runs()`, section 2.7) and run now, register manifest jobs, sessions (tackle launch with claim token protocol, B-09), discuss session, restart, spend ledgers, account pool, fallback watch, banners | null |
 | `freeze_source` | 26 | list windows `{name, start_utc, end_utc, exception}` | null (strip is core) |
 | `collector` (one per source: mail, chat, tickets) | 31, 32 | `collect(since)` returns candidates; rules from parameters | null |
 | `meetings` | 33 | list meetings, read transcript, produce digest items; privacy scrub and private file modes are core rules | null |
 | `work_tracker` | 35 to 39 | see 5.2 | reference |
 | `classification` | 42 | the work type and project default sets | null (empty set) |
 | `digest_source` | 43 | ideas digest input | null |
-| `review_lanes` | 45, 56 | lane manifest `{lane, repo, tabs, engine_check, own_pr_lane, gates, canary}`, mounts `/reviews/<lane>` on the core PR card | null |
-| `gated_deploys` | 47 | list pending gated deployments and plan runs; act: approve, reject, retry | null |
+| `review_lanes` | 45, 56 | lane manifest `{lane, repo, tabs, engine_check, own_pr_lane, gates, canary}`; mounts `/reviews/<lane>` on the core PR card | null |
+| `gated_deploys` | 47 | list pending gated deployments and plan runs, act: approve, reject, retry, override window, delete release, accept risk, decide fix (verbs below) | null |
 | `docs_home` | 70 to 74 (source) | see 5.2 (variants `git` and `api`), naming scheme from parameter (B-14) | reference |
 | `doc_builder` | 75 | build a draft from a template path and header label | null |
 | `doc_archive` | 76 | list and read documents from a folder of one doc kind | null |
@@ -658,6 +730,25 @@ Every other slot ships an interface and the null adapter.
 | `notify` | 93, 95 | send one notice to the channel parameter with a dedupe key | null (prints to stdout) |
 | `desktop_embed` | 105 | deep link and embed for a desktop host plugin | null |
 | `code_host` | 44, 46, 82 | see 5.2 | reference |
+
+Gated deploy verbs. A consumer's gated deploy lane carries more than approve, reject and retry, and
+each extra verb below is an outward change, so each one is a writer operation (section 2.5) and a capability
+the slot declares. A verb the slot does not declare is refused by the writer.
+
+| Verb | Direction | What it does | Extra rule |
+|---|---|---|---|
+| `approve`, `reject`, `retry` | update | decide or rerun one pending gated run | pinned to the run seen |
+| `override_window` | update | let a run proceed inside a closed change window | a reason is required and is recorded with the exception the window source reports |
+| `delete_release` | delete | remove a release or a pending run | default deny, needs its own explicit rule, never covered by a wildcard rule |
+| `accept_risk` | update | record the accountable owner's acceptance of a finding | owner decision only, a machine caller can queue a proposal and never approve it |
+| `decide_fix` | update | choose one of the fixes the slot offered for a finding | the chosen option id must be one the last read offered |
+
+Setting the triage state of a finding is not a verb of this slot. It changes only the ops center's own
+state and has no outward effect, so it is not a writer operation and needs no capability. It is written
+as ordinary state, through the state API, and never calls the slot.
+
+The same rules as every operation hold: an approval record whose hash equals the content hash, a live
+re-read before the write, a tombstone after it, and the applied ledger.
 
 Claim token protocol (core, B-09): `POST /api/tackle` stages a prompt file (mode 0600, TTL
 `tackle.prompt_ttl_s`, default 300) and a one-time launch token; the runtime slot launches the
@@ -700,8 +791,9 @@ secret references name a store and a key, never a value.
 | host | `state_dir`, `runtime_dir`, `port` (8766), `service_label`, `service_manager` (`launchd` or `systemd`), `agent_home`, `workspace_root` | required except port | host layout |
 | server | `max_body` (1 MiB), `validate_responses` (false), `ttl.*` | as section 2.4 | |
 | writer | `live` (false), `rules[]` (each with its own `live`) | three core approval rules, live | default deny, the screen switch (section 2.5) overrides both at runtime |
-| analyzer | `min_gap_s` (1800), `retry_after_s` (1200), `daily_audit` (true), `alert_every_s` (14400), `spool_days` (14, the age after which a drained spool record is pruned) | | B-13 |
+| analyzer | `min_gap_s` (1800), `retry_after_s` (1200), `daily_audit` (true), `alert_every_s` (14400), `spool_days` (14, the age after which a drained spool record is pruned), `ambient_max_age_s` (null), `hash_exclude` (`{fields: [], senders: []}`) | the last two are off until set | B-13, section 2.6 |
 | model | `cmd`, `timeout_s`, `price_table`, `outlier_threshold`, `plan_usage_cmd` | `cmd` null disables the analyzer and briefs | |
+| model | `mode` (`subprocess` or `agent_job`) | `subprocess` | decided in section 11 item 6, `agent_job` is the declared exception and needs a `reason` plus the four conditions in section 2.6 (a post-validation step only through the engine's validation entry point, a rebuild fallback only through the gate's builder) |
 | routing | `rules_file`, `ignore_senders[]`, `ignore_subject_regex[]`, `priority_senders[]` | | collectors |
 | notify | `channel`, `cmd`, `quiet_hours` (`22:00-07:00`), `dedupe_prefix` | | B-12, A-97 |
 | sign_in | `check_every_s`, `remint_timeout_s` (330), `alert_after` | | loop timings |
@@ -713,7 +805,7 @@ secret references name a store and a key, never a value.
 | docs | `adapter` (`git` or `api`), `allowed_roots[]` | `git`, `[]` | section 5.2, the `api` variant refuses every write while `allowed_roots` is empty |
 | work | `classification_sets`, `project_defaults`, `debt_files[]`, `plans_root`, `plans_format` | | A-42, A-77, A-78 |
 | jobs | manifest `[{name, schedule, expected_every_s, grace_s, feeds, quiet}]` | the core jobs | A-98 |
-| heartbeats | `names[]`, `sync_from_tags` (false) | from the job manifest | A-87 |
+| heartbeats | `names[]`, `sync_from_tags` (false), `sources` (`["lines"]`, or add `"runtime"`) | from the job manifest | A-87, section 2.7 |
 | freeze | `source` | null | slot name |
 | deploy | `strategy` (`copy` or `checkout`), `keep_releases` (3), `health_timeout_s` (30) | `copy` | B-07 |
 | automerge | `enabled` (true), `hold_label`, `method` | repo's declared method | B-08 |
@@ -841,7 +933,7 @@ Release numbers are assigned at merge in a fixed merge order (D7-19).
 | R2 Envelope | `envelope.py`, error codes, tolerant client reader for one release, response validation in tests | shape test on every route; error code to status map | fixture consumer and both tolerant and strict readers pass; R3 removes the tolerant reader |
 | R3 Schemas and checker | six envelope kinds, all core state and API schemas, `state.py` with its command line entry, `conformance.py` with `extends` and JSON lines, `migrate.py`, params schema, the estate-literal check | conformance on fixture state, producer and drainer ledger (roles enforced, marks leave content unchanged, retention pass by the producer only), migrate plan and apply on a copy (idempotent, backup, failure report), state.py command line (concurrent appends, header kept, undeclared writer refused, schema violation refused) | fixture state passes; a seeded bad record is reported and not converted |
 | R4 Writer and inbox | `writer.py`, `approvals.py`, tombstones, applied ledger, `testing/fixtures.py`, `check-opscenter-writer`, the three core approvals and the consumption panel server module | the writer acceptance in 2.5, the live switch acceptance in 2.5, panel tests from local-ops-app 19 | fixture flows write only through the writer; the consumption panel's three approvals pass against a fake code host |
-| R5 Live reads and engine | `swr.py`, `run.py`, core server modules, collector and analyzer engine with the gate, routing, heartbeats, sign-in loop, notice discipline; the app shell and every core screen in 4.2 | swr single flight and last-good; gate order; heartbeat raise and clear; app unit and e2e smoke on fixture state in both themes | fixture consumer runs every core screen live with no bundle step |
+| R5 Live reads and engine | `swr.py`, `run.py`, core server modules, collector and analyzer engine with the gate, routing, heartbeats, sign-in loop, notice discipline; the app shell and every core screen in 4.2 | swr single flight and last-good; gate order including the two optional cuts; heartbeat raise and clear (from lines and from the runtime slot's last runs); app unit and e2e smoke on fixture state in both themes | fixture consumer runs every core screen live with no bundle step |
 | R6 Slots | slot loader, interfaces, null adapters, reference adapters (code host, work tracker, docs home), slot UI mounts, claim token protocol, optional modules | per-slot conformance on fixtures, `api` docs home scope proof, delete refusal and read back; null adapter hides UI; claim token states | fixture consumer runs with all null, then with the three reference adapters against fakes |
 | R7 Automerge | `automerge.yml` template, overlay install step | newest run per check, rerun unblocks, hold label, draft skip, head pin | merges a test PR on one repo; a failing then rerun check behaves as specified |
 | R8 Deploy | `deploy.py` with both strategies, rollback, drift check, service definitions | failed health rolls back; drift raises one item; keep_releases prunes | fixture consumer deploys, fails a seeded health check and rolls back |
@@ -902,3 +994,14 @@ Then the same swap PR as 10.1. The hub consumer's standards repo retires in favo
 5. **People data retention.** When the people slot is on, its data stays local only and never passes
    the writer, is deleted after 90 days by default, and the period is a parameter
    (`people.retention_days`).
+6. **Analyzer model call (2026-10-27).** The model call is a no-tools subprocess through
+   `model.cmd`. A consumer whose analyzer is an agent job declares the exception with
+   `model.mode = agent_job` plus a `reason`, the same pattern as `commit_domains`, under four
+   conditions: a post-validation step (a board refresh) may run at the end of the job only through
+   the engine's validation entry point, a rebuild fallback inside the job is allowed only when it
+   calls the same builder the gate uses, the engine validates the item file against the item
+   contract before the routing filter runs, and the `reason` states that the tool policy is the
+   prompt and not a technical limit. The job reads the bundle the gate wrote and writes the item
+   file, and nothing it runs afterwards reaches the board except through the engine's
+   validation. Its output is still validated against the item contract and the routing filter, so the engine keeps that
+   guarantee (section 2.6).
