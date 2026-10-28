@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-28 (v1.42.0, ops center engine: board contract, handled match, first seen)
+
+Ninth piece of the ops center lift (opscenter/DESIGN.md section 2.6 and 12.4). Opt in: no rule is added and nothing a
+consumer runs today changes.
+
+- Code in `opscenter/engine`: `contract.py` with `board.schema.json` (the item contract for the analysis job's one output
+  file and the engine step that enforces it: a bad file is rejected, the last good file is restored, the streak feeds the
+  wake gate's backoff), `handled.py` (a dismissed item stays dismissed until new source evidence; ignored forever never
+  returns), `first_seen.py`, `applied_log.py` and `state_extract.py`. Stdlib only, Python 3.9.
+- Tests: 37 unit tests (the contract tests are new; the handled and first seen tests are lifted with their fixtures
+  rewritten to synthetic names), run in CI.
+- Not lifted yet: routing, the bundle builder, `ref_status` and `publish_mode`, which are tied to named repositories and
+  one docs home layout and need a parameter design first.
+
 ## 2026-10-28 (v1.41.0, ops center server modules: cache, alerts, tombstones, image watch, browser status)
 
 Eighth piece of the ops center lift (opscenter/DESIGN.md section 12.3, items 12, 14, 16 and the shared helpers). Opt in:

@@ -5,7 +5,7 @@ import sys
 import unittest
 
 OPSCENTER = pathlib.Path(__file__).resolve().parent.parent / "opscenter"
-AREAS = ("lanes", "server/modules", "gates")
+AREAS = ("lanes", "server/modules", "gates", "engine")
 
 
 def load_tests(loader, tests, pattern):

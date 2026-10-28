@@ -1207,8 +1207,7 @@ check(
 check(
     "exclusions: ? in a name (existing snapshot entry) is allowed",
     g._excl_pattern_problem(
-        SUB
-        + "/resourcegroups/prod-avd-rg/providers/microsoft.compute/snapshots/gold-w11-??-snap-*",
+        SUB + "/resourcegroups/image-rg/providers/microsoft.compute/snapshots/master-??-snap-*",
         E_BASE,
     )
     is None,
