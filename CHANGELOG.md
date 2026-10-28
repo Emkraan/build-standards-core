@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-28 (v1.74.0, ops center runtime slot)
+
+The runtime slot behind Tackle now, Discuss and the session list. Opt in: new `server/runtime_slot.py` and routes.
+
+- One consumer command (`OPSCENTER_RUNTIME_CMD`: `start` and `status`) starts and follows sessions; with none configured every route says "no runtime configured" (DESIGN.md 12.23).
+  Tests: 10 against a fake command, plus 1 route test.
+
 ## 2026-10-28 (v1.72.0, ops center model accounts)
 
 The Spend page server half (item 17), as a provider slot. Opt in: new `server/modules/model_accounts.py` and `model_fallback.py`, routes in `server/routes.py`.

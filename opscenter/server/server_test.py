@@ -338,6 +338,18 @@ class Routes(unittest.TestCase):
         )
         self.assertEqual(self.js("POST", "/api/infra/fallback-order", {"ids": ["a"]})[0], 501)
 
+    def test_the_runtime_routes_answer_with_no_runtime_configured_by_default(self):
+        os.environ.pop("OPSCENTER_RUNTIME_CMD", None)
+        s, body = self.js("GET", "/api/tackle")
+        self.assertEqual((s, body["runtime"]["configured"]), (200, False))
+        for path, payload in (
+            ("/api/tackle", {"fp": "x"}),
+            ("/api/jira/tackle", {"key": "A-1"}),
+            ("/api/pr/discuss", {"repo": "o/r", "pr": 1}),
+        ):
+            s, body = self.js("POST", path, payload)
+            self.assertEqual((s, body["error"]), (501, "no runtime configured"), path)
+
     def test_a_refused_provider_answers_403_with_the_reason(self):
         os.environ["OPSCENTER_MODEL_ACCOUNTS_PROVIDER"] = "nocolon"
         s, body = self.js("GET", "/api/infra/accounts")
