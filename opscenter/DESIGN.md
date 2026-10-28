@@ -1315,6 +1315,8 @@ the standard drops: it is waiting on something named here.
 | 21 | knowledge proposals | lifted: proposal rewrite gate, applied log, `engine/publish_mode.py`; the queued approvals applier is not |
 | 22 | plans reconcile | lifted: `gates/plans_reconcile_gate.py` |
 | 23 | pull request dependencies, search | lifted: `server/modules/pr_deps.py`, `ops_search.py` |
+| 24 | cron catalog gate, sitrep, hermetic test home, reviews visibility check | cron catalog gate, hermetic home, reviews visibility check and the sitrep (`gates/sitrep.py`, `sitrep_prerun.py`) lifted; the live ref check is `engine/ref_status.py` (12.18) |
+
 | 24 | cron catalog gate, sitrep, hermetic test home, reviews visibility check | cron catalog gate, hermetic home, reviews visibility check and the sitrep (`gates/sitrep.py`, `sitrep_prerun.py`) lifted; the live ref check is a plug-in the consumer supplies (`ref_status` is not lifted) |
 | (tools) | export path map, per pull request changelog tool | lifted: `tools/livepath.py`, `tools/changelog.py` (both configured by JSON files, `tools/README.md`) |
 | (2.4) | swr, alerts, review tombstones, paths | lifted: `server/modules/` |
@@ -1596,3 +1598,13 @@ title lookup is scoped to), `DOCS_CLOUD_ID`, `AQA_AUDIT` (the consumer's documen
 Differences from the running code: the tenant, the two tree roots, the driver path, the corporate certificate and the audit path
 were literals and are parameters; the proposals store is `docs-proposals.json` (the gate's name); the test for the documentation
 audit's duplicate check stayed out with the audit, which is not lifted.
+
+### 12.18 The live ref check (item 24 remainder)
+
+`engine/ref_status.py` is the plug-in behind `OPSCENTER_REF_STATUS` (12.13) and the sitrep's reference block (12.7 item 24). It
+extracts the pull requests (`<prefix> PR #12`, a bare `PR #12` means the default repository) and tracker keys a text names, reads
+their state live (the code host through `gh`, the tracker through a driver command) and reports which are finished. Parameters:
+`REF_STATUS_REPOS` (JSON prefix to `owner/repo`, plus `default`), `REF_STATUS_KEY_REGEX`, `REF_STATUS_TRACKER_CMD` and
+`REF_STATUS_SITE` (the 12.15 driver contract; none means ticket lookups report an error), `REF_STATUS_APPLY_WORKFLOW`. A read error never
+marks anything finished. Differences from the running code: the repository and prefix map, the driver path and the key pattern were
+literals and are parameters.
