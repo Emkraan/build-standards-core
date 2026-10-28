@@ -562,6 +562,26 @@ columns share widths (`table-layout: fixed` plus a common `colgroup`) so columns
 to group. Buttons in cells never wrap. Truncated text needs no extra work: the tooltip layer shows
 it in full.
 
+### Matrices (`MatrixGrid`)
+
+A matrix is a table where every cell is a value of one row and one column (responsibility, access,
+coverage, vendor by product). It uses `MatrixGrid`, not `Table`: the order of rows and columns carries
+meaning, so a matrix never sorts (the exception in the table rules above).
+
+- It is the ARIA grid pattern: one roving tab stop, arrow keys, Home and End along a row, Ctrl with
+  Home or End to the corners, Enter and Space or a click to activate a cell (only when `onCellActivate`
+  is passed; otherwise the grid is read only). A control inside a cell keeps its own click.
+- The head row and the first column stay in view while the body scrolls. `maxHeight` caps the
+  scroll area for a tall matrix.
+- Density is `comfortable`, `compact` (default) or `dense`. Use `dense` for a matrix larger than a
+  screen; keep cell content to one short mark or chip, because the cell is not a place for text.
+- `cellTone` tints a cell with the tone recipes of section 17, and the tone never carries meaning
+  alone: the cell also shows the mark. `cellLabel` gives the spoken meaning of a mark (a letter
+  read as "Responsible"); left out, the cell content is read as it is.
+- Rows with the same `group` value sit under one group heading.
+
+**Acceptance:** a component test asserts the grid roles, the roving tab stop and each key above, and the
+gallery specimen `matrix-grid` carries baselines in both themes.
 ### Month calendar (`MonthGrid`)
 
 `MonthGrid` draws weeks of day cells and knows dates and layout only. What an event means (shift, leave,
@@ -1464,6 +1484,26 @@ already shows it, so the version never appears twice. The gliding marker is desc
 **Acceptance:** runtime. A Playwright check asserts `data-rail` moves collapsed, open, pinned and
 back with real mouse movement and the `[` key, that the pin persists across a reload, and that no
 horizontal overflow exists at 390px.
+
+**Second level (`ContextPanel`).** The rail is one level: it picks the tool. A tool with several
+sections of its own (a calendar with month, schedule and requests, an admin area with access and
+audit) lists them in a `ContextPanel` that the app passes to `AppShell contextPanel`. Rules:
+
+- The shell lays the panel out as a fixed `--sidebar-w` column beside the header and the page. It
+  is never an overlay, never opens on hover and has no pin, so the page reflows around it and the
+  rail keeps those behaviours for itself. Left out, the shell renders exactly as before.
+- Its children are the rail's own `NavGroup` and `NavItem`, so the active item wears the same
+  gliding highlight. Set `iconBadge={false}` on its items: the count on the icon is for the
+  collapsed rail.
+- One panel per page. It names the tool (`title`), may carry one line under it (`subtitle`) and
+  a `footer`, and its list is a `nav` named `<title> sections` (or `navLabel`).
+- Below 900px the panel stacks above the page and its list folds behind a button (`toggleLabel`,
+  `aria-expanded`), closed unless `defaultOpen`. The rail's drawer is not involved.
+
+**Acceptance:** a component test asserts the panel is a direct sibling of `.shell-main` inside the
+shell, that it names itself and its list, that the active item carries `aria-current="page"`, that the
+fold button toggles `aria-expanded`, and that a shell without the prop is unchanged. The gallery
+specimen `context-panel` carries baselines in both themes.
 
 ## 20. Announcements, the pulse feed, and the presenter
 

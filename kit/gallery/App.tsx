@@ -20,6 +20,7 @@ import {
   Card,
   Checkbox,
   Combobox,
+  ContextPanel,
   UnavailableError,
   EXTRA_HUES,
   CardBody,
@@ -75,6 +76,7 @@ import {
   Switch,
   ShortcutLayer,
   Skeleton,
+  MatrixGrid,
   MonthGrid,
   LaneBoard,
   StatTile,
@@ -478,6 +480,63 @@ function MonthGridSpecimen() {
     { id: '6', date: '2026-10-23', label: 'Release window', tone: 'danger' as const },
   ];
   return <MonthGrid year={2026} month={9} label="Example calendar" today="2026-10-23" events={events} selected={picked} onSelectDay={setPicked} />;
+}
+
+function MatrixGridSpecimen() {
+  const people = ['Ana Reyes', 'Ben Okafor', 'Chloe Lin', 'Dev Patel', 'Eli Moss', 'Fay Novak', 'Gus Hale', 'Hana Ito'];
+  const columns = people.map((p) => ({ id: p, label: p.split(' ')[0] }));
+  const rows = [
+    ...['Patching', 'Backups', 'Access reviews'].map((t) => ({ id: t, label: t, group: 'Operations' })),
+    ...['Incident command', 'Vendor escalation', 'Change approval', 'Audit evidence'].map((t) => ({ id: t, label: t, group: 'Governance' })),
+  ];
+  const marks = ['R', 'A', 'C', 'I', '', ''];
+  const markOf = (row: { id: string }, col: { id: string }) => marks[(rows.findIndex((x) => x.id === row.id) * 3 + columns.findIndex((x) => x.id === col.id) * 5) % marks.length] ?? '';
+  const tones = { R: 'accent', A: 'success', C: 'info', I: undefined } as const;
+  const [picked, setPicked] = useState('none yet');
+  return (
+    <div className="gallery-stack">
+      <MatrixGrid
+        label="Responsibility matrix"
+        cornerLabel="Responsibility"
+        columns={columns}
+        rows={rows}
+        rowHeaderWidth="12rem"
+        columnWidth="4.5rem"
+        density="dense"
+        cellLabel={(row, col) => {
+          const m = markOf(row, col);
+          return m ? { R: 'Responsible', A: 'Accountable', C: 'Consulted', I: 'Informed' }[m] : 'Not assigned';
+        }}
+        cellTone={(row, col) => tones[markOf(row, col) as keyof typeof tones]}
+        renderCell={markOf}
+        onCellActivate={(row, col) => setPicked(`${row.id} and ${col.id}`)}
+      />
+      <p className="gallery-note" role="status">Last picked: {picked}. Arrow keys move, Enter picks.</p>
+    </div>
+  );
+}
+
+function ContextPanelSpecimen() {
+  const [active, setActive] = useState('overview');
+  const item = (id: string, label: string, badge?: number) => (
+    <NavItem key={id} href={`#${id}`} label={label} badge={badge} iconBadge={false} active={active === id} onClick={(e) => { e.preventDefault(); setActive(id); }} />
+  );
+  return (
+    <div className="gallery-context-demo">
+      <ContextPanel title="Team calendar" subtitle="3 people out today">
+        <NavGroup label="Views">
+          {item('overview', 'Overview')}
+          {item('month', 'Month')}
+          {item('schedule', 'Schedule', 4)}
+        </NavGroup>
+        <NavGroup label="Manage">
+          {item('requests', 'Requests', 2)}
+          {item('settings', 'Settings')}
+        </NavGroup>
+      </ContextPanel>
+      <p className="gallery-note">Mounted next to the rail with AppShell contextPanel. Below 900px it stacks above the page and folds.</p>
+    </div>
+  );
 }
 
 function MonthGridBarsSpecimen() {
@@ -2359,7 +2418,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'month-grid-bars'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2552,6 +2611,12 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="month-grid" title="Month grid">
           <MonthGridSpecimen />
+        </Specimen>
+        <Specimen id="context-panel" title="Context panel (second level navigation)">
+          <ContextPanelSpecimen />
+        </Specimen>
+        <Specimen id="matrix-grid" title="Matrix grid (dense, sticky heads)">
+          <MatrixGridSpecimen />
         </Specimen>
         <Specimen id="month-grid-bars" title="Month grid with lane-packed bars">
           <MonthGridBarsSpecimen />

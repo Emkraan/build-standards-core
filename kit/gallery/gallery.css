@@ -83,3 +83,9 @@ body { margin: 0; background: var(--bg-canvas); color: var(--text-primary); font
 .gallery-list-pane { display: flex; flex-direction: column; block-size: 100%; }
 .gallery-list-pane > .list-table { flex: 1 1 0; min-block-size: 0; }
 .gallery-list-pane > .pagination { flex: none; padding: var(--space-2) var(--space-3); border-top: 1px solid var(--border-subtle); }
+
+/* The context panel is sticky and full height in the shell; as a specimen it is a short card. */
+.gallery-context-demo { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-4); }
+.gallery-context-demo .context-panel { position: static; height: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow: hidden; }
+.gallery-context-demo .context-panel-toggle { display: none; }
+.gallery-context-demo .context-panel-body { display: flex; }

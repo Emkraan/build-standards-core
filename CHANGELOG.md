@@ -12,6 +12,33 @@ render exactly as before.
 - The README limit "multi-day events are not supported" is replaced by the above. Dragging and resizing stay the app's.
 - Standard: `standards/web-ui.md` gains Month calendar. Tests: `kit/tests/month-grid-bars.test.tsx` (11). Specimen `month-grid-bars`.
 
+## 2026-10-28 (v1.57.0, kit matrix grid)
+
+Second of the generic kit pieces the hub needs (intake issue 115). Opt in: a new part, nothing existing changes.
+
+- New `MatrixGrid`: a dense rows by columns grid for matrices. ARIA grid pattern with one roving tab stop (arrows, Home, End, Ctrl with
+  Home or End, Enter and Space), a sticky head row and sticky first column, three densities (`comfortable`, `compact`, `dense`),
+  group headings, `renderCell`, `cellTone`, `cellLabel` and `onCellActivate` slots, `maxHeight` for a scroll area. It does not sort,
+  and it does not build the matrix itself: a responsibility matrix stays the app's, drawn through the slots.
+- `Table density="compact"` (D-007) already covers a long sorted list and is unchanged.
+- Standard: `standards/web-ui.md` gains Matrices. Tests: `kit/tests/matrix-grid.test.tsx` (7). Specimen `matrix-grid`.
+
+## 2026-10-28 (v1.56.0, kit context panel)
+
+First of the generic kit pieces the hub needs for its tools to become shell modules (intake issue 115). Opt in: `AppShell` renders
+exactly as before unless `contextPanel` is passed.
+
+- New `ContextPanel` and `AppShell contextPanel`: a second level of navigation, a per-tool panel the shell lays out beside the header
+  and the page, next to the one-level `Rail`. A fixed `--sidebar-w` column with a title, an optional subtitle and footer, and
+  `NavGroup` and `NavItem` children with the rail's gliding highlight. It reflows the page (no overlay), has no hover bloom and no pin.
+  Below 900px it stacks above the page and its list folds behind a button.
+- Standard: `standards/web-ui.md` section 19 gains the second level rules and their acceptance check.
+- Already in the kit, nothing added: the preview-as banner (`ImpersonationBanner`), the shortcut layer with two-key chords
+  (`ShortcutLayer`, `useShortcut`, `g h` style), `data-tip` tooltips (`TooltipLayer`, `useTip`), `Table density="compact"`, the
+  month grid (`MonthGrid`, one day per event), the typeahead with the listbox roles (`Combobox`) and its person row (`PersonOption`),
+  and the command palette (`CommandPalette`).
+- Tests: `kit/tests/context-panel.test.tsx` (6), a gallery specimen `context-panel` with baselines in both themes.
+
 ## 2026-10-28 (v1.55.0, merge retry tests no longer patch the global sleep)
 
 - Tests only. The two merge retry tests replaced `time.sleep` for the whole interpreter, so a sleep from any other
