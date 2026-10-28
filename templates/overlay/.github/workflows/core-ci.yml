@@ -1,4 +1,5 @@
 name: core-ci
+# core-managed: this file is refreshed from the core release by scripts/sync-core.py
 # The CI half of the core standard. ONE job, core-checks, runs every check as a named step; each step
 # proves one or more overlay-ci rules in standards-core/rules.json (check.workflow is this file,
 # check.jobs names the steps). Every check is a subcommand of scripts/core-ci.py (standard library
@@ -138,3 +139,10 @@ jobs:
       - name: core-kit-peers
         if: ${{ !cancelled() && env.FULL == 'true' && steps.p.outputs.kit == 'true' }}
         run: python3 "$OVERLAY/scripts/core-ci.py" kit-peers
+
+      # A REQUIRED_CHECKS list in a gate workflow must name every core-ci job and no removed one (a
+      # repo gated by a ruleset has no list and skips). Fails the sync pull request that renames a job
+      # before the stale list can deadlock the merge; `required-checks --fix` rewrites the list.
+      - name: core-required-checks
+        if: ${{ !cancelled() && env.FULL == 'true' }}
+        run: python3 "$OVERLAY/scripts/core-ci.py" required-checks --lists-only

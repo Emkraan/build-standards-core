@@ -1,8 +1,10 @@
 name: core-drift
+# core-managed: this file is refreshed from the core release by scripts/sync-core.py
 # Offline checks, no secret and no access to the core needed: the synced copies match the hash in
 # standards.lock, exceptions are well-formed and current, and the app passes the UI lint (paths in
 # standards-local/ui-lint.json, zero findings, no baseline) and adopts the UI whole (core-status
-# --require-ui-adopted) and the script
+# --require-ui-adopted; skipped, reported N/A, while the parameters sheet's "UI adoption stage" is none or
+# partial, so this file can be added before the UI series lands) and the script
 # lint (paths in standards-local/script-lint.json, a skip line when that file does not exist).
 # Paths are relative to the repo root: when the overlay is a subfolder, write its path in front of each
 # (python3 <overlay>/scripts/...); scripts/sync-core.py keeps that prefix and the cron line when it

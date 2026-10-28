@@ -79,6 +79,9 @@ example-org-hub/
 | `pnpm run check:bundle-size` | bundle budget; `bundle-size:update` rewrites the baseline |
 | `pnpm run dev:server` / `dev:client` | local dev |
 
+Two test files that each start a dev server must not share one dependency cache: give each its own cache
+directory and disable the dependency scan, otherwise starting together can wait forever.
+
 ### Per-tool structure
 
 ```text

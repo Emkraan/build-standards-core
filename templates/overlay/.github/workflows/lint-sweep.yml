@@ -1,4 +1,5 @@
 name: lint-sweep
+# core-managed: this file is refreshed from the core release by scripts/sync-core.py
 # Weekly full-tree lint (ci-cd-release.md 4.6). Pull requests lint what they change, so a linter
 # upgrade or a new rule can leave older files failing unnoticed; this sweep lints the whole tree once
 # a week and keeps one issue (label lint-sweep) open while it fails: it opens the issue the first
@@ -37,11 +38,14 @@ jobs:
       # carry neither. Node is set up at the repo's pin (parameters row, .nvmrc, .node-version or
       # engines.node; lts/* when none), corepack provides the package manager named by package.json
       # "packageManager", and the lockfile picks the install. Python-only repos skip all three steps.
-      - if: steps.p.outputs.web == 'true' && steps.p.outputs.lint_sweep != ''
+      # The install and the sweep command run in the app directory: the parameters row "App directory",
+      # else the root when it holds a lockfile, else the first folder one level down that does.
+      - if: steps.p.outputs.sweep_web == 'true' && steps.p.outputs.lint_sweep != ''
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ steps.p.outputs.node || 'lts/*' }}
-      - if: steps.p.outputs.web == 'true' && steps.p.outputs.lint_sweep != ''
+      - if: steps.p.outputs.sweep_web == 'true' && steps.p.outputs.lint_sweep != ''
+        working-directory: ${{ steps.p.outputs.app_dir }}
         run: |
           corepack enable
           if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile
@@ -53,6 +57,7 @@ jobs:
       - id: lint
         env:
           SWEEP_CMD: ${{ steps.p.outputs.lint_sweep }}
+          APP_DIR: ${{ steps.p.outputs.app_dir }}
         run: |
           out="$RUNNER_TEMP/lint-sweep.txt"
           : > "$out"
@@ -61,7 +66,7 @@ jobs:
           python3 "$OVERLAY/lint-core/script_lint.py" >> "$out" 2>&1 || rc=1
           if [ -n "$SWEEP_CMD" ]; then
             src=0
-            bash -c "$SWEEP_CMD" >> "$out" 2>&1 || src=$?
+            (cd "$APP_DIR" && bash -c "$SWEEP_CMD") >> "$out" 2>&1 || src=$?
             # 127 is "command not found": a runner without the toolchain, not a lint finding, so it
             # fails the run with an error instead of opening a lint-sweep issue.
             if [ "$src" -eq 127 ]; then

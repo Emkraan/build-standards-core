@@ -411,7 +411,10 @@ class Run:
             for c in self.cfg["ui_consumers"]
             if c.get("path") and c.get("mode") != "pin-file"
         ]  # a pin line has no kit to scan
-        run: dict = {}  # one report issue per run: the section that creates it records the number here
+        # one report issue per run: the section that creates it records the number here
+        run: dict = {
+            "configured": self.cfg.get("report_issue") or os.environ.get("CORE_REPORT_ISSUE", "")
+        }
         try:
             i, p = report.update(self.core, target, clones, sh, STATE_DIR, self.check, run)
             self.info += i

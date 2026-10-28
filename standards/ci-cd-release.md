@@ -237,7 +237,7 @@ failure, never opens a second, and closes it on the first green sweep. Its actio
 it runs on `CORE_CI_RUNNER` like the other templates. A runner need not carry Node: when the repo is
 a web stack and sets a sweep command, the job sets up Node at the repo's Node major (lts/* when none
 is pinned), enables corepack so `package.json` "packageManager" decides the package manager, and
-installs from the lockfile before the sweep; a Python-only repo gets none of this. A sweep command
+installs from the lockfile before the sweep, in the repo root or, when the root holds no lockfile, the first folder one level down that does (or the folder named by the parameters row "App directory"), and runs the sweep command there; a Python-only repo gets none of this. A sweep command
 that exits 127 (not found) fails the run with a `toolchain missing` error instead of opening a
 lint issue, because a missing tool is not a lint finding.
 
@@ -289,7 +289,13 @@ The page is open to everyone who can open the hub and has no API or permission.
 
 ## 5. Auto-merge
 
-`automerge.yml` is the merge gate. Policy: full auto-merge. Every non-draft PR into `main`,
+`automerge.yml` is the merge gate. A repo on a plan with no rulesets copies the core's template
+(`templates/overlay/.github/workflows/automerge.yml`): it reads the required core job names from the
+synced `core-ci.yml` (`core-ci.py required-names`) instead of a copied list, so a core-ci job rename
+cannot deadlock it; `REQUIRED_CHECKS` there holds only the repo's own checks. A copied list is rewritten
+by `core-ci.py required-checks --fix` (and by `sync-core.py`), and `core-ci.yml` runs
+`required-checks --lists-only` as the step `core-required-checks`, which exits non-zero on a mismatch.
+Policy: full auto-merge. Every non-draft PR into `main`,
 Dependabot included, is merged by the repo's declared merge method
 ([PR Review and Merge](pr-review-and-merge.md) rule 1.5; squash unless the repo declares rebase or
 a merge queue) once all checks pass. The `--squash` flags below stand for the declared method.
