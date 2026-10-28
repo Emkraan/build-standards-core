@@ -21,7 +21,7 @@ only what is specific to that business.
 | `.github/workflows/core-drift.yml` | The offline drift check |
 | `.github/workflows/core-ci.yml` | The CI half of the standard (section "CI workflow") |
 | `.github/workflows/lint-sweep.yml` | Weekly full-tree lint that keeps one issue open while it fails (ci-cd-release.md 2.1, section "Lint sweep") |
-| `standards-local/proofs.json` | Consumer-owned: how the repo proves rules `core-status.py` cannot see, and (under `$not_applicable`) which rules or groups have no surface in it, each with a reason; see CONSUMING.md section 8 |
+| `standards-local/proofs.json` | Consumer-owned: how the repo proves rules `core-status.py` cannot see (one record per rule, or a list such as a test plus a dated review), and (under `$not_applicable`) which rules or groups have no surface in it, each with a reason; see CONSUMING.md section 8 |
 
 **Who owns what.** Every path above except `standards-local/` is core-owned: the sync writes it,
 `check-core-sync.py` fails on a hand edit, and a consumer never adds files to it. That includes
