@@ -562,6 +562,29 @@ columns share widths (`table-layout: fixed` plus a common `colgroup`) so columns
 to group. Buttons in cells never wrap. Truncated text needs no extra work: the tooltip layer shows
 it in full.
 
+### Month calendar (`MonthGrid`)
+
+`MonthGrid` draws weeks of day cells and knows dates and layout only. What an event means (shift, leave,
+coverage) stays in the app, which passes events and the `renderEvent`, `renderDay` and `dayHint` slots.
+Dates are ISO day strings so no time zone moves a cell. Keys: arrows, Home, End, PageUp, PageDown, Enter
+and Space.
+
+- **Multi-day events.** An event with `endDate` (inclusive) covers every day from `date` to `endDate`.
+  By default it is a chip on each of those days. With `laneBars` it is one bar per week, packed into
+  lanes so bars never overlap: placed by first day, longer first, then in the order given, each in the
+  lowest free lane. A bar that crosses a week edge is cut there, drawn with a flat end, and continues
+  on the next week with its label repeated.
+- `maxEvents` is the number of lanes. A bar with no free lane is not drawn and is counted in
+  "+N more" on every day it covers, so nothing is hidden silently.
+- A bar is a chip like any other: tone by `tone` (never alone: the label is always there), a button
+  when `onEventClick` is passed, replaceable through `renderEvent`. It sits in the cell of its first
+  day, so a screen reader meets it once, and each day label counts the events that cover the day.
+- Interactive bars drag or resize only in the app; the grid has no pointer editing.
+
+**Acceptance:** a component test asserts the packer (lanes, order, clipping, hidden counts) and that the
+bars, continuations and "+N more" render, and the gallery specimen `month-grid-bars` carries baselines
+in both themes.
+
 ### Filter panel and bulk runs (`FilterPanel`, `useBulkRun`)
 
 **Filter panel.** A page that filters on several columns uses `FilterPanel`, not a row of ad hoc

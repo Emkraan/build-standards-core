@@ -1942,7 +1942,7 @@ button.record-chip:focus-visible { outline: none; box-shadow: var(--focus-ring);
 }
 
 /* MonthGrid */
-.month-grid { display: flex; flex-direction: column; border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--surface-1); overflow: hidden; min-width: 0; }
+.month-grid { --month-grid-lane-h: 1.5rem; display: flex; flex-direction: column; border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--surface-1); overflow: hidden; min-width: 0; }
 .month-grid-head, .month-grid-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .month-grid-dow { padding: var(--space-2); font-size: var(--fs-label); color: var(--text-secondary); text-align: center; background: var(--surface-2); border-bottom: 1px solid var(--border-default); }
 .month-grid-day { display: flex; flex-direction: column; gap: var(--space-1); min-height: 88px; min-width: 0; padding: var(--space-2); border-right: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); cursor: pointer; }
@@ -1962,6 +1962,18 @@ button.month-grid-chip { cursor: pointer; }
 .month-grid-event[data-tone="danger"] .month-grid-chip { border-color: var(--danger); }
 .month-grid-event[data-tone="info"] .month-grid-chip { border-color: var(--info); }
 .month-grid-more { font-size: var(--fs-micro); color: var(--text-secondary); }
+/* laneBars: a bar starts in the cell of its first day and runs over the cells to its right. Every cell of a
+   week reserves the same lane rows, so bars line up across the week. */
+.month-grid-day { position: relative; }
+.month-grid-lanes { position: relative; height: calc(var(--month-grid-lanes, 0) * var(--month-grid-lane-h)); margin: 0; padding: 0; list-style: none; }
+.month-grid-bar {
+  position: absolute; z-index: var(--z-base); top: calc(var(--month-grid-lane) * var(--month-grid-lane-h)); left: 0; height: calc(var(--month-grid-lane-h) - var(--space-1));
+  width: calc(var(--month-grid-span) * 100% + (var(--month-grid-span) - 1) * (2 * var(--space-2) + 1px));
+}
+.month-grid-bar .month-grid-chip { height: 100%; }
+.month-grid-bar[data-left] .month-grid-chip { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: calc(-1 * var(--space-2)); width: calc(100% + var(--space-2)); }
+.month-grid-bar[data-right] .month-grid-chip { border-top-right-radius: 0; border-bottom-right-radius: 0; margin-right: calc(-1 * var(--space-2)); width: calc(100% + var(--space-2)); }
+.month-grid-bar[data-left][data-right] .month-grid-chip { width: calc(100% + 2 * var(--space-2)); }
 
 /* LaneBoard */
 .lane-board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(220px, 1fr); gap: var(--space-3); overflow-x: auto; min-width: 0; }
