@@ -112,7 +112,7 @@ class AgendaCardsTest(unittest.TestCase):
         led = ledger_with(("me", "2026-10-11T09:00:00Z", "Unrelated lunch plans"))
         led["topics"]["tm:2"] = {
             "fp": "tm:2",
-            "person": "person Wilkinson",
+            "person": "person Report",
             "messages": [
                 {"id": "9", "at": "2026-10-11T10:00:00Z", "who": "me", "text": "ticket-id done"}
             ],
