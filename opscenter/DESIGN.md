@@ -808,7 +808,7 @@ secret references name a store and a key, never a value.
 | heartbeats | `names[]`, `sync_from_tags` (false), `sources` (`["lines"]`, or add `"runtime"`) | from the job manifest | A-87, section 2.7 |
 | freeze | `source` | null | slot name |
 | deploy | `strategy` (`copy` or `checkout`), `keep_releases` (3), `health_timeout_s` (30), `health_path` (`/api/health`), `companions[]` (`{from, to}`, default none), the last two for both strategies | `copy` | B-07, section 7.1 |
-| automerge | `enabled` (true), `hold_label`, `method` | repo's declared method | B-08 |
+| automerge | `enabled` (true), `hold_label`, `method`, `merge_attempts` (3), `merge_pause_s` (10) | repo's declared method | B-08, section 7.2 |
 | autofix | `own_sync_pr` (true) | | A-65, kill switch |
 | discovery | `roots[]`, `ignore[]` | `[workspace_root]` | section 8.2 |
 | report | `daily_at` | after the nightly | section 8.4 |
@@ -876,6 +876,19 @@ previous release's `release.json` and the target commit is the one being staged.
   newest runs `success`: merge with the repo's declared method and `--match-head-commit <sha>`.
 - A failed newest run blocks; a manual rerun that succeeds unblocks (the newest run wins).
 - Skips drafts and the hold label; never checks out PR code; never uses an admin override.
+- **Retrying merge.** A merge call can fail while the code host is briefly unreachable from a
+  self hosted runner, and a single failed call then fails a gate whose checks are green. The merge
+  step (`merge-pr.py`) retries only a transient failure (a dropped connection, a timeout, a 5xx
+  answer), up to `automerge.merge_attempts` calls in all (default 3) with `automerge.merge_pause_s`
+  seconds before each retry (default 10). The workflow passes the two parameters as the script's
+  `--attempts` and `--pause` flags. Each retry runs in this order: sleep, then read the pull request
+  state and head, then merge. It stops, without retrying, when the pull request is already merged
+  (the outcome is success), is closed, or has a head other than the one that was checked. Every retry
+  passes `--match-head-commit` with the head just read, even when the caller passed none, so a retry
+  can never merge a different head. The retry claims only an open state and an unchanged head. It
+  does not read the required runs again: the code host refuses a merge while a required check is not
+  green, and that refusal (like a conflict, a failed head match or a branch rule) is not transient
+  and is never retried. The pause is the only wait, and a retry never adds an admin override.
 - A gate job that waits on core checks (the shell consumer's shape) is accepted as one more
   required check, so its wait is an input, not a second mechanism.
 - Kill switch: `automerge.enabled` and a repo variable.

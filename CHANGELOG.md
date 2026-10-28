@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27 (v1.30.8, retrying merge)
+
+- Section 7.2 of `opscenter/DESIGN.md` carries a retrying merge (parameters `automerge.merge_attempts` 3 and `automerge.merge_pause_s` 10, listed in section 6). `templates/overlay/scripts/merge-pr.py` implements it for the final merge call and takes the two values as `--attempts` and `--pause`. A transient failure (dropped connection, timeout, 5xx) is retried in this order: sleep, read the pull request state and head, merge. Every retry passes `--match-head-commit` with the head just read, even when the caller passed none. An already merged pull request is a success, a closed one or one whose head moved stops the retry, and a refusal that is not transient is never retried. The retry claims only an open state and an unchanged head and does not read the required runs again, because the code host refuses a merge while a required check is not green. Tests in `tests/test_core_ci.py`.
+
 ## 2026-10-27 (v1.30.7, adopt with a linked path)
 
 - Design only. `opscenter/DESIGN.md` section 8.1 step 2: `--ops-center PATH` accepts the repo root, the app folder or a symbolic link to either. `adopt` resolves the link to the git top level, refuses a path outside any git repo or without an ops center app (the message names the resolved path), records the resolved top level as the consumer entry's `path`, prints both paths in the dry run, never changes the link, and takes a live deployed checkout without switching its branch or editing its working tree (the sync lands in a separate worktree by pull request). The R9 acceptance row in section 9.2 gains the linked path cases.
