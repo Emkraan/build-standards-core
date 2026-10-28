@@ -1299,21 +1299,18 @@ the standard drops: it is waiting on something named here.
 | 1 | review lane engine | lifted: `lanes/pr_review.py`, `own_pr_merge.py`, `destroy_followup.py`, `model_bump.py`; the policy is data with a documented schema (`lanes/REVIEW_POLICY.md`, 12.12) |
 | 2 | maintenance windows | lifted: `lanes/maintenance_window.py` (change classes `standard` and `restricted`, windows as policy data) |
 | 3 | own pull request lane, decision cards | lifted: `server/modules/own_lane.py`, `decision_cards.py`, `lanes/own_pr_merge.py` |
-| 4, 5 | own sync auto fix, core pull request lane | not lifted: both need the auto-fix session starter |
+| 4, 5 | own sync auto fix, core pull request lane | not lifted yet: the lane scripts (`core_pr_lane`, `own_pr_lane`) are in the handoff and the auto-fix starter they call is lifted (`lanes/autofix.py`, 12.9), so they are the next lift |
 | 6 | merge queue | lifted: `lanes/merge_queue.py`, `gh_run_jobs.py` |
-| 7 | queued docs approvals | not lifted: needs the docs write guard, not in the snapshot |
+| 7 | queued docs approvals | not lifted yet: the docs write guard is lifted (`lanes/docs_write_guard.py`); the applier (`apply_queued_approvals`) waits on wiring to the docs home adapter |
 | 8 | change freeze gate | lifted: `lanes/freeze_gate.py` |
 | 9, 10 | plan gate, privileged apply review | plan gate lifted: `lanes/tfplan_gate.py` with a reference sign-off store; the privileged lane is a plug-in seam (`set_privileged_gate`) |
 | 11 | dark launches | lifted: `server/modules/dark_launches.py` |
 | 12 | cron card map, run now | lifted: `server/modules/cron_pulse.py` (parameters in 12.8) |
 | 13 | builds page | lifted as an app page; its server module (`builds.py`) is not |
 | 14, 15, 16 | image watch and pool, runbook releases, browser status | lifted: `image_watch.py`, `desktop_pool.py`, `runbook_releases.py`, `browser_status.py` |
-| 17 | model accounts, spend, fallback | not lifted, by decision: the running module reads another tool's OAuth tokens from the agent's credential pool and calls an undocumented usage endpoint with a borrowed client user agent. The standard keeps the `spend` and `plan_limits` slots (section 5.3); an adapter is the consumer's own, on a documented usage source. The spend page is lifted in the app |
-| 18 | sprint close, retro, ticket progress, needs me | sprint close gate lifted (`gates/`); the rest not lifted |
-| 19 | 1:1 board, yearly export | lifted: `people/` (`one_on_ones.py`, `team_away.py`, `yearly_reviews.py`) with the four adapters as commands and files with a null default (12.14); the yearly drafter is the consumer's command |
-
+| 17 | model accounts, spend, fallback | not lifted, on the core owner's instruction (the consumer asked for it as a provider slot, a `ModelAccountsProvider` with a null default and the credential pool read staying in its own provider; that design is the open question). Why the running module is not lifted as it is: it reads another tool's OAuth tokens from the agent's credential pool and calls an undocumented usage endpoint with a borrowed client user agent. The standard keeps the `spend` and `plan_limits` slots (section 5.3); an adapter is the consumer's own, on a documented usage source. The spend page is lifted in the app |
 | 18 | sprint close, retro, ticket progress, needs me | lifted: `gates/sprint_close_gate.py`, `tracker/` (`work.py`, `needs_me.py`, `ticket_progress.py`, `retro_row.py`, the reference `driver.py`) and `gates/retro_row_gate.py` (12.15) |
-| 19 | 1:1 board, yearly export | not lifted: the module is built on a directory pull, calendar and meeting adapters and a roster; it waits on the people slot interface (roster, calendar, meetings) and on the exception for a document export library. The pages are lifted in the app |
+| 19 | 1:1 board, yearly export | lifted: `people/` (`one_on_ones.py`, `team_away.py`, `yearly_reviews.py`) with the four adapters as commands and files with a null default (12.14); the yearly drafter is the consumer's command |
 | 20 | links check | lifted: `server/modules/link_health.py` (catalog is the consumer's file) |
 | 21 | knowledge proposals | lifted: proposal rewrite gate, applied log, `engine/publish_mode.py`; the queued approvals applier is not |
 | 22 | plans reconcile | lifted: `gates/plans_reconcile_gate.py` |
@@ -1323,9 +1320,9 @@ the standard drops: it is waiting on something named here.
 | (2.6) | analyzer: contract, handled match, first seen, routing, collector, bundle builder, wake gate | lifted: `engine/` (`contract`, `handled`, `first_seen`, `routing`, `collect`, `analysis_bundle`, `board_build`), `gates/action_center_gate.py`, `server/modules/routing_api.py` (12.13) |
 | (4) | the app | lifted: `opscenter/app`, all 114 source files, typecheck, unit tests and build in CI; the browser tests are `npm run test:browser` |
 
-Server modules and pages that exist in the running app but whose server half is not lifted (people, tracker, review engine
-pages) render only when their slot is on; the app reads the running API shapes until the envelope and registry (R1, R2)
-land.
+The server routes that call the lifted modules (the running `server.py`) are not lifted: they follow the envelope and registry (R1, R2).
+Until then the pages whose server half is optional (people, tracker, review lanes) render only when their slot is on, and the app
+reads the running API shapes.
 
 ### 12.8 Module parameters (the five modules that named estate repositories or files)
 
