@@ -1322,11 +1322,12 @@ the standard drops: it is waiting on something named here.
 | (collector) | inbound mail and chat monitor gates | lifted: `gates/inbound_mail_gate.py`, `inbound_chat_gate.py`, `inbound_score.py` (12.19) |
 | (2.4) | swr, alerts, review tombstones, paths | lifted: `server/modules/` |
 | (2.6) | analyzer: contract, handled match, first seen, routing, collector, bundle builder, wake gate | lifted: `engine/` (`contract`, `handled`, `first_seen`, `routing`, `collect`, `analysis_bundle`, `board_build`), `gates/action_center_gate.py`, `server/modules/routing_api.py` (12.13) |
+| (server) | the running server and its routes | lifted as a generic server: `server/` (12.21); the agent session routes and some page halves are not lifted |
 | (4) | the app | lifted: `opscenter/app`, all 114 source files, typecheck, unit tests and build in CI; the browser tests are `npm run test:browser` |
 
-The server routes that call the lifted modules (the running `server.py`) are not lifted: they follow the envelope and registry (R1, R2).
-Until then the pages whose server half is optional (people, tracker, review lanes) render only when their slot is on, and the app
-reads the running API shapes.
+The server (12.21) is lifted as a generic one: the gate, the registry, static serving, the action handled and approvals stores and the
+routes of every lifted module. The routes that start agent sessions, and the server halves of the pages named in 12.21, are not lifted.
+The pages whose server half is optional (people, tracker, review lanes) render only when their slot is on.
 
 ### 12.8 Module parameters (the five modules that named estate repositories or files)
 
@@ -1636,3 +1637,26 @@ merges main into the branch through the merge API (201 merged, 204 re-run, 409 t
 code: the product pipelines, the landed readers (a release record plus a device management read and a storage blob for one product,
 the release list for another), the owner login and the ticket branch pattern were literals; the shared `infra` helpers it imported are
 now `ghview.py`.
+
+### 12.21 The server
+
+`server/` is a stdlib HTTP server written for the core, not a copy of the running one (that file was tied to modules not yet lifted and to
+the agent session routes below, and answered every origin with a wildcard CORS header).
+
+- `gate.py`: the Host and Origin guard. A Host outside loopback and `OPSCENTER_ALLOWED_HOSTS` is 403; a write whose `Origin` or
+  `Sec-Fetch-Site` is not the same origin is 403; a preflight is answered only for an origin listed in `OPSCENTER_PLUGIN_ORIGINS`, echoing
+  that origin, never `*`. Body cap `OPSCENTER_MAX_BODY` (default 1 MiB, 413). Security headers on every response; reads of private
+  pages (people, one to ones, yearly reviews) and every write are `no-store`.
+- `registry.py`: `Registry.add/get/post`, a `Request` (`arg`, `payload`, `groups`, `body`), the read and write kinds (a write on GET, or a read
+  on POST, is refused at registration), and the error mapping: a handler's `status` or `code` int wins, `ValueError` is 400, `KeyError` 404,
+  anything else 502 with a fixed `read failed` body (the detail goes to the server log, not the client).
+- `app.py`: static files from `OPSCENTER_DIST` jailed to that directory (symlinks and `..` refused) with single page fallback, ETag and 304, gzip;
+  `OPSCENTER_HOST` (default loopback) and `OPSCENTER_PORT` (default 8766).
+- `stores.py`, `routes.py`: `/api/health`, `/api/action-handled` (GET, POST with snapshot of the item from the served board, `restore`),
+  `/api/approve` (approved and rejected go to the approvals inbox, changes to the proposal feedback file, optionally reworded by
+  `OPSCENTER_REWRITE_CMD`), and the routes of every lifted module in `server/modules/` and the tracker and people packages; a module that is not
+  in the tree is skipped, so a consumer that lifts fewer pages gets fewer routes.
+- Not lifted, and why: the routes that start an agent session (tackle, discuss, the session list), which need a runtime slot contract the
+  consumer defines (a command that launches a session and reports back); the server halves of the infra, model accounts (item 17,
+  kept out), privileged and per product review pages, plans, engineering backlog, core consumption, owner roots, repo reviews and approval brief
+  pages; the doc audit. Each follows the registry the same way and lands when its module does.
