@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-28 (v1.73.0, python-docx in core CI)
+
+CI installs the pinned `python-docx` so the yearly review export test runs instead of skipping; in CI a missing package fails the test.
+
 ## 2026-10-28 (v1.72.0, ops center model accounts)
 
 The Spend page server half (item 17), as a provider slot. Opt in: new `server/modules/model_accounts.py` and `model_fallback.py`, routes in `server/routes.py`.
