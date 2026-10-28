@@ -679,7 +679,7 @@ button.md-link { padding: 0; border: 0; background: transparent; font: inherit; 
 .seg-btn[data-icon-only] { padding: 3px 8px; }
 
 /* ---- Matrix grid: rows by columns, sticky head and first column, three densities ---- */
-.matrix-grid { overflow: auto; border-radius: var(--radius-lg); border: 1px solid var(--border-default); background: var(--surface-1); --matrix-pad-y: var(--space-1); --matrix-pad-x: var(--space-2); font-size: var(--fs-body); }
+.matrix-grid { --matrix-row-head-w: 14rem; --matrix-col-w: 6rem; --matrix-max-h: none; overflow: auto; border-radius: var(--radius-lg); border: 1px solid var(--border-default); background: var(--surface-1); --matrix-pad-y: var(--space-1); --matrix-pad-x: var(--space-2); font-size: var(--fs-body); }
 .matrix-grid[data-capped] { max-height: var(--matrix-max-h); }
 .matrix-grid[data-density="comfortable"] { --matrix-pad-y: var(--space-2); --matrix-pad-x: var(--space-3); }
 .matrix-grid[data-density="dense"] { --matrix-pad-y: 2px; --matrix-pad-x: var(--space-1); font-size: var(--fs-label); }
