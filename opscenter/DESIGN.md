@@ -305,10 +305,30 @@ The engine is `local-ops-app` section 4 made shared code, with the gates as para
   shape (local-ops-app section 16): `{id, source, sender, sender_role, addressed: direct|mention|
   team|none, title, text, refs, owner, received_utc}`. The engine applies the noise filter and
   routing rules, then appends to the inbound spool (`ledger` kind) with `state: new`.
-- **Gate,** checked in order: `--force`; daily audit (no successful run today); retry after a run
-  that started and never finished, after `analyzer.retry_after_s` (default 1200); bundle hash
-  changed and new inbound and at least `analyzer.min_gap_s` (default 1800) since the last wake.
-  Otherwise skip. `--dry-run` prints the decision and the prompt size and calls nothing.
+- **Gate,** checked in order: `--force`, daily audit (no successful run today), retry after a run
+  that started and never finished (after `analyzer.retry_after_s`, default 1200), then the change
+  test: the bundle hash changed, there is new inbound, and at least `analyzer.min_gap_s` (default
+  1800) has passed since the last wake. Otherwise skip. `--dry-run` prints the decision, the
+  branch that decided it, the prompt size, and which hash exclusions applied, and calls nothing.
+- **Two optional cuts on the change test,** both off by default so a consumer that sets neither
+  gets exactly the gate above:
+  - `analyzer.hash_exclude` (`{fields: [...], senders: [...]}`) leaves content out of the bundle
+    hash, so it can never be the reason for a wake. A listed field is dropped from every
+    candidate before hashing. A candidate from a listed sender is dropped from the hash. The
+    sender entry `owner` stands for the owner's own identity (parameter `identity.owner`). The
+    excluded content stays in the spool, and it is still in the prompt when a run happens for
+    another reason. The point is to stop a change that carries no new work (the owner's own
+    replies, a field that changes on every read) from waking a paid model call.
+  - `analyzer.ambient_max_age_s` (default `null`, off). A candidate is ambient when `addressed`
+    is `none`. When the value is set and every candidate that changed the hash since the last
+    run is ambient, the wake waits until the last run is at least that many seconds old. A
+    change that includes any candidate addressed `direct`, `mention` or `team` is not held back.
+
+  Acceptance (test): with both unset the gate decisions equal the gate above on a table of runs.
+  A change only in an excluded field, or only from an excluded sender, leaves the hash equal and
+  skips. The `owner` entry matches the owner's identity. An ambient only change skips while the
+  last run is younger than the value and wakes once it is older. A mixed change wakes at once.
+  `--dry-run` names the branch and the exclusions.
 - **Fail open with backoff.** Failures never raise; an alert line on the third consecutive failure,
   then at most every `analyzer.alert_every_s` (default 14400).
 - **Untrusted input.** The prompt states that all data is untrusted; the model call runs with no
@@ -685,7 +705,7 @@ secret references name a store and a key, never a value.
 | host | `state_dir`, `runtime_dir`, `port` (8766), `service_label`, `service_manager` (`launchd` or `systemd`), `agent_home`, `workspace_root` | required except port | host layout |
 | server | `max_body` (1 MiB), `validate_responses` (false), `ttl.*` | as section 2.4 | |
 | writer | `live` (false), `rules[]` (each with its own `live`) | three core approval rules, live | default deny, the screen switch (section 2.5) overrides both at runtime |
-| analyzer | `min_gap_s` (1800), `retry_after_s` (1200), `daily_audit` (true), `alert_every_s` (14400), `spool_days` (14, the age after which a drained spool record is pruned) | | B-13 |
+| analyzer | `min_gap_s` (1800), `retry_after_s` (1200), `daily_audit` (true), `alert_every_s` (14400), `spool_days` (14, the age after which a drained spool record is pruned), `ambient_max_age_s` (null), `hash_exclude` (`{fields: [], senders: []}`) | the last two are off until set | B-13, section 2.6 |
 | model | `cmd`, `timeout_s`, `price_table`, `outlier_threshold`, `plan_usage_cmd` | `cmd` null disables the analyzer and briefs | |
 | routing | `rules_file`, `ignore_senders[]`, `ignore_subject_regex[]`, `priority_senders[]` | | collectors |
 | notify | `channel`, `cmd`, `quiet_hours` (`22:00-07:00`), `dedupe_prefix` | | B-12, A-97 |
@@ -826,7 +846,7 @@ Release numbers are assigned at merge in a fixed merge order (D7-19).
 | R2 Envelope | `envelope.py`, error codes, tolerant client reader for one release, response validation in tests | shape test on every route; error code to status map | fixture consumer and both tolerant and strict readers pass; R3 removes the tolerant reader |
 | R3 Schemas and checker | six envelope kinds, all core state and API schemas, `state.py` with its command line entry, `conformance.py` with `extends` and JSON lines, `migrate.py`, params schema, the estate-literal check | conformance on fixture state, producer and drainer ledger (roles enforced, marks leave content unchanged, retention pass by the producer only), migrate plan and apply on a copy (idempotent, backup, failure report), state.py command line (concurrent appends, header kept, undeclared writer refused, schema violation refused) | fixture state passes; a seeded bad record is reported and not converted |
 | R4 Writer and inbox | `writer.py`, `approvals.py`, tombstones, applied ledger, `testing/fixtures.py`, `check-opscenter-writer`, the three core approvals and the consumption panel server module | the writer acceptance in 2.5, the live switch acceptance in 2.5, panel tests from local-ops-app 19 | fixture flows write only through the writer; the consumption panel's three approvals pass against a fake code host |
-| R5 Live reads and engine | `swr.py`, `run.py`, core server modules, collector and analyzer engine with the gate, routing, heartbeats, sign-in loop, notice discipline; the app shell and every core screen in 4.2 | swr single flight and last-good; gate order; heartbeat raise and clear; app unit and e2e smoke on fixture state in both themes | fixture consumer runs every core screen live with no bundle step |
+| R5 Live reads and engine | `swr.py`, `run.py`, core server modules, collector and analyzer engine with the gate, routing, heartbeats, sign-in loop, notice discipline; the app shell and every core screen in 4.2 | swr single flight and last-good; gate order including the two optional cuts; heartbeat raise and clear; app unit and e2e smoke on fixture state in both themes | fixture consumer runs every core screen live with no bundle step |
 | R6 Slots | slot loader, interfaces, null adapters, reference adapters (code host, work tracker, docs home), slot UI mounts, claim token protocol, optional modules | per-slot conformance on fixtures, `api` docs home scope proof, delete refusal and read back; null adapter hides UI; claim token states | fixture consumer runs with all null, then with the three reference adapters against fakes |
 | R7 Automerge | `automerge.yml` template, overlay install step | newest run per check, rerun unblocks, hold label, draft skip, head pin | merges a test PR on one repo; a failing then rerun check behaves as specified |
 | R8 Deploy | `deploy.py` with both strategies, rollback, drift check, service definitions | failed health rolls back; drift raises one item; keep_releases prunes | fixture consumer deploys, fails a seeded health check and rolls back |
