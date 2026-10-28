@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-28 (v1.69.0, ops center inbound monitor gates)
+
+The inbound monitor gates and their noise filter, lifted with their tests. Opt in: three new files under `opscenter/gates`.
+
+- `inbound_score.py` (rules are a JSON file, almost nothing is dropped without one), `inbound_mail_gate.py` and `inbound_chat_gate.py` (one gate for any number of chat
+  sources). Pullers are command lists the consumer supplies (DESIGN.md 12.19). Tests: 17.
+
 ## 2026-10-28 (v1.68.0, ops center tools)
 
 The two small tools of the ops center handoff, lifted with their tests. Opt in: new `opscenter/tools`; the test loader gains the `tools` area.
