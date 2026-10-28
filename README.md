@@ -164,7 +164,7 @@ value of the doc's registered rules (see the rules registry below).
 | App types | `standards/web-build.md` | Stack, layout, API envelope, auth, RBAC wiring and the verification gate for first-party web apps | web (no rules yet) |
 | App types | `standards/web-shell.md` | Several tools on one origin: registry generated from manifests, per-module CSS scope, storage and accent, safe return target, home as the hub | web |
 | App types | `standards/web-shell-manifest.md` | The per-module `console.module.json` a multi-module shell reads, its JSON schema and the static-manifest exception | web (no rules yet) |
-| App types | `standards/web-shell-packages.md` | The shared packages of a multi-module shell: the module contract validator and the RBAC core (code in `shell-packages/`), the client and server packages (standard only) | web (no rules yet) |
+| App types | `standards/web-shell-packages.md` | The shared packages of a multi-module shell: the module contract validator and the RBAC core (code in `shell-packages/`), the server package (code); the client package (standard only) | web (no rules yet) |
 | App types | `standards/web-shell-gateway.md` | The shell's own API and the gateway per tier: middleware order, route areas, the gateway token, layout and call path | web (no rules yet) |
 | App types | `standards/web-shell-auth.md` | Shell sign-in (PKCE), one scope per API, token checks, where rights are enforced, registering a permission | web (no rules yet) |
 | App types | `standards/web-shell-deploy.md` | Shell build and deploy: bundle and API pipelines, gates, the dev tier guard, fix-forward recovery | web (no rules yet) |
