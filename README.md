@@ -193,7 +193,9 @@ and section an exception names, the statement, the acceptance line and how a con
 releases to raise new and changed rules. What each status means (pass, proved, attested, waived,
 not_applicable, excepted, unverified, fail) and how a consumer records a proof is in
 [CONSUMING.md](CONSUMING.md#8-rule-status-proofs-and-the-repo-checks).
-Docs without registered rules are listed by the check until they have them. A consumer lists its
+Docs without registered rules are listed by the check until they have them. `opscenter/applicability.json`
+is the published list of rule ids that apply to an ops center; `check-rules.py` fails when an id in it is not
+in the registry. A consumer lists its
 stacks in the `Stacks` row of `standards-local/parameters.md`, and `core-status.py` then leaves out the
 rules for stacks it does not have. With the row empty every rule is reported.
 
@@ -615,7 +617,7 @@ best-practice patterns.
 3. Validate zero leaks of instance context, secrets, or board references.
 4. Run the checks; a nonconformant submission is fixed or rejected. Any consumer account may merge
    its own pull request once `ci` and `visual` pass, since every consumer is the same owner.
-5. On acceptance, every consumer picks the skill up on its next `hermes/sync_skills.py` run.
+5. On acceptance, every consumer picks the skill up on its next `python3 hermes/sync_skills.py --dest <profile home>/skills/core` run (the nightly passes it).
 
 ## Contributing back
 
