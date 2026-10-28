@@ -432,6 +432,7 @@ export function createApi(options: CreateApiOptions): Api {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
             ...extra,
+            // core-exception: this client package is the one place the bearer header is built
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: body !== undefined && body !== null ? JSON.stringify(body) : undefined,
