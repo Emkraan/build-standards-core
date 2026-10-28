@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-28 (v1.58.0, month grid lane-packed bars)
+
+Third of the generic kit pieces the hub needs (intake issue 115). Opt in: an event without `endDate`, and a grid without `laneBars`,
+render exactly as before.
+
+- `MonthGridEvent` gains `endDate` (inclusive). Without `laneBars` the event shows as a chip on each day it covers.
+- `MonthGrid laneBars`: multi-day events draw as one bar per week, packed into lanes so they never overlap, cut at week edges with
+  a flat end and continued on the next week. `maxEvents` is the lane count and bars without a lane are counted in "+N more" on each
+  day they cover. New pure `planWeek(events, week, maxLanes)` and the types `MonthGridBar` and `MonthGridWeekPlan`.
+- The README limit "multi-day events are not supported" is replaced by the above. Dragging and resizing stay the app's.
+- Standard: `standards/web-ui.md` gains Month calendar. Tests: `kit/tests/month-grid-bars.test.tsx` (11). Specimen `month-grid-bars`.
+
 ## 2026-10-28 (v1.57.0, kit matrix grid)
 
 Second of the generic kit pieces the hub needs (intake issue 115). Opt in: a new part, nothing existing changes.

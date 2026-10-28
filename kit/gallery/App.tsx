@@ -539,6 +539,19 @@ function ContextPanelSpecimen() {
   );
 }
 
+function MonthGridBarsSpecimen() {
+  const events = [
+    { id: '1', date: '2026-10-05', endDate: '2026-10-09', label: 'Release train', tone: 'accent' as const },
+    { id: '2', date: '2026-10-07', label: 'Review', tone: 'info' as const },
+    { id: '3', date: '2026-10-08', endDate: '2026-10-13', label: 'Out of office', tone: 'warning' as const },
+    { id: '4', date: '2026-10-08', endDate: '2026-10-09', label: 'On call', tone: 'success' as const },
+    { id: '5', date: '2026-10-08', label: 'Handover' },
+    { id: '6', date: '2026-10-20', endDate: '2026-10-22', label: 'Audit window', tone: 'danger' as const },
+    { id: '7', date: '2026-10-27', endDate: '2026-11-03', label: 'Freeze' },
+  ];
+  return <MonthGrid year={2026} month={9} label="Example calendar with bars" today="2026-10-23" events={events} laneBars maxEvents={3} />;
+}
+
 function LaneBoardSpecimen() {
   const [lanes, setLanes] = useState([
     { id: 'todo', label: 'To do', cards: [{ id: 'a', label: 'Review access list' }, { id: 'b', label: 'Update runbook' }] },
@@ -2405,7 +2418,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2604,6 +2617,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="matrix-grid" title="Matrix grid (dense, sticky heads)">
           <MatrixGridSpecimen />
+        </Specimen>
+        <Specimen id="month-grid-bars" title="Month grid with lane-packed bars">
+          <MonthGridBarsSpecimen />
         </Specimen>
         <Specimen id="list-split" title="List table, paging and split layout">
           <ListSplitSpecimen />
