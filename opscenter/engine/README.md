@@ -11,5 +11,12 @@ The cost gated analyzer's deterministic parts (opscenter/DESIGN.md section 2.6 a
 | `publish_mode.py` | Per class publish mode for docs proposals (`staged` by default, `auto` set only by the owner): the append only check against the live page, classification, version and history links, the daily digest | `publish_mode_test.py` |
 | `state_extract.py` | Read only parsers that mine the markdown and JSON state files for the analysis bundle | |
 
-Not lifted yet: `routing` (needs the collector module), the bundle builder, `ref_status` (tied to named repositories).
+| `routing.py` + `fixtures/routing-seed.json` | The routing engine: where each candidate or board item belongs (`action_center`, `analysis`, `elsewhere`, `nowhere`) from rules that are data (`ac-routing.json`), first match wins, click rules insert at the top, a person who addressed the owner directly is considered by default (fail open), a broken file raises so a caller keeps every item | `routing_test.py` (22) |
+| `collect.py` | The collector: one candidate shape for every source (mail feed, chat feeds, tracker snapshot, state files, documentation gaps), routed by `routing.py`, with the routing report and the unregistered source ratchet. Every path and name is a parameter (`OPSCENTER_COLLECT_CONFIG`); the roster, extra board items and the ref check are plug-ins | `collect_test.py` (12) |
+| `analysis_bundle.py` | The analysis job's input: must consider candidates, context (capped per source), routed away, items already on the board, people, handled decisions, the previous synthesis and the optional live ref status. A broken routing file fails the build, so the gate fails open | `collect_test.py` |
+| `board_build.py` | The board composer and the bundle step: the contract check, items the ops center adds itself, the routing filter, handled aliasing, first seen stamps, fingerprints, freeze status, monitors, the team away strip. Writes the app's data files | `board_build_test.py` (8) |
 
+Plug-ins are files named by environment variables (`OPSCENTER_PEOPLE`, `OPSCENTER_BOARD_SOURCES`, `OPSCENTER_REF_STATUS`,
+`OPSCENTER_TEAM_AWAY`), each optional; DESIGN.md 12.13 lists their contracts.
+
+Not lifted: `ref_status` (tied to named repositories; a plug-in seam stands in for it).
