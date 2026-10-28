@@ -1,5 +1,6 @@
 import { cleanup, configure } from '@testing-library/react';
 import { afterEach, beforeEach } from 'vitest';
+import { defaultStore } from '../../shell-packages/app-client/src';
 import { installMatchMedia, resetMedia } from './helpers';
 
 installMatchMedia();
@@ -30,7 +31,9 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  defaultStore.clear();
   window.localStorage.clear();
+  window.sessionStorage.clear();
   document.documentElement.removeAttribute('data-theme');
   document.documentElement.removeAttribute('data-app-accent');
   document.documentElement.removeAttribute('style');

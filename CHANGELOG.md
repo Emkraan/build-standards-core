@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-28 (v1.53.0, shell client package as code)
+
+Third lift of the shell shared packages ([standards/web-shell-packages.md](standards/web-shell-packages.md) section 4).
+
+- `shell-packages/app-client/`: the shared browser client as TypeScript source: `createAuth` (one sign-in boot for the shell and every
+  module, silent renewal, loop guard, same-origin return target), `createApi` with its cache and single flight, the resource store,
+  `useResource` and the `ConsoleFeed` strip. `mode` is `shell` or `module`, the return key is `shell.returnTo`, and no tenant, client
+  or product value is baked in. Peer dependencies: React, `@azure/msal-browser` and the kit.
+- Tests: `kit/tests/app-client/` (162 checks with a fake MSAL client) run in the kit workflow. The kit gains `@azure/msal-browser` as a dev
+  dependency, a `paths` entry and a vitest alias so the package, which sits outside the kit folder, resolves the kit's own copies.
+
 ## 2026-10-28 (v1.52.0, shell server package as code)
 
 Second lift of the shell shared packages ([standards/web-shell-packages.md](standards/web-shell-packages.md) section 4).

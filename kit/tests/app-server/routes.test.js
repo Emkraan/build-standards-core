@@ -55,7 +55,7 @@ test("a router mounted on a path with params is named by its declared templates,
   ]);
   assert.deepEqual(routes, ["/api/devices/:id", "/api/devices/:id", "/api/devices/:id/apps/:appId", "/api/devices/:id/apps/:appId"]);
   const everything = JSON.stringify({ routes, lines });
-  assert.doesNotMatch(everything, /jdoe|john|secret-token|0f8fad5b|forthepeople|email=/);
+  assert.doesNotMatch(everything, /jdoe|john|secret-token|0f8fad5b|example|email=/);
 });
 
 test("nested routers with params at every level", async () => {

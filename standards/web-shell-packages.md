@@ -11,13 +11,13 @@ core already states the rule.
 |---|---|---|
 | Module contract (`console-modules`) | The per-module manifest ([web-shell-manifest.md](web-shell-manifest.md)): the validator, the registry checks, the permission source and peer helpers, the generated registry and its staleness check | Code: `shell-packages/console-modules/`. The generator is `kit/scripts/build-registry.mjs` ([web-shell.md](web-shell.md) section 3) |
 | RBAC core (`rbac`) | What permission data means: accessible tabs, the grant ceiling, assignable roles, view-as, client access helpers | Code: `shell-packages/rbac/` |
-| Client package (`app-client`) | One sign-in boot, token renewal, the API client and its cache, resource hooks, the live feed strip | Standard only: [web-client-runtime.md](web-client-runtime.md) sections 1 to 3, 5 and 6, [web-shell.md](web-shell.md) section 8 |
-| Server package (`app-server`) | Group cache, directory token, CORS and origin guard, Server-Timing, gateway token check, What's new handler | Code: `shell-packages/app-server/`. The request telemetry sink is not lifted (section 6). Rules: [web-api-runtime.md](web-api-runtime.md) sections 1 to 7 |
+| Client package (`app-client`) | One sign-in boot, token renewal, the API client and its cache, resource hooks, the live feed strip | Code: `shell-packages/app-client/` (TypeScript source). Rules: [web-client-runtime.md](web-client-runtime.md) sections 1 to 3, 5 and 6, [web-shell.md](web-shell.md) section 8 |
+| Server package (`app-server`) | Group cache, directory token, CORS and origin guard, Server-Timing, gateway token check, What's new handler | Code: `shell-packages/app-server/`. The request telemetry sink is not lifted (section 7). Rules: [web-api-runtime.md](web-api-runtime.md) sections 1 to 7 |
 
 The code is plain ESM with hand-written `.d.ts` files, no runtime dependency and no build step, so a CommonJS
 server and a bundled client both import it. A shell takes it by copying the folder into its shared packages
 directory and recording the core release in its lock file; the core's CI proves it with the tests listed in
-section 5. Nothing here syncs into a consumer on its own.
+section 6. Nothing here syncs into a consumer on its own.
 
 ## 2. Module contract
 
@@ -57,7 +57,25 @@ work with either; `accessibleTabs`, `createAccess(...).hasTab`, `findPermissionL
 validator read the `tab:` and `action:` forms. A host on the other grammar uses the first group and keeps its
 own tab logic, and records the exception for the manifest rules.
 
-## 4. Server package
+## 4. Client package
+
+TypeScript source that each app compiles itself (no build step). Peer dependencies: React, `@azure/msal-browser` and the
+kit (`@build-standards/kit`, for `FeedStrip` and `safeHref`). The folder has one entry, `src/index.ts`.
+
+| Export | Purpose |
+|---|---|
+| `createAuth` | One sign-in boot for the whole shell. The shell and every module share one origin, one single page app registration and one `localStorage` token cache, so a shell session is visible to every module and a module never renders its own sign-in. `mode: 'shell'` owns the sign-in surface; `mode: 'module'` bounces a signed-out caller to it and gets sent back. Silent renewal first, an interactive redirect only when needed, a loop guard that stops a repeating redirect, and a distinct answer for a configuration error ([web-shell-auth.md](web-shell-auth.md) section 3). `devBypass` skips the sign-in only on a local dev host with no client id |
+| `RETURN_TO_KEY`, `safeReturnTo` | The same-origin return target. Protocol relative, backslash and control character targets, other origins and the bare root are refused, and dot segments are resolved before the check |
+| `createApi`, `qs` | The API client: bearer token from the shared auth, one error contract (`ApiError` with status and details), one request for identical concurrent GETs, a stale-while-revalidate cache with a freshness window per key, opt-in `sessionStorage` persistence for identity reads only, a configurable answer to a 401 and a cache that a logout or account change clears |
+| `createStore`, `defaultStore`, `isStale` | The resource store behind the client and the hooks: subscribers, one request per key, a waiting fetch re-run after an invalidation |
+| `useResource`, `useApiResource` | Cached data renders at once and is refreshed in the background; a key per resource, optional refresh interval, `enabled` and `ttl` |
+| `ConsoleFeed`, `useConsoleFeed`, `healthStatusOf`, `mergeHealth`, `mergeItems`, `parseFeed` | The feed strip under a module's header: the platform feed (health and announcements) from the console API merged with the module's own items and health, always showing a health line even when one source is down |
+
+The auth options carry no tenant or product value: `clientId`, `tenantId`, `apiScope`, `loginAttemptKey`, `basePath` and
+`postLogoutPath` come from the app. The authority defaults to the Microsoft identity platform for the tenant and can be
+set.
+
+## 5. Server package
 
 Plain ESM, no runtime dependency, every vendor call injected or read from an environment variable. It plugs into an
 Express style stack (`req`, `res`, `next`) and the CommonJS servers `require` it.
@@ -77,20 +95,21 @@ The gateway guard reads `GATEWAY_ENFORCE`, `GATEWAY_PRINCIPAL_ID`, `GATEWAY_AUDI
 environment. With none set and enforcement off it only removes the header; some but not all set logs a
 `misconfigured` line at startup. Mount it before the bearer check.
 
-## 5. Tests
+## 6. Tests
 
 | File | Proves |
 |---|---|
 | `kit/tests/shell-console-modules.test.ts` | The validator accepts the fixtures, ignores unknown keys, rejects 24 mutations and never throws; the registry checks for source and peer ids; the launcher description fits |
 | `kit/tests/shell-rbac.test.ts` | The ceiling, fail-closed stale ids, the wildcard rule, view-as, tab computation and the client helpers |
 | `tests/test_console_module_schema.py` | The same manifest fixtures against the JSON schema ([web-shell-manifest.md](web-shell-manifest.md)) |
+| `kit/tests/app-client/*.test.ts` | The sign-in boot (silent, redirect, loop guard, return target, module bounce, configuration errors), the API client (token, errors, single flight, cache, 401 handling, persistence), the store, `useResource` and the feed strip, with a fake MSAL client |
 | `kit/tests/app-server/*.test.js` | The group cache (TTL, bound, single flight, fail closed, scoped lists), CORS and the origin guard, Server-Timing and route naming on real Express apps, the release notes handler, and the gateway token check against a local signing key. Run by `npm run test:server` inside `kit` |
 
 The kit workflow runs on a change under `shell-packages/` or the manifest fixtures.
 
-## 6. Not in the core yet
+## 7. Not in the core yet
 
-The client package as code, the request telemetry sink (it needs a vendor exporter, so a shell wires its own
+The request telemetry sink (it needs a vendor exporter, so a shell wires its own
 through `serverTiming`'s `sink`) and the admin layout merge. The standards above already state their rules; each
 lands as its own piece with tests, and until then a shell keeps its own implementation and meets the rules in the
 linked sections.
