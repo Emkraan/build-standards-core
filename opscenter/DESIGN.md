@@ -891,7 +891,18 @@ only what differs.
 1. Checks: core clone present and current; `consumer.json` version; the code host CLI signed in.
 2. The ops center repo: creates it from the core template when absent, or takes an existing one
    (`--ops-center PATH`). Syncs `opscenter-core/`, `kit-core/`, `tokens-core/` and the overlay with
-   its lock.
+   its lock. `PATH` may be the repo root, the app folder inside it, or a symbolic link to either, for
+   example a deployed checkout that the state tree reaches through a link to its app folder:
+   - `adopt` resolves the link (real path), walks up to the git top level and takes that repo. A
+     path that resolves outside any git repository, or to a repo with no ops center app, is refused
+     with the resolved path in the message.
+   - The consumer entry's `path` records the resolved top level, so a later change of the link does
+     not move the registration. The dry run prints both the path given and the resolved one.
+   - `adopt` never replaces, removes or retargets the link, and never writes through it into any
+     repo other than the resolved one.
+   - A checkout that is also the live deployed copy (`deploy.strategy` `checkout`) is taken without
+     switching its branch or editing its working tree. The sync lands in a separate worktree by
+     pull request (`apply_via: pr`), and the deploy step then fast-forwards the live checkout.
 3. `local/params.json`: prompts for every required parameter row, fills discovered values
    (account, repos, report issue), writes and validates it. Includes the `Commit emails` row the hub
    consumer found missing.
@@ -958,7 +969,7 @@ Release numbers are assigned at merge in a fixed merge order (D7-19).
 | R6 Slots | slot loader, interfaces, null adapters, reference adapters (code host, work tracker, docs home), slot UI mounts, claim token protocol, optional modules | per-slot conformance on fixtures, `api` docs home scope proof, delete refusal and read back; null adapter hides UI; claim token states | fixture consumer runs with all null, then with the three reference adapters against fakes |
 | R7 Automerge | `automerge.yml` template, overlay install step | newest run per check, rerun unblocks, hold label, draft skip, head pin | merges a test PR on one repo; a failing then rerun check behaves as specified |
 | R8 Deploy | `deploy.py` with both strategies, rollback, drift check, service definitions | failed health rolls back; drift raises one item; keep_releases prunes; a custom `health_path` is the one probed; companions install only after the probe, a drifted destination is left alone with one board item, an unchanged one is untouched, and a destination outside the agent home is refused; both strategies | fixture consumer deploys, fails a seeded health check and rolls back, then deploys with `checkout` and `copy`, a custom `health_path` and a changed companion, and the agent home file is replaced only after the probe passes and left alone when seeded with drift |
-| R9 Adopt | `hermes/adopt.py`, discovery, report-only registration, migration step, downstream app card, daily report-back rows | dry run on a fixture workspace; rerun is a no-op; unconverted record stops adopt | a clean machine fixture goes from nothing to a running, conformant ops center |
+| R9 Adopt | `hermes/adopt.py`, discovery, report-only registration, migration step, downstream app card, daily report-back rows | dry run on a fixture workspace; rerun is a no-op; unconverted record stops adopt; `--ops-center` given as a repo root, an app folder and a symbolic link to each resolves to one top level; a path outside any git repo or without an ops center app is refused with the resolved path; the recorded `path` is the resolved top level and survives a retargeted link; the link is never changed; a live checkout keeps its branch and working tree and the sync lands by pull request | a clean machine fixture goes from nothing to a running, conformant ops center, and a fixture whose ops center is reached through a symbolic link is adopted in place, with the link, the branch and the working tree unchanged |
 
 ## 10. Migration path per consumer
 
