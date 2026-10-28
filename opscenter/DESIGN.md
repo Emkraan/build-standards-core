@@ -1301,7 +1301,7 @@ the standard drops: it is waiting on something named here.
 | 3 | own pull request lane, decision cards | lifted: `server/modules/own_lane.py`, `decision_cards.py`, `lanes/own_pr_merge.py` |
 | 4, 5 | own sync auto fix, core pull request lane | lifted: `lanes/own_sync_lane.py`, `lanes/core_pr_lane.py` (12.16) |
 | 6 | merge queue | lifted: `lanes/merge_queue.py`, `gh_run_jobs.py` |
-| 7 | queued docs approvals | not lifted yet: the docs write guard is lifted (`lanes/docs_write_guard.py`); the applier (`apply_queued_approvals`) waits on wiring to the docs home adapter |
+| 7 | queued docs approvals | lifted: `lanes/queued_approvals.py` with the docs home adapter as a command that defaults to nothing (12.17); the documentation audit it can trigger is the consumer's |
 | 8 | change freeze gate | lifted: `lanes/freeze_gate.py` |
 | 9, 10 | plan gate, privileged apply review | plan gate lifted: `lanes/tfplan_gate.py` with a reference sign-off store; the privileged lane is a plug-in seam (`set_privileged_gate`) |
 | 11 | dark launches | lifted: `server/modules/dark_launches.py` |
@@ -1581,6 +1581,20 @@ environment variables (`CORELANE_*`, `MXLANE_*`); no default names a repository 
 (`core`, `sync`, and `sync-feature` for a feature branch) in `AUTOFIX_TARGETS`; for `core` the entry carries `extra_fixable`
 (`[["local checks fail", "local-checks"], ["version needs a bump", "version-bump"], ["changelog entry", "changelog"]]`), which this
 lift added to `autofix.problem_of` (a target's own needles, tried after the built in ones).
+
+### 12.17 The queued approvals applier (item 7)
+
+`lanes/queued_approvals.py` applies the approvals the owner clicked on the Knowledge page. Writes go only through
+`docs_write_guard.py` (5.2: scope proof, create and update only, every decision logged); reads (the read back, the live page for
+the append only check, the title lookup) go through the docs home adapter, `DOCS_HOME_CMD` (a JSON list that runs one call:
+`<cmd> <tool> '<json args>'` prints the JSON-RPC result, the work tracker driver contract of 12.15). With no adapter every read fails
+closed: a create stays queued (`RETRY`), nothing is written and the run exits 0. Parameters: `AQA_DASH` (default
+`<state>/dashboard`), `AQA_GUARD` (a wrapper that supplies the guard's token provider), `DOCS_GUARD_CONFIG` (the allowed roots a
+title lookup is scoped to), `DOCS_CLOUD_ID`, `AQA_AUDIT` (the consumer's documentation audit, run after a write). State files:
+`approve-inbox.jsonl`, `approve-applied.jsonl`, `docs-proposals.json`, `proposals/<fp>.body`, `knowledge-curation-config.json`.
+Differences from the running code: the tenant, the two tree roots, the driver path, the corporate certificate and the audit path
+were literals and are parameters; the proposals store is `docs-proposals.json` (the gate's name); the test for the documentation
+audit's duplicate check stayed out with the audit, which is not lifted.
 
 ### 12.18 The live ref check (item 24 remainder)
 

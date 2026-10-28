@@ -10,6 +10,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 FILES = sorted(p.name for p in HERE.glob("pr_review_*_checks.py")) + [
+    "queued_approvals_checks.py",
     "tests/own_pr_merge_checks.py",
     "tests/core_pr_lane_checks.py",
     "tests/own_sync_lane_checks.py",
