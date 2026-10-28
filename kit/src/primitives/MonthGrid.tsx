@@ -2,10 +2,17 @@
    keyboard navigation (arrows, Home, End, PageUp, PageDown). It knows dates and layout only; what an
    event means (coverage, shifts, leave) stays in the app and arrives through the event list and the
    renderEvent and renderDay slots. Dates are ISO day strings (YYYY-MM-DD), so no time zone shifts a
-   cell. The title and the month buttons are the app's; this part is the grid. */
+   cell. The title and the month buttons are the app's; this part is the grid.
+
+   Multi-day events: an event with an `endDate` (inclusive) covers each day from `date` to `endDate`. By
+   default it shows as a chip on each of those days. With `laneBars` it draws as one bar that runs
+   across the days of a week and is packed into lanes (rows) so bars never overlap: a bar that crosses
+   a week edge continues on the next week, `maxEvents` is the number of lanes, and bars that do not
+   fit are counted in "+N more" on each day they cover. Without `endDate` or `laneBars` nothing
+   changes. */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { HTMLAttributes, KeyboardEvent, ReactNode } from 'react';
+import type { CSSProperties, HTMLAttributes, KeyboardEvent, ReactNode } from 'react';
 import { cx } from '../lib/env';
 
 export type MonthGridTone = 'neutral' | 'accent' | 'success' | 'warning' | 'danger' | 'info';
@@ -14,8 +21,30 @@ export interface MonthGridEvent {
   id: string;
   /** ISO day, YYYY-MM-DD. */
   date: string;
+  /** Last day of a multi-day event, ISO and inclusive. Omit, or give a day before `date`, for one day. */
+  endDate?: string | undefined;
   label: string;
   tone?: MonthGridTone | undefined;
+}
+
+/** One bar of one week: the event, its lane (row), its first column (0 to 6), its width in days and whether it runs
+    on from the week before or into the week after. */
+export interface MonthGridBar {
+  event: MonthGridEvent;
+  lane: number;
+  col: number;
+  span: number;
+  continuesLeft: boolean;
+  continuesRight: boolean;
+}
+
+export interface MonthGridWeekPlan {
+  /** Bars that fit in a lane. */
+  bars: MonthGridBar[];
+  /** Lanes used, at most `maxLanes`. */
+  lanes: number;
+  /** Per column, how many bars were left out for want of a lane. */
+  hidden: number[];
 }
 
 export interface MonthGridDay {
@@ -42,8 +71,10 @@ export interface MonthGridProps extends Omit<HTMLAttributes<HTMLDivElement>, 'on
   /** 0 Sunday (default) or 1 Monday. */
   weekStart?: 0 | 1 | undefined;
   events?: readonly MonthGridEvent[] | undefined;
-  /** Events shown in a cell before "+N more". Default 3. */
+  /** Events shown in a cell before "+N more" (with `laneBars`, the number of lanes). Default 3. */
   maxEvents?: number | undefined;
+  /** Draws multi-day events as bars packed into lanes across the week, instead of a chip per day. Default false. */
+  laneBars?: boolean | undefined;
   /** The chosen day, ISO. */
   selected?: string | undefined;
   onSelectDay?: ((date: string) => void) | undefined;
@@ -103,6 +134,48 @@ export function monthWeeks(year: number, month: number, weekStart: 0 | 1 = 0, to
   return weeks;
 }
 
+const MAX_SPAN_DAYS = 366;
+
+/** The last day an event covers: `endDate` when it is on or after `date`, else `date`. Capped at a year. */
+function lastDay(e: MonthGridEvent): string {
+  if (!e.endDate || e.endDate <= e.date) return e.date;
+  const cap = addDays(e.date, MAX_SPAN_DAYS - 1);
+  return e.endDate < cap ? e.endDate : cap;
+}
+
+/**
+ * Packs the events that touch one week (seven ISO days) into lanes. Events are placed by first column, longer
+ * first, then in the order given, each in the lowest lane that is free for its whole width. A bar that does not
+ * fit in `maxLanes` is counted in `hidden` for every column it covers.
+ */
+export function planWeek(events: readonly MonthGridEvent[], week: readonly string[], maxLanes = 3): MonthGridWeekPlan {
+  const first = week[0] ?? '';
+  const last = week[week.length - 1] ?? '';
+  const items = events
+    .map((event, order) => ({ event, order, end: lastDay(event) }))
+    .filter((x) => x.event.date <= last && x.end >= first)
+    .map((x) => {
+      const col = Math.max(0, week.indexOf(x.event.date < first ? first : x.event.date));
+      const endCol = week.indexOf(x.end > last ? last : x.end);
+      return { ...x, col, span: Math.max(1, endCol - col + 1), continuesLeft: x.event.date < first, continuesRight: x.end > last };
+    })
+    .sort((a, b) => a.col - b.col || b.span - a.span || a.order - b.order);
+  const laneEnds: number[] = [];
+  const bars: MonthGridBar[] = [];
+  const hidden = week.map(() => 0);
+  for (const it of items) {
+    let lane = laneEnds.findIndex((end) => end < it.col);
+    if (lane === -1) lane = laneEnds.length;
+    if (lane >= maxLanes) {
+      for (let c = it.col; c < it.col + it.span; c++) hidden[c] = (hidden[c] ?? 0) + 1;
+      continue;
+    }
+    laneEnds[lane] = it.col + it.span - 1;
+    bars.push({ event: it.event, lane, col: it.col, span: it.span, continuesLeft: it.continuesLeft, continuesRight: it.continuesRight });
+  }
+  return { bars, lanes: laneEnds.length, hidden };
+}
+
 export function MonthGrid({
   year,
   month,
@@ -111,6 +184,7 @@ export function MonthGrid({
   weekStart = 0,
   events,
   maxEvents = 3,
+  laneBars = false,
   selected,
   onSelectDay,
   onMonthChange,
@@ -127,12 +201,19 @@ export function MonthGrid({
   const byDate = useMemo(() => {
     const m = new Map<string, MonthGridEvent[]>();
     for (const e of events ?? []) {
-      const list = m.get(e.date);
-      if (list) list.push(e);
-      else m.set(e.date, [e]);
+      const end = lastDay(e);
+      for (let d = e.date; d <= end; d = addDays(d, 1)) {
+        const list = m.get(d);
+        if (list) list.push(e);
+        else m.set(d, [e]);
+      }
     }
     return m;
   }, [events]);
+  const plans = useMemo(
+    () => (laneBars ? weeks.map((w) => planWeek(events ?? [], w.map((d) => d.date), maxEvents)) : []),
+    [laneBars, weeks, events, maxEvents],
+  );
   const inMonthDates = useMemo(() => weeks.flat().filter((d) => d.inMonth).map((d) => d.date), [weeks]);
 
   const defaultFocus = (): string => {
@@ -209,12 +290,13 @@ export function MonthGrid({
           </div>
         ))}
       </div>
-      {weeks.map((week) => (
-        <div role="row" className="month-grid-week" key={week[0]?.date}>
-          {week.map((d) => {
+      {weeks.map((week, w) => (
+        <div role="row" className="month-grid-week" key={week[0]?.date} style={laneBars ? ({ '--month-grid-lanes': plans[w]?.lanes ?? 0 } as CSSProperties) : undefined}>
+          {week.map((d, col) => {
             const list = byDate.get(d.date) ?? [];
-            const shown = list.slice(0, maxEvents);
-            const more = list.length - shown.length;
+            const plan = plans[w];
+            const shown = laneBars ? [] : list.slice(0, maxEvents);
+            const more = laneBars ? (plan?.hidden[col] ?? 0) : list.length - shown.length;
             const hint = dayHint?.(d, list);
             const spoken = [
               fmtLong.format(parse(d.date)),
@@ -242,6 +324,26 @@ export function MonthGrid({
               >
                 <span className="month-grid-num">{d.day}</span>
                 {renderDay?.(d, list)}
+                {laneBars && plan && plan.lanes > 0 && (
+                  <ul className="month-grid-lanes" aria-label="Events">
+                    {plan.bars.filter((b) => b.col === col).map((b) => (
+                      <li
+                        key={b.event.id}
+                        className="month-grid-event month-grid-bar"
+                        data-tone={b.event.tone ?? 'neutral'}
+                        data-left={b.continuesLeft ? '' : undefined}
+                        data-right={b.continuesRight ? '' : undefined}
+                        style={{ '--month-grid-lane': b.lane, '--month-grid-span': b.span } as CSSProperties}
+                      >
+                        {renderEvent ? renderEvent(b.event) : onEventClick ? (
+                          <button type="button" className="month-grid-chip" onClick={() => onEventClick(b.event)}>{b.event.label}</button>
+                        ) : (
+                          <span className="month-grid-chip">{b.event.label}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 {shown.length > 0 && (
                   <ul className="month-grid-events" aria-label="Events">
                     {shown.map((ev) => (
