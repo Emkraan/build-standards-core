@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-27 (v1.29.1, a rule carries a test and a review together)
+## 2026-10-27 (v1.29.2, a rule carries a test and a review together)
 
 - `standards-local/proofs.json`: a rule's value may be a list of records, so a test (or ci) proof and a
   dated `review` record sit on the same rule and the rule stays `proved` instead of dropping to
@@ -12,6 +12,16 @@
   with a note until a current review is also recorded. No rule carries it yet, so nothing changes for a
   consumer that changes nothing.
 - CONSUMING.md documents the list form with a neutral example and the reporting table.
+
+## 2026-10-27 (v1.29.1, ops center design, writer rule live switch)
+
+- `opscenter/DESIGN.md` sections 2.5, 4.2, 6 and the R4 row: a "Writer rules" card on the Core page
+  lists every writer rule and offers dry run, enable and disable. Enable needs a dry run finished
+  after the rule last changed that replayed at least one operation with no refused step (an empty
+  dry run never qualifies), plus a typed confirm. Section 4.4 lists the typed confirm format
+  `<scope>.<action> live`. Disable is always one
+  click. The flag lives in a `kv` state file and overrides the parameter at runtime. The section
+  gives the acceptance test.
 
 ## 2026-10-27 (v1.29.0, six consumer gaps: latest by semver, gate ordering, workflow collisions, UI stage, scanner allowlist, ASCII ignore)
 
