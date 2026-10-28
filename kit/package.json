@@ -25,10 +25,11 @@
     "gallery:changelog": "node scripts/gen-changelog.mjs --out gallery/generated/changelog.json --version next",
     "gallery:dev": "vite --config vite.gallery.config.ts",
     "gallery:build": "npm run gallery:changelog && vite build --config vite.gallery.config.ts",
-    "check": "npm run typecheck && npm run test && npm run gallery:build",
+    "check": "npm run typecheck && npm run test && npm run test:server && npm run gallery:build",
     "visual": "npm run gallery:build && playwright test",
     "visual:update": "node scripts/visual-update.mjs",
-    "visual:report": "playwright show-report visual/report"
+    "visual:report": "playwright show-report visual/report",
+    "test:server": "node --test \"tests/app-server/*.test.js\""
   },
   "peerDependencies": {
     "react": ">=18 <20",
@@ -47,6 +48,7 @@
     "@vitejs/plugin-react": "^6.1.2",
     "@xyflow/react": "^12.12.0",
     "axe-core": "^4.14.0",
+    "express": "^4.21.2",
     "jsdom": "^30.1.2",
     "postcss": "^8.5.30",
     "react": "^19.3.0",
