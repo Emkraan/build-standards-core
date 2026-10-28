@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-28 (v1.43.0, ops center lift status)
+
+Design text only: no rule is added and no code changes. `opscenter/DESIGN.md` section 12.7 records, for each module of
+12.3, whether it is lifted into the core (and where) or what it is waiting on. A full scan of `opscenter/` against the
+placeholder verification patterns found no hit.
+
 ## 2026-10-28 (v1.42.0, ops center engine: board contract, handled match, first seen)
 
 Ninth piece of the ops center lift (opscenter/DESIGN.md section 2.6 and 12.4). Opt in: no rule is added and nothing a
