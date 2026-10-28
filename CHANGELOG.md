@@ -1,10 +1,22 @@
 # Changelog
 
-## 2026-10-28 (v1.44.1, stat tile help icon corner)
+## 2026-10-28 (v1.45.1, stat tile help icon corner)
 
 - Kit: on a stat tile or `Stat` that is itself a button, the help icon sits at `var(--space-2)` from the top and right of
   the corner again, and the label keeps `padding-right: var(--space-6)` so a long label never runs under the icon.
   Restores the look of v1.27.5 for consumers that use the tip layer. No other change.
+
+## 2026-10-28 (v1.45.0, ops center search and pull request dependencies)
+
+Eleventh piece of the ops center lift (opscenter/DESIGN.md section 12.3, item 23). Opt in: no rule is added and nothing a
+consumer runs today changes.
+
+- Code in `opscenter/server/modules`: `ops_search.py` (one query across board items, 1:1 topics, text files in configured
+  folders and the agent runtime's sessions, read only; `SEARCH_DIRS` and `SEARCH_RUNTIME_DB` are parameters) and
+  `pr_deps.py` (one dependency model for open pull requests: a "Waits on #N" line, a stacked branch, or a destroy
+  attributed to a parent; a parent that cannot be read counts as met and the view says so; the repo is `PRDEPS_REPO`).
+- Fix: the alerts time label used a mangled hour format code.
+- Tests: 35 unit tests (new for search), run in CI. The four `pr_deps` tests that needed the review page engine are not lifted.
 
 ## 2026-10-28 (v1.44.0, ops center modules with estate facts as parameters)
 
