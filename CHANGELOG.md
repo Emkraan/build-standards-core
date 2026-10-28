@@ -4,6 +4,37 @@
 
 - Section 7.2 of `opscenter/DESIGN.md` carries a retrying merge (parameters `automerge.merge_attempts` 3 and `automerge.merge_pause_s` 10, listed in section 6). `templates/overlay/scripts/merge-pr.py` implements it for the final merge call and takes the two values as `--attempts` and `--pause`. A transient failure (dropped connection, timeout, 5xx) is retried in this order: sleep, read the pull request state and head, merge. Every retry passes `--match-head-commit` with the head just read, even when the caller passed none. An already merged pull request is a success, a closed one or one whose head moved stops the retry, and a refusal that is not transient is never retried. The retry claims only an open state and an unchanged head and does not read the required runs again, because the code host refuses a merge while a required check is not green. Tests in `tests/test_core_ci.py`.
 
+## 2026-10-27 (v1.29.3, a rule carries a test and a review together)
+
+- `standards-local/proofs.json`: a rule's value may be a list of records, so a test (or ci) proof and a
+  dated `review` record sit on the same rule and the rule stays `proved` instead of dropping to
+  `attested`. The single-object form is unchanged. A review beside a test is a companion and is not held
+  to the "weaker than the rule's check" limit; an expired or broken review is a problem line and the test
+  still counts; a malformed list entry is a problem line naming its place (`rule[1]`); an empty list is a
+  problem. The reserved keys are untouched.
+- New optional registry field `requires_review: true`: such a rule with a test alone reads `unverified`
+  with a note until a current review is also recorded. No rule carries it yet, so nothing changes for a
+  consumer that changes nothing.
+- CONSUMING.md documents the list form with a neutral example and the reporting table.
+
+## 2026-10-27 (v1.29.2, ops center design, api backed docs home)
+
+- `opscenter/DESIGN.md` sections 5.2, 5.3, 6 and the R6 row: the `docs_home` reference adapter gains
+  an `api` variant for a docs home that is not a git repo. Every write passes a scope proof against
+  the allowed roots (`docs.allowed_roots`), deletes are refused, the body hash is checked and the
+  page is read back. Parameter `docs.adapter` picks the variant (`git` stays the default). The
+  section gives the acceptance test.
+
+## 2026-10-27 (v1.29.1, ops center design, writer rule live switch)
+
+- `opscenter/DESIGN.md` sections 2.5, 4.2, 6 and the R4 row: a "Writer rules" card on the Core page
+  lists every writer rule and offers dry run, enable and disable. Enable needs a dry run finished
+  after the rule last changed that replayed at least one operation with no refused step (an empty
+  dry run never qualifies), plus a typed confirm. Section 4.4 lists the typed confirm format
+  `<scope>.<action> live`. Disable is always one
+  click. The flag lives in a `kv` state file and overrides the parameter at runtime. The section
+  gives the acceptance test.
+
 ## 2026-10-27 (v1.29.0, six consumer gaps: latest by semver, gate ordering, workflow collisions, UI stage, scanner allowlist, ASCII ignore)
 
 - `sync-core.py latest` and `update-core.py` resolve the highest strict `vX.Y.Z` tag by semantic version,
