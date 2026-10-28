@@ -6,6 +6,8 @@ import { IconClose } from '../icons/icons';
 import { cx } from '../lib/env';
 import type { MarkHue } from '../lib/hues';
 import { Spinner } from './Spinner';
+import { joinIds, useTip } from './Tooltip';
+import type { TipSide } from './Tooltip';
 
 /** `urgent` is the orange high-priority step between warning and danger. */
 export type StatusTone = 'neutral' | 'accent' | 'success' | 'warning' | 'urgent' | 'danger' | 'info';
@@ -26,6 +28,11 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   removing?: boolean | undefined;
   /** What the remove button names, "Remove <removeLabel>". Default the text children. */
   removeLabel?: string | undefined;
+  /** What the state means and whether it is normal, one or two short sentences. Shows as the tip, is
+      read as the description, and makes the badge focusable so a keyboard user can reach it. Pass
+      tabIndex={-1} where the badge already sits inside a focusable row. Not for a badge inside a button or link. */
+  tip?: string | undefined;
+  tipSide?: TipSide | undefined;
 }
 
 export function Badge({
@@ -36,15 +43,21 @@ export function Badge({
   onRemove,
   removing = false,
   removeLabel,
+  tip,
+  tipSide,
   className,
   children,
   ...rest
 }: BadgeProps) {
   const what = removeLabel ?? (typeof children === 'string' || typeof children === 'number' ? String(children) : 'item');
+  const { props: tipProps, description } = useTip(tip, tipSide);
   return (
     <span
       {...rest}
-      className={cx('badge', hue && `hue-${hue}`, className)}
+      {...tipProps}
+      aria-describedby={joinIds(rest['aria-describedby'], tipProps['aria-describedby'])}
+      tabIndex={rest.tabIndex ?? (tipProps['data-tip'] ? 0 : undefined)}
+      className={cx('badge', hue && `hue-${hue}`, tipProps['data-tip'] && 'has-tip', className)}
       data-tone={hue ? undefined : tone}
       data-hue={hue}
       data-live={live ? '' : undefined}
@@ -54,6 +67,7 @@ export function Badge({
     >
       {live ? <Spinner size="xs" className="badge-spinner" /> : dot || hue ? <span className="badge-dot" aria-hidden="true" /> : null}
       {children}
+      {description}
       {onRemove ? (
         <button
           type="button"
@@ -85,23 +99,39 @@ export interface StatusDotProps {
   /** Success dots pulse by default. False keeps the dot still. */
   pulse?: boolean | undefined;
   className?: string | undefined;
+  /** What the state means and whether it is normal, one or two short sentences. Shows as the tip, is
+      read as the description and makes the dot focusable. A dot with a tip and no `label` takes the
+      tip as its accessible name. */
+  tip?: string | undefined;
+  tipSide?: TipSide | undefined;
 }
 
-export function StatusDot({ tone = 'neutral', label, showLabel = false, pulse = true, className }: StatusDotProps) {
+export function StatusDot({ tone = 'neutral', label, showLabel = false, pulse = true, className, tip, tipSide }: StatusDotProps) {
+  const tipText = tip?.trim() ?? '';
+  const labelled = Boolean(label) && showLabel;
+  // A bare dot has no text of its own, so its tip stands in as the name. With a label the tip describes it.
+  const named = label || tipText || undefined;
+  const { props: described, description } = useTip(label ? tipText : undefined, tipSide);
+  const bare = !label && tipText ? { 'data-tip': tipText, 'data-tip-side': tipSide } : {};
+  const mark = { ...described, ...bare, ...(tipText ? { tabIndex: 0 } : {}) };
   const dot = (
     <span
-      className={cx('status-dot', !pulse && 'is-still', className)}
+      className={cx('status-dot', !pulse && 'is-still', tipText && !labelled && 'has-tip', className)}
       data-tone={tone}
-      role={label && !showLabel ? 'img' : undefined}
-      aria-label={label && !showLabel ? label : undefined}
-      aria-hidden={label && !showLabel ? undefined : true}
-    />
+      role={named && !labelled ? 'img' : undefined}
+      aria-label={named && !labelled ? named : undefined}
+      aria-hidden={named && !labelled ? undefined : true}
+      {...(labelled ? {} : mark)}
+    >
+      {labelled ? null : description}
+    </span>
   );
-  if (!label || !showLabel) return dot;
+  if (!labelled) return dot;
   return (
-    <span className="status-dot-wrap">
+    <span className={cx('status-dot-wrap', tipText && 'has-tip')} {...mark}>
       {dot}
       <span>{label}</span>
+      {description}
     </span>
   );
 }

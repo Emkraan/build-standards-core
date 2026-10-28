@@ -1,5 +1,51 @@
 # Changelog
 
+## 2026-10-27 (v1.30.9, the tip layer: tips that show, disabled reasons, glossary terms, InfoTip and When)
+
+Every part below is off by default or inert until an app uses it, so a consumer that uses none of them
+renders exactly as before.
+
+- Kit, the tip layer: `AppShell` takes `tooltipLayer` (default false). When set it mounts `TooltipLayer`, so
+  `data-tip` on a kit `Button`, the feed strip or the launcher shows with no wiring and a native `title` gets the kit
+  tip. The layer is a singleton: a second mount (an app that still mounts its own) draws nothing, so a tip never shows
+  twice. New `useTip(text, side)` returns the `data-tip` props plus a hidden description wired with
+  `aria-describedby`, because the layer's tip is hidden from assistive technology. New `devWarn` in `lib/env`
+  (development only, once per key).
+- Kit, reasons and marks: `Button` and `IconButton` take `disabledReason`: `aria-disabled` instead of `disabled`, so
+  the button stays focusable, a click and a form submit do nothing, and the reason is its tip and description
+  (`loading` wins). `Modal` `primaryAction.disabledReason` does the same. `Badge` and `StatusDot` take `tip` and
+  `tipSide` (a marked badge or dot is focusable, and a bare dot takes its tip as its name). The hover, active and
+  disabled selectors for a button treat `aria-disabled` like `:disabled` through a zero-specificity guard, so no
+  existing selector changes its result.
+- Kit, words and times: `GlossaryProvider` and `Term` (`{ id: { term, short, long?, href? } }`, a dotted underline,
+  keyboard focusable, the short text as the tip, an unknown id renders plain text and warns in development only),
+  `AppShell glossary` (default none), `InfoTip` (an info button with an accessible name whose click opens a popover
+  with the long text and a link, on `HelpLink`), `When` (relative text with the absolute date, time and zone as the
+  tip, a `timeZone` prop, one shared interval on `CLOCK_TICK` through `lib/clock`) with `formatWhen` and
+  `formatWhenAbsolute`. `RelativeTime` stays.
+- Kit, existing parts: the kit's own icon-only buttons (announcement close, build card, toast close, search clear,
+  header menu) carry `data-tip` as well as `aria-label`. The tip shows only where a tip layer is mounted, so nothing
+  changes for an app without one.
+- Kit, visible cues: `StatTile` and `Stat` show an info icon beside the label when `tip` is given (`Stat` also takes an
+  `info` node, which wins), and `CardHead` takes `info` (a string or a node) and shows the same icon beside the
+  title. The icon is an `InfoTip`: the tip on hover or focus, the same text in a popover on click. With no `tip` or
+  `info` the markup is the same as before. A `StatTile` or `Stat` that has `onClick` keeps the icon in its corner,
+  outside the button, so a button never holds a button. The glossary underline at rest is 2px dotted in
+  `--text-secondary`, and goes to `--text-primary` on hover and focus. `StatTile` already took `tip`, so it shows the icon
+  only where a tip layer is mounted (new `useTipLayerMounted`). Without one a `StatTile` that passes `tip` keeps its
+  `data-tip` and shows no icon, as before.
+- Standards: new `web-ui.md` section 27, "The help layer", with four rules registered as `web-ui.27.1` to
+  `web-ui.27.4` (an icon-only control has a name and a tip, a disabled control says why, a status says what it
+  means, a tip is one or two short sentences). The Tooltips, Buttons, Badges and Shell sections point at it. The
+  section and rule numbers are provisional. The shared core-practices skill is regenerated.
+- UI lint: three new rules. UI011 flags a kit `Button` or `IconButton` with `disabled` and no `disabledReason`
+  (27.2), UI012 flags a `button`, an `a` or a kit `Button` that holds only an icon and lacks `aria-label` or a tip
+  (27.1), UI013 flags a literal `data-tip`, `tip` or `disabledReason` over 200 characters or in three or more
+  sentences (27.4).
+- Tests and gallery: kit tests `tooltip-shell`, `help-tips`, `help-time` and `help-cues`, the python lint tests in
+  `tests/test_ui_lint_help_layer.py`, the lint fixtures, and gallery specimens `tips` (with the cues) and `when` with visual
+  baselines.
+
 ## 2026-10-27 (v1.30.8, retrying merge)
 
 - Section 7.2 of `opscenter/DESIGN.md` carries a retrying merge (parameters `automerge.merge_attempts` 3 and `automerge.merge_pause_s` 10, listed in section 6). `templates/overlay/scripts/merge-pr.py` implements it for the final merge call and takes the two values as `--attempts` and `--pause`. A transient failure (dropped connection, timeout, 5xx) is retried in this order: sleep, read the pull request state and head, merge. Every retry passes `--match-head-commit` with the head just read, even when the caller passed none. An already merged pull request is a success, a closed one or one whose head moved stops the retry, and a refusal that is not transient is never retried. The retry claims only an open state and an unchanged head and does not read the required runs again, because the code host refuses a merge while a required check is not green. Tests in `tests/test_core_ci.py`.

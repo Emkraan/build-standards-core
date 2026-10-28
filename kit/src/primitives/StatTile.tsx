@@ -4,6 +4,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { cx, isBrowser, prefersReducedMotion } from '../lib/env';
+import { InfoTip } from '../overlays/InfoTip';
+import { useTipLayerMounted } from './Tooltip';
 import type { MarkHue } from '../lib/hues';
 import { COUNT_UP_FALLBACK, COUNT_UP_LAND_MARGIN, tokenDuration } from '../lib/timing';
 
@@ -108,7 +110,11 @@ export interface StatTileProps {
   delta?: StatDelta | undefined;
   /** Marks the tile as the active filter. On an interactive tile it sets aria-pressed. */
   selected?: boolean | undefined;
-  /** Tooltip text served by the shared tooltip layer. */
+  /** Help text. With the tip layer mounted (AppShell `tooltipLayer`, or a TooltipLayer) it shows as a visible
+      info icon beside the label (hover or focus for the tip, click for a popover) and the tile itself carries
+      no second tip. Without the layer the tile serves it as a plain `data-tip`, as before. Off when empty. On a
+      tile that has `onClick` the icon sits in the tile's corner, outside the button, so a button never holds
+      a button. */
   tip?: string | undefined;
   /** Makes the tile a button that opens the detail. */
   onClick?: (() => void) | undefined;
@@ -141,11 +147,13 @@ export function StatTile({ label, value, hint, icon, tone = 'accent', hue, delta
       onClick();
     }
   };
-  return (
+  const layerMounted = useTipLayerMounted();
+  const helpIcon = tip && layerMounted ? <InfoTip short={tip} label={`About ${label}`} /> : null;
+  const tileNode = (
     <div
       className={cx('kpi-tile', 'stat-tile', hue && `hue-${hue}`, selected && 'is-selected', className)}
       data-tone={hue ? 'hue' : tone}
-      data-tip={tip}
+      data-tip={layerMounted ? undefined : tip}
       role={interactive ? 'button' : undefined}
       aria-pressed={interactive && selected !== undefined ? selected : undefined}
       tabIndex={interactive ? 0 : undefined}
@@ -158,7 +166,14 @@ export function StatTile({ label, value, hint, icon, tone = 'accent', hue, delta
         </span>
       ) : null}
       <div className="kpi-body">
-        <span className="kpi-label">{label}</span>
+        {helpIcon && !interactive ? (
+          <span className="kpi-label-row">
+            <span className="kpi-label">{label}</span>
+            <span className="kpi-label-info">{helpIcon}</span>
+          </span>
+        ) : (
+          <span className="kpi-label">{label}</span>
+        )}
         <span className="kpi-value">
           <span className="kit-sr-only">{text}</span>
           <span aria-hidden="true" data-count-up="">
@@ -176,4 +191,13 @@ export function StatTile({ label, value, hint, icon, tone = 'accent', hue, delta
       </div>
     </div>
   );
+  if (helpIcon && interactive) {
+    return (
+      <div className="kpi-tile-wrap">
+        {tileNode}
+        <span className="kpi-tile-corner">{helpIcon}</span>
+      </div>
+    );
+  }
+  return tileNode;
 }

@@ -199,7 +199,7 @@ export function ReleaseNotesDialog({ open, onClose, releases, version, anchorRef
               {version ? <span className="release-tag">{versionLabel(version)}</span> : null}
             </h2>
           </div>
-          <button type="button" className="release-close" aria-label="Close release notes" onClick={onClose}>
+          <button type="button" className="release-close" aria-label="Close release notes" data-tip="Close" onClick={onClose}>
             <IconClose size={14} />
           </button>
         </div>

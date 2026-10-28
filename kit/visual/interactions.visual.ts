@@ -80,3 +80,54 @@ test('a LaneBoard card moves to another lane by pointer drag and by keyboard', a
   await expect(todo).toHaveAccessibleName('To do, 0 cards');
   await expect(specimen.getByRole('status')).not.toHaveText('');
 });
+
+test('the shell mounts one tip layer: a disabled reason and a term meaning show on hover and on keyboard focus', async ({ page }) => {
+  const specimen = page.locator('#specimen-tips');
+  const tip = page.locator('.tooltip');
+  const scale = specimen.getByRole('button', { name: 'Scale pool' });
+  await expect(scale).toHaveAttribute('aria-disabled', 'true');
+  await expect(scale).not.toHaveAttribute('disabled', /.*/);
+
+  // Sections above this one finish rendering late on a slow runner and move the button, so wait for the
+  // page height to hold, centre the button, and hover again from outside until the tip shows.
+  await expect(async () => {
+    const before = await page.evaluate(() => document.documentElement.scrollHeight);
+    await page.waitForTimeout(700);
+    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(before);
+  }).toPass({ timeout: 20000 });
+  await expect(async () => {
+    await scale.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    // Away from the left edge, where the rail blooms open over the specimen.
+    await page.mouse.move(1100, 450);
+    await scale.hover();
+    await expect(tip).toHaveCount(1, { timeout: 2000 });
+  }).toPass({ timeout: 20000 });
+  await expect(tip).toHaveText('Choose a host pool first. The size applies to that pool.');
+  await page.keyboard.press('Escape');
+  await expect(tip).toHaveCount(0);
+
+  // The button is a tab stop, so the reason reaches a keyboard user as well.
+  // Park the pointer, and take the focus from the keyboard (a Tab reaches the button), so the layer sees keyboard focus.
+  await page.mouse.move(1100, 450);
+  await expect(async () => {
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await scale.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    await page.waitForTimeout(300);
+    await page.keyboard.press('Shift');
+    await scale.focus();
+    await expect(scale).toBeFocused();
+    await expect(tip).toHaveCount(1, { timeout: 2000 });
+  }).toPass({ timeout: 20000 });
+  await expect(tip).toHaveText(/Choose a host pool first/);
+
+  const term = specimen.locator('.term').first();
+  await expect(async () => {
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await term.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    await page.waitForTimeout(300);
+    await page.keyboard.press('Shift');
+    await term.focus();
+    await expect(tip).toHaveCount(1, { timeout: 2000 });
+  }).toPass({ timeout: 20000 });
+  await expect(tip).toHaveText('A group of machines that share one image and settings.');
+});

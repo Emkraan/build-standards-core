@@ -441,6 +441,9 @@ LINT_RULES = {
     "UI007": "accent set outside the root",
     "UI009": "kit class restyled inline",
     "UI010": "local theme or token",
+    "UI011": "disabled control without a reason",
+    "UI012": "icon-only control without a name or tip",
+    "UI013": "tip too long",
 }
 STATUS_KEYS = ("pass", "proved", "fail", "unverified")
 DECL = re.compile(r"export\s+(?:default\s+)?(function|const|class)\s+([A-Z][A-Za-z0-9]+)")

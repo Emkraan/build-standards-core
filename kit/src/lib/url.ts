@@ -1,17 +1,7 @@
 /* Link URL guard. Every kit component that renders a caller-supplied href passes it through
    safeHref, so a script URL from data (a nav config, a feed item) can never run on click. */
 
-// Bundlers replace process.env.NODE_ENV at build time. Where nothing replaced it, reading it
-// throws and the code counts as development.
-declare const process: { env: { NODE_ENV?: string | undefined } };
-
-function isProduction(): boolean {
-  try {
-    return process.env.NODE_ENV === 'production';
-  } catch {
-    return false;
-  }
-}
+import { isProduction } from './env';
 
 const ALLOWED_SCHEMES = new Set(['http:', 'https:', 'mailto:', 'tel:']);
 const SCHEME = /^([a-z][a-z0-9+.-]*):/i;

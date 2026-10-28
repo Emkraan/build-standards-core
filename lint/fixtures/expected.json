@@ -15,6 +15,9 @@
   "dividers.css::UI001": 2,
   "dividers.css::UI003": 5,
   "expired.tsx::UI002": 1,
+  "help-bad.tsx::UI011": 2,
+  "help-bad.tsx::UI012": 4,
+  "help-bad.tsx::UI013": 2,
   "restyle-bad.tsx::UI009": 3,
   "theme-bad.css::UI010": 2,
   "typo.tsx::UI006": 4

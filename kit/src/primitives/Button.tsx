@@ -1,12 +1,14 @@
 /* Buttons (UI standard sections 7 and 24). Primary is the accent gradient with a spring press, and
    an icon-only button needs a label by shape (IconButton). Success, warning and danger come solid
    (a deep fill with white text) and subtle (the status tint, hairline and ink), so an app never
-   paints a button with a hue class. */
+   paints a button with a hue class. A button that cannot be used right now says why through
+   disabledReason: it stays focusable and the reason is its tip. */
 
 import { forwardRef } from 'react';
-import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from 'react';
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, MouseEvent, ReactNode } from 'react';
 import { cx } from '../lib/env';
 import { safeHref } from '../lib/url';
+import { joinIds, useTip } from './Tooltip';
 
 export type ButtonVariant =
   | 'primary'
@@ -29,22 +31,58 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   iconEnd?: ReactNode;
   /** Shows a spinner, disables the button and sets aria-busy. */
   loading?: boolean | undefined;
+  /**
+   * Why the button cannot be used now and how to enable it, one or two short sentences. While set the
+   * button is aria-disabled instead of disabled: it stays in the tab order so a keyboard user reaches
+   * the reason, which shows as its tip and is read as its description. A click does nothing, it does not
+   * submit a form and it does not reach a parent. Use it instead of `disabled`. `loading` wins while both are set.
+   */
+  disabledReason?: string | undefined;
+}
+
+function ignoreClick(event: MouseEvent<HTMLButtonElement>): void {
+  event.preventDefault();
+  event.stopPropagation();
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = 'secondary', size = 'md', icon, iconEnd, loading = false, className, children, disabled, type = 'button', ...rest },
+  {
+    variant = 'secondary',
+    size = 'md',
+    icon,
+    iconEnd,
+    loading = false,
+    className,
+    children,
+    disabled,
+    disabledReason,
+    onClick,
+    type = 'button',
+    ...rest
+  },
   ref,
 ) {
+  const reasoned = Boolean(disabledReason?.trim()) && !loading;
+  // An icon-only button keeps its label in the tip, so the reason follows it: "Remove host: Drain sessions first".
+  const attrs = rest as Record<string, unknown>;
+  const label = typeof attrs['aria-label'] === 'string' ? attrs['aria-label'] : '';
+  const reasonTip = 'data-icon-only' in attrs && label ? `${label}: ${disabledReason ?? ''}` : disabledReason;
+  const { props: tip, description } = useTip(reasoned ? reasonTip : undefined);
+  const describedBy = joinIds(rest['aria-describedby'], tip['aria-describedby']);
   return (
     <button
       {...rest}
+      {...(reasoned ? { 'data-tip': tip['data-tip'] } : {})}
       ref={ref}
       type={type}
       className={cx('btn', className)}
       data-variant={variant}
       data-size={size}
-      disabled={disabled || loading}
+      disabled={(disabled && !reasoned) || loading}
+      aria-disabled={reasoned ? true : rest['aria-disabled']}
+      aria-describedby={describedBy}
       aria-busy={loading || undefined}
+      onClick={reasoned ? ignoreClick : onClick}
     >
       {loading ? <span className="btn-spinner" aria-hidden="true" /> : icon ? <span className="btn-icon" aria-hidden="true">{icon}</span> : null}
       {children}
@@ -53,6 +91,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
           {iconEnd}
         </span>
       ) : null}
+      {reasoned ? description : null}
     </button>
   );
 });

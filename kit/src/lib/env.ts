@@ -9,6 +9,33 @@ export function cx(...parts: ClassValue[]): string {
 
 export const isBrowser: boolean = typeof window !== 'undefined' && typeof document !== 'undefined';
 
+// Bundlers replace process.env.NODE_ENV at build time. Where nothing replaced it, reading it
+// throws and the code counts as development.
+declare const process: { env: { NODE_ENV?: string | undefined } };
+
+/** True in a production build. Any other build, and one where nothing replaced NODE_ENV, counts as development. */
+export function isProduction(): boolean {
+  try {
+    return process.env.NODE_ENV === 'production';
+  } catch {
+    return false;
+  }
+}
+
+const warned = new Set<string>();
+
+/** A console warning for development builds only, once per key. A production build stays silent. */
+export function devWarn(key: string, message: string): void {
+  if (isProduction() || warned.has(key) || typeof console === 'undefined') return;
+  warned.add(key);
+  console.warn(`kit: ${message}`);
+}
+
+/** Test hook: lets every development warning fire again. */
+export function resetDevWarnings(): void {
+  warned.clear();
+}
+
 /** matchMedia that returns null where it does not exist (server render, old test DOMs). */
 export function mediaQuery(query: string): MediaQueryList | null {
   if (!isBrowser || typeof window.matchMedia !== 'function') return null;

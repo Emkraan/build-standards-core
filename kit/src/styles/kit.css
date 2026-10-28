@@ -207,25 +207,25 @@ body { font-family: var(--font-sans); color: var(--text-primary); }
   background: var(--surface-2); color: var(--text-primary); font: inherit; font-size: var(--fs-body);
   font-weight: var(--fw-semibold); line-height: 1; white-space: nowrap; text-decoration: none; cursor: pointer; user-select: none;
 }
-.btn[data-variant="secondary"]:hover:not(:disabled) { background: var(--surface-3); border-color: var(--border-strong); }
+.btn[data-variant="secondary"]:hover:not(:disabled):not(:where([aria-disabled="true"])) { background: var(--surface-3); border-color: var(--border-strong); }
 .btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
 .btn[data-size="sm"] { min-height: 28px; padding: 0 var(--space-3); border-radius: var(--radius-sm); font-size: var(--fs-label); }
 .btn[data-icon-only] { width: 34px; padding: 0; }
 .btn[data-icon-only][data-size="sm"] { width: 28px; }
 .btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--text-secondary); }
-.btn[data-variant="ghost"]:hover:not(:disabled) { background: var(--surface-3); color: var(--text-primary); }
+.btn[data-variant="ghost"]:hover:not(:disabled):not(:where([aria-disabled="true"])) { background: var(--surface-3); color: var(--text-primary); }
 .btn[data-variant="danger"] { background: rgb(var(--hue-red-d)); border-color: transparent; color: var(--text-inverse); }
-.btn[data-variant="danger"]:hover:not(:disabled) { background: var(--danger-700); }
+.btn[data-variant="danger"]:hover:not(:disabled):not(:where([aria-disabled="true"])) { background: var(--danger-700); }
 .btn[data-variant="success"] { background: rgb(var(--hue-green-d)); border-color: transparent; color: var(--text-inverse); }
 .btn[data-variant="warning"] { background: rgb(var(--hue-amber-d)); border-color: transparent; color: var(--text-inverse); }
-.btn[data-variant="success"]:hover:not(:disabled), .btn[data-variant="warning"]:hover:not(:disabled) { filter: brightness(1.1); }
+.btn[data-variant="success"]:hover:not(:disabled):not(:where([aria-disabled="true"])), .btn[data-variant="warning"]:hover:not(:disabled):not(:where([aria-disabled="true"])) { filter: brightness(1.1); }
 .btn[data-variant="success-subtle"] { background: var(--success-dim); border-color: var(--success-border); color: var(--success); }
 .btn[data-variant="warning-subtle"] { background: var(--warning-dim); border-color: var(--warning-border); color: var(--warning); }
 .btn[data-variant="danger-subtle"] { background: var(--danger-dim); border-color: var(--danger-border); color: var(--danger); }
-.btn[data-variant="success-subtle"]:hover:not(:disabled) { border-color: var(--success); }
-.btn[data-variant="warning-subtle"]:hover:not(:disabled) { border-color: var(--warning); }
-.btn[data-variant="danger-subtle"]:hover:not(:disabled) { border-color: var(--danger); }
+.btn[data-variant="success-subtle"]:hover:not(:disabled):not(:where([aria-disabled="true"])) { border-color: var(--success); }
+.btn[data-variant="warning-subtle"]:hover:not(:disabled):not(:where([aria-disabled="true"])) { border-color: var(--warning); }
+.btn[data-variant="danger-subtle"]:hover:not(:disabled):not(:where([aria-disabled="true"])) { border-color: var(--danger); }
 .btn-icon { display: inline-flex; }
 .btn-spinner {
   width: 14px; height: 14px; border-radius: var(--radius-pill); border: 2px solid currentColor;
@@ -247,6 +247,7 @@ body { font-family: var(--font-sans); color: var(--text-primary); }
 .card-titles { min-width: 0; }
 /* Icons in a card head and a section head take the accent ink, so a card reads as belonging to the active tool. */
 .card-head-text > svg, .section-head-icon { color: var(--accent-bright); }
+.card-title-row { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
 .card-title { margin: 0; font-size: var(--fs-h3); font-weight: 650; letter-spacing: var(--track-title); color: var(--text-primary); }
 .card-sub { margin: 2px 0 0; font-size: var(--fs-label); color: var(--text-secondary); }
 .card-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
@@ -360,6 +361,12 @@ div.tone:not(.card):not(.announce) { padding: var(--space-4); border-radius: var
 .kpi-icon { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: var(--radius-md); border: 1px solid transparent; }
 .kpi-body { display: flex; flex-direction: column; min-width: 0; }
 .kpi-label { font-size: var(--fs-label); font-weight: var(--fw-semibold); }
+.kpi-label-row { display: flex; align-items: flex-start; gap: var(--space-1); min-width: 0; }
+.kpi-label-row > .kpi-label { min-width: 0; }
+.kpi-label-info { display: inline-flex; flex: none; }
+/* A tile or Stat that is itself a button keeps its help icon outside it, in the corner. */
+.kpi-tile-wrap, .stat-wrap { position: relative; display: grid; min-width: 0; }
+.kpi-tile-corner, .stat-corner { position: absolute; top: var(--space-1); right: var(--space-1); display: inline-flex; }
 .kpi-value { font-family: var(--font-display); font-size: var(--fs-display); line-height: var(--lh-tight); }
 .kpi-hint { margin-top: var(--space-1); }
 .kpi-delta { display: inline-flex; align-items: center; gap: var(--space-1); margin-top: var(--space-1); font-size: var(--fs-label); font-weight: var(--fw-semibold); }
@@ -505,6 +512,7 @@ div.tone:not(.card):not(.announce) { padding: var(--space-4); border-radius: var
 .stat[role="button"]:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .stat.is-selected { border-color: var(--border-accent-strong); box-shadow: var(--elev-2), 0 0 0 1px var(--border-accent-strong); }
 .stat-top { display: flex; align-items: center; gap: var(--space-2); min-width: 0; min-height: 26px; }
+.stat-info { display: inline-flex; flex: none; margin-left: calc(var(--space-1) * -1); }
 .stat-icon { display: grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: var(--radius-sm); }
 .stat-icon svg { width: 14px; height: 14px; }
 .stat-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-label); font-weight: var(--fw-semibold); color: var(--text-secondary); }
@@ -1810,6 +1818,37 @@ button.breadcrumb-link { cursor: pointer; }
 .account-status:empty { display: none; }
 .account-foot { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
 .account-error { margin: 0; font-size: var(--fs-label); color: var(--danger); }
+/* ---- Help layer: Term, InfoTip, When and tip targets ---- */
+/* Term: a glossary word. The dotted underline says "this has a meaning", the cursor says "ask". */
+.term { cursor: help; text-decoration: underline dotted; text-decoration-color: var(--text-secondary); text-decoration-thickness: 2px; text-underline-offset: 3px; border-radius: var(--radius-xs); }
+@media (hover: hover) and (pointer: fine) { .term:hover { text-decoration-color: var(--text-primary); } }
+.term:focus-visible { outline: none; box-shadow: var(--focus-ring); text-decoration-color: var(--text-primary); }
+/* Marks that carry a tip (the has-tip class, added only when a tip prop is set) are focusable, so the tip shows from the keyboard too. */
+.badge.has-tip:focus-visible, .status-dot.has-tip:focus-visible, .status-dot-wrap.has-tip:focus-visible, .when[tabindex]:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.status-dot-wrap.has-tip, .status-dot.has-tip { border-radius: var(--radius-sm); }
+.badge.has-tip, .status-dot.has-tip, .status-dot-wrap.has-tip { cursor: help; }
+/* When: a relative time. The digits keep their width, so a column of times does not jitter as they tick. */
+.when { font-variant-numeric: tabular-nums; white-space: nowrap; border-radius: var(--radius-xs); }
+.when[data-tip] { cursor: default; }
+.when[data-empty] { color: var(--text-tertiary); }
+
+/* InfoTip: the small info button. Its panel is a Popover. */
+.info-tip {
+  display: inline-flex; align-items: center; justify-content: center; flex: none; width: 24px; height: 24px; margin: -4px 0; padding: 0;
+  vertical-align: middle; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--text-tertiary); cursor: help;
+  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) { .info-tip:hover { background: var(--surface-3); color: var(--text-primary); } }
+.info-tip[aria-expanded="true"] { background: var(--surface-3); color: var(--text-primary); }
+.info-tip:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+@media (pointer: coarse) { .info-tip { width: 44px; height: 44px; margin: -10px -8px; } }
+.info-tip-panel { max-width: min(320px, calc(100vw - 16px)); }
+.info-tip-body { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-3); font-size: var(--fs-label); line-height: var(--lh-body); }
+.info-tip-text, .info-tip-more { margin: 0; }
+.info-tip-text { color: var(--text-primary); }
+.help-link { display: inline-flex; align-items: center; gap: 4px; color: var(--text-primary); font-weight: var(--fw-semibold); text-decoration: underline; text-underline-offset: 2px; }
+.help-link:hover { text-decoration-thickness: 2px; }
+.help-link:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-xs); }
 } /* end @layer core */
 
 /* ---- Page crash panel (ErrorBoundary variant page) and record preview ---- */

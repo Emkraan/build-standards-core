@@ -464,6 +464,65 @@
       "acceptance": "Review: no hand-built cross-tool links."
     },
     {
+      "id": "web-ui.27.1",
+      "ref": "web-ui.md 27.1",
+      "title": "An icon-only control has a name and a tip",
+      "statement": "A control that holds only an icon carries an accessible name and a tip that says its verb (Remove host, not Trash). IconButton requires a label and uses it for both.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "lint",
+        "id": "UI012"
+      },
+      "acceptance": "lint-core/ui_lint.py reports no UI012 finding (a button, a link or a kit Button that holds only an icon and lacks aria-label, or lacks data-tip or title)."
+    },
+    {
+      "id": "web-ui.27.2",
+      "ref": "web-ui.md 27.2",
+      "title": "A disabled control says why",
+      "statement": "A kit Button that cannot be used now takes disabledReason instead of disabled: it renders aria-disabled, stays focusable, ignores clicks and shows the reason as its tip. The reason names what is missing and how to enable it.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "lint",
+        "id": "UI011"
+      },
+      "acceptance": "lint-core/ui_lint.py reports no UI011 finding (a kit Button with disabled and no disabledReason)."
+    },
+    {
+      "id": "web-ui.27.3",
+      "ref": "web-ui.md 27.3",
+      "title": "A status says what it means and whether it is normal",
+      "statement": "A status badge or dot says in its tip what the state means and whether anyone has to act, with the raw value when the label translates one. Colour is never the only signal.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of each page: every status badge or dot has a tip, and a label that translates a raw value shows the raw value there."
+    },
+    {
+      "id": "web-ui.27.4",
+      "ref": "web-ui.md 27.4",
+      "title": "A tip is one or two short plain sentences",
+      "statement": "A tip is one or two short plain sentences, never over 200 characters, with no markup. Longer text goes in an InfoTip popover or the page.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "lint",
+        "id": "UI013"
+      },
+      "acceptance": "lint-core/ui_lint.py reports no UI013 finding (a literal data-tip, tip or disabledReason over 200 characters or in three or more sentences)."
+    },
+    {
       "id": "local-ops-app.1",
       "ref": "local-ops-app.md 1",
       "title": "Local ops apps read and draft, never act unasked",

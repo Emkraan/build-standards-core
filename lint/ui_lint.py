@@ -93,6 +93,25 @@ RULES = {
         "an app stylesheet declares a core token (--surface-1, --text-primary, --radius-md...). The tokens come "
         "from tokens-core as shipped. Build on them with an app class, never redefine one",
     ),
+    "UI011": (
+        "disabled control without a reason",
+        "web-ui.md 27.2",
+        "a kit Button or IconButton with disabled and no disabledReason, so nobody learns why it is off or "
+        "how to turn it on. Use disabledReason (the button stays focusable and the reason is its tip)",
+    ),
+    "UI012": (
+        "icon-only control without a name and tip",
+        "web-ui.md 27.1",
+        "a control that holds only an icon and carries no accessible name or no tip. Use IconButton, whose "
+        "label is required and is both",
+    ),
+    "UI013": (
+        "tip too long",
+        "web-ui.md 27.4",
+        "a tip or disabledReason written as a literal over 200 characters or in three or more sentences. "
+        "A tip is one or two short plain sentences, and anything longer belongs on the page or in an "
+        "InfoTip popover",
+    ),
 }
 
 DEFAULTS = {
@@ -545,6 +564,177 @@ def kit_class_restyles(clean):
     return out
 
 
+def jsx_attrs(tag):
+    """The attributes of one JSX opening tag: {name: value text, or None for a bare attribute}.
+
+    A spread such as {...props} is recorded under the key "..." because it can carry any attribute.
+    """
+    m = re.match(r"<[A-Za-z][\w.]*", tag)
+    i, n, out = (m.end() if m else 0), len(tag), {}
+
+    def skip_braces(j):
+        depth, quote = 0, None
+        while j < n:
+            c = tag[j]
+            if quote:
+                if c == "\\":
+                    j += 1
+                elif c == quote:
+                    quote = None
+            elif c in "'\"`":
+                quote = c
+            elif c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    return j + 1
+            j += 1
+        return n
+
+    while i < n:
+        c = tag[i]
+        if c.isspace() or c in "/>":
+            i += 1
+        elif c == "{":
+            end = skip_braces(i)
+            if tag[i + 1 : end - 1].lstrip().startswith("..."):
+                out["..."] = tag[i:end]
+            i = end
+        else:
+            nm = re.match(r"[A-Za-z_][\w:.-]*", tag[i:])
+            if not nm:
+                i += 1
+                continue
+            name, i = nm.group(0), i + nm.end()
+            while i < n and tag[i].isspace():
+                i += 1
+            if i >= n or tag[i] != "=":
+                out[name] = None
+                continue
+            i += 1
+            while i < n and tag[i].isspace():
+                i += 1
+            start = i
+            if i < n and tag[i] in "\"'":
+                quote = tag[i]
+                i += 1
+                while i < n and tag[i] != quote:
+                    i += 2 if tag[i] == "\\" else 1
+                i += 1
+            elif i < n and tag[i] == "{":
+                i = skip_braces(i)
+            else:
+                while i < n and not tag[i].isspace() and tag[i] not in "/>":
+                    i += 1
+            out[name] = tag[start:i]
+    return out
+
+
+IMPORT_CLAUSE = re.compile(r"\bimport\s+(?:type\s+)?([^'\";]*?)\s*from\s*['\"]([^'\"]+)['\"]")
+
+
+def kit_bindings(clean, names):
+    """The local names under which the file imports one of `names` from a package or an alias.
+
+    A relative import ("./Button", "../primitives/Button") is a file of the same project, which is either
+    the kit's own internals or a consumer's wrapper. The rules about using the kit leave both alone, and so
+    they leave a component the file declares itself. Returns {local name: imported name}.
+    """
+    out = {}
+    for m in IMPORT_CLAUSE.finditer(clean):
+        clause, spec = m.groups()
+        braces = re.search(r"\{([^}]*)\}", clause)
+        if spec.startswith((".", "/")) or not braces:
+            continue
+        for item in braces.group(1).split(","):
+            bits = re.split(r"\s+as\s+", re.sub(r"^\s*type\s+", "", item.strip()))
+            if bits[0].strip() in names:
+                out[bits[-1].strip()] = bits[0].strip()
+    return out
+
+
+KIT_BUTTONS = ("Button", "IconButton")
+# An icon element as the whole body of a control: <IconTrash />, <TrashIcon />, or an inline <svg>.
+ICON_ONLY_BODY = re.compile(
+    r"\s*<(?:Icon[A-Za-z0-9]*|[A-Za-z0-9]+Icon)\b(?:[^<>{}]|\{[^{}]*\})*/>\s*</(?:button|a)>"
+    r"|\s*<svg\b.*?</svg>\s*</(?:button|a)>",
+    re.S,
+)
+TIP_ATTRS = ("data-tip", "tip", "disabledReason")
+TIP_MAX = 200
+FALSE_VALUE = re.compile(r"\{\s*(?:false|0|null|undefined)\s*\}")
+STRING_VALUE = re.compile(
+    r"\"([^\"]*)\"|'([^']*)'|\{\s*(?:\"([^\"]*)\"|'([^']*)'|`([^`$]*)`)\s*\}", re.S
+)
+
+
+def tag_name(tag):
+    return re.match(r"<([\w.]+)", tag).group(1)
+
+
+def disabled_without_reason(clean):
+    """UI011: a kit Button that is disabled and gives no reason (web-ui 27.2)."""
+    bound = kit_bindings(clean, KIT_BUTTONS)
+    out = []
+    for start, tag in jsx_tags(clean):
+        name = tag_name(tag)
+        if name not in bound:
+            continue
+        attrs = jsx_attrs(tag)
+        if "disabled" not in attrs or "..." in attrs:
+            continue
+        if attrs["disabled"] and FALSE_VALUE.fullmatch(attrs["disabled"].strip()):
+            continue
+        if "disabledReason" in attrs or "loading" in attrs:
+            continue
+        out.append((start, f"<{name} disabled> has no disabledReason"))
+    return out
+
+
+def icon_only_without_name(clean):
+    """UI012: a control that is only an icon and lacks an accessible name or a tip (web-ui 27.1)."""
+    bound = kit_bindings(clean, ("Button",))
+    out = []
+    for start, tag in jsx_tags(clean):
+        name = tag_name(tag)
+        attrs = jsx_attrs(tag)
+        if "..." in attrs:
+            continue
+        if name in bound:
+            icon_only = tag.rstrip().endswith("/>") and bool({"icon", "iconEnd"} & attrs.keys())
+        elif name in ("button", "a"):
+            icon_only = bool(ICON_ONLY_BODY.match(clean, start + len(tag)))
+        else:
+            continue
+        if not icon_only:
+            continue
+        named = {"aria-label", "aria-labelledby"} & attrs.keys()
+        tipped = {"data-tip", "title"} & attrs.keys()
+        if not (named and tipped):
+            missing = " and no ".join(
+                part for part, ok in (("name", named), ("tip", tipped)) if not ok
+            )
+            out.append((start, f"<{name}> holds only an icon and has no {missing}"))
+    return out
+
+
+def long_tips(clean):
+    """UI013: a tip or reason written as a literal that is not one or two short sentences (web-ui 27.4)."""
+    out = []
+    for start, tag in jsx_tags(clean):
+        attrs = jsx_attrs(tag)
+        for key in TIP_ATTRS:
+            m = STRING_VALUE.fullmatch((attrs.get(key) or "").strip())
+            if not m:
+                continue
+            text = next(g for g in m.groups() if g is not None)
+            sentences = len(re.findall(r"[.!?](?=\s+[A-Z])", text)) + 1
+            if len(text) > TIP_MAX or sentences >= 3:
+                out.append((start, f"{key} is {len(text)} characters in {sentences} sentence(s)"))
+    return out
+
+
 def check_script(text, clean, hit, is_token_file):
     bound = local_bindings(clean)
     for m in re.finditer(
@@ -582,6 +772,12 @@ def check_script(text, clean, hit, is_token_file):
             hit("UI005", m.start(), m.group(0)[:50])
     for pos, detail in kit_class_restyles(clean):
         hit("UI009", pos, detail)
+    for pos, detail in disabled_without_reason(clean):
+        hit("UI011", pos, detail)
+    for pos, detail in icon_only_without_name(clean):
+        hit("UI012", pos, detail)
+    for pos, detail in long_tips(clean):
+        hit("UI013", pos, detail)
     return [
         m
         for m in re.finditer(
