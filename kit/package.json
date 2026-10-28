@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
+    "@azure/msal-browser": "^3.30.0",
     "@playwright/test": "1.64.0",
     "@scalar/api-reference-react": "^0.9.81",
     "@testing-library/dom": "^10.4.2",

@@ -368,6 +368,7 @@ export async function checkMemberGroups(options) {
       for (let attempt = 0; ; attempt++) {
         const res = await doFetch(url, {
           method: "POST",
+          // core-exception: the directory call is made with the server's own token, not a caller's
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
           body: JSON.stringify({ groupIds: batch }),
           signal: AbortSignal.timeout(timeoutMs),
