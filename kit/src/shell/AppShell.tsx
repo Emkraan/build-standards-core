@@ -22,6 +22,11 @@ export interface AppShellProps {
   header?: ReactNode;
   /** The live feed strip (<FeedStrip>), shown under the header on every page. */
   strip?: ReactNode;
+  /**
+   * A <ContextPanel>: the second level of navigation, a per-tool column laid out beside the header and
+   * the page (the page reflows, nothing overlays it). Default none: the shell renders exactly as before.
+   */
+  contextPanel?: ReactNode;
   children?: ReactNode;
   /** The current route. A change closes the mobile drawer. */
   pathname?: string | undefined;
@@ -66,6 +71,7 @@ export function AppShell({
   rail,
   header,
   strip,
+  contextPanel,
   children,
   pathname,
   linkComponent,
@@ -219,6 +225,16 @@ export function AppShell({
     [railState, pinned, togglePin, railHandlers, mobileOpen, sidebarId, linkComponent],
   );
 
+  const main = (
+    <div className="shell-main">
+      {header}
+      {strip}
+      <main id={mainId} className="shell-content" tabIndex={-1}>
+        {children}
+      </main>
+    </div>
+  );
+
   const shell = (
     <ShellContext.Provider value={ctx}>
       <div className={cx('shell', className)} data-rail={railState} data-mobile-nav={mobileOpen ? 'open' : 'closed'}>
@@ -227,13 +243,14 @@ export function AppShell({
         </a>
         {rail}
         {mobileOpen ? <div className="drawer-backdrop" aria-hidden="true" onClick={() => setMobileOpen(false)} /> : null}
-        <div className="shell-main">
-          {header}
-          {strip}
-          <main id={mainId} className="shell-content" tabIndex={-1}>
-            {children}
-          </main>
-        </div>
+        {contextPanel ? (
+          <div className="shell-split">
+            {contextPanel}
+            {main}
+          </div>
+        ) : (
+          main
+        )}
         {tooltipLayer ? <TooltipLayer /> : null}
         {helpDrawer ? <HelpDrawer /> : null}
       </div>

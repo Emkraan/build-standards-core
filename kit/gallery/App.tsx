@@ -20,6 +20,7 @@ import {
   Card,
   Checkbox,
   Combobox,
+  ContextPanel,
   UnavailableError,
   EXTRA_HUES,
   CardBody,
@@ -478,6 +479,29 @@ function MonthGridSpecimen() {
     { id: '6', date: '2026-10-23', label: 'Release window', tone: 'danger' as const },
   ];
   return <MonthGrid year={2026} month={9} label="Example calendar" today="2026-10-23" events={events} selected={picked} onSelectDay={setPicked} />;
+}
+
+function ContextPanelSpecimen() {
+  const [active, setActive] = useState('overview');
+  const item = (id: string, label: string, badge?: number) => (
+    <NavItem key={id} href={`#${id}`} label={label} badge={badge} iconBadge={false} active={active === id} onClick={(e) => { e.preventDefault(); setActive(id); }} />
+  );
+  return (
+    <div className="gallery-context-demo">
+      <ContextPanel title="Team calendar" subtitle="3 people out today">
+        <NavGroup label="Views">
+          {item('overview', 'Overview')}
+          {item('month', 'Month')}
+          {item('schedule', 'Schedule', 4)}
+        </NavGroup>
+        <NavGroup label="Manage">
+          {item('requests', 'Requests', 2)}
+          {item('settings', 'Settings')}
+        </NavGroup>
+      </ContextPanel>
+      <p className="gallery-note">Mounted next to the rail with AppShell contextPanel. Below 900px it stacks above the page and folds.</p>
+    </div>
+  );
 }
 
 function LaneBoardSpecimen() {
@@ -2346,7 +2370,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2539,6 +2563,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="month-grid" title="Month grid">
           <MonthGridSpecimen />
+        </Specimen>
+        <Specimen id="context-panel" title="Context panel (second level navigation)">
+          <ContextPanelSpecimen />
         </Specimen>
         <Specimen id="list-split" title="List table, paging and split layout">
           <ListSplitSpecimen />
