@@ -1287,3 +1287,36 @@ constants have not been diffed and R5 does that diff before it ships.
   forwards code; the design keeps the rule and `deploy.py` (R8) enforces it.
 - **A hard coded home route and estate literals.** Both go to parameters (section 6) when the module
   is lifted; a lifted module never carries a literal.
+
+### 12.7 Lift status (2026-10-28)
+
+Where each module of 12.3 stands in the core. Lifted code carries its tests, runs in core CI and has no estate
+name (the verification patterns return zero hits over `opscenter/`). A module not listed as lifted is not a module
+the standard drops: it is waiting on something named here.
+
+| Item | Module | Status |
+|---|---|---|
+| 1 | review lane engine | not lifted: the review engine, the auto-fix session starter and the lane scripts are not in the handoff snapshot |
+| 2 | maintenance windows | lifted: `lanes/maintenance_window.py` (change classes `standard` and `restricted`, windows as policy data) |
+| 3 | own pull request lane, decision cards | lifted: `server/modules/own_lane.py`, `decision_cards.py`; the lane scripts wait on the auto-fix session starter |
+| 4, 5 | own sync auto fix, core pull request lane | not lifted: both need the auto-fix session starter |
+| 6 | merge queue | lifted: `lanes/merge_queue.py`, `gh_run_jobs.py` |
+| 7 | queued docs approvals | not lifted: needs the docs write guard, not in the snapshot |
+| 8 | change freeze gate | lifted: `lanes/freeze_gate.py` |
+| 9, 10 | plan gate, privileged apply review | plan gate lifted: `lanes/tfplan_gate.py` with a reference sign-off store; the privileged lane is a plug-in seam (`set_privileged_gate`) |
+| 11 | dark launches | lifted: `server/modules/dark_launches.py` |
+| 12 | cron card map, run now | not lifted: `cron_pulse` needs a repository to lane parameter design |
+| 13 | builds page | not lifted (app page) |
+| 14, 15, 16 | image watch and pool, runbook releases, browser status | image watch and browser status lifted; the pool read and runbook releases wait on a parameter design |
+| 17 | model accounts, spend, fallback | not lifted |
+| 18 | sprint close, retro, ticket progress, needs me | sprint close gate lifted (`gates/`); the rest not lifted |
+| 19 | 1:1 board, yearly export | not lifted (people slot) |
+| 20 | links check | not lifted: needs a catalog file parameter |
+| 21 | knowledge proposals | proposal rewrite gate and the applied log lifted; `publish_mode` and the page are not |
+| 22 | plans reconcile | lifted: `gates/plans_reconcile_gate.py` |
+| 23 | pull request dependencies, search | not lifted |
+| 24 | cron catalog gate, sitrep, hermetic home, visibility check | cron catalog gate and hermetic home lifted; the sitrep and the visibility check are not |
+| (2.4) | swr, alerts, review tombstones, paths | lifted: `server/modules/` |
+| (2.6) | analyzer: contract, handled match, first seen | lifted: `engine/`; routing, the collector and the bundle builder are not |
+| (4) | the app (about 400 files of pages, components and tests) | not started |
+
