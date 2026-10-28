@@ -1346,3 +1346,24 @@ the module report `unavailable` and hide its UI (section 1.3), never guess.
 
 Behaviour that is not a parameter: a failed read is `unknown` and never a pass; every edit goes through a pull request
 and CI is the gate (no `--no-verify`); a class of proposal is `staged` unless the owner set it to `auto`.
+
+### 12.9 The auto-fix starter (items 3 to 5)
+
+`lanes/autofix.py` starts one agent session to fix one of the owner's own pull requests held for a fixable problem. It
+refuses every other author, keeps one session per (pull request, head, problem), caps sessions per pull request per day, and
+gives up with a reason the board shows under Needs me. Everything the running code knew about its repositories, people and
+tools is a parameter or a plug-in:
+
+| Part | Parameter or plug-in | Default |
+|---|---|---|
+| targets | `AUTOFIX_TARGETS` file `{"skills": [...], "targets": {name: {repo, notes, skill, build, identity, catalog, sync_branch_prefix}}}` | `<state>/autofix-targets.json`; absent means no target notes, no build skill |
+| limits | policy `autofix.enabled`, `max_sessions_per_day`, `run_budget_s` | on, 3, 5400 |
+| pre-push gate | `AUTOFIX_PREFLIGHT_CMD`, `AUTOFIX_REVIEW_CMD` templates with `{target}` and `{worktree}`; exit 0 pass, 1 findings printed, 2 environment problem (a failure) | unset: the session runs the repo's own tests |
+| agent runtime | `set_runtime(obj)` (`busy_session`, `launch`, `finished_sessions`, `archive`); `HermesRuntime` is the reference adapter | `NullRuntime`: never busy, launch recorded only |
+| held files | `AUTOFIX_HELD_GATE` module with `path_reasons(files)` (the plan gate) | every `.github/` path |
+
+A `build` target batches fixes into one push per round and loads its build skill; a target with a `catalog` appends
+`CATALOG ADD` lines from a session's result to it (deduped); a target with `sync_branch_prefix` gives branches outside the
+prefix the notes of `<target>-feature`. The brief tells the session to commit as the target's `identity` (a noreply
+address where the repo rejects real ones), never to merge, approve, label or weaken a check.
+

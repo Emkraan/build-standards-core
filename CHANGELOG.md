@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-28 (v1.48.0, ops center auto-fix starter)
+
+Thirteenth piece of the ops center lift (opscenter/DESIGN.md sections 12.3 and 12.9). Opt in: no rule is added and nothing a
+consumer runs today changes.
+
+- Code: `opscenter/lanes/autofix.py`, the auto-fix session starter for the owner's own pull requests: the fixable problem
+  table, one session per (pull request, head, problem), a daily cap, give-up and one report, waits-on re-arm, FIX DECISION
+  cards for `decision_cards.py`, directed fixes, one push per round, and the finding catalog. Repositories, people, skills and
+  tools are parameters or plug-ins: a targets file, the pre-push gate as a command with exit 0 pass, 1 findings, 2
+  environment problem (a failure), the agent runtime as a plug-in (`NullRuntime`, `HermesRuntime`), and the held-files gate.
+- Tests: 115 synthetic checks run under unittest in CI (`autofix_test.py`).
+- Left out: `livepath.py` and `changelog.py` (they mirror one backup repository's layout).
+
 ## 2026-10-28 (v1.47.0, ops center lift status after the app)
 
 Design text only: no rule is added and no code changes. `opscenter/DESIGN.md` section 12.7 now records every module of 12.3
