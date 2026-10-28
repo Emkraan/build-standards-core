@@ -511,7 +511,7 @@ workflow, and `--vendored OWNER/REPO` reads a vendored repo's record. It never c
 | Status | Means | How a consumer gets it |
 |---|---|---|
 | `pass` | no finding: a lint rule with zero findings, a `repo-check` rule with no finding, an `overlay-ci` job that succeeded, or a rule the core proved before release (`core-ci`) | nothing to record; fix the finding |
-| `proved` | a `ci` or `test` proof record is valid; counted apart from `pass`, because the script did not watch it pass | a `ci` or `test` record in `standards-local/proofs.json` |
+| `proved` | a `ci` or `test` proof record is valid; counted apart from `pass`, because the script did not watch it pass | a `ci` or `test` record in `standards-local/proofs.json` (a `review` alongside it is allowed and noted) |
 | `attested` | a person looked: a dated `review` record that expires | a `review` record |
 | `waived` | the rule is set aside for this repo with a reason; never counted as proof and it expires | a `waiver` record |
 | `not_applicable` | a rule the core proves on the kit, in an app that does not adopt the kit whole (below); or a rule or group the repo declares has no surface here, with a reason ("Declaring rules that do not apply") | nothing for the kit case; a `$not_applicable` entry for the declared case |
@@ -547,6 +547,33 @@ repo root, dates are `YYYY-MM-DD`.
 A rule whose proof tests only check that a risk owner and decision record are named (for example
 `secrets-and-credentials.1.9` and `scripting-powershell.1.10`) must also carry a dated `review` record from
 the accountable owner.
+
+**More than one record for a rule.** The value may be a list, so a rule carries its test and its review
+together and the review does not replace the test. A single object works exactly as before.
+
+```json
+{
+  "example-rule.1.2": [
+    {"kind": "test", "ref": "app/test/owner.test.ts"},
+    {"kind": "review", "ref": "docs/reviews/owner.md", "date": "2026-10-20", "reviewed_by": "owner"}
+  ]
+}
+```
+
+| Records on the rule | Reports as |
+|---|---|
+| one object, or a list of one | as the table above (`ci` or `test` is `proved`, `review` is `attested`) |
+| `ci` or `test`, plus a current `review` | `proved`; the note names both records |
+| `ci` or `test` alone | `proved`, unless the registry marks the rule `requires_review: true`; then `unverified` with a note that a dated review is also needed |
+| `review` alone | `attested` |
+| `ci` or `test`, plus an expired or broken `review` | the review is a problem line and proves nothing; the rule reads as the `ci` or `test` alone row |
+| a malformed or broken entry in the list | a problem line naming its place (`rule[1]`); the other entries still count |
+
+The strongest valid `ci` or `test` record is the one reported; a `review` beside it is a companion and is
+not held to the "weaker than the rule's check" limit. `--ci` exit behaviour is unchanged. Today no rule in
+the registry carries `requires_review`, so a test alone still reads `proved` everywhere; the marker exists
+for a later release that names the rules whose tests only check that an owner is recorded. The reserved
+keys (`$max_review_age_days`, `$description`, `$not_applicable`) are never read as proofs.
 
 A proof's kind must be the rule's own check kind or stronger (`ci`, then `test`, then `review`), so a
 `review` record cannot prove a `test` rule; a `waiver` can set aside any rule that would read `unverified`.

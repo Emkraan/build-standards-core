@@ -566,7 +566,7 @@ host or id in the core.
 whose result was not read) is `unverified` until the consumer records how it is proved in the overlay's
 `standards-local/proofs.json` (consumer-owned). There are four kinds: `ci` and `test` turn the rule
 `proved`, a dated `review` turns it `attested`, and a dated `waiver` with a reason turns it `waived`
-(never counted as proof). A test proof names its rule with a `core-rule: <id>` comment. The record
+(never counted as proof). A rule may carry a list of records, so a test and a dated review sit together and the rule stays `proved`. A test proof names its rule with a `core-rule: <id>` comment. The record
 format, expiry, the other statuses (`pass`, `not_applicable`, `excepted`, `fail`) and the `repo-check`
 rules RC001 to RC022 are in [CONSUMING.md](CONSUMING.md#8-rule-status-proofs-and-the-repo-checks).
 
