@@ -1199,7 +1199,7 @@ reason to change the module.
     gives the evidence for the destroy approval of a pool roll: every retiring host in drain mode with
     no sessions and at least one new host available, from one read only cloud call per pool, cached for
     a minute, bounded by a timeout; a failed read says so and never turns into a pass. State:
-    `avd-image-watch.json`. Optional module; a consumer without a desktop pool leaves it off.
+    `desktop-image-watch.json`. Optional module; a consumer without a desktop pool leaves it off.
 15. **Runbook releases.** After the owner approves and merges a pull request that removes runbooks,
     records the delete set approved from that pull request's plan, follows the deploy runs on main,
     and offers Release deletes only when the newest main run failed on the destroy guard alone. Optional
