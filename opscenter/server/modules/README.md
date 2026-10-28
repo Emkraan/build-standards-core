@@ -19,3 +19,5 @@ One stdlib Python module per page or lane backend (opscenter/DESIGN.md section 1
 | `link_health.py` | Weekly Links reachability check, Not reachable pill, Swap and Remove edit pull requests; the catalog is the consumer's data | `link_health_test.py` |
 | `runbook_releases.py` | Optional. Release guarded deletes of a deploy root after the owner approves and merges the pull request, re-checking everything live | `runbook_releases_test.py` |
 | `desktop_pool.py` | Optional. Host pool evidence (drain mode, sessions, a new host serving) for the Destroy approval card of a pool roll | `desktop_pool_test.py` |
+| `ops_search.py` | Global search: board items, 1:1 topics, text files in configured folders and the agent runtime's sessions (read only), grouped, ranked, with a deep link per hit; builds the tracker query for the live scope. Folders and the runtime database are parameters | `ops_search_test.py` |
+| `pr_deps.py` | One dependency model for open pull requests (a line "Waits on #N", a stacked branch, a destroy attributed to a parent), so the board never asks for an approval that cannot pass yet; read failures never hide a card | `pr_deps_test.py` |

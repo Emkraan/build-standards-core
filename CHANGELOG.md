@@ -15,6 +15,18 @@ runs today changes.
 - Left to the consumer: wiring the build variables, and pointing the data reader's endpoints at the core server modules
   as each lands (the envelope and the registry, R1 and R2).
 
+## 2026-10-28 (v1.45.0, ops center search and pull request dependencies)
+
+Eleventh piece of the ops center lift (opscenter/DESIGN.md section 12.3, item 23). Opt in: no rule is added and nothing a
+consumer runs today changes.
+
+- Code in `opscenter/server/modules`: `ops_search.py` (one query across board items, 1:1 topics, text files in configured
+  folders and the agent runtime's sessions, read only; `SEARCH_DIRS` and `SEARCH_RUNTIME_DB` are parameters) and
+  `pr_deps.py` (one dependency model for open pull requests: a "Waits on #N" line, a stacked branch, or a destroy
+  attributed to a parent; a parent that cannot be read counts as met and the view says so; the repo is `PRDEPS_REPO`).
+- Fix: the alerts time label used a mangled hour format code.
+- Tests: 35 unit tests (new for search), run in CI. The four `pr_deps` tests that needed the review page engine are not lifted.
+
 ## 2026-10-28 (v1.44.0, ops center modules with estate facts as parameters)
 
 Tenth piece of the ops center lift (opscenter/DESIGN.md section 12.8). Opt in: no rule is added and nothing a consumer
