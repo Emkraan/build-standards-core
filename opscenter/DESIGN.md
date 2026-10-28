@@ -1317,7 +1317,7 @@ the standard drops: it is waiting on something named here.
 | 23 | pull request dependencies, search | lifted: `server/modules/pr_deps.py`, `ops_search.py` |
 | 24 | cron catalog gate, sitrep, hermetic test home, reviews visibility check | cron catalog gate, hermetic home, reviews visibility check and the sitrep (`gates/sitrep.py`, `sitrep_prerun.py`) lifted; the live ref check is a plug-in the consumer supplies (`ref_status` is not lifted) |
 | (2.4) | swr, alerts, review tombstones, paths | lifted: `server/modules/` |
-| (2.6) | analyzer: contract, handled match, first seen | lifted: `engine/`; routing, the collector and the bundle builder are not in the snapshot or need the collector |
+| (2.6) | analyzer: contract, handled match, first seen, routing, collector, bundle builder, wake gate | lifted: `engine/` (`contract`, `handled`, `first_seen`, `routing`, `collect`, `analysis_bundle`, `board_build`), `gates/action_center_gate.py`, `server/modules/routing_api.py` (12.13) |
 | (4) | the app | lifted: `opscenter/app`, all 114 source files, typecheck, unit tests and build in CI; the browser tests are `npm run test:browser` |
 
 Server modules and pages that exist in the running app but whose server half is not lifted (people, tracker, review engine
@@ -1443,3 +1443,41 @@ Differences from the running lane, marked honestly:
 - The default forbidden word list no longer names the estate's tools; a consumer adds its own through the environment.
 - The policy fixtures are examples with neutral names; the running policies stay the consumer's data.
 - `model_bump.py` had no test in the snapshot; `model_bump_test.py` covers the target settings only.
+
+### 12.13 The analyzer inputs (item (2.6))
+
+The collector turns every source into one candidate shape, `routing.py` decides where each belongs from rules that are
+data, `analysis_bundle.py` assembles the model's input, `action_center_gate.py` decides whether the job runs, and
+`board_build.py` composes the served board from the job's file. Nothing here calls a model.
+
+Parameters: the collector reads one JSON file (`OPSCENTER_COLLECT_CONFIG`, default `<state>/dashboard/collector.json`), every key
+optional and no default naming an estate:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `owner_name` | `the owner` (or `OPSCENTER_OWNER_NAME`) | the owner's display name: their own messages are not asks, their tickets land on them |
+| `ref_regex` | `KEY-123` style, bare `#123` ignored | what counts as a ticket or change reference in a text |
+| `ask_days` | 3 | how far back mail and chat count |
+| `mail_feed` | `<agent home>/feeds/mail.json` | the mail feed file (`{"items": [...]}`, fields `received`, `direct_ask`, `direct_to_me`, `from_name`, `from_addr`, `subject`, `body_text`, `preview`, `web_link`) |
+| `chat_feeds[]` | none | `{prefix, label, path, team_posts}` per chat platform; the prefix names the source ids (`<prefix>.1on1`, `.mention`, `.channel`, `.channel_reply`, `.group`) |
+| `tracker_snapshot`, `tracker_base_url` | `<state>/tracker-snapshot.json`, none | `{"tickets": {KEY: {status, priority, duedate}}, "last_check_utc"}` and the browse URL prefix |
+| `state_files` | `<state>/current-state.md`, `risk-radar.md`, `unplanned-work-ledger.md`, `decisions-log.md` | the markdown state files the state adapter and the bundle read |
+| `doc_gaps_file` | `<dashboard>/doc-gaps.json` | the documentation audit's store |
+
+Plug-ins, each a python file named by an environment variable, each optional (absent means nothing is added):
+
+| Variable | Contract |
+|---|---|
+| `OPSCENTER_PEOPLE` | `roster()` returning `[{name, group}]` (the roster slot, DESIGN.md 12.14), optional `agenda_action_items()` and `harvest(force)` |
+| `OPSCENTER_BOARD_SOURCES` | a JSON list of files, each with `action_items()` returning board items (keys `oo-`, `file-`, `auto-` are reserved for the ops center's own) and optional `harvest_feeds()` |
+| `OPSCENTER_REF_STATUS` | `resolve(text)` returning `{refs, done, errors}` and `finished(items)` returning `{key: reason}`: live status of the tickets and pull requests a text names, used by the bundle and to close an auto item whose references are all done |
+| `OPSCENTER_TEAM_AWAY` | `snapshot()` returning `{people: [...]}`: who is out, shown above the list |
+
+The bundle step writes to `OPSCENTER_BUNDLE_OUT` (default `<state>/public-data`), copies the datasets named in
+`OPSCENTER_BUNDLE_DATASETS` through, reads monitor files from `OPSCENTER_MONITORS`, and stamps the refresh time in
+`OPSCENTER_TZ`. The design's direction is live reads with no bundle (2.4); this is the step a consumer still on a bundle runs.
+
+Differences from the running code, marked honestly: the running collector had Teams, Slack, Jira and a named owner in
+its adapters. They are generic here (`chat_feeds`, `tracker`, `owner_name`), so the source ids are `chat.*`, `tracker.assigned`
+and so on and a consumer's routing file renames its own. The seed rules in `engine/fixtures/routing-seed.json` are examples,
+not the running rules. The running wake gate wrote its bundle under a fixed temporary path; it writes under the gate state dir.

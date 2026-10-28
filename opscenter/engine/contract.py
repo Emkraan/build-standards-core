@@ -14,7 +14,7 @@ Purpose: The analysis job reads one file (the bundle) and writes one file (actio
          off on it) and the caller raises the board alert. Nothing here calls a model, a
          network or another system. Stdlib only, Python 3.9.
 
-Usage:   settle(dash) is called by bundle_data.load_action_center on every refresh.
+Usage:   settle(dash) is called by board_build.load_action_center on every refresh.
          python3 contract.py [file]   validate a file and print the verdict (exit 0 ok, 1 rejected)
 Test hooks: AC_WAKE_PATH (the must-consider cids the wake gate saved for the run).
 """

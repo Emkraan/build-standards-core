@@ -1,0 +1,143 @@
+{
+  "_comment": "Seed rules, defaults and source registry for routing_test.py and as a starting file for a consumer. Example data only: replace the rules and keep the shape. People are left out on purpose.",
+  "defaults": {
+    "person_addressed": "action_center",
+    "other": "analysis"
+  },
+  "people": {},
+  "sources": {
+    "mail.direct": "Mail a colleague sent TO the owner (not CC, not automated), full body",
+    "mail.other": "Other recent inbound mail (CC, distribution lists, automated notices)",
+    "chat.1on1": "A chat 1:1, one candidate per chat holding the recent conversation with the owner's replies",
+    "chat.mention": "A chat group or channel message that tags the owner, with the messages before it",
+    "chat.channel": "A top-level chat channel post",
+    "chat.channel_reply": "A reply inside a chat channel thread that does not tag the owner",
+    "chat.group": "A chat group or meeting chat message that does not tag the owner",
+    "ext.1on1": "An ext chat DM, one candidate per DM holding the recent conversation with the owner's replies",
+    "ext.mention": "An ext chat group DM or channel message that tags the owner, with the messages before it",
+    "ext.channel": "A top-level post in an ext chat channel I am in, external shared channels included",
+    "ext.channel_reply": "A reply inside an ext chat channel thread that does not tag the owner",
+    "ext.group": "An ext chat group DM message that does not tag the owner",
+    "tracker.assigned": "An open ticket assigned to the owner in the current sprint (tracker snapshot)",
+    "state.escalation": "An escalation recorded in the current state file",
+    "state.stale": "A stale or blocked ticket recorded in the current state file",
+    "state.open_item": "An open item awaiting the owner's decision in the current state file",
+    "risk.recent": "A recent risk-radar entry",
+    "unplanned.recent": "A recent unplanned-work ledger entry",
+    "doc.gap": "A high or medium documentation gap from the daily doc audit"
+  },
+  "rules": [
+    {
+      "id": "seed-retired-system",
+      "match": {
+        "text": "retired-system",
+        "fields": [
+          "key",
+          "title",
+          "action"
+        ]
+      },
+      "scope": "items",
+      "route": "elsewhere",
+      "where": "The team that owns the retired system",
+      "reason": "retired-system is not the owner's to handle. Only an item whose key, title or action names retired-system is routed, one that mentions it in passing stays.",
+      "origin": "seed",
+      "created": "2026-10-09T00:00:00Z"
+    },
+    {
+      "id": "seed-doc-gaps-key",
+      "match": {
+        "key_prefix": "doc-"
+      },
+      "route": "elsewhere",
+      "where": "Knowledge page, Documentation coverage",
+      "reason": "Documentation gaps live on the Knowledge page with their own Tackle, Snooze and Ignore.",
+      "origin": "seed",
+      "created": "2026-10-12T00:00:00Z"
+    },
+    {
+      "id": "seed-doc-gaps-source",
+      "match": {
+        "sources_any": [
+          "Documentation gap"
+        ]
+      },
+      "route": "elsewhere",
+      "where": "Knowledge page, Documentation coverage",
+      "reason": "Documentation gaps live on the Knowledge page.",
+      "origin": "seed",
+      "created": "2026-10-12T00:00:00Z"
+    },
+    {
+      "id": "seed-doc-gap-candidates",
+      "match": {
+        "source": "doc.gap"
+      },
+      "route": "elsewhere",
+      "where": "Knowledge page, Documentation coverage",
+      "reason": "Documentation audit findings never become Action Center items.",
+      "origin": "seed",
+      "created": "2026-10-12T00:00:00Z"
+    },
+    {
+      "id": "seed-direct-mail",
+      "match": {
+        "source": "mail.direct"
+      },
+      "route": "action_center",
+      "reason": "Every direct ask is considered (a forwarded ask that never reached the board once).",
+      "origin": "seed",
+      "created": "2026-10-06T00:00:00Z"
+    },
+    {
+      "id": "seed-chat-1on1",
+      "match": {
+        "source": "chat.1on1"
+      },
+      "route": "action_center",
+      "reason": "A chat 1:1 can hold open asks and the owner's own commitments.",
+      "origin": "seed",
+      "created": "2026-10-12T00:00:00Z"
+    },
+    {
+      "id": "seed-chat-mention",
+      "match": {
+        "source": "chat.mention"
+      },
+      "route": "action_center",
+      "reason": "A tag asking the owner to assist, check, decide or approve is an ask.",
+      "origin": "seed",
+      "created": "2026-10-12T00:00:00Z"
+    },
+    {
+      "id": "seed-ext-1on1",
+      "match": {
+        "source": "ext.1on1"
+      },
+      "route": "action_center",
+      "reason": "An ext chat DM can hold open asks and the owner's own commitments, same as a chat 1:1.",
+      "origin": "seed",
+      "created": "2026-10-14T00:00:00Z"
+    },
+    {
+      "id": "seed-ext-mention",
+      "match": {
+        "source": "ext.mention"
+      },
+      "route": "action_center",
+      "reason": "An ext chat tag asking the owner to assist, check, decide or approve is an ask, same as a chat mention.",
+      "origin": "seed",
+      "created": "2026-10-14T00:00:00Z"
+    },
+    {
+      "id": "seed-tracker-assigned",
+      "match": {
+        "source": "tracker.assigned"
+      },
+      "route": "analysis",
+      "reason": "The owner's own tickets are context. The tracker page already tracks them, the analysis raises one only when it needs a decision.",
+      "origin": "seed",
+      "created": "2026-10-14T00:00:00Z"
+    }
+  ]
+}
