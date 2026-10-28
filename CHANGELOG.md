@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-28 (v1.50.0, ops center reviews visibility check)
+
+Fifteenth piece of the ops center lift (opscenter/DESIGN.md sections 12.3 and 12.10, item 24). Opt in: no rule is added and
+nothing a consumer runs today changes.
+
+- Design: section 12.10 proposes the lane parameters (`lanes` with a repo and the own pull request lane's state file for the
+  primary and secondary lane, the owner login, the live check command, the refresh command and the base URL).
+- Code: `opscenter/lanes/reviews_visibility.py` with `reviews-visibility.sh`: proves every open item behind the Reviews pages sits
+  in a tab with an action and that the card agrees with its lane, and raises one board item per `contradiction`, `invisible` or
+  `stuck` finding, closing it when the condition clears. The lane names are `primary` and `secondary`, and the base URL, lanes, live
+  check and refresh are parameters instead of paths and ports.
+- Tests: 48 synthetic checks run under unittest in CI (`reviews_visibility_test.py`).
+
 ## 2026-10-28 (v1.49.0, ops center docs write guard)
 
 Fourteenth piece of the ops center lift (opscenter/DESIGN.md sections 5.2 and 12.3, item 7). Opt in: no rule is added and
