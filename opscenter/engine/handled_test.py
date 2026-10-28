@@ -123,13 +123,13 @@ class AliasTest(unittest.TestCase):
         self.assertEqual((it["fp"], moved[0][2]), ("ac_old", "source"))
 
     def test_unrelated_ask_in_the_same_thread_does_not_alias(self):
-        # <person>'s 1:1 carried the Zoom retention ask and, later, the function-app ask.
+        # A person's 1:1 carried the video tool retention ask and, later, the function-app ask.
         handled = {
             "ac_old": rec(
                 "resolved",
-                "Zoom AI features off and a 30-day recording retention cut",
+                "Video tool AI features off and a 30-day recording retention cut",
                 cids=["teams.1on1:person-c"],
-                why="person asked about Zoom AI features and recording retention",
+                why="person asked about Video tool AI features and recording retention",
             )
         }
         it = {
@@ -147,17 +147,17 @@ class AliasTest(unittest.TestCase):
         handled = {
             "ac_old": rec(
                 "resolved",
-                "AVD catch-up call with David",
+                "Desktop catch-up call with Person E",
                 cids=["mail:1", "teams:d"],
-                why="AVD call",
+                why="Desktop call",
             )
         }
         it = {
             "fp": "n",
-            "title": "Approve the AVD build plan",
+            "title": "Approve the desktop build plan",
             "refs": ["ticket-id"],
             "cids": ["mail:1", "teams:d"],
-            "why": "AVD call plan",
+            "why": "desktop call plan",
         }
         H.alias_items([it], handled, NOW, evidence={})
         self.assertEqual(it["fp"], "n")

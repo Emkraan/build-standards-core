@@ -15,9 +15,9 @@ from pathlib import Path
 
 FAKE_GH = r"""#!/usr/bin/env python3
 import json, os, sys
-sc = json.load(open(os.environ["AVD_FAKE"]))
+sc = json.load(open(os.environ["IMAGE_FAKE"]))
 a = sys.argv[1:]
-def log(): open(os.environ["AVD_FAKE_CALLS"], "a").write(" ".join(a) + "\n")
+def log(): open(os.environ["IMAGE_FAKE_CALLS"], "a").write(" ".join(a) + "\n")
 if a[0] == "api" and "/workflows/" in a[1]:
     if sc.get("runs_fail"):
         sys.exit(1)
@@ -40,7 +40,7 @@ else:
 """
 FAKE_AZ = r"""#!/usr/bin/env python3
 import json, os, sys
-sc = json.load(open(os.environ["AVD_FAKE"]))
+sc = json.load(open(os.environ["IMAGE_FAKE"]))
 if sc.get("vm_fail"):
     sys.stderr.write("ERROR: az not logged in"); sys.exit(1)
 print(sc.get("vm", "PowerState/deallocated"))
@@ -108,8 +108,8 @@ class WatchTest(unittest.TestCase):
                 "IMAGE_WATCH_AZ": str(root / "az"),
                 "IMAGE_WATCH_DASH": str(root / "state" / "dashboard"),
                 "OPSCENTER_ROOT": str(root),
-                "AVD_FAKE": str(self.scenario),
-                "AVD_FAKE_CALLS": str(self.calls),
+                "IMAGE_FAKE": str(self.scenario),
+                "IMAGE_FAKE_CALLS": str(self.calls),
             }
         )
         sys.path.insert(0, str(Path(__file__).parent))
