@@ -12,8 +12,9 @@ import sqlite3
 import sys
 import tempfile
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "testing"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "testing"))
 import policy_env  # noqa: E402
 
 STATE_ROOT = (
@@ -22,7 +23,7 @@ STATE_ROOT = (
 
 # The lane under test is the sibling file of this repo, not the installed copy, so a checkout tests its own
 # code. The sibling modules it imports (gh_run_jobs) must resolve when the file is run by unittest too.
-HERE = Path(__file__).resolve().parent
+HERE = Path(__file__).resolve().parent.parent  # the lanes folder; this file sits in lanes/tests
 LANE_PY = HERE / "own_pr_merge.py"
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
@@ -632,7 +633,9 @@ expect(
 )
 expect("unresolved thread held", pr(), "held", "unresolved", check={"unresolved_threads": 1})
 expect("head moved held", pr(), "held", "head moved", check={"head_sha": "d" * 40})
-now_local = dt.datetime.now()
+# The freeze file is read in its own zone, so the windows are built from the wall clock of that zone, not the host's.
+FREEZE_NOW = dt.datetime.now(ZoneInfo("America/New_York")).replace(tzinfo=None)
+now_local = FREEZE_NOW
 win = [
     {
         "id": "test-freeze",
@@ -1933,8 +1936,8 @@ STATE["diffs"] = {}
 LANE_FREEZE = [
     {
         "id": "lane-freeze",
-        "start": (dt.datetime.now() - dt.timedelta(hours=1)).isoformat(timespec="seconds"),
-        "end": (dt.datetime.now() + dt.timedelta(hours=1)).isoformat(timespec="seconds"),
+        "start": (FREEZE_NOW - dt.timedelta(hours=1)).isoformat(timespec="seconds"),
+        "end": (FREEZE_NOW + dt.timedelta(hours=1)).isoformat(timespec="seconds"),
     }
 ]
 PENDING = GREEN + [
