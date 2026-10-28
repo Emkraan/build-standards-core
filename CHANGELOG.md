@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-28 (v1.52.0, shell server package as code)
+
+Second lift of the shell shared packages ([standards/web-shell-packages.md](standards/web-shell-packages.md) section 4).
+
+- `shell-packages/app-server/`: the shared server plumbing as plain ESM with no runtime dependency and a hand-written `.d.ts`: the
+  directory group cache and `checkMemberGroups`, the managed identity token cache, `corsOptions` and `originGuard`, `serverTiming`
+  with route names taken from the route definitions, the release notes handler and the gateway token guard. Environment names
+  are neutral (`GATEWAY_ENFORCE`, `GATEWAY_PRINCIPAL_ID`, `GATEWAY_AUDIENCE`, `TENANT_ID`) and the gateway header is `X-Gateway-Token`.
+- Not lifted: the request telemetry sink and its export retry (they need a vendor exporter; a shell wires its own through the
+  `sink` option of `serverTiming`).
+- Tests: `kit/tests/app-server/` (86 checks on `node:test`, real Express apps and a local signing key), run by
+  `npm run test:server` and by the kit workflow. `express` is a kit dev dependency for them.
+
 ## 2026-10-28 (v1.51.0, pull request build procedure and finding catalog)
 
 Sixteenth piece of the ops center lift (opscenter/DESIGN.md section 12.11). Docs only: no rule is added and no code changes.

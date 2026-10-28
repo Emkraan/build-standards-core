@@ -12,12 +12,12 @@ core already states the rule.
 | Module contract (`console-modules`) | The per-module manifest ([web-shell-manifest.md](web-shell-manifest.md)): the validator, the registry checks, the permission source and peer helpers, the generated registry and its staleness check | Code: `shell-packages/console-modules/`. The generator is `kit/scripts/build-registry.mjs` ([web-shell.md](web-shell.md) section 3) |
 | RBAC core (`rbac`) | What permission data means: accessible tabs, the grant ceiling, assignable roles, view-as, client access helpers | Code: `shell-packages/rbac/` |
 | Client package (`app-client`) | One sign-in boot, token renewal, the API client and its cache, resource hooks, the live feed strip | Standard only: [web-client-runtime.md](web-client-runtime.md) sections 1 to 3, 5 and 6, [web-shell.md](web-shell.md) section 8 |
-| Server package (`app-server`) | Group cache, directory token, CORS and origin guard, Server-Timing, request telemetry, gateway token check, What's new handler | Standard only: [web-api-runtime.md](web-api-runtime.md) sections 1 to 7 |
+| Server package (`app-server`) | Group cache, directory token, CORS and origin guard, Server-Timing, gateway token check, What's new handler | Code: `shell-packages/app-server/`. The request telemetry sink is not lifted (section 6). Rules: [web-api-runtime.md](web-api-runtime.md) sections 1 to 7 |
 
 The code is plain ESM with hand-written `.d.ts` files, no runtime dependency and no build step, so a CommonJS
 server and a bundled client both import it. A shell takes it by copying the folder into its shared packages
 directory and recording the core release in its lock file; the core's CI proves it with the tests listed in
-section 4. Nothing here syncs into a consumer on its own.
+section 5. Nothing here syncs into a consumer on its own.
 
 ## 2. Module contract
 
@@ -57,18 +57,40 @@ work with either; `accessibleTabs`, `createAccess(...).hasTab`, `findPermissionL
 validator read the `tab:` and `action:` forms. A host on the other grammar uses the first group and keeps its
 own tab logic, and records the exception for the manifest rules.
 
-## 4. Tests
+## 4. Server package
+
+Plain ESM, no runtime dependency, every vendor call injected or read from an environment variable. It plugs into an
+Express style stack (`req`, `res`, `next`) and the CommonJS servers `require` it.
+
+| Export | Purpose |
+|---|---|
+| `createGroupResolver`, `normalizeGroupIds` | Per-user cache of directory groups: 5 minute TTL, LRU bound, single flight, failures never cached and failing closed to `[]`. With `groupIds` (the ids the app's authorization references, read on every lookup) only those are asked, and the entry is tied to a fingerprint of the list, so a new grant applies on the next request |
+| `checkMemberGroups` | Which of a list of group ids an object is in, through the directory `checkMemberGroups` call: 20 ids per call, bounded concurrency, a rejected batch asked one id at a time, one retry on 429. `[]` when no valid id is left, `null` on failure, never throws |
+| `createTokenCache`, `parseExpiresOn` | A cached, single flight managed identity token, renewed before it expires |
+| `corsOptions`, `originGuard` | Exact match origins with a cached preflight; `originGuard` refuses a write, or any request a browser would have preflighted, from an origin off the list, so a cached preflight never outlives an origin's removal |
+| `serverTiming`, `recordTiming`, `timed` | The `Server-Timing` header and `Timing-Allow-Origin` for allowed origins only, and one JSON log line per request with the route template (from the route definitions, never the request), status, duration and marks. A `sink` option receives each record |
+| `whatsNewHandler`, `whatsNewNotes` | A module's release notes behind the module's own access check; labels from a fixed list, versions `x.y.z`, an https changelog link |
+| `gatewayGuard`, `verifyGatewayToken`, `createSigningKeyCache` | Accept a request only when it carries the gateway's token ([web-shell-gateway.md](web-shell-gateway.md) section 4): signature against the tenant signing keys (cached, refetched at most once a minute), issuer, tenant, audience, expiry, not before, the gateway identity and the gateway role. No secret. Log only until enforcement is on; `/health` style paths stay open |
+| `safeMessage` | An error message with bearer tokens and key values removed, short enough to log |
+
+The gateway guard reads `GATEWAY_ENFORCE`, `GATEWAY_PRINCIPAL_ID`, `GATEWAY_AUDIENCE` and `TENANT_ID` from the
+environment. With none set and enforcement off it only removes the header; some but not all set logs a
+`misconfigured` line at startup. Mount it before the bearer check.
+
+## 5. Tests
 
 | File | Proves |
 |---|---|
 | `kit/tests/shell-console-modules.test.ts` | The validator accepts the fixtures, ignores unknown keys, rejects 24 mutations and never throws; the registry checks for source and peer ids; the launcher description fits |
 | `kit/tests/shell-rbac.test.ts` | The ceiling, fail-closed stale ids, the wildcard rule, view-as, tab computation and the client helpers |
 | `tests/test_console_module_schema.py` | The same manifest fixtures against the JSON schema ([web-shell-manifest.md](web-shell-manifest.md)) |
+| `kit/tests/app-server/*.test.js` | The group cache (TTL, bound, single flight, fail closed, scoped lists), CORS and the origin guard, Server-Timing and route naming on real Express apps, the release notes handler, and the gateway token check against a local signing key. Run by `npm run test:server` inside `kit` |
 
 The kit workflow runs on a change under `shell-packages/` or the manifest fixtures.
 
-## 5. Not in the core yet
+## 6. Not in the core yet
 
-The client and server packages as code, and the admin layout merge. The standards above already state their
-rules; each lands as its own piece with tests, and until then a shell keeps its own implementation and meets the
-rules in the linked sections.
+The client package as code, the request telemetry sink (it needs a vendor exporter, so a shell wires its own
+through `serverTiming`'s `sink`) and the admin layout merge. The standards above already state their rules; each
+lands as its own piece with tests, and until then a shell keeps its own implementation and meets the rules in the
+linked sections.
