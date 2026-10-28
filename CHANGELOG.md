@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-28 (v1.55.0, kit context panel)
+## 2026-10-28 (v1.56.0, kit context panel)
 
 First of the generic kit pieces the hub needs for its tools to become shell modules (intake issue 115). Opt in: `AppShell` renders
 exactly as before unless `contextPanel` is passed.
@@ -15,6 +15,12 @@ exactly as before unless `contextPanel` is passed.
   month grid (`MonthGrid`, one day per event), the typeahead with the listbox roles (`Combobox`) and its person row (`PersonOption`),
   and the command palette (`CommandPalette`).
 - Tests: `kit/tests/context-panel.test.tsx` (6), a gallery specimen `context-panel` with baselines in both themes.
+
+## 2026-10-28 (v1.55.0, merge retry tests no longer patch the global sleep)
+
+- Tests only. The two merge retry tests replaced `time.sleep` for the whole interpreter, so a sleep from any other
+  thread landed in their call list and failed them in the merge queue. They now replace only the `time` name inside
+  `merge-pr.py`. No change to the script.
 
 ## 2026-10-28 (v1.54.0, shell client package as code)
 

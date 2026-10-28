@@ -986,7 +986,7 @@ class MergePr(Work):
         sleeps = lambda s: calls.append(("sleep", s))  # noqa: E731
         with (
             mock.patch.object(self.mod, "squash_commit", lambda *a: ("a" * 40, "")),
-            mock.patch.object(self.mod.time, "sleep", sleeps),
+            mock.patch.object(self.mod, "time", mock.Mock(sleep=sleeps)),
         ):
             rc, out, err = self.run_main(
                 self.fake_gh(
@@ -1019,7 +1019,7 @@ class MergePr(Work):
         repo = self.repo_with_branch()
         calls = []
         pauses = []
-        with mock.patch.object(self.mod.time, "sleep", pauses.append):
+        with mock.patch.object(self.mod, "time", mock.Mock(sleep=pauses.append)):
             rc, out, err = self.run_main(
                 self.fake_gh(1, calls=calls, state="OPEN", merges=[(1, "HTTP 502: bad gateway")]),
                 repo,
