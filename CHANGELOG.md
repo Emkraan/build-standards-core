@@ -18,7 +18,8 @@ uses none of it is unchanged.
   host extensions and `brand` as `--extra-accents`.
 - Tests: `tests/test_console_module_schema.py` (fixtures valid, unknown keys pass, 24 rejected mutations, run with a
   stdlib validator because CI has no `jsonschema`) and `kit/tests/console-manifest.test.ts` (the fixtures through the
-  real generator with those flags, and the staleness check).
+  real generator with those flags, and the staleness check). `check-token-names.py` lists `--allow-keys` and
+  `--validate-with` as command-line flags.
 
 ## 2026-10-28 (v1.30.12, search focus glow exactly as before)
 
