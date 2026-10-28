@@ -15,6 +15,12 @@ window table, the restricted systems and the zone are policy data, never code.
 | `docs_write_guard.py` | The `docs_home` `api` variant's scope proof (DESIGN.md 5.2): a docs write is allowed only when the page's ancestor chain reaches an allowed root and never an excluded root (folders are proven downward), only create and update are allowed, a forbidden pattern in a body refuses, every decision is logged, and anything unproven is refused. Roots, tenant, endpoint and patterns are parameters; the token comes from the sign-in slot | `docs_write_guard_test.py` |
 | `reviews_visibility.py` (+ `reviews-visibility.sh`) | Proves every open item behind the Reviews pages sits in a tab with an action and that each card agrees with its lane: raises `contradiction`, `invisible` and `stuck` board items, closes them when the condition clears. Lanes, owner login, live check and refresh command are parameters (DESIGN.md 12.10) | `reviews_visibility_checks.py` (48 checks, run by `reviews_visibility_test.py`) |
 | `preflight.py` | The reference pre-push gate (DESIGN.md 12.11): `run`, `review`, `review-template` and `design-template` on a worktree diff against origin/main: repo gates, hygiene (ASCII and dashes, secrets, branch rule, version bump, conflict, attribution), the lane dry run as expected sign-offs, overlap with other open pull requests, the catalog's scriptable rules, the self-review gate, the local independent review (reviewers through the agent CLI, the codex CLI or an API with a key command) and the design check for acting automation. Exit 0 pass, 1 failures, 2 environment problem | `preflight_test.py` (57 tests on scratch git repos) |
+| `pr_review.py` | The review engine for engineer pull requests: `gate` (the wake gate), `check`, `record`, `approve` (the only approve path: re-runs the check and refuses on any escalation, red or pending checks, open threads or a moved head), `status`, `window`. Deterministic policy rules, trust rules, the dev tier waiver, branch drift, main baseline and main pending, the maintenance window hold. The policy is data (`REVIEW_POLICY.md`) | `pr_review_*_checks.py` (7 files, 132 tests, run by `review_lanes_test.py`) |
+| `own_pr_merge.py` | The own pull request lane: merges the owner's green pull request (policy rules, triage markers that name finding ids, sign-off carry, freeze, plan guard) with the head pinned, and starts the auto-fix starter on a held one. Targets `primary` and `secondary` | `own_pr_merge_checks.py` (171 checks, run by `review_lanes_test.py`) |
+| `destroy_followup.py` | Follows a dispatched destroy: matches its run, reruns a main apply that failed only on the destroy guard, reports once, expires after 48 hours | `destroy_followup_checks.py` (37 checks) |
+| `model_bump.py` | Opens and merges the review model bump pull request for a target (discovery hourly, shape check, rebase merge when every check is green); targets come from `OPSCENTER_REVIEW_TARGETS` | `model_bump_test.py` |
+| `paths.py` | The same helper as `../server/modules/paths.py` (state, agent home and repos from environment variables), copied so a lane runs on its own | none |
+| `../testing/policy_env.py` | A scratch state tree holding the two policy fixtures, for the review lane checks | used by them |
 | `freeze_gate.py` | Change freeze merge gate: reads the freeze windows, classifies the changed paths as deploying or quiet, answers MERGE_OK or HOLD (exit 0 or 10), fails closed | `freeze_gate_test.py` |
 | `../testing/hermetic_home.py` | A throwaway HOME so a test never touches the real agent home or state tree | `hermetic_home_test.py` |
 
@@ -31,8 +37,7 @@ window table, the restricted systems and the zone are policy data, never code.
 
 ## Not lifted
 
-The review lane engine and the own pull request lane scripts: the handoff snapshot does not include the review
-engine, the auto-fix session starter or the privileged plan lane they import (`tfplan_gate.set_privileged_gate`
-is the seam for the last). The tests that need them (hold in approve, enqueue inside the window, plan summary,
-the plan card's decide and Approve and merge helper) come with them. The reference sign-off store was written for
-the standard because the running one was not in the snapshot.
+Item 17 (model accounts) by decision, the queued approvals applier (needs the docs home adapter wiring), and the
+sitrep and analyzer scripts, which have their own pieces. The reference sign-off store gained `review`, `plan_facts`,
+`path_of` and `latest_epoch` for the own lane's carry rule, written for the standard because the running store was not
+in the snapshot.

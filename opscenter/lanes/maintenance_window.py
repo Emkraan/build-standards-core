@@ -409,7 +409,7 @@ def plan_hits(cfg, files, plan):
 
 
 def change_class(pol, hits):
-    """ccc when any hit touches a ccc_impacting tool or root, both when a hit has no known
+    """restricted when any hit touches a restricted system, both when a hit has no known
     system (fail closed: it must wait for a window open to both classes), else standard."""
     restricted = set(cfg_of(pol).get("restricted_systems") or [])
     systems = [h.get("system") for h in hits]
