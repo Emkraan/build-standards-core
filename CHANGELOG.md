@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-28 (v1.47.0, ops center lift status after the app)
+
+Design text only: no rule is added and no code changes. `opscenter/DESIGN.md` section 12.7 now records every module of 12.3
+as lifted (with its path) or waiting (with what it waits on), including two decisions: the model accounts module is not
+lifted because it borrows another tool's OAuth tokens and calls an undocumented endpoint with a borrowed client user
+agent (the `spend` and `plan_limits` slots stay), and the 1:1 board waits on the people slot interface. A full scan of
+`opscenter/` against the placeholder verification patterns found no hit.
+
 ## 2026-10-28 (v1.46.0, ops center app)
 
 Twelfth piece of the ops center lift (opscenter/DESIGN.md section 4). Opt in: no rule is added and nothing a consumer
