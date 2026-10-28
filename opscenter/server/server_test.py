@@ -324,6 +324,26 @@ class Routes(unittest.TestCase):
         self.assertEqual(s, 200)
         self.assertIn("rules", body)
 
+    def test_model_accounts_with_no_provider_answer_empty_and_a_fallback_order_write_is_unsupported(
+        self,
+    ):
+        for k in ("OPSCENTER_MODEL_ACCOUNTS_PROVIDER", "OPSCENTER_MODEL_ACCOUNTS_ALLOW_POOL_READ"):
+            os.environ.pop(k, None)
+        s, body = self.js("GET", "/api/infra/accounts")
+        self.assertEqual((s, body["accounts"], body["ledger"]), (200, [], None))
+        s, body = self.js("GET", "/api/llm-fallback")
+        self.assertEqual((s, body["active"]), (200, None))
+        self.assertEqual(
+            self.js("GET", "/api/infra/fallback-order")[1], {"order": [], "writable": False}
+        )
+        self.assertEqual(self.js("POST", "/api/infra/fallback-order", {"ids": ["a"]})[0], 501)
+
+    def test_a_refused_provider_answers_403_with_the_reason(self):
+        os.environ["OPSCENTER_MODEL_ACCOUNTS_PROVIDER"] = "nocolon"
+        s, body = self.js("GET", "/api/infra/accounts")
+        self.assertEqual(s, 403)
+        self.assertIn("provider must be", body["error"])
+
     def test_a_module_error_keeps_its_own_status(self):
         s, body = self.js(
             "POST", "/api/jira/needs-me/decide", {"key": "not a key", "decision": "close"}

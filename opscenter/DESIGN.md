@@ -1308,7 +1308,7 @@ the standard drops: it is waiting on something named here.
 | 12 | cron card map, run now | lifted: `server/modules/cron_pulse.py` (parameters in 12.8) |
 | 13 | builds page | lifted: the app page and `server/modules/builds.py` (12.20) |
 | 14, 15, 16 | image watch and pool, runbook releases, browser status | lifted: `image_watch.py`, `desktop_pool.py`, `runbook_releases.py`, `browser_status.py` |
-| 17 | model accounts, spend, fallback | not lifted, on the core owner's instruction (the consumer asked for it as a provider slot, a `ModelAccountsProvider` with a null default and the credential pool read staying in its own provider; that design is the open question). Why the running module is not lifted as it is: it reads another tool's OAuth tokens from the agent's credential pool and calls an undocumented usage endpoint with a borrowed client user agent. The standard keeps the `spend` and `plan_limits` slots (section 5.3); an adapter is the consumer's own, on a documented usage source. The spend page is lifted in the app |
+| 17 | model accounts, spend, fallback | lifted as a provider slot (owner decision): the page, routes, routing and cooldown, caching, last good copy, spend history, ledger reader and fallback watch are core (`server/modules/model_accounts.py`, `model_fallback.py`, 12.22); the accounts come from a `ModelAccountsProvider`, null by default (an empty page). The credential pool read and the vendor usage endpoint are not in core: a provider that declares a pool read is refused at load unless the consumer enables it |
 | 18 | sprint close, retro, ticket progress, needs me | lifted: `gates/sprint_close_gate.py`, `tracker/` (`work.py`, `needs_me.py`, `ticket_progress.py`, `retro_row.py`, the reference `driver.py`) and `gates/retro_row_gate.py` (12.15) |
 | 19 | 1:1 board, yearly export | lifted: `people/` (`one_on_ones.py`, `team_away.py`, `yearly_reviews.py`) with the four adapters as commands and files with a null default (12.14); the yearly drafter is the consumer's command |
 | 20 | links check | lifted: `server/modules/link_health.py` (catalog is the consumer's file) |
@@ -1657,6 +1657,31 @@ the agent session routes below, and answered every origin with a wildcard CORS h
   `OPSCENTER_REWRITE_CMD`), and the routes of every lifted module in `server/modules/` and the tracker and people packages; a module that is not
   in the tree is skipped, so a consumer that lifts fewer pages gets fewer routes.
 - Not lifted, and why: the routes that start an agent session (tackle, discuss, the session list), which need a runtime slot contract the
-  consumer defines (a command that launches a session and reports back); the server halves of the infra, model accounts (item 17,
-  kept out), privileged and per product review pages, plans, engineering backlog, core consumption, owner roots, repo reviews and approval brief
+  consumer defines (a command that launches a session and reports back); the server halves of the infra, privileged and per product review pages, plans, engineering backlog, core consumption, owner roots, repo reviews and approval brief
   pages; the doc audit. Each follows the registry the same way and lands when its module does.
+
+### 12.22 Model accounts provider slot (item 17)
+
+`server/modules/model_accounts.py` builds the document the Spend page reads (`GET /api/infra/accounts`: `generated_utc`, `accounts[]`,
+`ledger`; the field names are the app's `LlmAccount` and `LlmAccounts` types, plus `billing_model` and `limits[].window_s`).
+`model_fallback.py` is the watch behind `GET /api/llm-fallback`. `GET` and `POST /api/infra/fallback-order` read the order and, when the
+provider can, write it (501 when it cannot). A server thread calls `sample()` every 600 s so spend snapshots accrue with the page closed.
+
+What core does: shape and clean the provider's reading; pick the routing account (the lowest priority one that is not cooling down and has no
+error; cooling is an exhausted status with a reset in the future, or an hour from its status time when none is given, or any limit at 100
+percent with a future reset); cache each read for `USAGE_TTL` (stale while revalidate); keep the last good copy per account and serve it marked
+`stale` when a read fails; remember each account's billing model; record spend snapshots (on change, or hourly) and derive daily charges, a
+partial first day, period rollover and a 7 day burn rate; tail the per call ledger JSONL (`ts, cred_id, input_tokens, output_tokens,
+cache_read_tokens, cache_write_tokens, kind`; `OPSCENTER_MODEL_LEDGER`) into token windows (today, 7 days, month, and the session and week
+from a limit's `resets_at` minus its `window_s`) and an unattributed count; run the fallback watch (a call billed to a usage account while the
+first seat account is under `OPSCENTER_FALLBACK_HEADROOM_PCT`, default 90, opens an incident that closes after an hour without such calls; the
+estimate comes from a rates file, `OPSCENTER_MODEL_RATES`, and is 0 without one). Day boundaries use `OPSCENTER_DISPLAY_UTC_OFFSET_HOURS`.
+
+The provider (`OPSCENTER_MODEL_ACCOUNTS_PROVIDER=path/to/file.py:ClassName`, default none) supplies `credentials()` and `read_usage(cred_id)`
+(contract in the module docstring) and optionally `set_fallback_order(ids)` and `stale_host()`. Differences from the running code: the
+running code read one agent's credential pool and called a vendor usage endpoint with a bearer token; both stay in the consumer's provider.
+Core has no network call and no credential store read, and a test asserts the module source names neither. A provider that sets
+`needs_credential_pool_read = True` raises `ProviderRefused` (403 on the route) at load unless `OPSCENTER_MODEL_ACCOUNTS_ALLOW_POOL_READ=1`
+(tested both ways). The running code's `llm_accounts.accounts()` is `list_accounts()` split in two (provider reads, core shapes); the interface
+of C2 is `list_accounts`, `fallback_order`, `account_kinds` and `spend_history` on core, with `credentials` and `read_usage` on the provider.
+The ledger writer (an agent plugin) and the cron wrapper (`python3 model_fallback.py` prints a new incident's message) are the consumer's.
