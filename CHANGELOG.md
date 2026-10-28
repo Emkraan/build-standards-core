@@ -1,8 +1,39 @@
 # Changelog
 
-## 2026-10-27 (v1.27.6, gated deploy verbs)
+## 2026-10-27 (v1.30.4, gated deploy verbs)
 
 - Design only. `opscenter/DESIGN.md` section 5.3: the `gated_deploys` slot lists the verbs it needs beyond approve, reject and retry (`override_window`, `delete_release`, `accept_risk`, `decide_fix`) in a table with direction and the extra rule for each. Every verb in the table is a writer operation and a declared capability, a delete is default deny with its own rule, and accepting a risk is an owner decision only. Triage is a state-only change with no outward effect, so it is not a verb of the slot and not a writer operation.
+
+## 2026-10-27 (v1.30.3, model call clarification)
+
+- Design only. `opscenter/DESIGN.md` section 2.6 (untrusted input) now states the owner's decision on the analyzer model call. The rule is a no-tools subprocess through `model.cmd`. A consumer whose analyzer is an agent job declares the exception with `model.mode = agent_job` plus a `reason`, under four conditions: a post-validation step (a board refresh) may run at the end of the job only through the engine's validation entry point, a rebuild fallback inside the job is allowed only when it calls the same builder the gate uses, the engine validates the item file against the item contract before the routing filter runs, and the `reason` states that the tool policy is the prompt and not a technical limit. The job reads the bundle the gate wrote and writes the item file, and nothing it runs afterwards reaches the board except through the engine's validation. Section 6 lists `model.mode` as decided, and section 11 records the decision as item 6.
+
+## 2026-10-27 (v1.30.2, ops center design, heartbeats from the runtime job list)
+
+- `opscenter/DESIGN.md` sections 2.7, 5.3, 6 and the R5 row: job liveness can be read from the
+  runtime slot's own record of each run through a read only `jobs.last_runs()` method (last start,
+  last end, exit status, bounded output tail), as well as from a heartbeat line the job writes.
+  Parameter `heartbeats.sources` picks the sources and defaults to the lines only. The newer entry
+  wins when both are on. The section gives the acceptance test.
+
+## 2026-10-27 (v1.30.1, ops center design, analyzer ambient age and hash exclusion)
+
+- `opscenter/DESIGN.md` sections 2.6, 6 and the R5 row: two optional cuts on the analyzer's change
+  test. `analyzer.ambient_max_age_s` holds a wake caused only by ambient candidates (addressed
+  `none`) until the last run is that old. `analyzer.hash_exclude` leaves listed fields and
+  senders (including the owner's own messages) out of the bundle hash. Both are off by default, so
+  the gate is unchanged until a consumer sets them. The section gives the acceptance test.
+
+## 2026-10-27 (v1.30.0, glow restored for three named uses)
+
+- Kit: the search field focus ring glow and the progress bar fill glow are back, as they shipped before v1.28.2.
+  The search field keeps the visible `--focus-ring` alongside the glow, so keyboard focus stays clear in both
+  themes. The meter fill and flow graph node glows stay removed, and the status dot ring stays removed.
+- Rule `web-ui.0.3` now lists its allowed uses by name and stays closed to any other glow: hero stat tiles, the
+  active nav marker, selected cards, chart bars, the search field focus ring glow, the progress bar fill glow and
+  the brand mark glow. The brand mark glow is the art mark glow layer (`.art-mark .am-glow`); the plain
+  `.sidebar-brand-mark` tile has no glow and none was added.
+- `tests/test_kit_glow.py` allows the two restored selectors and checks the meter fill stays flat.
 
 ## 2026-10-27 (v1.29.3, a rule carries a test and a review together)
 
