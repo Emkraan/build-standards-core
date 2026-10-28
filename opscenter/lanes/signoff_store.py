@@ -12,8 +12,10 @@ File:  <TFGATE_STATE_DIR>/pr-signoffs.json  {"prs": {"<pr>": [record, ...]}}, ne
        written atomically, mode 0600. A record: {head_sha, lane, source, signed_at, hits, revoked}.
 """
 
+import hashlib
 import json
 import os
+import re
 import tempfile
 import time
 from pathlib import Path
@@ -53,7 +55,9 @@ def record(pr, head_sha, lane, source, hits, extra=None, now=None):
     """Sign off PR `pr` in `lane` at `head_sha`, covering `hits` (each {fp, cfp, reason, path, rule})."""
     if lane not in (OWN, ENGINEER):
         raise ValueError(f"unknown lane {lane!r}")
+    stamp = now if now is not None else time.time()
     rec = {
+        "id": hashlib.sha1(f"{pr}:{head_sha}:{stamp}:{source}".encode()).hexdigest()[:12],
         "head_sha": head_sha,
         "lane": lane,
         "source": source,
@@ -99,9 +103,9 @@ def active(pr, lane=OWN, head_sha=None):
 
 
 def _is_github_hit(h):
-    return str(h.get("path") or "").startswith(".github/") and str(
-        h.get("reason") or ""
-    ).startswith(GITHUB_PREFIX)
+    return str(h.get("path") or "").startswith(".github/") and (
+        h.get("rule") == "github-dir" or str(h.get("reason") or "").startswith(GITHUB_PREFIX)
+    )
 
 
 def covers(rec, hit):
@@ -120,3 +124,67 @@ def covers(rec, hit):
         ):
             return True
     return False
+
+
+# A grant is a plan resource that widens who may do what: a role assignment or definition, an app role or
+# delegated permission grant, a directory role or group membership. Matched on the resource address.
+GRANT_RE = re.compile(
+    r"role_assignment|role_definition|app_role_assignment|permission_grant|directory_role|group_member"
+)
+
+
+def path_of(where):
+    """The file part of a hit's `where` ("a.tf:3" gives "a.tf")."""
+    return re.sub(r":\d+$", "", str(where or "")) or None
+
+
+def latest_epoch(pr):
+    """Epoch seconds of the newest sign-off record of the PR in any lane, revoked or not, 0 when none."""
+    rows = _load()["prs"].get(str(int(pr)), [])
+    best = 0.0
+    for rec in rows:
+        try:
+            t = (
+                time.mktime(time.strptime(rec.get("signed_at", ""), "%Y-%m-%dT%H:%M:%SZ"))
+                - time.timezone
+            )
+        except ValueError:
+            continue
+        best = max(best, t)
+    return best
+
+
+def plan_facts(plan):
+    """What the owner saw in the plan when signing: the grant addresses it creates or changes."""
+    grants = sorted(
+        {
+            r.get("address", "")
+            for r in (plan or {}).get("resources") or []
+            if GRANT_RE.search(r.get("address", ""))
+            and r.get("action") in ("create", "update", "replace")
+        }
+    )
+    return {"grants": grants}
+
+
+def review(rec, hits, plan):
+    """Can the sign-off `rec` carry to a head that raises `hits` with `plan`? Returns
+    {"ok": bool, "new": [hits the sign-off does not cover], "plan_new": [reasons the plan guard fails]}.
+    The plan guard applies only when a plan exists: it must be final and error free, add no destroy or
+    replace (a destroy count with no named object counts too) and no grant the signed plan did not hold."""
+    new = [h for h in hits or [] if not covers(rec, h)]
+    plan_new = []
+    if plan:
+        if plan.get("status") != "completed" or plan.get("conclusion") not in (None, "success"):
+            plan_new.append("plan not final")
+        if plan.get("errors"):
+            plan_new.append("plan has errors")
+        if int(plan.get("destroy") or 0) or int(plan.get("replace") or 0):
+            plan_new.append("plan destroys or replaces")
+        if plan.get("destroyed") or plan.get("replaced"):
+            plan_new.append("plan names destroyed or replaced objects")
+        seen = set(((rec.get("extra") or {}).get("grants")) or [])
+        grants = [g for g in plan_facts(plan)["grants"] if g not in seen]
+        if grants:
+            plan_new.append("plan adds grants: " + ", ".join(grants))
+    return {"ok": not new and not plan_new, "new": new, "plan_new": plan_new}

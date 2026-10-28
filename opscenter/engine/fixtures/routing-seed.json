@@ -6,22 +6,22 @@
   },
   "people": {},
   "sources": {
-    "mail.direct": "Mail a colleague sent TO me (not CC, not automated), full body",
+    "mail.direct": "Mail a colleague sent TO the owner (not CC, not automated), full body",
     "mail.other": "Other recent inbound mail (CC, distribution lists, automated notices)",
-    "chat.1on1": "A chat 1:1 chat, one candidate per chat holding the recent conversation with my replies",
-    "chat.mention": "A chat group chat or channel message that tags me, with the messages before it",
+    "chat.1on1": "A chat 1:1, one candidate per chat holding the recent conversation with the owner's replies",
+    "chat.mention": "A chat group or channel message that tags the owner, with the messages before it",
     "chat.channel": "A top-level chat channel post",
-    "chat.channel_reply": "A reply inside a chat channel thread that does not tag me",
-    "chat.group": "A chat group or meeting chat message that does not tag me",
-    "ext.1on1": "An ext chat DM , one candidate per DM holding the recent conversation with my replies",
-    "ext.mention": "An ext chat group DM or channel message that tags me, with the messages before it",
+    "chat.channel_reply": "A reply inside a chat channel thread that does not tag the owner",
+    "chat.group": "A chat group or meeting chat message that does not tag the owner",
+    "ext.1on1": "An ext chat DM, one candidate per DM holding the recent conversation with the owner's replies",
+    "ext.mention": "An ext chat group DM or channel message that tags the owner, with the messages before it",
     "ext.channel": "A top-level post in an ext chat channel I am in, external shared channels included",
-    "ext.channel_reply": "A reply inside an ext chat channel thread that does not tag me",
-    "ext.group": "An ext chat group DM message that does not tag me",
-    "tracker.assigned": "An open ticket assigned to me in the current sprint (tracker snapshot)",
+    "ext.channel_reply": "A reply inside an ext chat channel thread that does not tag the owner",
+    "ext.group": "An ext chat group DM message that does not tag the owner",
+    "tracker.assigned": "An open ticket assigned to the owner in the current sprint (tracker snapshot)",
     "state.escalation": "An escalation recorded in the current state file",
     "state.stale": "A stale or blocked ticket recorded in the current state file",
-    "state.open_item": "An open item awaiting my decision in the current state file",
+    "state.open_item": "An open item awaiting the owner's decision in the current state file",
     "risk.recent": "A recent risk-radar entry",
     "unplanned.recent": "A recent unplanned-work ledger entry",
     "doc.gap": "A high or medium documentation gap from the daily doc audit"
@@ -40,7 +40,7 @@
       "scope": "items",
       "route": "elsewhere",
       "where": "The team that owns the retired system",
-      "reason": "retired-system is not mine to handle. Only an item whose key, title or action names retired-system is routed, one that mentions it in passing stays.",
+      "reason": "retired-system is not the owner's to handle. Only an item whose key, title or action names retired-system is routed, one that mentions it in passing stays.",
       "origin": "seed",
       "created": "2026-10-09T00:00:00Z"
     },
@@ -95,7 +95,7 @@
         "source": "chat.1on1"
       },
       "route": "action_center",
-      "reason": "A Teams 1:1 can hold open asks and my own commitments.",
+      "reason": "A chat 1:1 can hold open asks and the owner's own commitments.",
       "origin": "seed",
       "created": "2026-10-12T00:00:00Z"
     },
@@ -105,7 +105,7 @@
         "source": "chat.mention"
       },
       "route": "action_center",
-      "reason": "A tag asking me to assist, check, decide or approve is an ask.",
+      "reason": "A tag asking the owner to assist, check, decide or approve is an ask.",
       "origin": "seed",
       "created": "2026-10-12T00:00:00Z"
     },
@@ -115,7 +115,7 @@
         "source": "ext.1on1"
       },
       "route": "action_center",
-      "reason": "A Slack DM can hold open asks and my own commitments, same as a Teams 1:1.",
+      "reason": "An ext chat DM can hold open asks and the owner's own commitments, same as a chat 1:1.",
       "origin": "seed",
       "created": "2026-10-14T00:00:00Z"
     },
@@ -125,7 +125,7 @@
         "source": "ext.mention"
       },
       "route": "action_center",
-      "reason": "A Slack tag asking me to assist, check, decide or approve is an ask, same as a Teams mention.",
+      "reason": "An ext chat tag asking the owner to assist, check, decide or approve is an ask, same as a chat mention.",
       "origin": "seed",
       "created": "2026-10-14T00:00:00Z"
     },
@@ -135,7 +135,7 @@
         "source": "tracker.assigned"
       },
       "route": "analysis",
-      "reason": "My own sprint tickets are context. Sprint Watch and the Jira hub already track them, the analysis raises one only when it needs a decision.",
+      "reason": "The owner's own tickets are context. The tracker page already tracks them, the analysis raises one only when it needs a decision.",
       "origin": "seed",
       "created": "2026-10-14T00:00:00Z"
     }

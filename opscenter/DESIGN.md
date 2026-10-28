@@ -1296,9 +1296,9 @@ the standard drops: it is waiting on something named here.
 
 | Item | Module | Status |
 |---|---|---|
-| 1 | review lane engine | not lifted: the review engine, the auto-fix session starter and the lane scripts are not in the handoff snapshot |
+| 1 | review lane engine | lifted: `lanes/pr_review.py`, `own_pr_merge.py`, `destroy_followup.py`, `model_bump.py`; the policy is data with a documented schema (`lanes/REVIEW_POLICY.md`, 12.12) |
 | 2 | maintenance windows | lifted: `lanes/maintenance_window.py` (change classes `standard` and `restricted`, windows as policy data) |
-| 3 | own pull request lane, decision cards | lifted: `server/modules/own_lane.py`, `decision_cards.py`; the lane scripts wait on the auto-fix session starter |
+| 3 | own pull request lane, decision cards | lifted: `server/modules/own_lane.py`, `decision_cards.py`, `lanes/own_pr_merge.py` |
 | 4, 5 | own sync auto fix, core pull request lane | not lifted: both need the auto-fix session starter |
 | 6 | merge queue | lifted: `lanes/merge_queue.py`, `gh_run_jobs.py` |
 | 7 | queued docs approvals | not lifted: needs the docs write guard, not in the snapshot |
@@ -1408,6 +1408,41 @@ path (the plan matcher is `lanes/tfplan_gate.py`), each skipped when unset; the 
 
 `finding-catalog.md` is the learning loop: the auto-fix starter appends `CATALOG ADD` lines from a session's result to a target's
 catalog file.
+
+### 12.12 The review lane engine (items 1 and 3)
+
+`lanes/pr_review.py` is the engine behind the engineer pull request review: the wake gate, the deterministic check,
+the one approve path and the maintenance window hold. `lanes/own_pr_merge.py` is the owner's own pull request lane,
+which loads the engine as a module and the auto-fix starter (`autofix.py`) for a held pull request.
+`destroy_followup.py` and `model_bump.py` are the two helpers the gate script calls on each tick. The schema of the
+policy both read is `lanes/REVIEW_POLICY.md`; nothing about a repository, a tier or a person is in the code.
+
+What is a parameter, and where:
+
+| Fact | Where it comes from |
+|---|---|
+| repository, owner login, approve identity | the policy file (`repo`, `self_login`, `approve_as`); `destroy_followup` reads `OPSCENTER_REPO`; `model_bump` reads its targets file |
+| targets | `primary` and `secondary` (`--target`); a targets file (`OPSCENTER_REVIEW_TARGETS`, JSON) overrides `repo`, `tag`, `ticket`, directories and file names per target |
+| tier names | `OPSCENTER_PROD_TIER` (default `prod`), `OPSCENTER_TIERS` (default `prod\|dev`) for the destroy follow-up; `trust_rules.dev_tier_only.prod_tier` and `maintenance_window.tier` in the policy |
+| engineer branch prefix | `OPSCENTER_BRANCH_PREFIX` (default `ticket-`), read by the branch drift rule |
+| lane label in cards and gate lines | `OPSCENTER_LANE_LABEL` (default `primary`) |
+| words a posted comment may not contain | `OPSCENTER_FORBIDDEN_WORDS`, added to the built in list (bot, assistant, co-authored-by) |
+| state and cache | `OPSCENTER_STATE_DIR`, `OPSCENTER_AGENT_HOME` (`lanes/paths.py`), `OPRG_STATE_DIR`, `OPRG_CACHE_DIR` |
+
+Plug-ins and seams: the draft gate (`OPSCENTER_DRAFT_GATE`, a file that provides `parse(body)`, `evaluate(gate, repo, gh)`
+and `summary(results)`; absent, a draft is held with the reason "no draft gate plug-in is configured" and never
+guessed ready), the sign-off store (`tfplan_gate.set_signoff_store`, 12.3), and the auto-fix starter
+(`autofix.py`, 12.9, whose runtime, pre-push gate and targets are already plug-ins).
+
+Differences from the running lane, marked honestly:
+
+- The reference sign-off store gained `review`, `plan_facts`, `path_of` and `latest_epoch`. The running store was not in the
+  snapshot, so these were written from the tests the lane ships: a sign-off carries to a later head only when every hit is
+  covered by fingerprint and the plan adds no destroy, replace or grant the signed plan did not hold. A consumer with its own
+  store keeps its rules and must provide the same four functions.
+- The default forbidden word list no longer names the estate's tools; a consumer adds its own through the environment.
+- The policy fixtures are examples with neutral names; the running policies stay the consumer's data.
+- `model_bump.py` had no test in the snapshot; `model_bump_test.py` covers the target settings only.
 
 ### 12.13 The analyzer inputs (item (2.6))
 
