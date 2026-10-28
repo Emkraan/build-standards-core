@@ -110,11 +110,32 @@ def core_repo():
                 file=sys.stderr,
             )
         return legacy
+    local = checkout_slug()
+    if local:
+        return local
     sys.exit(
         "Cannot tell where the core lives. Set CORE_REPO=OWNER/NAME in the environment, or run "
         "hermes/setup.py from the core clone on this machine (it records core_repo). The overlay "
         "never stores the source on purpose."
     )
+
+
+def checkout_slug():
+    """OWNER/NAME read from the origin remote of the clone CORE_CHECKOUT names (optional, an offline or CI
+    checkout of the core), else "local/core" when that clone has no usable remote, else "" when
+    CORE_CHECKOUT is not set. A sync from a named checkout needs no other source of the core's name."""
+    local = os.environ.get("CORE_CHECKOUT")
+    if not local:
+        return ""
+    r = subprocess.run(
+        ["git", "-C", local, "remote", "get-url", "origin"], capture_output=True, text=True
+    )
+    m = (
+        re.search(r"([\w.-]+/[\w.-]+?)(?:\.git)?/?$", r.stdout.strip())
+        if r.returncode == 0
+        else None
+    )
+    return m.group(1) if m else "local/core"
 
 
 def write_lock(ref, commit, digest):
@@ -188,20 +209,21 @@ def _semver(tag):
 
 
 def latest_tag(repo):
-    """Newest release tag of the core: gh when it is installed and signed in, else the newest vX.Y.Z tag
-    read with plain git over anonymous HTTPS (the core is public, so neither needs an account). Exits
-    with one plain message on failure."""
-    try:
+    """Newest release of the core by semantic version: the highest strict vX.Y.Z tag, read with plain git
+    over anonymous HTTPS (the core is public, so no account is needed), else through gh's tag listing.
+    Tags that are not strictly vX.Y.Z (a pre-release, a date, a branch-like name) are ignored. The tag
+    gh marks as the latest release is never used: it follows the release creation order, so an old
+    release published or edited last would win over the real newest one. Exits with one plain message
+    on failure."""
+    local = os.environ.get("CORE_CHECKOUT")
+    if local:
         r = subprocess.run(
-            ["gh", "release", "view", "-R", repo, "--json", "tagName", "--jq", ".tagName"],
-            capture_output=True,
-            text=True,
+            ["git", "-C", local, "tag", "--list", "v*"], capture_output=True, text=True
         )
-        if r.returncode == 0 and r.stdout.strip():
-            return r.stdout.strip()
-        gh_said = r.stderr.strip()
-    except FileNotFoundError:
-        gh_said = "gh is not installed"
+        tags = [t for t in r.stdout.split() if _semver(t)]
+        if r.returncode == 0 and tags:
+            return max(tags, key=_semver)
+        sys.exit(f"No vX.Y.Z tag in CORE_CHECKOUT={local} (fetch tags: git fetch --tags)")
     r = subprocess.run(
         ["git", "ls-remote", "--tags", "--refs", git_url(repo), "v*"],
         capture_output=True,
@@ -211,9 +233,21 @@ def latest_tag(repo):
     tags = [t for t in tags if _semver(t)]
     if r.returncode == 0 and tags:
         return max(tags, key=_semver)
+    git_said = r.stderr.strip() or "no vX.Y.Z tag"
+    try:
+        g = subprocess.run(
+            ["gh", "api", "--paginate", f"repos/{repo}/tags?per_page=100", "--jq", ".[].name"],
+            capture_output=True,
+            text=True,
+        )
+        tags = [t for t in g.stdout.split() if _semver(t)]
+        if g.returncode == 0 and tags:
+            return max(tags, key=_semver)
+        gh_said = g.stderr.strip() or "no vX.Y.Z tag"
+    except FileNotFoundError:
+        gh_said = "gh is not installed"
     sys.exit(
-        f"Could not read the latest release of {repo}: {gh_said or 'no release'}; "
-        f"git said: {r.stderr.strip() or 'no vX.Y.Z tag'}"
+        f"Could not read the latest release of {repo}: git said: {git_said}; gh said: {gh_said}"
     )
 
 
@@ -287,7 +321,7 @@ def _row_cells(line):
     if not (s.startswith("|") and s.endswith("|")):
         return None
     cells = [c.strip() for c in s.strip("|").split("|")]
-    if len(cells) < 2 or set(cells[0]) <= set("-: ") or cells[0].lower() == "parameter":
+    if len(cells) < 2 or set(cells[0]) <= set("-: ") or cells[0].lower() in ("parameter", "path"):
         return None
     return cells
 
@@ -377,6 +411,31 @@ REUSABLE_CALL = re.compile(
     r"^\s+uses:\s*[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/\.github/workflows/core-ci-reusable\.yml@\S+",
     re.M,
 )
+
+
+MANAGED_MARK = "# core-managed"
+# Files an older template (before the marker) was made of: a same-named file whose first line is the
+# template's `name:` and that mentions one of these is a synced copy, not the repo's own workflow.
+LEGACY_FINGERPRINT = (
+    "core-ci.py",
+    "sync-core.py",
+    "standards.lock",
+    "lint-core",
+    "ci-cd-release.md",
+    "core-checks:",
+    "OVERLAY:",
+)
+
+
+def is_core_managed(name, text):
+    """True when a workflow file is a core template copy: it carries the core-managed marker, or it is an
+    older copy (first line `name: <template name>` and a reference to the overlay's own scripts)."""
+    if re.search(r"^# core-managed\b", text, re.M):
+        return True
+    first = next((ln for ln in text.splitlines() if ln.strip()), "")
+    return first.strip() == f"name: {name.rsplit('.', 1)[0]}" and any(
+        f in text for f in LEGACY_FINGERPRINT
+    )
 
 
 def repo_root(root=ROOT):
@@ -506,17 +565,81 @@ def renamed_checks(old_text, new_text):
     return pairs + [("(new)", n) for n in added]
 
 
-def sync_workflows(core_dir, root=ROOT):
+def _git(root, *args):
+    r = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
+    return r.stdout if r.returncode == 0 else None
+
+
+def default_branch_ref(root):
+    """The ref of the repo's default branch (origin/HEAD, else origin/main|master, else a local main|master),
+    or None when the repo has no commit on any of them (a brand new repo)."""
+    head = _git(root, "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD")
+    candidates = ([head.strip()] if head and head.strip() else []) + [
+        "refs/remotes/origin/main",
+        "refs/remotes/origin/master",
+        "refs/heads/main",
+        "refs/heads/master",
+    ]
+    for c in candidates:
+        if _git(root, "rev-parse", "--verify", "--quiet", c + "^{commit}") is not None:
+            return c
+    return None
+
+
+def gate_rewrite_safe(root=ROOT):
+    """(safe, reason): may a sync rewrite a REQUIRED_CHECKS list now. Safe when the default branch already
+    defines the core-checks job in core-ci.yml (the list can only name a check that reports), or when the
+    default branch has no workflow with a REQUIRED_CHECKS list (nothing enforces one yet, so this pull
+    request adds the job and the gate together). Otherwise the list stays and the reason says why."""
+    top = repo_root(root)
+    ref = default_branch_ref(top)
+    if ref is None:
+        return True, ""
+    base = _git(top, "show", f"{ref}:.github/workflows/core-ci.yml")
+    if base is not None and "core-checks" in check_names(base):
+        return True, ""
+    listing = _git(top, "ls-tree", "--name-only", ref, ".github/workflows/") or ""
+    for path in listing.split():
+        if path.endswith((".yml", ".yaml")) and "REQUIRED_CHECKS" in (
+            _git(top, "show", f"{ref}:{path}") or ""
+        ):
+            return False, (
+                f"the default branch has no core-checks job yet but {path} enforces a REQUIRED_CHECKS "
+                "list: the list was not rewritten. Ordering rule: merge the pull request that adds "
+                "core-checks to the default branch first, then change the gate list in a second pull request"
+            )
+    return True, ""
+
+
+def sync_workflows(core_dir, root=ROOT, skipped=None):
     """Refresh the template workflows the consumer repo has. Returns (refreshed file names, notes): the
-    notes name the required-check changes of core-ci.yml, old -> new, so the merge gate is updated."""
+    notes name the required-check changes of core-ci.yml, old -> new, so the merge gate is updated. A
+    same-named workflow that is not core-managed is left as it is (see is_core_managed); its name is
+    appended to the `skipped` list when one is passed."""
     tpl_dir = pathlib.Path(core_dir) / WORKFLOW_TEMPLATE
     wf_dir = repo_root(root) / ".github" / "workflows"
     done, notes = [], []
+    skipped = [] if skipped is None else skipped
     for name in WORKFLOWS:
         tpl, local = tpl_dir / name, wf_dir / name
         if not tpl.is_file() or not local.is_file():
             continue
         old = local.read_text(encoding="utf8")
+        if not (name == "core-ci.yml" and REUSABLE_CALL.search(old)) and not is_core_managed(
+            name, old
+        ):
+            # The repo's own workflow that happens to share the name: never overwritten. The template
+            # goes beside it as <name>.core-new (not a workflow, GitHub ignores it) to compare and merge.
+            side = local.with_name(name + ".core-new")
+            side.write_text(tpl.read_text(encoding="utf8"), encoding="utf8")
+            rel = side.relative_to(repo_root(root)).as_posix()
+            mine = local.relative_to(repo_root(root)).as_posix()
+            skipped.append(name)
+            notes.append(
+                f"workflows: skipped {mine} (not a core-managed file, no core-managed marker); wrote the "
+                f"template to {rel}; compare with: diff -u {mine} {rel}"
+            )
+            continue
         if name == "core-ci.yml" and REUSABLE_CALL.search(old):
             # A caller of the reusable workflow is pinned by its own ref, not copied from the template.
             notes.append(

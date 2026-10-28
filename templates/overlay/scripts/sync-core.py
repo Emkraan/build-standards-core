@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Copy the core folders (standards, tokens, lint, kit source) from the pinned ref into the overlay.
 
-Usage: python3 scripts/sync-core.py [ref|latest]
+Usage: python3 scripts/sync-core.py [ref|latest] [--strict]
+`latest` is the highest strict vX.Y.Z tag of the core (semantic version order), never a date or a
+pre-release name. --strict (or CORE_SYNC_STRICT=1) exits 1 after the sync when it left a same-named
+workflow alone because it is not a core-managed file.
 Works from any directory (paths resolve from this script's location). Needs the gh CLI signed in
 as an account with read access to the core. Rewrites standards.lock with the commit and a content
 hash that the offline drift check uses. `latest` resolves to the newest core release. If targets.map
@@ -21,7 +24,16 @@ the repo's own settings: the OVERLAY env value, the overlay path prefix of core-
 paths, and every value the template marks `# core-sync: keep`. No other workflow is touched, and a
 template workflow the repo does not have is not added. When core-ci.yml's job names change, the old ->
 new required-check names are printed (and appended to the file CORE_SYNC_NOTES names, when set, for a
-pull request body): the merge gate must require the new names.
+pull request body): the merge gate must require the new names. A REQUIRED_CHECKS list in a gate workflow
+is rewritten in the same sync (core-ci.py required-checks --lists-only --fix) only when it is safe: the
+default branch already defines the core-checks job, or the default branch has no gate workflow yet (nothing
+enforces a list). Otherwise the exact replacement line is printed with the ordering rule and the file is
+left unchanged, so the gate never waits for a check that does not exist yet. A list the script cannot edit
+safely is named with its file, line and replacement.
+
+A template workflow the repo has under the same name but that is not a core-managed file (no
+`# core-managed` marker, not an older synced copy) is never overwritten: the template is written beside it
+as <name>.core-new and a diff command is printed.
 """
 
 import hashlib
@@ -44,9 +56,11 @@ def fingerprint(paths):
     return [hashlib.sha256(p.read_bytes()).hexdigest() if p.is_file() else None for p in paths]
 
 
+STRICT = "--strict" in sys.argv or os.environ.get("CORE_SYNC_STRICT") == "1"
+POSITIONAL = [a for a in sys.argv[1:] if not a.startswith("--")]
 cfg = ch.read_lock()
 REPO = ch.core_repo()
-ref = sys.argv[1] if len(sys.argv) > 1 else cfg.get("ref", "main")
+ref = POSITIONAL[0] if POSITIONAL else cfg.get("ref", "main")
 if ref == "latest":
     ref = ch.latest_tag(REPO)
 tmp = pathlib.Path(tempfile.mkdtemp())
@@ -69,7 +83,11 @@ try:
         shutil.rmtree(tmp, ignore_errors=True)
         print("sync tooling changed, continuing with the new copy")
         sys.stdout.flush()
-        os.execve(sys.executable, [sys.executable, str(SELF), ref], {**os.environ, HANDOVER: "1"})
+        os.execve(
+            sys.executable,
+            [sys.executable, str(SELF), ref],
+            {**os.environ, HANDOVER: "1", **({"CORE_SYNC_STRICT": "1"} if STRICT else {})},
+        )
 
     for src, dst in ch.SYNC_MAP:
         out = ch.ROOT / dst
@@ -89,9 +107,43 @@ try:
             f"parameters: added {len(added)} template row(s) to {ch.PARAMETERS_LOCAL} with the template value, "
             f"set them: " + "; ".join(a.split(" (", 1)[0] for a in added)
         )
-    refreshed, notes = ch.sync_workflows(tmp / "core")
+    skipped = []
+    refreshed, notes = ch.sync_workflows(tmp / "core", skipped=skipped)
     if refreshed:
         print("workflows: refreshed " + ", ".join(refreshed) + " (per-repo settings kept)")
+    if any(n.startswith("required checks:") for n in notes):
+        notes.append(
+            "order: a newly required job must already exist on the default branch before the gate lists "
+            "it; merge the pull request that adds the job first, then the gate change (or let the gate "
+            "read core-ci.yml: templates/overlay/.github/workflows/automerge.yml)"
+        )
+    cc = ch.ROOT / "scripts" / "core-ci.py"
+    if cc.is_file():
+        # A merge gate kept as a REQUIRED_CHECKS list in a workflow (a plan with no rulesets) is
+        # rewritten in this same sync, so the pull request carries the matching gate; a list the
+        # script cannot edit safely is printed with its file, line and replacement.
+        safe, why = ch.gate_rewrite_safe(ch.ROOT)
+        if not safe:
+            notes.append(f"gate: {why}")
+        r = subprocess.run(
+            [sys.executable, str(cc), "required-checks", "--lists-only", "--fix"]
+            + ([] if safe else ["--no-write"]),
+            cwd=str(ch.ROOT),
+            capture_output=True,
+            text=True,
+        )
+        fixed = [
+            ln
+            for ln in (r.stdout + r.stderr).splitlines()
+            if ln.startswith(
+                (
+                    "required-checks: rewrote",
+                    "required-checks: cannot",
+                    "required-checks: not rewritten",
+                )
+            )
+        ]
+        notes += fixed
     for line in notes:
         print(line)
     if notes and os.environ.get("CORE_SYNC_NOTES"):
@@ -100,5 +152,11 @@ try:
     digest = ch.content_hash()
     ch.write_lock(ref, sha, digest)
     print(f"synced core@{sha[:8]} (content {digest[:12]})")
+    if skipped and STRICT:
+        print(
+            "strict: not core-managed workflow(s) left unchanged: " + ", ".join(skipped),
+            file=sys.stderr,
+        )
+        sys.exit(1)
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
