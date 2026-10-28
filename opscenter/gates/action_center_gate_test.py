@@ -34,7 +34,9 @@ class Gate(unittest.TestCase):
         (self.root / "state" / "dashboard").mkdir(parents=True)
         self.bundle = self.d / "bundle.json"
         self.ac = self.d / "action-center.json"
-        clean = {k: v for k, v in os.environ.items() if not k.startswith(("OPSCENTER_", "AC_", "GATE_"))}
+        clean = {
+            k: v for k, v in os.environ.items() if not k.startswith(("OPSCENTER_", "AC_", "GATE_"))
+        }
         self.env = dict(
             clean,
             GATE_STATE_DIR=str(self.d / "gates"),
