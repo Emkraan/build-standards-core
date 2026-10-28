@@ -1299,7 +1299,7 @@ the standard drops: it is waiting on something named here.
 | 1 | review lane engine | lifted: `lanes/pr_review.py`, `own_pr_merge.py`, `destroy_followup.py`, `model_bump.py`; the policy is data with a documented schema (`lanes/REVIEW_POLICY.md`, 12.12) |
 | 2 | maintenance windows | lifted: `lanes/maintenance_window.py` (change classes `standard` and `restricted`, windows as policy data) |
 | 3 | own pull request lane, decision cards | lifted: `server/modules/own_lane.py`, `decision_cards.py`, `lanes/own_pr_merge.py` |
-| 4, 5 | own sync auto fix, core pull request lane | not lifted yet: the lane scripts (`core_pr_lane`, `own_pr_lane`) are in the handoff and the auto-fix starter they call is lifted (`lanes/autofix.py`, 12.9), so they are the next lift |
+| 4, 5 | own sync auto fix, core pull request lane | lifted: `lanes/own_sync_lane.py`, `lanes/core_pr_lane.py` (12.16) |
 | 6 | merge queue | lifted: `lanes/merge_queue.py`, `gh_run_jobs.py` |
 | 7 | queued docs approvals | not lifted yet: the docs write guard is lifted (`lanes/docs_write_guard.py`); the applier (`apply_queued_approvals`) waits on wiring to the docs home adapter |
 | 8 | change freeze gate | lifted: `lanes/freeze_gate.py` |
@@ -1570,3 +1570,14 @@ first person voice (the draft is posted as the owner); the running code reached 
 now reaches it through `model_cmd`, so the model draft is off until a command is configured; the retro row had no test in the
 snapshot and `retro_row_test.py` is new. The fingerprint parity test between a card id and the board skips when the board
 composer (12.13) is not in the tree.
+
+### 12.16 The core and sync pull request lanes (items 4 and 5)
+
+`lanes/core_pr_lane.py` merges the owner's green pull requests on the core repository and `lanes/own_sync_lane.py` auto-fixes
+the owner's nightly sync pull requests; both hand a hold a session can fix to `autofix.py` (12.9). Parameters are policy files
+(`<state dir>/core-review/lane-policy.json` and `<state dir>/sync-review/own-pr-policy.json`, every key optional) and
+environment variables (`CORELANE_*`, `MXLANE_*`); no default names a repository or a person (`repo` `owner/core`, `self_login`
+`owner-account`). The core lane's after merge sync is `CORELANE_SYNC_CMD`, none by default. The fixer needs a targets entry per lane
+(`core`, `sync`, and `sync-feature` for a feature branch) in `AUTOFIX_TARGETS`; for `core` the entry carries `extra_fixable`
+(`[["local checks fail", "local-checks"], ["version needs a bump", "version-bump"], ["changelog entry", "changelog"]]`), which this
+lift added to `autofix.problem_of` (a target's own needles, tried after the built in ones).
