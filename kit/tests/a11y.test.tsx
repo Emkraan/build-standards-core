@@ -66,5 +66,11 @@ describe.each(['light', 'dark'] as const)('axe in the %s theme', (theme) => {
     });
     expect(screen.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeTruthy();
     expect(await violations()).toEqual([]);
+    await user.keyboard('{Escape}');
+
+    // The page registers help, so the Header has a Help button and the drawer opens from it.
+    await user.click(screen.getByRole('button', { name: 'Help' }));
+    expect(screen.getByRole('dialog', { name: 'Help: Kit gallery' })).toBeTruthy();
+    expect(await violations()).toEqual([]);
   }, 60000);
 });

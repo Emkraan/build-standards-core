@@ -131,3 +131,31 @@ test('the shell mounts one tip layer: a disabled reason and a term meaning show 
   }).toPass({ timeout: 20000 });
   await expect(tip).toHaveText('A group of machines that share one image and settings.');
 });
+
+test('the Help button opens the page help drawer, and Escape closes it and returns focus to the button', async ({ page }) => {
+  const help = page.getByRole('button', { name: 'Help', exact: true });
+  await expect(help).toHaveAttribute('aria-expanded', 'false');
+  await help.click();
+  const drawer = page.getByRole('dialog', { name: 'Help: Kit gallery' });
+  await expect(drawer).toBeVisible();
+  await expect(help).toHaveAttribute('aria-expanded', 'true');
+  await expect(drawer.getByText('Every shared component on one page, in both themes.')).toBeVisible();
+  await expect(drawer.getByText('host pool', { exact: true })).toBeVisible();
+  await expect(drawer.getByRole('link', { name: /Kit documentation/ })).toHaveAttribute('href', 'https://example.com/docs/kit');
+
+  await page.keyboard.press('Escape');
+  await expect(drawer).toBeHidden();
+  await expect(help).toBeFocused();
+});
+
+test('search lists the help of the page and its words, and choosing one opens the drawer', async ({ page }) => {
+  await page.locator('body').click({ position: { x: 1, y: 1 } });
+  await page.keyboard.press('ControlOrMeta+k');
+  const palette = page.getByRole('dialog', { name: 'Search' });
+  await expect(palette).toBeVisible();
+  await palette.getByRole('combobox').fill('host pool');
+  const row = palette.getByRole('option', { name: /host pool/i });
+  await expect(row).toHaveCount(1);
+  await row.click();
+  await expect(page.getByRole('dialog', { name: 'Help: Kit gallery' })).toBeVisible();
+});

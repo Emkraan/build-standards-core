@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-10-27 (v1.30.10, page help, Stepper and Timeline)
+
+Every part here is off by default or inert until an app uses it, so a consumer that uses none of them renders exactly
+as before.
+
+- Kit, page help: `usePageHelp({ title, summary, steps, terms, links })`, `HelpProvider`, `useHelp`, `HelpButton`
+  (the `Header` shows it while a page has help and the shell mounts the drawer, `help={false}` hides it) and
+  `HelpDrawer`. `AppShell` mounts the state and the drawer when given `helpDrawer` (default false, so without it
+  `usePageHelp` registers nothing and no Help button shows). `useHelpPaletteItems()` returns the page and its
+  words as `CommandPalette` items. A palette mounted outside the shell needs `GlossaryProvider` and
+  `HelpProvider pathname` above both.
+- Kit, process and history: `Stepper` (steps in the state `done`, `current`, `upcoming`, `failed` or `waiting`,
+  each with `detail`, `meta`, an `actions` slot and a `waitingOn` line, the state said by the marker shape and a
+  screen reader word) and `Timeline` (time, actor with `actorTip`, one sentence, a source chip and a link). Both
+  connector lines are marked `edge-ok`: they are data (an order), not an accent. Neither has a transition or an
+  animation, so nothing in them ignores `prefers-reduced-motion`.
+- Standards: `web-ui.md` section 27 grows to eight rules, with `web-ui.27.4` to `web-ui.27.7` new: the first use of a domain
+  term is a `Term`, a timestamp is relative with the absolute time in the tip, a person is shown by name, and a tip
+  never holds the only copy of something needed to act. The tip length rule moves from `27.4` to `web-ui.27.8` and
+  says a tip is never over 200 characters. The Header section points at the section. The section and rule numbers are
+  provisional. The shared core-practices skill is regenerated.
+- UI lint: UI013 now cites rule 27.8 and flags a literal `data-tip`, `tip` or `disabledReason` over 200 characters
+  or in three or more sentences.
+- Tests and gallery: kit tests `help-drawer` and `help-process` (with a check that the Stepper and Timeline styles hold no
+  transition or animation), the page help case in the axe composite, and gallery specimens `page-help`, `stepper`
+  and `timeline` with visual baselines.
+
 ## 2026-10-27 (v1.30.9, the tip layer: tips that show, disabled reasons, glossary terms, InfoTip and When)
 
 Every part below is off by default or inert until an app uses it, so a consumer that uses none of them

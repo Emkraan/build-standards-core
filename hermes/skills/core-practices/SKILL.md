@@ -385,7 +385,11 @@ How to use it:
 | `web-ui.27.1` An icon-only control has a name and a tip | must | web | lint | A control that holds only an icon carries an accessible name and a tip that says its verb (Remove host, not Trash). IconButton requires a label and uses it for both. |
 | `web-ui.27.2` A disabled control says why | must | web | lint | A kit Button that cannot be used now takes disabledReason instead of disabled: it renders aria-disabled, stays focusable, ignores clicks and shows the reason as its tip. The reason names what is missing and how to enable it. |
 | `web-ui.27.3` A status says what it means and whether it is normal | should | web | review | A status badge or dot says in its tip what the state means and whether anyone has to act, with the raw value when the label translates one. Colour is never the only signal. |
-| `web-ui.27.4` A tip is one or two short plain sentences | must | web | lint | A tip is one or two short plain sentences, never over 200 characters, with no markup. Longer text goes in an InfoTip popover or the page. |
+| `web-ui.27.4` The first use of a domain term is a glossary Term | should | web | review | The app registers its glossary once. The first use of a domain term on a page is a Term, and the page lists the terms it uses in usePageHelp so the help drawer explains them. |
+| `web-ui.27.5` A timestamp is relative, with the absolute time in the tip | should | web | review | A timestamp shows as relative time (When), with the absolute date, time and zone in its tip. A date that is the subject of the page, such as a schedule or a due date, shows in full with its zone. |
+| `web-ui.27.6` A person is shown by name | should | web | review | A person is shown by name, with the email or login in the tip. A login or an id is never the only label. |
+| `web-ui.27.7` A tip never holds the only copy of something needed to act | must | web | review | A tip explains and the page acts. A value, a step, a link or a warning a person needs in order to act is text on the page or in the help drawer, because tips do not show on touch and hide on scroll. |
+| `web-ui.27.8` A tip is one or two short plain sentences | must | web | lint | A tip is one or two short plain sentences, never over 200 characters, with no markup. Longer text goes in an InfoTip popover, the page help or the page. |
 
 ## wpf-design-system.md
 

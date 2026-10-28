@@ -12,6 +12,8 @@ import type { Glossary } from '../primitives/Glossary';
 import { TooltipLayer } from '../primitives/Tooltip';
 import { DefaultLink, ShellContext } from './context';
 import type { LinkComponent, RailHandlers, RailState, ShellContextValue } from './context';
+import { HelpDrawer } from './HelpDrawer';
+import { HelpProvider } from './help';
 
 export interface AppShellProps {
   /** A <Rail>. It renders the sidebar as a direct child of the shell. */
@@ -45,9 +47,17 @@ export interface AppShellProps {
    */
   tooltipLayer?: boolean | undefined;
   /**
-   * The app's glossary, by id (see GlossaryProvider). Registers it for every page, so <Term id> and
-   * InfoTip resolve anywhere with no further wiring. Default none: nothing is registered and a Term
-   * renders its plain text.
+   * Mounts the page help state and the help drawer, so a page that calls usePageHelp gets a Help button
+   * in the Header and a drawer with no wiring. Default false: without it usePageHelp registers nothing,
+   * the Header shows no Help button and an app sees no change. An app that mounts its own HelpProvider
+   * (a command palette outside the shell) keeps that one as the only provider.
+   */
+  helpDrawer?: boolean | undefined;
+  /**
+   * The app's glossary, by id (see GlossaryProvider). Registers it for the Header, the help drawer
+   * and every page, so <Term id> and InfoTip resolve anywhere with no further wiring. Default none:
+   * nothing is registered and a Term renders its plain text. A command palette mounted outside the
+   * shell needs a GlossaryProvider above both to list the words of a page.
    */
   glossary?: Glossary | undefined;
 }
@@ -65,6 +75,7 @@ export function AppShell({
   className,
   appId,
   tooltipLayer = false,
+  helpDrawer = false,
   glossary,
 }: AppShellProps) {
   const sidebarId = `${useId()}-sidebar`;
@@ -224,9 +235,11 @@ export function AppShell({
           </main>
         </div>
         {tooltipLayer ? <TooltipLayer /> : null}
+        {helpDrawer ? <HelpDrawer /> : null}
       </div>
     </ShellContext.Provider>
   );
   const scoped = appId ? <StorageScope appId={appId}>{shell}</StorageScope> : shell;
-  return glossary ? <GlossaryProvider glossary={glossary}>{scoped}</GlossaryProvider> : scoped;
+  const helped = helpDrawer ? <HelpProvider pathname={pathname}>{scoped}</HelpProvider> : scoped;
+  return glossary ? <GlossaryProvider glossary={glossary}>{helped}</GlossaryProvider> : helped;
 }

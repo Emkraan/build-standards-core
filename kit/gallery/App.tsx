@@ -151,7 +151,16 @@ import { AreaChart, BarChart, ChartLegend, DonutChart, Gauge, LineChart, RingPro
 import { Graph, graphEdge } from '../src/graph';
 import type { Edge, GraphCardNode } from '../src/graph';
 
-import { GALLERY_GLOSSARY, TipsSpecimen, WhenSpecimen } from './HelpSpecimens';
+import {
+  GALLERY_GLOSSARY,
+  GalleryHelpProviders,
+  GalleryPalette,
+  PageHelpSpecimen,
+  StepperSpecimen,
+  TimelineSpecimen,
+  TipsSpecimen,
+  WhenSpecimen,
+} from './HelpSpecimens';
 
 /* Scalar is a large app: the API reference specimen loads it only when a reader opens it. */
 const ApiReferenceDemo = lazy(() => import('./ApiReferenceDemo'));
@@ -2337,7 +2346,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2355,6 +2364,7 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
       <AppShell
         pathname="#gallery"
         tooltipLayer
+        helpDrawer
         glossary={GALLERY_GLOSSARY}
         rail={
           <Rail brandMark="K" brandName="Kit gallery" brandSlot={<span className="badge">Tool</span>} version={version} footer={<BuildCard version={version} releases={releases} />} environment="Gallery" statusText="Data refreshed just now" showVersion={false}>
@@ -2576,13 +2586,22 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         <Specimen id="when" title="Relative time with the absolute time in the tip">
           <WhenSpecimen />
         </Specimen>
+        <Specimen id="page-help" title="Page help, Help button and drawer">
+          <PageHelpSpecimen />
+        </Specimen>
+        <Specimen id="stepper" title="Stepper">
+          <StepperSpecimen />
+        </Specimen>
+        <Specimen id="timeline" title="Timeline">
+          <TimelineSpecimen />
+        </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">
             Palette opened {paletteResult}
           </p>
         ) : null}
       </AppShell>
-      <CommandPalette items={paletteItems} filters={[{ id: 'Pages', label: 'Pages' }, { id: 'Data', label: 'Data' }]} />
+      <GalleryPalette items={paletteItems} filters={[{ id: 'Pages', label: 'Pages' }, { id: 'Data', label: 'Data' }]} />
     </AccentProvider>
   );
 }
@@ -2599,7 +2618,9 @@ export function GalleryApp({ releases = SAMPLE_RELEASES, version = '0.1.0' }: Ga
     <ThemeProvider storageKey="gallery.theme">
       <ShortcutLayer>
         <Toaster>
-          <GalleryShell releases={list} version={version} />
+          <GalleryHelpProviders>
+            <GalleryShell releases={list} version={version} />
+          </GalleryHelpProviders>
         </Toaster>
       </ShortcutLayer>
     </ThemeProvider>

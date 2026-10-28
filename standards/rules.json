@@ -510,8 +510,64 @@
     {
       "id": "web-ui.27.4",
       "ref": "web-ui.md 27.4",
+      "title": "The first use of a domain term is a glossary Term",
+      "statement": "The app registers its glossary once. The first use of a domain term on a page is a Term, and the page lists the terms it uses in usePageHelp so the help drawer explains them.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of each page: the first use of each domain word is a Term whose id is in the glossary, and the page help lists the terms."
+    },
+    {
+      "id": "web-ui.27.5",
+      "ref": "web-ui.md 27.5",
+      "title": "A timestamp is relative, with the absolute time in the tip",
+      "statement": "A timestamp shows as relative time (When), with the absolute date, time and zone in its tip. A date that is the subject of the page, such as a schedule or a due date, shows in full with its zone.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of each page: no bare absolute timestamp in a table or a list, and the zone is stated in the tip."
+    },
+    {
+      "id": "web-ui.27.6",
+      "ref": "web-ui.md 27.6",
+      "title": "A person is shown by name",
+      "statement": "A person is shown by name, with the email or login in the tip. A login or an id is never the only label.",
+      "level": "should",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of each page: people appear by name and the email or login is in the tip."
+    },
+    {
+      "id": "web-ui.27.7",
+      "ref": "web-ui.md 27.7",
+      "title": "A tip never holds the only copy of something needed to act",
+      "statement": "A tip explains and the page acts. A value, a step, a link or a warning a person needs in order to act is text on the page or in the help drawer, because tips do not show on touch and hide on scroll.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review of each page: with every tip removed the page can still be used and nothing needed to act is lost."
+    },
+    {
+      "id": "web-ui.27.8",
+      "ref": "web-ui.md 27.8",
       "title": "A tip is one or two short plain sentences",
-      "statement": "A tip is one or two short plain sentences, never over 200 characters, with no markup. Longer text goes in an InfoTip popover or the page.",
+      "statement": "A tip is one or two short plain sentences, never over 200 characters, with no markup. Longer text goes in an InfoTip popover, the page help or the page.",
       "level": "must",
       "applies_to": [
         "web"
