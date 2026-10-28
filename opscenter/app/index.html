@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en" data-app-accent="indigo">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>ops_center Ops Center</title>
+    <!-- The kit themeInitScript() output (storage key shell.theme): a stored light or dark choice
+         applies before first paint. No attribute means the theme follows the OS. -->
+    <script>
+      (function(){try{var t=localStorage.getItem("shell.theme");if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

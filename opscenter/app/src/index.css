@@ -1,0 +1,76 @@
+:root {
+  /* The Ops Center vocabulary mapped onto the core tokens (tokens-core/tokens.css, imported first in
+     main.tsx). --accent, --surface-2, --info and --radius-sm are core names with the same role, so the
+     core value applies directly. The old accent aliases are gone (accent tokens are set only by
+     data-app-accent on the root). Pages move to the core names as they migrate, then this block goes. */
+  --bg: var(--bg-canvas);
+  --bg-elev: var(--surface-1);
+  --surface: var(--surface-1);
+  --border-soft: var(--border-subtle);
+  --text: var(--text-primary);
+  --text-faint: var(--text-tertiary);
+  --good: var(--success);
+  --good-soft: var(--success-dim);
+  --warn: var(--warning);
+  --warn-soft: var(--warning-dim);
+  --alert: var(--danger);
+  --alert-soft: var(--danger-dim);
+  --shadow: var(--elev-2);
+  --font: var(--font-sans);
+  --mono: var(--font-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+/* Element defaults sit in @layer base (declared below core in src/layers.css), so the kit's own
+   classes always win over them, as they did before the kit moved into @layer core. */
+@layer base {
+  a {
+    color: var(--accent-bright);
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+  h1,
+  h2,
+  h3 {
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-2);
+}

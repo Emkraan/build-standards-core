@@ -1,0 +1,26 @@
+/* StateBlocks: load failures, the working pill and link buttons. Tokens only. */
+.sb-err,
+.sb-hint {
+  display: block;
+}
+.sb-err {
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.sb-hint {
+  margin-top: var(--space-2);
+  color: var(--text-tertiary);
+}
+.sb-hint code,
+.sb-err code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  background: var(--surface-3);
+}
+a.btn,
+a.btn:hover,
+a.btn:focus-visible {
+  text-decoration: none;
+}

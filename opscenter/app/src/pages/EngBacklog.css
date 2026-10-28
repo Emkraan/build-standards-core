@@ -1,0 +1,118 @@
+/* Debt and improvements page. Owned by EngBacklog. Kit Table and Modal, tokens only. */
+
+.eb-lede {
+  margin: 0 0 var(--space-4);
+  max-width: 90ch;
+  color: var(--text-secondary);
+  font-size: var(--fs-body);
+}
+.eb-search {
+  width: 300px;
+  max-width: 100%;
+}
+.eb-table .table {
+  table-layout: fixed;
+}
+.eb-table td {
+  vertical-align: top;
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-3);
+}
+.eb-item {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.eb-title {
+  font-weight: 600;
+  line-height: var(--lh-snug);
+}
+.eb-sev {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: var(--fs-label);
+}
+.eb-goal {
+  color: var(--text-secondary);
+}
+.eb-faint,
+.eb-date {
+  font-size: var(--fs-label);
+  color: var(--text-tertiary);
+}
+.eb-date {
+  white-space: nowrap;
+}
+.table-row.is-selected .eb-faint,
+.table-row.is-selected .eb-date,
+.table-row.is-selected .eb-goal {
+  color: var(--text-secondary);
+}
+
+/* ---- entry modal ---- */
+.eb-m-kind {
+  font-size: var(--fs-micro);
+  font-weight: 800;
+  letter-spacing: var(--track-caps);
+}
+.eb-m-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.eb-body {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-primary);
+}
+.eb-body p {
+  margin: 0 0 6px;
+}
+.eb-body .eb-li {
+  padding-left: 14px;
+  text-indent: -12px;
+}
+.eb-body .eb-li::before {
+  content: "\2022";
+  margin-right: 6px;
+  color: var(--text-tertiary);
+}
+.eb-body code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  background: var(--surface-3);
+}
+.eb-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.eb-btns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.eb-ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  background: var(--surface-inset);
+}
+.eb-ask .eb-btns {
+  justify-content: flex-end;
+}
+.eb-err {
+  margin: 0;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--danger);
+}

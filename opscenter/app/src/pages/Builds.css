@@ -1,0 +1,89 @@
+/* Builds page. Reuses the Infrastructure run, job and step classes, these are only the
+   pipeline sections and the run rows. */
+.bld-pipe {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+.bld-pipe-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.bld-pipe-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.bld-pipe-name:hover {
+  text-decoration: underline;
+}
+.bld-run {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+}
+.bld-run[data-live] {
+  border-color: rgb(var(--hue-blue) / 0.5);
+}
+.bld-run-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.bld-now {
+  margin: var(--space-1) 0 0;
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+.bld-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-label);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.bld-note svg {
+  flex: none;
+  margin-top: 1px;
+}
+.bld-summary {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-label);
+  font-family: var(--font-mono);
+}
+.bld-jobs {
+  margin-top: var(--space-2);
+}
+.bld-more {
+  justify-self: start;
+}
+
+/* refused-for-behind-main note with its update action. */
+.bld-refusal {
+  align-items: flex-start;
+}
+.bld-refusal-body {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.bld-refusal-body p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.bld-refusal-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

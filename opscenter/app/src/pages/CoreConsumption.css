@@ -1,0 +1,66 @@
+/* Core consumption page (/core). Page-local layout only, every colour and size comes from tokens. */
+.cc-page {
+  display: grid;
+  gap: var(--space-4);
+}
+.cc-stack {
+  display: grid;
+  gap: var(--space-1);
+}
+.cc-muted {
+  color: var(--text-secondary);
+  font-size: var(--fs-label);
+}
+.cc-mono {
+  font-family: var(--font-mono);
+}
+.cc-pin,
+.cc-sync,
+.cc-counts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.cc-reason {
+  display: block;
+  margin-top: var(--space-1);
+}
+.cc-sub {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.cc-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cc-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.cc-grow {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+.cc-issue {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.cc-issue-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}

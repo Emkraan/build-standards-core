@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-28 (v1.46.0, ops center app)
+
+Twelfth piece of the ops center lift (opscenter/DESIGN.md section 4). Opt in: no rule is added and nothing a consumer
+runs today changes.
+
+- Code: `opscenter/app`, the whole app of the running ops center (114 source files: the shell and rail, every page and
+  component, the data reader and its types) on the shared kit through the `@kit` alias to `kit/src` and the core tokens.
+  It lifts as one unit because the pages import one another and the data reader; a partial lift would not build.
+  Repository names and the sidebar subtitle are build parameters (`VITE_PRIMARY_REPO`, `VITE_APP_SUBTITLE`), the links
+  catalog is an example, and estate names are gone (the two review lanes are `platform` and `team`).
+- CI: `.github/workflows/opscenter-app.yml` installs the kit and the app, typechecks, runs the 24 node tests (4 browser
+  tests skip without a browser) and builds. All three pass.
+- Left to the consumer: wiring the build variables, and pointing the data reader's endpoints at the core server modules
+  as each lands (the envelope and the registry, R1 and R2).
+
 ## 2026-10-28 (v1.44.0, ops center modules with estate facts as parameters)
 
 Tenth piece of the ops center lift (opscenter/DESIGN.md section 12.8). Opt in: no rule is added and nothing a consumer

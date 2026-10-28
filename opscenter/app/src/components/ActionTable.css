@@ -1,0 +1,260 @@
+/* Action Center table + item modal (components/ActionTable.tsx), on the kit Table, Modal,
+   Segmented, Input, Select, Button and Pill. Only tokens here: the kit recipes own the base looks,
+   this sheet adds the Action Center layout and the priority colours. */
+.at-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+/* "Tell them" reads amber while something is owed and the view is not selected. */
+.at-views .seg-btn:nth-of-type(2):not([aria-pressed="true"]) {
+  color: var(--warning);
+}
+.at-search {
+  flex: 1;
+  min-width: 200px;
+  width: auto;
+}
+.at-bar .select-wrap {
+  display: inline-block;
+}
+.at-chips {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+.at-chip[data-size] {
+  text-transform: capitalize;
+  border-radius: var(--radius-pill);
+}
+.at-chip[data-variant="ghost"] {
+  border-color: var(--border-default);
+}
+.at-bar .input {
+  min-height: 32px;
+  height: 32px;
+  padding-block: 0;
+  font-size: var(--fs-label);
+}
+.at-chip[data-prank][aria-pressed="true"] {
+  color: var(--at-ink);
+  background: color-mix(in oklab, var(--at-ink) 14%, transparent);
+  border-color: color-mix(in oklab, var(--at-ink) 45%, transparent);
+}
+/* Priority inks, set on the chip itself so they also work inside the portaled modal. High is
+   orange, which the core palette has no token for, so it mixes the red and amber hues. */
+[data-prank="0"] {
+  --at-ink: rgb(var(--hue-red));
+}
+[data-prank="1"] {
+  --at-ink: color-mix(in oklab, rgb(var(--hue-red)) 45%, rgb(var(--hue-amber)));
+}
+[data-prank="2"] {
+  --at-ink: rgb(var(--hue-amber));
+}
+[data-prank="3"] {
+  --at-ink: rgb(var(--hue-blue));
+}
+
+/* table: the kit Table with fixed columns so the title takes the rest and ellipsizes */
+.at-table .table {
+  table-layout: fixed;
+}
+.at-table .table td {
+  overflow: hidden;
+}
+/* Priority reads from the chip. Critical rows add a faint red tint, never an edge bar (web-ui 0.1).
+   The kit Table has no per-row class, so the row is found through its chip. */
+.at-table .table-row:has(.at-prio[data-prank="0"]) td {
+  background: color-mix(in oklab, var(--danger) 7%, transparent);
+}
+.at-table .table-row:has(.at-prio[data-prank="0"]):hover td {
+  background: color-mix(in oklab, var(--danger) 12%, var(--surface-2));
+}
+.at-table .table-row:has(.at-state-tell) td {
+  background: color-mix(in oklab, var(--warning) 6%, transparent);
+}
+.at-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.at-person {
+  display: block;
+  color: var(--text-secondary);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.at-person i {
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+.at-refs {
+  display: flex;
+  gap: var(--space-1);
+  overflow: hidden;
+}
+.at-refs code {
+  font-size: var(--fs-micro);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* chips used in rows and the modal (kit Pill) */
+.at-prio {
+  text-transform: capitalize;
+  color: var(--at-ink);
+  background: color-mix(in oklab, var(--at-ink) 14%, transparent);
+  border-color: color-mix(in oklab, var(--at-ink) 34%, transparent);
+}
+.at-state.parked {
+  color: var(--text-tertiary);
+}
+.at-state.none {
+  color: var(--text-tertiary);
+}
+
+/* item modal (kit Modal). Same rule as the rows: the chip carries priority, a critical item adds
+   a danger border and a faint red, never an edge bar. */
+.modal.at-modal.is-critical {
+  border-color: var(--danger-border);
+  background: color-mix(in oklab, var(--danger) 5%, var(--surface-1));
+}
+.at-m-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-2);
+}
+.at-m-person {
+  font-size: var(--fs-label);
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.at-m-sec b,
+.at-m-draft > b {
+  font-size: var(--fs-micro);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.at-m-sec p {
+  margin: 3px 0 0;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+.at-m-refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.at-m-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 13px;
+}
+.at-m-links a {
+  color: var(--accent);
+  text-decoration: none;
+  word-break: break-all;
+}
+.at-m-links a:hover {
+  text-decoration: underline;
+}
+.at-m-1on1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: rgb(var(--hue-violet) / 0.07);
+  border: 1px solid rgb(var(--hue-violet) / 0.2);
+  font-size: 13px;
+}
+.at-m-1on1.warn {
+  background: var(--warning-dim);
+  border-color: var(--warning-border);
+}
+.at-m-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+.at-m-actions {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+.at-m-hint {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+.at-m-hint.err {
+  color: var(--danger);
+}
+
+@media (max-width: 900px) {
+  .at-table .table th:nth-child(n + 4),
+  .at-table .table td:nth-child(n + 4) {
+    display: none;
+  }
+}
+
+/* inline Tackle step inside the item modal (never a second stacked dialog) */
+.at-m-tackle {
+  padding: 12px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+.at-m-tackle-btns {
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+/* Automation draft review */
+.at-m-draft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+.at-m-draft-f {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.at-m-draft-f p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* Since column: age from first_seen, full time in the tooltip */
+.at-since {
+  color: var(--text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Row state colour, the same hues as the review cards: a tinted fill on every cell and a tinted
+   rule between rows (never an edge bar). Hover and selection deepen the tint instead of greying it. */
+.at-table .table-row.at-row td {
+  background-color: rgb(var(--hue) / 0.14);
+  border-bottom-color: rgb(var(--hue) / 0.4);
+}
+.at-table .table-row.at-row:hover td {
+  background-color: rgb(var(--hue) / 0.22);
+}
+.at-table .table-row.at-row.is-selected td {
+  background-color: rgb(var(--hue) / 0.3);
+}

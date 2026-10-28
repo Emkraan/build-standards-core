@@ -1,0 +1,169 @@
+/* Links page. Owned by Links. A launcher: one compact panel per area, flowed into balanced CSS
+   columns (no holes, DOM order equals reading order down each column). Tokens only. A dead link
+   takes the red tone wash (never an edge bar). */
+
+.lk-count {
+  font-size: var(--fs-label);
+  color: var(--text-tertiary);
+}
+.lk-areas {
+  margin-top: var(--space-3);
+}
+.lk-columns {
+  margin-top: var(--space-5);
+  columns: 300px;
+  column-gap: var(--space-4);
+}
+.lk-section {
+  break-inside: avoid;
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-2) var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background-color: var(--surface-1);
+}
+.lk-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  padding: 0 var(--space-2);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.lk-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: rgb(var(--hue));
+}
+.lk-heading-n {
+  margin-left: auto;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+.lk-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lk-tile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  text-decoration: none;
+  transition:
+    background-color var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
+}
+.lk-tile:hover {
+  background-color: var(--surface-3);
+  border-color: var(--border-default);
+}
+.lk-tile:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.lk-tile .hue-tile {
+  flex: none;
+  font-size: var(--fs-micro, var(--fs-label));
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.lk-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.lk-name {
+  font-weight: 600;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lk-host {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  line-height: 1.3;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lk-tile .pill {
+  flex: none;
+}
+
+/* Link health card: dead links with Swap and Remove, above the areas. */
+.lh-card {
+  margin-top: var(--space-4);
+}
+.lh-lede {
+  margin: 0 0 var(--space-3);
+  color: var(--text-secondary);
+}
+.lh-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.lh-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background-color: var(--surface-1);
+}
+.lh-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.lh-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.lh-meta {
+  font-size: var(--fs-label);
+  color: var(--text-tertiary);
+  overflow-wrap: anywhere;
+}
+.lh-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+}
+.lh-confirm {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.lh-err {
+  margin: var(--space-2) 0 0;
+  color: var(--danger);
+}
+@media (max-width: 560px) {
+  .lh-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

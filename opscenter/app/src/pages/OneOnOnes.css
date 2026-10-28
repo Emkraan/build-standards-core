@@ -1,0 +1,391 @@
+/* 1:1 Board (OneOnOnes). Person cards, meters and notes come from pages/people/people.css.
+   Tokens only. No edge bars: a hot topic takes the red .tone wash, priority is a badge, the Why
+   block is an amber .tone box, the selected slot uses .is-selected. */
+
+.oo-live {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+
+/* ---- person rail ---- */
+.oo-group + .oo-group .pp-label {
+  margin-top: var(--space-2);
+}
+.oo-meet {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.oo-meet.is-now {
+  font-weight: 650;
+  color: var(--success);
+}
+.oo-meet.is-next,
+.oo-meet.is-gap {
+  font-weight: 600;
+  color: var(--warning);
+}
+.pp-person .pp-meter {
+  margin-top: 4px;
+}
+.oo-sched.btn {
+  align-self: flex-start;
+  margin-top: 6px;
+}
+
+/* ---- selected person panel ---- */
+.oo-panel.card {
+  padding: var(--space-6);
+}
+.oo-gap {
+  color: var(--warning);
+}
+.oo-progress {
+  min-width: 180px;
+}
+.oo-progress-num {
+  margin-bottom: 5px;
+  text-align: right;
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+.oo-progress-num b {
+  font-size: var(--fs-h3);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.oo-toolbar .toolbar-start {
+  flex: 1;
+  flex-wrap: nowrap;
+}
+.oo-add-input.input {
+  flex: 1;
+  min-width: 200px;
+}
+.oo-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+/* ---- topics ---- */
+.oo-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.oo-list.is-covered {
+  margin-top: var(--space-3);
+}
+.oo-topic {
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background-color: var(--surface-2);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    opacity var(--dur-base) var(--ease-out);
+}
+.oo-topic:hover {
+  border-color: var(--border-default);
+}
+.oo-topic.is-covered {
+  opacity: 0.66;
+}
+.oo-topic.is-covered .oo-title {
+  text-decoration: line-through;
+  text-decoration-color: var(--text-tertiary);
+}
+.oo-topic-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: var(--space-2);
+}
+.oo-num {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+a.oo-ac-link.badge {
+  text-decoration: none;
+  cursor: pointer;
+}
+a.oo-ac-link.badge:hover {
+  filter: brightness(1.08);
+  text-decoration: none;
+}
+.oo-when {
+  margin-left: auto;
+  font-size: var(--fs-micro);
+  color: var(--text-secondary);
+}
+.oo-title {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  line-height: var(--lh-snug);
+  color: var(--text-primary);
+}
+.oo-detail {
+  margin-top: 4px;
+  font-size: var(--fs-label);
+  line-height: var(--lh-body);
+  color: var(--text-secondary);
+}
+.oo-detail b {
+  color: var(--text-primary);
+}
+div.oo-why.tone:not(.card) {
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-label);
+  line-height: var(--lh-body);
+  color: var(--text-primary);
+}
+.oo-why b {
+  display: block;
+  margin-bottom: 2px;
+  font-size: var(--fs-nano);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--warning);
+}
+.oo-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+a.oo-link-btn.btn,
+a.oo-link-btn.btn:hover {
+  text-decoration: none;
+}
+.oo-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  overflow-y: auto;
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+}
+.bubble {
+  max-width: 82%;
+  padding: 7px 11px;
+  border-radius: var(--radius-lg);
+  font-size: var(--fs-label);
+  line-height: var(--lh-body);
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-primary);
+}
+.bubble.them {
+  align-self: flex-start;
+  background: var(--surface-3);
+  border-bottom-left-radius: var(--radius-xs);
+}
+.bubble.me {
+  align-self: flex-end;
+  background: var(--accent-dim);
+  border-bottom-right-radius: var(--radius-xs);
+}
+.bubble-meta {
+  margin-bottom: 2px;
+  font-size: var(--fs-nano);
+  color: var(--text-secondary);
+}
+.oo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.oo-discussed.btn {
+  color: var(--success);
+}
+.oo-delete.btn {
+  margin-left: auto;
+  color: var(--danger);
+}
+.oo-covered-toggle.btn {
+  margin-top: var(--space-4);
+  margin-left: calc(var(--space-2) * -1);
+}
+
+/* ---- schedule dialog ---- */
+.oo-who {
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.oo-sugg {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: var(--space-2);
+}
+.oo-sugg-skel {
+  height: 52px;
+}
+.oo-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+.oo-slot small {
+  font-size: var(--fs-nano);
+  font-weight: 650;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.oo-slot b {
+  font-size: var(--fs-body);
+  font-weight: 700;
+}
+.oo-slot:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+.oo-slot:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.oo-hint {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+.oo-gap-note.pp-note {
+  margin: var(--space-3) 0 0;
+}
+.oo-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.oo-pick .field {
+  min-width: 0;
+}
+.oo-fit.badge {
+  margin-bottom: 8px;
+}
+.oo-day {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 6px var(--space-3);
+  align-items: center;
+  margin-top: var(--space-4);
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+.oo-hours {
+  position: relative;
+  height: 14px;
+}
+.oo-hours span {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: var(--fs-nano);
+}
+.oo-track {
+  position: relative;
+  height: 18px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset);
+}
+.oo-track .off {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(135deg, transparent 0 4px, var(--border-subtle) 4px 8px);
+}
+.oo-track .busy {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: var(--radius-xs);
+  background: rgb(var(--hue-red) / 0.42);
+}
+.oo-track .busy.tentative {
+  background: rgb(var(--hue-amber) / 0.34);
+}
+.oo-track .busy.oof {
+  background: rgb(var(--hue-violet) / 0.38);
+}
+.oo-track .slot {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border: 2px solid var(--accent-bright);
+  border-radius: var(--radius-xs);
+  background: var(--accent-dim);
+}
+.oo-agenda-edit.textarea {
+  width: 100%;
+  resize: vertical;
+  line-height: var(--lh-body);
+}
+.oo-check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: var(--space-3);
+  font-size: var(--fs-label);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.oo-check input:disabled + span {
+  color: var(--text-secondary);
+}
+.oo-booked {
+  margin: 0;
+  padding-left: var(--space-5);
+  font-size: var(--fs-label);
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+.oo-booked .is-warn {
+  color: var(--warning);
+}
+
+@media (max-width: 760px) {
+  .oo-panel.card {
+    padding: var(--space-4);
+  }
+  .oo-toolbar .toolbar-start {
+    flex-wrap: wrap;
+  }
+}

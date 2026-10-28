@@ -1,0 +1,24 @@
+{
+  "groups": [
+    {
+      "id": "examples",
+      "title": "Examples",
+      "hue": "teal",
+      "links": [
+        {
+          "name": "Example docs",
+          "url": "https://docs.example.invalid/"
+        },
+        {
+          "name": "Example tracker",
+          "url": "https://tracker.example.invalid/"
+        },
+        {
+          "name": "Example intranet",
+          "url": "https://intranet.example.invalid/",
+          "note": "On network"
+        }
+      ]
+    }
+  ]
+}
