@@ -75,6 +75,7 @@ class PlansTest(unittest.TestCase):
 
         self.m = importlib.reload(plans)
         self.m._refresh_jira = lambda keys: None
+        self._kick = self.m.swr.kick
         self.m.swr.kick = lambda name, fn: None
         self.m._gh = lambda query: (_ for _ in ()).throw(
             AssertionError("real gh must not run in tests")
@@ -94,6 +95,7 @@ class PlansTest(unittest.TestCase):
         self.write(".format.md", "# hidden spec")
 
     def tearDown(self):
+        self.m.swr.kick = self._kick
         self.tmp.cleanup()
         os.environ.pop("PLANS_DIR", None)
         os.environ.pop("PLANS_CONFIG", None)

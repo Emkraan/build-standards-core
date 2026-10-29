@@ -1,40 +1,101 @@
 # Changelog
 
-## 2026-10-29 (v1.86.0, ops center infrastructure page)
+## 2026-10-29 (v1.97.0, ops center infrastructure page)
 
 The Infrastructure page server half. Opt in: new `server/modules/infra.py`.
 
 - The code host view, the CI runner fleet and the live job and step progress are generic; spend, scheduled jobs, the runner VM, a running step's log, backup status and health checks come from an optional provider with a null default (DESIGN.md 12.33). Tests: 5.
 
-## 2026-10-29 (v1.84.0, ops center plans)
+## 2026-10-29 (v1.96.0, ops center plans)
 
 The Plans page server half. Opt in: new `server/modules/plans.py`; the registry maps a `PermissionError` to 403.
 
 - Trackers, standalone plans and the archive from markdown front matter, one file's text for the reader, archive and restore on the owner's click, freshness against the PRs and ticket changes on each tracker, and the untracked-work strip; the ticket prefix, browse URL and repos are data (DESIGN.md 12.32). Tests: 22.
 
-## 2026-10-29 (v1.83.0, ops center other repo reviews)
+## 2026-10-29 (v1.95.0, ops center other repo reviews)
 
 The second repo's review page server half. Opt in: new `server/modules/other_reviews.py`; the privileged deployment decisions move to the path the app calls (`/api/platform-reviews/deployment/{approve,reject,retry}`).
 
 - Escalated engineer PRs, the owner's own PRs by what the own-PR lane is doing, merge and approve pinned to the head seen, and the lane's decision cards; the escalation source, lane command and policy file are consumer slots with null defaults (DESIGN.md 12.31). Tests: 10.
 
-## 2026-10-29 (v1.82.0, ops center plan reviews)
+## 2026-10-29 (v1.94.0, ops center plan reviews)
 
 The plan review queue server half. Opt in: new `server/modules/tf_reviews.py`.
 
 - Held plan PRs and gate decisions; approve and reject re-verify the runs at the current head, retry a code host 5xx, keep the card pending while any run still waits, and record or revoke the owner's one sign-off through the sign-off store (DESIGN.md 12.30). Tests: 8.
 
-## 2026-10-29 (v1.81.0, ops center repo reviews)
+## 2026-10-29 (v1.93.0, ops center card brief)
+
+The approval brief for cards that are not pull requests. Opt in: new `server/modules/card_brief.py`, read by the approval brief.
+
+- Owner applies, privileged deployments and runbook delete releases get the same three paragraphs, a deterministic warning when an open PR changes the same root, and an access table; what is the consumer's (admin account, why a root is owner-applied, why an environment needs the owner, tier names, release and image gate environments, pool host sign-in grants) is one data file (DESIGN.md 12.43). Tests: 67.
+
+## 2026-10-29 (v1.92.0, ops center repo reviews)
 
 The other repos page server half. Opt in: new `server/modules/repo_reviews.py`; `review_config` gains `repo_labels`, `autofix_lanes` and `autofix_after`.
 
 - Open PRs that need the owner (failing checks with the files the log names, stale green, review requested), issues by who moves next, shipped PRs, and the core merge lane and own-PR auto-fix lane rows; re-run failed jobs pinned to the head seen (DESIGN.md 12.29). Tests: 13.
 
-## 2026-10-29 (v1.80.0, ops center privileged reviews and review config)
+## 2026-10-29 (v1.91.0, ops center approval brief)
+
+The approval brief on Reviews cards. Opt in: new `server/modules/approval_brief.py` and `POST /api/reviews/brief`.
+
+- Three plain paragraphs on every card that asks the owner to decide, written in the background by the consumer's model command and always backed by a deterministic draft; no model configured means the draft only (DESIGN.md 12.41). Tests: 28.
+
+## 2026-10-29 (v1.90.0, ops center maintenance window hold)
+
+The review pages' side of the maintenance window hold. Opt in: new `lanes/maintenance_hold.py`.
+
+- The Needs me preview of what an approval would do now, the held cards, approve without enqueue with one window comment per head, and the emergency override on a held card pinned to the held head with a recorded reason (DESIGN.md 12.41). Tests: 9.
+
+## 2026-10-29 (v1.89.0, ops center label hold explainer)
+
+Why a PR sits on a hold label. Opt in: new `lanes/label_hold.py`.
+
+- Who placed the hold label and when, the newest decisions-log note that names the PR, and the owner's triage markers for the head, so the card says what clearing the hold would do; the labels and the display zone are configuration (DESIGN.md 12.40). Tests: 14.
+
+## 2026-10-29 (v1.88.0, ops center plan context)
+
+Plain-language facts for Terraform apply cards. Opt in: new `server/modules/tf_context.py`, used by the approval brief.
+
+- Open PRs that change the same root, the plan text parsed into resources with one sentence each, and principal names through an optional provider (null default: none); the repo is `plan_repo` in review_config and the roots spec path is configurable (DESIGN.md 12.40). Tests: 5.
+
+## 2026-10-29 (v1.87.0, ops center runtime restart card)
+
+The agent runtime restart card server half. Opt in: new `server/modules/runtime_restart.py`.
+
+- GET shows whether the runtime needs a restart and what is running; POST queues a restart (now or when idle) or cancels it. The restart is a script the consumer supplies; with none the card is empty and a write is 501 (DESIGN.md 12.35). Tests: 4.
+
+## 2026-10-29 (v1.86.0, ops center PR landing facts)
+
+The structured ask for PR cards. Opt in: new `lanes/pr_landing.py`.
+
+- What the owner is asked to approve, who asked, what lands at the merge per Terraform root, why it needs the owner, the risks and what the buttons do, all from facts; the apply tier, shared module paths and the gates per applier are data (DESIGN.md 12.42). Tests: 16.
+## 2026-10-29 (v1.83.0, ops center privileged reviews and review config)
 
 The privileged deployments lane server half and the shared review config. Opt in: new `server/modules/privileged_reviews.py` and `review_config.py`.
 
 - Approve, reject and retry re-verify the run at the queued commit before deciding as the owner; the repo, owner login and environment names are data in one JSON file, and with none configured the page is empty and a decision is 501 (DESIGN.md 12.28). Tests: 13.
+
+## 2026-10-29 (v1.82.0, shell client package: older names and keys)
+
+The shell client package accepts the names Olympus already runs with. Opt in: the defaults are unchanged.
+
+- `AuthMode` accepts `hub` and `tool` next to `shell` and `module` (same behaviour, `isShellMode` exported); `createAuth` takes `returnToKey` and `acceptReturnToKeys`, so a saved return target survives a rename (`standards/web-shell-packages.md` section 4). Tests: 3.
+
+## 2026-10-29 (v1.81.0, shell module contract: layout merge and Olympus wording)
+
+The shell module contract package gains the layout merge Olympus runs, with its typed contracts. Opt in: new exports; the validator's problem strings and `autoDescription` now carry the Olympus wording.
+
+- `effectiveLayout`, `visibleNav`, `landingRoute`, `visibleTiles`, `homeContributions` and `moduleForPath`, with `ModuleManifest`, `Overrides`, `EffectiveModule` and the other types in `index.d.ts` (`standards/web-shell-packages.md` section 2.1). Tests: 22, run by `npm run test:server`.
+- The validator and registry messages and `autoDescription` ("Pages: A, B and C.") take the Olympus wording; the 33 kit checks still pass (one expectation updated).
+
+## 2026-10-29 (v1.80.0, shell server package: request telemetry and gateway names)
+
+The shell server package gains what Olympus runs and the core was missing. Opt in: new exports only, the defaults are unchanged.
+
+- Request telemetry: `requestTelemetry`, `createExportRetry`, `isTransientExportFailure`, `parseSettingString` and `closeTelemetryOnShutdown`, with the transient-only export retry and the shutdown flush (`standards/web-shell-packages.md` section 5.1). Tests: 34.
+- Gateway names: `gatewayGuard` takes `header`, `role`, `requestProperty` and `refusalMessage`, and `takeGatewayHeader(req, header)` is exported, so a shell keeps its own header, role and request property (section 5.2). `serverTiming` takes `timingKey` to store the record under a key of the shell's own. Tests: 8.
 
 ## 2026-10-29 (v1.79.0, ops center review helpers)
 
