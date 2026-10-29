@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-29 (v1.82.0, ops center PR landing facts)
+## 2026-10-29 (v1.83.0, ops center PR landing facts)
 
 The structured ask for PR cards. Opt in: new `lanes/pr_landing.py`.
 
