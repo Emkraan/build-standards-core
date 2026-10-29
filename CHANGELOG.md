@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-29 (v1.88.0, ops center maintenance window hold)
+## 2026-10-29 (v1.89.0, ops center maintenance window hold)
 
 The review pages' side of the maintenance window hold. Opt in: new `lanes/maintenance_hold.py`.
 
