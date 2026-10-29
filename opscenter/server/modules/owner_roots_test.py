@@ -21,12 +21,6 @@ from pathlib import Path
 S = Path(tempfile.mkdtemp(prefix="owner-roots-test-"))
 ORIGIN, CLONE, TF, STATE = S / "origin.git", S / "clone", S / "terraform", S / "tf-state"
 PROVIDER = S / "provider.py"
-os.environ["OWNER_ROOTS_CACHE"] = str(S / "cache")
-os.environ["OWNER_ROOTS_REPO"] = str(CLONE)
-os.environ["OWNER_ROOTS_TF"] = str(TF)
-os.environ["OWNER_ROOTS_DECISIONS"] = str(S / "decisions.jsonl")
-os.environ["OWNER_ROOTS_RETRY_S"] = "0"
-os.environ.pop("OWNER_ROOTS_PROVIDER", None)
 
 
 def sh(*a, cwd=None):
@@ -122,7 +116,42 @@ PROVIDER.write_text(
     .replace("@FAIL@", str(S / "hooks.fail"))
 )
 
-import owner_roots as o  # noqa: E402
+ENV = {
+    "OWNER_ROOTS_CACHE": str(S / "cache"),
+    "OWNER_ROOTS_REPO": str(CLONE),
+    "OWNER_ROOTS_TF": str(TF),
+    "OWNER_ROOTS_DECISIONS": str(S / "decisions.jsonl"),
+    "OWNER_ROOTS_RETRY_S": "0",
+}
+import importlib  # noqa: E402
+
+o = None
+_saved = {}
+
+
+def setUpModule():
+    """The module reads its environment at import: set it, load the module fresh, undo all of it afterwards."""
+    global o
+    for k in list(ENV) + ["OWNER_ROOTS_PROVIDER"]:
+        _saved[k] = os.environ.get(k)
+    os.environ.update(ENV)
+    for k in ["OWNER_ROOTS_PROVIDER"]:
+        os.environ.pop(k, None)
+    import owner_roots
+
+    o = importlib.reload(owner_roots)
+
+
+def tearDownModule():
+    for k, v in _saved.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
+    import owner_roots
+
+    importlib.reload(owner_roots)
+
 
 DIGEST = "pending"
 

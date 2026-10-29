@@ -29,11 +29,40 @@ PROVIDER.write_text(
     f"    def identity(self):\n        return __import__('pathlib').Path({str(USER_FILE)!r}).read_text().strip()\n"
     f"    def signin_cmd(self):\n        return [{str(FAKE_LOGIN)!r}]\n"
 )
-os.environ["OWNER_ROOTS_CACHE"] = str(SCRATCH / "cache")
-os.environ["OWNER_ROOTS_PROVIDER"] = f"{PROVIDER}:P"
-os.environ["OWNER_ROOTS_SIGNIN_POLL_S"] = "0.05"
 
-import owner_roots as o  # noqa: E402
+ENV = {
+    "OWNER_ROOTS_CACHE": str(SCRATCH / "cache"),
+    "OWNER_ROOTS_PROVIDER": f"{PROVIDER}:P",
+    "OWNER_ROOTS_SIGNIN_POLL_S": "0.05",
+}
+import importlib  # noqa: E402
+
+o = None
+_saved = {}
+
+
+def setUpModule():
+    """The module reads its environment at import: set it, load the module fresh, undo all of it afterwards."""
+    global o
+    for k in list(ENV) + []:
+        _saved[k] = os.environ.get(k)
+    os.environ.update(ENV)
+    for k in []:
+        os.environ.pop(k, None)
+    import owner_roots
+
+    o = importlib.reload(owner_roots)
+
+
+def tearDownModule():
+    for k, v in _saved.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
+    import owner_roots
+
+    importlib.reload(owner_roots)
 
 
 def fake_az(login="exit 0", user=ADMIN):
