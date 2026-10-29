@@ -449,6 +449,19 @@ class Routes(unittest.TestCase):
         finally:
             os.environ.pop("OWNER_ROOTS_CACHE", None)
 
+    def test_platform_reviews_with_no_config_answer_empty_and_a_write_is_501(self):
+        os.environ["OPSCENTER_REVIEWS_CONFIG"] = os.path.join(
+            os.environ["OPSCENTER_STATE_DIR"], "none.json"
+        )
+        try:
+            s, body = self.js("GET", "/api/platform-reviews")
+            self.assertEqual((s, body["needs_me"], body["counts"]["needs_me"]), (200, [], 0))
+            payload = {"pr": 1, "head_sha": "a" * 40}
+            for path in ("approve", "request-changes", "approve-merge"):
+                self.assertEqual(self.js("POST", f"/api/platform-reviews/{path}", payload)[0], 501)
+        finally:
+            os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
+
     def test_the_runtime_routes_answer_with_no_runtime_configured_by_default(self):
         os.environ.pop("OPSCENTER_RUNTIME_CMD", None)
         s, body = self.js("GET", "/api/tackle")

@@ -26,6 +26,51 @@ class SignoffStore(unittest.TestCase):
             os.environ["TFGATE_STATE_DIR"] = self._old
         self._d.cleanup()
 
+    def test_record_keeps_the_plan_facts_and_the_extra_keys_at_the_top(self):
+        plan = {
+            "status": "completed",
+            "resources": [{"address": "a.role_assignment_x", "action": "create"}],
+        }
+        facts = so.plan_facts(plan)
+        self.assertEqual(
+            (facts["final"], facts["unverifiable"], facts["grants"]),
+            (True, False, ["a.role_assignment_x"]),
+        )
+        self.assertEqual(facts["resources"], [["a.role_assignment_x", "create"]])
+        so.record(
+            7,
+            "a" * 40,
+            so.OWN,
+            "approve_merge",
+            [H1],
+            facts,
+            extra={"apply_ok": True, "confirm_name": None},
+        )
+        rec = so.active(7)
+        self.assertEqual(
+            (rec["apply_ok"], rec["plan"]["grants"], rec["extra"]["apply_ok"]),
+            (True, ["a.role_assignment_x"], True),
+        )
+
+    def test_a_missing_or_errored_plan_is_unverifiable(self):
+        self.assertEqual(
+            (so.plan_facts(None)["final"], so.plan_facts(None)["unverifiable"]), (False, True)
+        )
+        self.assertTrue(so.plan_facts({"status": "completed", "errors": ["x"]})["unverifiable"])
+
+    def test_confirm_needed_names_the_root_of_a_delete_or_replace(self):
+        plan = {
+            "resources": [
+                {"address": "a.b", "action": "create"},
+                {"address": "c.d", "action": "delete", "root": "apps/foo"},
+            ]
+        }
+        self.assertEqual(so.confirm_needed(plan, 7), "apps/foo")
+        self.assertIsNone(
+            so.confirm_needed({"resources": [{"address": "a.b", "action": "create"}]}, 7)
+        )
+        self.assertIsNone(so.confirm_needed(None, 7))
+
     def test_record_and_active(self):
         so.record(7, "a" * 40, so.OWN, "approve_merge", [H1])
         rec = so.active(7)
