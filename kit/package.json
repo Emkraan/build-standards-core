@@ -29,7 +29,7 @@
     "visual": "npm run gallery:build && playwright test",
     "visual:update": "node scripts/visual-update.mjs",
     "visual:report": "playwright show-report visual/report",
-    "test:server": "node --test \"tests/app-server/*.test.js\""
+    "test:server": "node --test \"tests/app-server/*.test.js\" \"tests/console-modules/*.test.js\""
   },
   "peerDependencies": {
     "react": ">=18 <20",

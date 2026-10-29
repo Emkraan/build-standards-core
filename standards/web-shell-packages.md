@@ -9,7 +9,7 @@ core already states the rule.
 
 | Package | Owns | Core status |
 |---|---|---|
-| Module contract (`console-modules`) | The per-module manifest ([web-shell-manifest.md](web-shell-manifest.md)): the validator, the registry checks, the permission source and peer helpers, the generated registry and its staleness check | Code: `shell-packages/console-modules/`. The generator is `kit/scripts/build-registry.mjs` ([web-shell.md](web-shell.md) section 3) |
+| Module contract (`console-modules`) | The per-module manifest ([web-shell-manifest.md](web-shell-manifest.md)): the validator, the registry checks, the permission source and peer helpers, the layout merge with its typed contracts, the generated registry and its staleness check | Code: `shell-packages/console-modules/`. The generator is `kit/scripts/build-registry.mjs` ([web-shell.md](web-shell.md) section 3) |
 | RBAC core (`rbac`) | What permission data means: accessible tabs, the grant ceiling, assignable roles, view-as, client access helpers | Code: `shell-packages/rbac/` |
 | Client package (`app-client`) | One sign-in boot, token renewal, the API client and its cache, resource hooks, the live feed strip | Code: `shell-packages/app-client/` (TypeScript source). Rules: [web-client-runtime.md](web-client-runtime.md) sections 1 to 3, 5 and 6, [web-shell.md](web-shell.md) section 8 |
 | Server package (`app-server`) | Group cache, directory token, CORS and origin guard, Server-Timing, gateway token check, What's new handler | Code: `shell-packages/app-server/`. The request telemetry sink is not lifted (section 7). Rules: [web-api-runtime.md](web-api-runtime.md) sections 1 to 7 |
@@ -31,9 +31,27 @@ supplies) and `autoDescription`.
 Every answer is display routing. A module's own server enforces each page and action ([rbac.md](rbac.md)
 principle 1); the rail showing an entry never grants it.
 
-The admin layout merge (the rule that turns manifest defaults plus an admin's saved placements, renames and
-hidden entries into what the rail renders, with new and orphaned markers and a page's permission always coming
-from code) is not in the core yet. It is tied to a console admin store and is lifted with the ops center.
+The problem strings name the module a "tool" and `autoDescription` writes "Pages: A, B and C." and "This tool" for a
+manifest with no name. That is the wording the Olympus shell shipped with and its users read, so the core keeps it.
+
+### 2.1 The layout merge
+
+One rule turns the manifests plus an admin's saved layout into what the shell renders. It is pure and
+deterministic, takes the admin's rows as plain arrays (the store behind them is the shell's own), and never throws on
+a bad row: a bad row is skipped.
+
+| Function | Answers |
+|---|---|
+| `effectiveLayout(manifests, overrides, { registryIds })` | `{ modules, orphaned }`. A code entry with no override renders at its code default and is flagged `isNew` (a cue for the admin only). An override whose code entry is gone is reported in `orphaned` and never rendered. A page's `requires` always comes from code: an override cannot change it. A custom link renders only with a valid https `href`, and its optional permission must be in that module's `registryIds` when the ids are given. A hidden group hides its entries; an entry moved to a missing group falls back to its code group. A module's description is the admin's text, else the manifest's, else `autoDescription`. Modules sort by `order`, then id |
+| `visibleNav(module, has)` | What one caller sees of a module: hidden entries and groups dropped, entries the caller cannot open dropped, empty groups dropped. `has` is the module's own permission check |
+| `landingRoute(module, has)` | The first landing route whose page the caller can open, else the first page they can open, else `null`. A hidden page still counts, so hiding a rail entry never strands someone whose only page it is |
+| `visibleTiles(module, dashboard, has)` | A dashboard's tiles in admin order, hidden tiles and tiles without the caller's permission dropped |
+| `homeContributions(modules, hasFor)` | The Home actions and feeds whose permission the caller holds in the module's own answer. `hasFor(module)` returns that module's `has`, or `null` while the answer is not known: a module with no answer contributes nothing (fail closed). A peer id never opens a Home entry; a disabled module contributes nothing |
+| `moduleForPath(pathname, moduleIds)` | The module a path belongs to: the first segment when it names a module, else `console` |
+
+The types (`ModuleManifest`, `Overrides`, `EffectiveModule`, `NavEntry`, `TileOut` and the rest) are in
+`index.d.ts`, so a client that reads the layout is typed instead of `Record<string, any>`. Every answer is display
+only, like the rest of section 2.
 
 ## 3. RBAC core
 
@@ -100,6 +118,7 @@ environment. With none set and enforcement off it only removes the header; some 
 | File | Proves |
 |---|---|
 | `kit/tests/shell-console-modules.test.ts` | The validator accepts the fixtures, ignores unknown keys, rejects 24 mutations and never throws; the registry checks for source and peer ids; the launcher description fits |
+| `kit/tests/console-modules/*.test.js` | The layout merge on synthetic modules: defaults and the new flag, overrides that move, rename, reorder and hide but never change what a page requires, orphans, custom links, the nav, landing and tile filters, the description order, the permission source and peer checks, Home contributions (shape, bounds, fail closed). Run by `npm run test:server` inside `kit` |
 | `kit/tests/shell-rbac.test.ts` | The ceiling, fail-closed stale ids, the wildcard rule, view-as, tab computation and the client helpers |
 | `tests/test_console_module_schema.py` | The same manifest fixtures against the JSON schema ([web-shell-manifest.md](web-shell-manifest.md)) |
 | `kit/tests/app-client/*.test.ts` | The sign-in boot (silent, redirect, loop guard, return target, module bounce, configuration errors), the API client (token, errors, single flight, cache, 401 handling, persistence), the store, `useResource` and the feed strip, with a fake MSAL client |
@@ -107,9 +126,6 @@ environment. With none set and enforcement off it only removes the header; some 
 
 The kit workflow runs on a change under `shell-packages/` or the manifest fixtures.
 
-## 7. Not in the core yet
+## 7. Not in the core
 
-The request telemetry sink (it needs a vendor exporter, so a shell wires its own
-through `serverTiming`'s `sink`) and the admin layout merge. The standards above already state their rules; each
-lands as its own piece with tests, and until then a shell keeps its own implementation and meets the rules in the
-linked sections.
+Data, not code: a shell's own manifests, route inventories and role lists. The packages above take them as input.

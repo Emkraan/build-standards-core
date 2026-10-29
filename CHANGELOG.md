@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-29 (v1.80.0, shell module contract: layout merge and Olympus wording)
+
+The shell module contract package gains the layout merge Olympus runs, with its typed contracts. Opt in: new exports; the validator's problem strings and `autoDescription` now carry the Olympus wording.
+
+- `effectiveLayout`, `visibleNav`, `landingRoute`, `visibleTiles`, `homeContributions` and `moduleForPath`, with `ModuleManifest`, `Overrides`, `EffectiveModule` and the other types in `index.d.ts` (`standards/web-shell-packages.md` section 2.1). Tests: 22, run by `npm run test:server`.
+- The validator and registry messages and `autoDescription` ("Pages: A, B and C.") take the Olympus wording; the 33 kit checks still pass (one expectation updated).
+
 ## 2026-10-28 (v1.78.0, ops center debt and improvements)
 
 The Debt and improvements page server half. Opt in: new `server/modules/eng_backlog.py` and routes.
