@@ -29,6 +29,7 @@ One stdlib Python module per page or lane backend (opscenter/DESIGN.md section 1
 | `core_consumption.py` | The core consumption panel: rows from the nightly consumption feed (no gh on read), and the approvals as single gh calls (DESIGN.md 12.24) | `core_consumption_test.py` (28) |
 | `repo_reviews.py` | The other repos page: PRs that need the owner (failing checks with the files named, stale green, review requested), issues by who moves next, shipped PRs, the core merge lane and auto-fix lane rows, re-run failed jobs (DESIGN.md 12.29) | `repo_reviews_test.py` (13) |
 
+| `approval_brief.py` | The approval brief on decision cards: three plain paragraphs from a consumer model command over a deterministic draft, secret-safe diff, style validator, cache by head (DESIGN.md 12.41) | `approval_brief_test.py` (28) |
 | `tf_context.py` | Plain-language facts for apply cards: PRs that overlap a root, the plan parsed into resources, principal names through an optional provider (DESIGN.md 12.40) | `tf_context_test.py` (5) |
 | `privileged_reviews.py`, `review_config.py` | The privileged deployments lane (approve, reject, retry a run waiting on a hand-decided environment, re-verified at click time) and the one JSON file holding the review pages' estate values (DESIGN.md 12.28) | `privileged_reviews_test.py` (7), `review_config_test.py` (5) |
 | `live_truth.py` | Cached live code host facts (open PR heads, a run, one PR's queue state) the review pages check before showing a card as actionable; unknown is `None` (DESIGN.md 12.27) | `live_truth_test.py` (5) |

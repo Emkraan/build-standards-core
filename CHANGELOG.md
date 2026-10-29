@@ -1,10 +1,16 @@
 # Changelog
 
-## 2026-10-29 (v1.91.0, ops center repo reviews)
+## 2026-10-29 (v1.92.0, ops center repo reviews)
 
 The other repos page server half. Opt in: new `server/modules/repo_reviews.py`; `review_config` gains `repo_labels`, `autofix_lanes` and `autofix_after`.
 
 - Open PRs that need the owner (failing checks with the files the log names, stale green, review requested), issues by who moves next, shipped PRs, and the core merge lane and own-PR auto-fix lane rows; re-run failed jobs pinned to the head seen (DESIGN.md 12.29). Tests: 13.
+
+## 2026-10-29 (v1.91.0, ops center approval brief)
+
+The approval brief on Reviews cards. Opt in: new `server/modules/approval_brief.py` and `POST /api/reviews/brief`.
+
+- Three plain paragraphs on every card that asks the owner to decide, written in the background by the consumer's model command and always backed by a deterministic draft; no model configured means the draft only (DESIGN.md 12.41). Tests: 28.
 
 ## 2026-10-29 (v1.90.0, ops center maintenance window hold)
 
@@ -35,7 +41,6 @@ The agent runtime restart card server half. Opt in: new `server/modules/runtime_
 The structured ask for PR cards. Opt in: new `lanes/pr_landing.py`.
 
 - What the owner is asked to approve, who asked, what lands at the merge per Terraform root, why it needs the owner, the risks and what the buttons do, all from facts; the apply tier, shared module paths and the gates per applier are data (DESIGN.md 12.42). Tests: 16.
-
 ## 2026-10-29 (v1.83.0, ops center privileged reviews and review config)
 
 The privileged deployments lane server half and the shared review config. Opt in: new `server/modules/privileged_reviews.py` and `review_config.py`.
