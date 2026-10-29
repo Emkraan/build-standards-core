@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.90.0, ops center plan context)
+
+Plain-language facts for Terraform apply cards. Opt in: new `server/modules/tf_context.py`, used by the approval brief.
+
+- Open PRs that change the same root, the plan text parsed into resources with one sentence each, and principal names through an optional provider (null default: none); the repo is `plan_repo` in review_config and the roots spec path is configurable (DESIGN.md 12.40). Tests: 5.
+
 ## 2026-10-29 (v1.83.0, ops center privileged reviews and review config)
 
 The privileged deployments lane server half and the shared review config. Opt in: new `server/modules/privileged_reviews.py` and `review_config.py`.

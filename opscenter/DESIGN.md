@@ -1326,6 +1326,7 @@ the standard drops: it is waiting on something named here.
 | (doc audit) | documentation audit and coverage page | lifted: `engine/doc_audit.py`, `server/modules/doc_coverage.py` (12.26); the docs home read is a driver the consumer supplies |
 | (review helpers) | live code host facts and review conversations | lifted: `server/modules/live_truth.py`, `lanes/review_threads.py` (12.27) |
 | (privileged reviews) | privileged deployments lane and review config | lifted: `server/modules/privileged_reviews.py`, `review_config.py` (12.28) |
+| (plan context) | facts for apply cards | lifted: `server/modules/tf_context.py`; principal names are a provider slot (12.40) |
 | (server modules, core consumption) | the core consumption panel's server half | lifted: `server/modules/core_consumption.py` (12.24) |
 | (server) | the running server and its routes | lifted as a generic server: `server/` (12.21); the agent session routes and some page halves are not lifted |
 | (4) | the app | lifted: `opscenter/app`, all 114 source files, typecheck, unit tests and build in CI; the browser tests are `npm run test:browser` |
@@ -1783,3 +1784,7 @@ exist. Only then does it decide the pending deployment through the code host and
 is identical to one whose apply failed (retry is the path), and an optional guard (the other-PR dependency check when the Olympus page is
 present) can refuse it. Routes: `GET /api/privileged-reviews`, `POST /api/olympus-reviews/deployment/approve`, `/reject`, `/retry` (the path
 the app already calls). Nothing is decided automatically.
+
+### 12.40 Plan context
+
+`server/modules/tf_context.py` gives the approval brief (12.41) the facts it cannot get from the plan alone. Open PRs that touch the same root: the open PR list of `plan_repo` (review_config 12.28) is read in a background thread (single flight, refreshed after 120 seconds, unknown after 900, never reported as no overlap when it could not be read) and each PR's changed files are matched to a root's directory, its tier vars file and the local modules it calls, all read from origin/main of the local clone (`TF_CONTEXT_REPO`, spec path `TF_CONTEXT_SPEC`, default `.github/terraform-roots.json`, schema in 12.34); applying from main while such a PR is open undoes or pre-empts it. The plan text is parsed into resources (address, action, attributes, ids added or removed) with one plain sentence per resource, and the .tf files that declare a plan's resources tie a privileged run to the roots it really changes. Principal ids are resolved to names only through the consumer's provider (`TF_CONTEXT_PROVIDER=path/to/file.py:ClassName` with an optional `resolve_principal(id) -> {name, kind}`): the old module ran a cloud CLI session of the owner for this, which core does not, so with no provider names are unknown and the brief says so. A page GET never waits on the code host or the provider.
