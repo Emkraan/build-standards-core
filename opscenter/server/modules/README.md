@@ -36,6 +36,7 @@ One stdlib Python module per page or lane backend (opscenter/DESIGN.md section 1
 
 | `repo_reviews.py` | The other repos page: PRs that need the owner (failing checks with the files named, stale green, review requested), issues by who moves next, shipped PRs, the core merge lane and auto-fix lane rows, re-run failed jobs (DESIGN.md 12.29) | `repo_reviews_test.py` (13) |
 
+| `pool_view.py` | Optional, off by default: host pool evidence for a pool roll's Destroy approval card, read through a consumer command (DESIGN.md 12.46) | `pool_view_test.py` (10) |
 | `card_brief.py` | The brief for owner apply, privileged deployment and runbook release cards: overlap warning from code, access table, rule-by-rule auto-approve text; estate wording is one data file (DESIGN.md 12.43) | `card_brief_test.py` (67) |
 | `approval_brief.py` | The approval brief on decision cards: three plain paragraphs from a consumer model command over a deterministic draft, secret-safe diff, style validator, cache by head (DESIGN.md 12.41) | `approval_brief_test.py` (28) |
 | `tf_context.py` | Plain-language facts for apply cards: PRs that overlap a root, the plan parsed into resources, principal names through an optional provider (DESIGN.md 12.40) | `tf_context_test.py` (5) |

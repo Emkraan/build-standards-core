@@ -21,7 +21,7 @@ Purpose: The approval brief for Reviews cards that are not pull requests: owner 
            roll_run_text     what a pool roll delete run is
            host_group_roles, host_resource_groups, host_vm_prefix   the sign-in grants to a group on pool hosts that the
                              auto-approve rule counts as inert (none: the rule never counts one)
-         Pool roll evidence is an optional module (avd_pool: is_roll, evidence); without it no card is a pool roll.
+         Pool roll evidence is an optional module (pool_view: is_roll, evidence); without it no card is a pool roll.
 Date:    2026-10-15
 """
 
@@ -40,9 +40,9 @@ import paths
 import review_config as cfg
 import tf_context
 
-# avd_pool is a separate, consumer specific module: without it no card is a pool roll
+# pool_view is an optional, off by default module: without it (or unconfigured) no card is a pool roll
 try:
-    avd_pool = importlib.import_module("avd_pool")
+    avd_pool = importlib.import_module("pool_view")
 except ImportError:
 
     class avd_pool:  # noqa: N801 - a namespace standing in for the module
