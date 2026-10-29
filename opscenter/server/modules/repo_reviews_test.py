@@ -37,18 +37,44 @@ CFG.write_text(
         }
     )
 )
-os.environ["OPSCENTER_REVIEWS_CONFIG"] = str(CFG)
-os.environ["CORE_LANE_STATE"] = str(STATE)
-os.environ["REPO_REVIEWS_GH_BIN"] = str(GH)
-os.environ["REVIEW_ACTED_STORE"] = str(TMP / "acted.json")
+ENV = {
+    "OPSCENTER_REVIEWS_CONFIG": str(CFG),
+    "CORE_LANE_STATE": str(STATE),
+    "REPO_REVIEWS_GH_BIN": str(GH),
+    "REVIEW_ACTED_STORE": str(TMP / "acted.json"),
+}
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import own_lane  # noqa: E402
-import repo_reviews as rr  # noqa: E402
+import importlib  # noqa: E402
 
-own_lane.register(
-    "core", STATE
-)  # the core lane writes its own-PR fix records into the same state file
+import own_lane  # noqa: E402
+
+rr = None
+_saved = {}
+
+
+def setUpModule():
+    """The module reads its environment at import, so set it, load the module fresh, and undo all of it afterwards."""
+    global rr
+    for k, v in ENV.items():
+        _saved[k] = os.environ.get(k)
+        os.environ[k] = v
+    import repo_reviews
+
+    rr = importlib.reload(repo_reviews)
+    own_lane.register(
+        "core", STATE
+    )  # the core lane writes its own-PR fix records into the same state file
+
+
+def tearDownModule():
+    for k, v in _saved.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
+    own_lane.STATE.pop("core", None)
+
 
 REPO = "acme/core"
 HEAD = "a" * 40
