@@ -1,10 +1,16 @@
 # Changelog
 
-## 2026-10-29 (v1.90.0, ops center approval brief)
+## 2026-10-29 (v1.91.0, ops center approval brief)
 
 The approval brief on Reviews cards. Opt in: new `server/modules/approval_brief.py` and `POST /api/reviews/brief`.
 
 - Three plain paragraphs on every card that asks the owner to decide, written in the background by the consumer's model command and always backed by a deterministic draft; no model configured means the draft only (DESIGN.md 12.41). Tests: 28.
+
+## 2026-10-29 (v1.90.0, ops center maintenance window hold)
+
+The review pages' side of the maintenance window hold. Opt in: new `lanes/maintenance_hold.py`.
+
+- The Needs me preview of what an approval would do now, the held cards, approve without enqueue with one window comment per head, and the emergency override on a held card pinned to the held head with a recorded reason (DESIGN.md 12.41). Tests: 9.
 
 ## 2026-10-29 (v1.89.0, ops center label hold explainer)
 

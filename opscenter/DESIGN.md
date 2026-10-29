@@ -1328,6 +1328,7 @@ the standard drops: it is waiting on something named here.
 
 | (PR landing) | structured ask for PR cards | lifted: `lanes/pr_landing.py` (12.42) |
 | (label hold) | hold label explainer | lifted: `lanes/label_hold.py` (12.40) |
+| (maintenance hold) | maintenance window hold for the review pages | lifted: `lanes/maintenance_hold.py` (12.41) |
 | (review helpers) | live code host facts and review conversations | lifted: `server/modules/live_truth.py`, `lanes/review_threads.py` (12.27) |
 | (privileged reviews) | privileged deployments lane and review config | lifted: `server/modules/privileged_reviews.py`, `review_config.py` (12.28) |
 | (plan context) | facts for apply cards | lifted: `server/modules/tf_context.py`; principal names are a provider slot (12.40) |
@@ -1807,6 +1808,10 @@ the app already calls). Nothing is decided automatically.
 ### 12.40 Label hold explainer
 
 `lanes/label_hold.py` answers three things about one of the owner's PRs sitting on a hold label (default `do-not-merge`, `OPSCENTER_HOLD_LABELS` comma separated): who applied the label and when (the label event on the PR timeline, cached 10 minutes), the newest entry of the decisions log (`OPRG_DECISIONS_LOG`, default `<state>/decisions-log.md`) that names the PR and uses hold wording, and which blocking review findings the owner's triage markers (`<!-- triage:<head> H1 H2 -->`, posted after the newest review comment for that head) already answer. `triage_context` feeds the approval brief; `describe` writes the plain sentence and the next step, ASCII only and with no semicolons. The override label (`OPSCENTER_OVERRIDE_LABEL`, default `ai-review-override`) is applied only when the review verdict for the head is blocked and every blocking id is triaged. Pure helpers take their inputs as arguments; the code host runner is the caller's `gh(args, raw=False)`. Times display in `OPSCENTER_TZ` (default UTC). The server module `other_reviews` imports it optionally for the triage context. No route: it is a library the review pages call.
+
+### 12.41 Maintenance window hold
+
+`lanes/maintenance_hold.py` is the review pages' half of the maintenance window (the lane's half is `lanes/maintenance_window.py`, 12.2, whose window math and wording it imports so the card and the lane always agree). `need_view` says what an engineer PR's approval would do right now: nothing special, or held until the next window of its class (`standard`, `restricted`, or `both` when the systems it touches are unknown, which waits for a time both are open), with the plain reasons and the override wording. `hold` approves without enqueueing, records the hold in the held-for-window file and posts the one window comment per head (a comment with a forbidden word, a semicolon or an em dash is refused; `FORBIDDEN` is a bot, AI, assistant and co-author check the consumer extends with `OPSCENTER_COMMENT_FORBIDDEN`). `held_cards` phases each held PR against the live heads (held, in flight when new commits landed, gone when closed). `override` is the emergency merge on a held card: pinned to the held head, a reason of 8 to 300 characters required, merged through `lanes/merge_queue.enqueue`, recorded in the overrides sidecar and the decisions log as `window_override`. Everything is passed in `cfg_io` (gh, repo, log, held_path, overrides_path, verify_head, set_queue, self_login), so the module names no repo, login or path. There is no route of its own: the platform review page that calls it serves the override. The old module's change-control wording (two system classes and an emergency change request name) is the standard `standard` and `restricted` classes and a plain emergency override here.
 
 ### 12.41 Approval brief
 
