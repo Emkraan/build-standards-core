@@ -1,10 +1,22 @@
 # Changelog
 
-## 2026-10-28 (v1.76.0, ops center debt and improvements)
+## 2026-10-28 (v1.78.0, ops center debt and improvements)
 
 The Debt and improvements page server half. Opt in: new `server/modules/eng_backlog.py` and routes.
 
 - The markdown files stay the source of truth; decisions rewrite one Status line under a lock (DESIGN.md 12.25). Tackle goes through the runtime slot. Tests: 10.
+
+## 2026-10-28 (v1.77.0, ops center documentation audit)
+
+The documentation audit and the Knowledge page's coverage server half. Opt in: new `engine/doc_audit.py` and `server/modules/doc_coverage.py`.
+
+- Rules R1 to R12 over a registry, driven by `DOC_AUDIT_CONFIG`; the docs home is read through the consumer's driver (`DOCS_HOME_CMD`) and the audit fails closed without one (DESIGN.md 12.26). Tests: 17 (a real git origin and a fake driver) and 9.
+
+## 2026-10-28 (v1.75.0, ops center core consumption panel)
+
+The core consumption panel server half. Opt in: new `server/modules/core_consumption.py` and routes.
+
+- Reads the consumption feed only; approvals are single gh calls gated on live checks (DESIGN.md 12.24). Tests: 28.
 
 ## 2026-10-28 (v1.74.0, ops center runtime slot)
 

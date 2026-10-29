@@ -17,6 +17,7 @@ The cost gated analyzer's deterministic parts (opscenter/DESIGN.md section 2.6 a
 | `board_build.py` | The board composer and the bundle step: the contract check, items the ops center adds itself, the routing filter, handled aliasing, first seen stamps, fingerprints, freeze status, monitors, the team away strip. Writes the app's data files | `board_build_test.py` (8) |
 
 | `ref_status.py` | The live ref check plug-in (`OPSCENTER_REF_STATUS`): the state of the pull requests and tracker tickets a text names (`resolve`), the finished ones (`done_lines`), and which automation cards have no cause left (`finished`), including the approve the apply check. Read only through `gh` and a tracker driver; repositories, key pattern and driver are parameters (DESIGN.md 12.18) | `ref_status_test.py` (20) |
+| `doc_audit.py` | The daily documentation audit (rules R1 to R12, the gap store, the surface slice), configured by `DOC_AUDIT_CONFIG` and reading the docs home through `DOCS_HOME_CMD` (DESIGN.md 12.26) | `doc_audit_test.py` (17) |
 
 Plug-ins are files named by environment variables (`OPSCENTER_PEOPLE`, `OPSCENTER_BOARD_SOURCES`, `OPSCENTER_REF_STATUS`,
 `OPSCENTER_TEAM_AWAY`), each optional; DESIGN.md 12.13 lists their contracts.
