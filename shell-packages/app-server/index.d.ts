@@ -226,6 +226,34 @@ export declare function closeTelemetryOnShutdown(
 // --- Gateway guard ---
 
 export declare const GATEWAY_HEADER: "x-gateway-token";
+
+/** One place a shell names itself: read by every gateway function, the telemetry defaults and the timing key. */
+export interface ConsumerPreset {
+  /** Header the gateway puts its token in (lower case). */
+  header: string;
+  /** App role the gateway token must carry. An empty string skips the role check. */
+  role: string;
+  /** Request property set next to req.gateway. */
+  requestProperty: string;
+  /** Body message of the gateway 403. */
+  refusalMessage: string;
+  /** Names of the settings the guard reads from env. */
+  settings: { enforce: string; principalId: string; audience: string; tenantId: string };
+  /** Default service.name when neither roleName nor WEBSITE_SITE_NAME is set. */
+  serviceName: string;
+  /** Tracer scope name. */
+  tracerScope: string;
+  /** Base name of the Symbol.for key the request timing is stored under. */
+  timingKey: string;
+}
+export declare const CONSUMER_PRESET_DEFAULTS: Readonly<ConsumerPreset>;
+/** Set the preset once at startup. Fields left out keep the core default; each call replaces the previous preset. Per-call options still override it. */
+export declare function setConsumerPreset(
+  preset?: Partial<Omit<ConsumerPreset, "settings">> & { settings?: Partial<ConsumerPreset["settings"]> },
+): Readonly<ConsumerPreset>;
+export declare function getConsumerPreset(): Readonly<ConsumerPreset>;
+/** Back to the core defaults (tests). */
+export declare function resetConsumerPreset(): void;
 export declare const GATEWAY_EXEMPT_PATHS: readonly string[];
 export declare const GATEWAY_PLATFORM_PING_PATHS: readonly string[];
 export declare const GATEWAY_ROLE: "gateway";
@@ -259,7 +287,7 @@ export declare function verifyGatewayToken(
 
 /**
  * Read the gateway header and remove it from req.headers and req.rawHeaders (any case).
- * The header name defaults to GATEWAY_HEADER.
+ * The header name defaults to the preset header.
  */
 export declare function takeGatewayHeader(req: any, header?: string): string | undefined;
 
@@ -277,13 +305,13 @@ export interface GatewayGuardOptions {
   log?: (line: string) => void;
   now?: () => number;
   logIntervalMs?: number;
-  /** Header the gateway puts its token in. Default GATEWAY_HEADER. It is stripped from the request whatever the settings. */
+  /** Header the gateway puts its token in. Default the preset header. It is stripped from the request whatever the settings. */
   header?: string;
-  /** App role the token must carry. Default GATEWAY_ROLE. An empty string skips the role check. */
+  /** App role the token must carry. Default the preset role. An empty string skips the role check. */
   role?: string;
-  /** Request property that carries { ok, reason } once checked, set next to req.gateway. Default "gateway". */
+  /** Request property that carries { ok, reason } once checked, set next to req.gateway. Default the preset request property. */
   requestProperty?: string;
-  /** Body message of the 403. Default "This API is reachable only through the API gateway." */
+  /** Body message of the 403. Default the preset message. */
   refusalMessage?: string;
 }
 

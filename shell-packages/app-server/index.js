@@ -635,10 +635,80 @@ export function originGuard(options) {
   };
 }
 
+// --- Consumer preset ---
+//
+// One place a shell names itself. Every gateway function, the telemetry defaults and the timing
+// key read it, so a consumer calls setConsumerPreset once at startup and passes nothing per call.
+// A per-call option still wins over the preset. The defaults are the core's own neutral names.
+
+/**
+ * @typedef {{
+ *   header: string, role: string, requestProperty: string, refusalMessage: string,
+ *   settings: { enforce: string, principalId: string, audience: string, tenantId: string },
+ *   serviceName: string, tracerScope: string, timingKey: string,
+ * }} ConsumerPreset
+ */
+
+/** @type {Readonly<ConsumerPreset>} */
+export const CONSUMER_PRESET_DEFAULTS = Object.freeze({
+  header: "x-gateway-token",
+  role: "gateway",
+  requestProperty: "gateway",
+  refusalMessage: "This API is reachable only through the API gateway.",
+  settings: Object.freeze({ enforce: "GATEWAY_ENFORCE", principalId: "GATEWAY_PRINCIPAL_ID", audience: "GATEWAY_AUDIENCE", tenantId: "TENANT_ID" }),
+  serviceName: "api",
+  tracerScope: "app-server",
+  timingKey: "shell.app-server.timing",
+});
+
+/** @type {Readonly<ConsumerPreset>} */
+let consumerPreset = CONSUMER_PRESET_DEFAULTS;
+
+/**
+ * Set the consumer preset. Fields left out keep the core default, so each call replaces the
+ * previous preset rather than adding to it. An empty string for role is kept (it skips the role
+ * check); an empty string for any other field falls back to the default.
+ * @param {{ header?: string, role?: string, requestProperty?: string, refusalMessage?: string, settings?: Partial<ConsumerPreset["settings"]>, serviceName?: string, tracerScope?: string, timingKey?: string }} [preset]
+ * @returns {Readonly<ConsumerPreset>}
+ */
+export function setConsumerPreset(preset = {}) {
+  const d = CONSUMER_PRESET_DEFAULTS;
+  const text = (/** @type {unknown} */ v, /** @type {string} */ fallback) => (typeof v === "string" && v.trim() ? v.trim() : fallback);
+  const s = preset.settings || {};
+  consumerPreset = Object.freeze({
+    header: text(preset.header, d.header).toLowerCase(),
+    role: typeof preset.role === "string" ? preset.role : d.role,
+    requestProperty: text(preset.requestProperty, d.requestProperty),
+    refusalMessage: typeof preset.refusalMessage === "string" && preset.refusalMessage ? preset.refusalMessage : d.refusalMessage,
+    settings: Object.freeze({
+      enforce: text(s.enforce, d.settings.enforce),
+      principalId: text(s.principalId, d.settings.principalId),
+      audience: text(s.audience, d.settings.audience),
+      tenantId: text(s.tenantId, d.settings.tenantId),
+    }),
+    serviceName: text(preset.serviceName, d.serviceName),
+    tracerScope: text(preset.tracerScope, d.tracerScope),
+    timingKey: text(preset.timingKey, d.timingKey),
+  });
+  return consumerPreset;
+}
+
+/** The preset in force now. */
+export function getConsumerPreset() {
+  return consumerPreset;
+}
+
+/** Back to the core defaults (tests). */
+export function resetConsumerPreset() {
+  consumerPreset = CONSUMER_PRESET_DEFAULTS;
+}
+
 // --- Server-Timing ---
 
 const TOKEN_RE = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
-const TIMING_KEY = Symbol.for("shell.app-server.timing");
+// The base symbol follows the consumer preset (timingKey), read on every request so a preset set
+// after import still applies. Recording and reading go through the same function.
+const timingSymbol = () => Symbol.for(consumerPreset.timingKey);
 
 /**
  * @typedef {{ name: string, dur: number, desc?: string }} TimingMark
@@ -647,7 +717,7 @@ const TIMING_KEY = Symbol.for("shell.app-server.timing");
 
 /** @param {any} req @returns {RequestTiming | undefined} */
 function timingOf(req) {
-  return req ? req[TIMING_KEY] : undefined;
+  return req ? req[timingSymbol()] : undefined;
 }
 
 /**
@@ -947,7 +1017,7 @@ export function serverTiming(options = {}) {
   return function serverTimingMiddleware(req, res, next) {
     /** @type {RequestTiming} */
     const timing = { start: performance.now(), marks: [] };
-    req[TIMING_KEY] = timing;
+    req[timingSymbol()] = timing;
     if (extraKey) req[extraKey] = timing;
     let headerMs = 0;
     // The app this middleware is mounted on (a sub-app swaps req.app while it
@@ -1562,13 +1632,13 @@ export function requestTelemetry(options) {
     tokens.get().catch(() => null);
 
     /** @type {Record<string, string>} */
-    const resourceAttrs = { "service.name": opts.roleName || process.env.WEBSITE_SITE_NAME || "api" };
+    const resourceAttrs = { "service.name": opts.roleName || process.env.WEBSITE_SITE_NAME || consumerPreset.serviceName };
     if (opts.roleVersion) resourceAttrs["service.version"] = String(opts.roleVersion);
     const provider = new BasicTracerProvider({
       resource: resourceFromAttributes(resourceAttrs),
       spanProcessors: [new BatchSpanProcessor(exporter)],
     });
-    const tracer = provider.getTracer("app-server");
+    const tracer = provider.getTracer(opts.tracerScope || consumerPreset.tracerScope);
 
     /** @param {RequestLogRecord} record */
     const sink = (record) => {
@@ -1665,6 +1735,7 @@ export function closeTelemetryOnShutdown(telemetry, options = {}) {
  * @typedef {{
  *   load: () => { exporter: any, traceBase: any, resources: any },
  *   roleName?: string,
+ *   tracerScope?: string,
  *   roleVersion?: string,
  *   connectionString?: string,
  *   authenticationString?: string,
@@ -1748,8 +1819,8 @@ export function whatsNewHandler(options) {
 
 // --- Gateway guard ---
 //
-// The header name, the role and the request property are options: the defaults below are the
-// core's, a shell with its own names passes them (header, role, requestProperty).
+// The header name, the role, the request property, the message and the setting names come from the
+// consumer preset (setConsumerPreset, once at startup); the options below override it per call.
 //
 // Every module API is meant to be reached through the tier's API gateway only. The gateway adds a directory access token
 // minted by its own managed identity in the X-Gateway-Token header (the gateway's managed identity authentication policy
@@ -1910,7 +1981,7 @@ export async function verifyGatewayToken(token, cfg) {
   if (typeof claims.nbf === "number" && claims.nbf - GATEWAY_SKEW_S > nowS) return { ok: false, reason: "not_yet_valid" };
   if (String(claims.oid || "").toLowerCase() !== cfg.principalId.toLowerCase()) return { ok: false, reason: "principal" };
   if (claims.idtyp !== undefined && claims.idtyp !== "app") return { ok: false, reason: "principal" };
-  const role = cfg.role ?? GATEWAY_ROLE;
+  const role = cfg.role ?? consumerPreset.role;
   if (role && !(Array.isArray(claims.roles) && claims.roles.includes(role))) return { ok: false, reason: "role" };
   const key = await cfg.keys.get(header.kid);
   if (key === undefined) return { ok: false, reason: "keys_unavailable" };
@@ -1929,11 +2000,11 @@ export async function verifyGatewayToken(token, cfg) {
  * (req.headers and req.rawHeaders, matched in any case). headersDistinct is built from rawHeaders
  * on first read, so it never sees the value.
  * @param {any} req
- * @param {string} [header] header name, default GATEWAY_HEADER
+ * @param {string} [header] header name, default the preset header
  * @returns {string | undefined}
  */
-export function takeGatewayHeader(req, header = GATEWAY_HEADER) {
-  const name = String(header || GATEWAY_HEADER).toLowerCase();
+export function takeGatewayHeader(req, header = consumerPreset.header) {
+  const name = String(header || consumerPreset.header).toLowerCase();
   const h = req && req.headers;
   const raw = h ? h[name] : undefined;
   if (h) delete h[name];
@@ -1948,7 +2019,8 @@ export function takeGatewayHeader(req, header = GATEWAY_HEADER) {
 
 /**
  * Express middleware that admits a request only when it came through the gateway.
- * Settings come from options, else from env (default process.env):
+ * Settings come from options, else from env (default process.env). The names below are the core's
+ * defaults; the consumer preset renames them, and the misconfigured log line prints the names in force:
  *   GATEWAY_ENFORCE       "on" = refuse (403, or 503 when the signing keys cannot be read),
  *                              anything else = log only (and nothing at all while unconfigured)
  *   GATEWAY_PRINCIPAL_ID  object id of the tier's gateway managed identity
@@ -1966,19 +2038,20 @@ export function takeGatewayHeader(req, header = GATEWAY_HEADER) {
  */
 export function gatewayGuard(options = {}) {
   const env = options.env ?? process.env;
-  const enforce = parseGatewayEnforce(options.enforce ?? env.GATEWAY_ENFORCE);
-  const principalId = String(options.principalId ?? env.GATEWAY_PRINCIPAL_ID ?? "").trim();
-  const tenantId = String(options.tenantId ?? env.TENANT_ID ?? "").trim();
-  const audiences = gatewayAudiences(options.audience ?? env.GATEWAY_AUDIENCE);
+  const names = consumerPreset.settings;
+  const enforce = parseGatewayEnforce(options.enforce ?? env[names.enforce]);
+  const principalId = String(options.principalId ?? env[names.principalId] ?? "").trim();
+  const tenantId = String(options.tenantId ?? env[names.tenantId] ?? "").trim();
+  const audiences = gatewayAudiences(options.audience ?? env[names.audience]);
   const exempt = new Set((options.exempt ?? GATEWAY_EXEMPT_PATHS).map((p) => p.replace(/\/+$/, "") || "/"));
   const pings = new Set((options.platformPingPaths ?? GATEWAY_PLATFORM_PING_PATHS).map((p) => p.replace(/\/+$/, "") || "/"));
   const log = options.log ?? ((/** @type {string} */ line) => console.warn(line));
   const now = options.now ?? Date.now;
   const logIntervalMs = options.logIntervalMs ?? 60000;
-  const header = String(options.header || GATEWAY_HEADER).toLowerCase();
-  const role = options.role ?? GATEWAY_ROLE;
-  const requestProperty = String(options.requestProperty || "gateway");
-  const refusalMessage = options.refusalMessage ?? "This API is reachable only through the API gateway.";
+  const header = String(options.header || consumerPreset.header).toLowerCase();
+  const role = options.role ?? consumerPreset.role;
+  const requestProperty = String(options.requestProperty || consumerPreset.requestProperty);
+  const refusalMessage = options.refusalMessage ?? consumerPreset.refusalMessage;
   const configured = GUID_RE.test(principalId) && GUID_RE.test(tenantId) && audiences.length > 0;
   const keys = configured ? options.keys ?? createSigningKeyCache({ tenantId, fetchKeys: options.fetchKeys, now }) : null;
   if (keys && typeof keys.warm === "function") keys.warm();
@@ -1986,13 +2059,13 @@ export function gatewayGuard(options = {}) {
   const seen = new Map();
 
   log(JSON.stringify({ gateway: enforce ? "enforce" : "log_only", configured }));
-  const anySet = Boolean(principalId || audiences.length || (options.principalId ?? env.GATEWAY_PRINCIPAL_ID));
+  const anySet = Boolean(principalId || audiences.length || (options.principalId ?? env[names.principalId]));
   if (!configured && anySet) {
     /** @type {string[]} */
     const bad = [];
-    if (!GUID_RE.test(principalId)) bad.push("GATEWAY_PRINCIPAL_ID");
-    if (!GUID_RE.test(tenantId)) bad.push("TENANT_ID");
-    if (audiences.length === 0) bad.push("GATEWAY_AUDIENCE");
+    if (!GUID_RE.test(principalId)) bad.push(names.principalId);
+    if (!GUID_RE.test(tenantId)) bad.push(names.tenantId);
+    if (audiences.length === 0) bad.push(names.audience);
     log(JSON.stringify({ gateway: "misconfigured", missing_or_invalid: bad }));
   }
 
