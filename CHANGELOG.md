@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.87.0, ops center owner-applied roots)
+
+The owner-applied Terraform roots server half. Opt in: new `server/modules/owner_roots.py`.
+
+- Plans each owner root from origin/main in a private worktree, keeps the saved plan with its digest, and applies exactly that plan on the owner's typed confirm, then verifies with a fresh plan. Everything cloud specific (who must be signed in, the sign-in prompt, backend arguments, protections lifted around an apply) is a provider slot with a null default (DESIGN.md 12.34). Tests: 24.
+
 ## 2026-10-29 (v1.86.0, ops center infrastructure page)
 
 The Infrastructure page server half. Opt in: new `server/modules/infra.py`.

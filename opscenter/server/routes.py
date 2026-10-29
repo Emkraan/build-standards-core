@@ -309,6 +309,36 @@ def _table():
         (P, "/api/team_prefix-reviews/merge", "other_reviews", "merge", None),
         (P, "/api/team_prefix-reviews/approve", "other_reviews", "approve", None),
         (P, "/api/team_prefix-reviews/decide-fix", "other_reviews", "decide_fix", None),
+        # owner-applied roots (server/modules/owner_roots.py; the cloud is its provider slot)
+        (G, "/api/owner-roots", "owner_roots", "get", None),
+        (
+            P,
+            "/api/owner-roots/plan",
+            "owner_roots",
+            "request",
+            lambda m: lambda r: m.request(_payload(r), "plan"),
+        ),
+        (
+            P,
+            "/api/owner-roots/plan-all",
+            "owner_roots",
+            "request",
+            lambda m: lambda r: m.request(_payload(r), "plan-all"),
+        ),
+        (
+            P,
+            "/api/owner-roots/apply",
+            "owner_roots",
+            "request",
+            lambda m: lambda r: m.request(_payload(r), "apply"),
+        ),
+        (
+            P,
+            "/api/owner-roots/signin",
+            "owner_roots",
+            "request",
+            lambda m: lambda r: m.request(_payload(r), "signin"),
+        ),
         # infrastructure (server/modules/infra.py; spend, cron, the VM and the log come from its provider)
         (G, "/api/infra/spend", "infra", "spend", None),
         (G, "/api/infra/cron", "infra", "cron", None),
@@ -605,6 +635,9 @@ def build(registry=None):
     acc = load("model_accounts")
     if acc is not None and hasattr(acc, "sample"):
         r.background.append((acc.sample, 600))
+    roots = load("owner_roots")
+    if roots is not None and hasattr(roots, "maybe_refresh") and roots.configured():
+        r.background.append((roots.maybe_refresh, 60))
     return r
 
 

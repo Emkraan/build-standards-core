@@ -352,6 +352,22 @@ class Routes(unittest.TestCase):
         finally:
             os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
 
+    def test_owner_roots_with_nothing_configured_answer_empty_and_refuse_writes(self):
+        os.environ["OWNER_ROOTS_CACHE"] = os.path.join(
+            os.environ["OPSCENTER_STATE_DIR"], "owner-roots"
+        )
+        try:
+            s, body = self.js("GET", "/api/owner-roots")
+            self.assertEqual(
+                (s, body["items"], body["running"], body["signin"]), (200, [], False, None)
+            )
+            self.assertEqual(
+                self.js("POST", "/api/owner-roots/apply", {"name": "x", "tier": "y"})[0], 404
+            )
+            self.assertEqual(self.js("POST", "/api/owner-roots/nope", {})[0], 404)
+        finally:
+            os.environ.pop("OWNER_ROOTS_CACHE", None)
+
     def test_the_infra_routes_answer_empty_with_nothing_configured(self):
         for k in ("INFRA_REPOS", "INFRA_RUNNER_REPO", "OPSCENTER_INFRA_PROVIDER"):
             os.environ.pop(k, None)
