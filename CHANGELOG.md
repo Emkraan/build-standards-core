@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-29 (v1.83.0, ops center privileged reviews and review config)
+## 2026-10-29 (v1.85.0, ops center privileged reviews and review config)
 
 The privileged deployments lane server half and the shared review config. Opt in: new `server/modules/privileged_reviews.py` and `review_config.py`.
 
