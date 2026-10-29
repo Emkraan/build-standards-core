@@ -36,16 +36,39 @@ ESC.write_text(f"#!/usr/bin/env python3\nprint(open({str(ESCJ)!r}).read())\n")
 ESC.chmod(0o755)
 CFG = TMP / "reviews-config.json"
 CFG.write_text(json.dumps({"owner": "owner1", "other_repo": "acme/other", "other_lane": "other"}))
-os.environ.update(
+ENV = dict(
     OPSCENTER_REVIEWS_CONFIG=str(CFG),
     OTHER_REVIEWS_GH_BIN=str(GH),
     REVIEW_ACTED_STORE=str(TMP / "acted.json"),
     OPSCENTER_STATE_DIR=str(TMP / "state"),
 )
-os.environ.pop("OPSCENTER_ESCALATIONS_CMD", None)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import other_reviews as o  # noqa: E402
+import importlib  # noqa: E402
+
+o = None
+_saved = {}
+
+
+def setUpModule():
+    """The module reads its environment at import: set it, load the module fresh, undo all of it afterwards."""
+    global o
+    for k in list(ENV) + ["OPSCENTER_ESCALATIONS_CMD"]:
+        _saved[k] = os.environ.get(k)
+    os.environ.update(ENV)
+    os.environ.pop("OPSCENTER_ESCALATIONS_CMD", None)
+    import other_reviews
+
+    o = importlib.reload(other_reviews)
+
+
+def tearDownModule():
+    for k, v in _saved.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
+
 
 HEAD = "a" * 40
 OK = [{"name": "ci", "conclusion": "SUCCESS", "completedAt": "2026-10-14T10:00:00Z"}]
