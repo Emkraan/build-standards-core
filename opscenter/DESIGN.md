@@ -1786,5 +1786,5 @@ after an earlier approval) re-verifies under a lock: the queued commit equals th
 `typed_confirm`, the run is still waiting on that environment at the same attempt, approvals only on `main`, and the pending deployment ids
 exist. Only then does it decide the pending deployment through the code host and log the decision. An approve is refused while the run's plan
 is identical to one whose apply failed (retry is the path), and an optional guard (the other-PR dependency check when the Olympus page is
-present) can refuse it. Routes: `GET /api/privileged-reviews`, `POST /api/olympus-reviews/deployment/approve`, `/reject`, `/retry` (the path
+present) can refuse it. Routes: `GET /api/privileged-reviews`, `POST /api/platform-reviews/deployment/approve`, `/reject`, `/retry` (the path
 the app already calls). Nothing is decided automatically.
