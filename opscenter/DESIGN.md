@@ -1324,6 +1324,8 @@ the standard drops: it is waiting on something named here.
 | (2.6) | analyzer: contract, handled match, first seen, routing, collector, bundle builder, wake gate | lifted: `engine/` (`contract`, `handled`, `first_seen`, `routing`, `collect`, `analysis_bundle`, `board_build`), `gates/action_center_gate.py`, `server/modules/routing_api.py` (12.13) |
 | (server modules, debt page) | debt and improvements page server half | lifted: `server/modules/eng_backlog.py` (12.25) |
 | (doc audit) | documentation audit and coverage page | lifted: `engine/doc_audit.py`, `server/modules/doc_coverage.py` (12.26); the docs home read is a driver the consumer supplies |
+| (runtime restart) | runtime restart card | lifted: `server/modules/runtime_restart.py`; the restart is a consumer script (12.35) |
+
 | (PR landing) | structured ask for PR cards | lifted: `lanes/pr_landing.py` (12.42) |
 | (label hold) | hold label explainer | lifted: `lanes/label_hold.py` (12.40) |
 | (review helpers) | live code host facts and review conversations | lifted: `server/modules/live_truth.py`, `lanes/review_threads.py` (12.27) |
@@ -1770,6 +1772,10 @@ position; it reuses `lanes/merge_queue.read`). The first read of a key blocks on
 comment (automated authors are listed, never tagged; the comment carries a marker naming the head and thread ids so a second call posts nothing),
 and `resolve` resolves one thread only when it is open on that PR. Every read failure raises `ThreadError`, so a caller fails closed.
 
+### 12.35 Runtime restart card
+
+`server/modules/runtime_restart.py` serves `GET` and `POST /api/hermes-restart` (the path the lifted app calls). The restart is never done by this server, so nothing here can take the backend down while work is running: a Python file the consumer supplies (`OPSCENTER_RUNTIME_RESTART_SCRIPT`) exposes `status()` (pending, last result, stale, busy jobs, safe), `request(mode, note, who)` for mode `now` or `idle`, and `cancel()`, and does the restart itself. The card's `alert` is `pending` when a restart is queued, `failed` when the last one failed and was not refused, and `stale` when plugins or config changed after the runtime started. With no script the card is empty (`configured` false) and a POST is 501; a script that cannot be loaded degrades to an error on the card, never an exception; an action other than now, idle or cancel is 400. The module in the handoff named one agent runtime and its script path; core names neither.
+
 ### 12.28 Review config and the privileged deployments lane
 
 `server/modules/review_config.py` holds every estate value the review pages need in one JSON file (`OPSCENTER_REVIEWS_CONFIG`, default
@@ -1783,7 +1789,7 @@ after an earlier approval) re-verifies under a lock: the queued commit equals th
 `typed_confirm`, the run is still waiting on that environment at the same attempt, approvals only on `main`, and the pending deployment ids
 exist. Only then does it decide the pending deployment through the code host and log the decision. An approve is refused while the run's plan
 is identical to one whose apply failed (retry is the path), and an optional guard (the other-PR dependency check when the Olympus page is
-present) can refuse it. Routes: `GET /api/privileged-reviews`, `POST /api/olympus-reviews/deployment/approve`, `/reject`, `/retry` (the path
+present) can refuse it. Routes: `GET /api/privileged-reviews`, `POST /api/platform-reviews/deployment/approve`, `/reject`, `/retry` (the path
 the app already calls). Nothing is decided automatically.
 
 ### 12.42 PR landing facts
