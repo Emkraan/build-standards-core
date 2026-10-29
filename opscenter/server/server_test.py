@@ -347,8 +347,20 @@ class Routes(unittest.TestCase):
             self.assertEqual((s, body["pending"]), (200, []))
             body = {"key": "destroy:1", "head_sha": "a" * 40}
             self.assertEqual(
-                self.js("POST", "/api/olympus-reviews/deployment/approve", body)[0], 501
+                self.js("POST", "/api/platform-reviews/deployment/approve", body)[0], 501
             )
+        finally:
+            os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
+
+    def test_other_reviews_with_no_config_answer_empty_and_a_write_is_501(self):
+        os.environ["OPSCENTER_REVIEWS_CONFIG"] = os.path.join(
+            os.environ["OPSCENTER_STATE_DIR"], "none.json"
+        )
+        try:
+            s, body = self.js("GET", "/api/team_prefix-reviews")
+            self.assertEqual((s, body["needs_me"]), (200, []))
+            payload = {"pr": 1, "head_sha": "a" * 40}
+            self.assertEqual(self.js("POST", "/api/team_prefix-reviews/merge", payload)[0], 501)
         finally:
             os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
 

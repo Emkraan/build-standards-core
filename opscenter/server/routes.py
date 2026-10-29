@@ -51,6 +51,15 @@ def _decorate_repos(data):
     )
 
 
+def _decorate_other(data):
+    cron = load("cron_pulse")
+    return (
+        cron.decorate_secondary(data)
+        if cron is not None and hasattr(cron, "decorate_secondary")
+        else data
+    )
+
+
 def _priv_decide(act):
     def adapter(mod):
         def h(req):
@@ -277,6 +286,17 @@ def _table():
             ),
         ),
         (P, "/api/eng-backlog/tackle", "eng_backlog", "tackle_item", lambda m: _eng_tackle(m)),
+        # the other repo's reviews (server/modules/other_reviews.py; the path is the one the app calls)
+        (
+            G,
+            "/api/team_prefix-reviews",
+            "other_reviews",
+            "get",
+            lambda m: lambda r: _decorate_other(m.get(force=_fresh(r))),
+        ),
+        (P, "/api/team_prefix-reviews/merge", "other_reviews", "merge", None),
+        (P, "/api/team_prefix-reviews/approve", "other_reviews", "approve", None),
+        (P, "/api/team_prefix-reviews/decide-fix", "other_reviews", "decide_fix", None),
         # plan reviews (server/modules/tf_reviews.py)
         (G, "/api/tf-reviews", "tf_reviews", "get", None),
         (
@@ -306,21 +326,21 @@ def _table():
         (G, "/api/privileged-reviews", "privileged_reviews", "get", None),
         (
             P,
-            "/api/olympus-reviews/deployment/approve",
+            "/api/platform-reviews/deployment/approve",
             "privileged_reviews",
             "decide",
             _priv_decide("approve"),
         ),
         (
             P,
-            "/api/olympus-reviews/deployment/reject",
+            "/api/platform-reviews/deployment/reject",
             "privileged_reviews",
             "decide",
             _priv_decide("reject"),
         ),
         (
             P,
-            "/api/olympus-reviews/deployment/retry",
+            "/api/platform-reviews/deployment/retry",
             "privileged_reviews",
             "decide",
             _priv_decide("retry"),
