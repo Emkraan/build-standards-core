@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.80.0, ops center privileged reviews and review config)
+
+The privileged deployments lane server half and the shared review config. Opt in: new `server/modules/privileged_reviews.py` and `review_config.py`.
+
+- Approve, reject and retry re-verify the run at the queued commit before deciding as the owner; the repo, owner login and environment names are data in one JSON file, and with none configured the page is empty and a decision is 501 (DESIGN.md 12.28). Tests: 13.
+
 ## 2026-10-29 (v1.79.0, ops center review helpers)
 
 Two helpers the review pages share. New `server/modules/live_truth.py` and `lanes/review_threads.py`.
