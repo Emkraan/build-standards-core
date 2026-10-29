@@ -1,10 +1,16 @@
 # Changelog
 
-## 2026-10-29 (v1.88.0, ops center repo reviews)
+## 2026-10-29 (v1.89.0, ops center repo reviews)
 
 The other repos page server half. Opt in: new `server/modules/repo_reviews.py`; `review_config` gains `repo_labels`, `autofix_lanes` and `autofix_after`.
 
 - Open PRs that need the owner (failing checks with the files the log names, stale green, review requested), issues by who moves next, shipped PRs, and the core merge lane and own-PR auto-fix lane rows; re-run failed jobs pinned to the head seen (DESIGN.md 12.29). Tests: 13.
+
+## 2026-10-29 (v1.88.0, ops center plan context)
+
+Plain-language facts for Terraform apply cards. Opt in: new `server/modules/tf_context.py`, used by the approval brief.
+
+- Open PRs that change the same root, the plan text parsed into resources with one sentence each, and principal names through an optional provider (null default: none); the repo is `plan_repo` in review_config and the roots spec path is configurable (DESIGN.md 12.40). Tests: 5.
 
 ## 2026-10-29 (v1.87.0, ops center runtime restart card)
 
