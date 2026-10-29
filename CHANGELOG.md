@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.104.0, ops center platform reviews)
+
+The platform reviews page server half and the sign-off contract it needs. Opt in: new `server/modules/platform_reviews.py`; `lanes/signoff_store.py` gains `plan_facts` fields, `confirm_needed`, a `plan` argument to `record` and a `carried` flag in `review`.
+
+- Escalations, held plan runs, privileged deployments, owner applies and the owner's own PRs on one page, with approve, request changes, sign off, accept the risk, release deletes, thread waits and destroy dispatch. Every estate value (repo, owner, tiers, workflows, labels, markers, the review script) is the `platform` object of the review config with a null default (DESIGN.md 12.47). Tests: 7 files.
+
 ## 2026-10-29 (v1.103.0, ops center badges)
 
 The combined sidebar badges payload. Opt in: new `server/modules/badges.py`.

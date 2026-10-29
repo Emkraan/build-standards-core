@@ -37,6 +37,7 @@ _KEYS = (
     "autofix_lanes",
     "autofix_after",
     "other_lane",
+    "platform",
 )
 
 
@@ -108,6 +109,13 @@ def repo_reviews():
 def map_of(key):
     v = load().get(key)
     return {str(k): str(x) for k, x in v.items()} if isinstance(v, dict) else {}
+
+
+def platform(key, default=None):
+    """One value of the platform reviews page's own settings (the `platform` object of the config file), or the default."""
+    v = load().get("platform")
+    v = v.get(key) if isinstance(v, dict) else None
+    return default if v in (None, "") else v
 
 
 def need(value, what):

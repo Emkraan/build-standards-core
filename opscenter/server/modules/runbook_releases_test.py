@@ -15,8 +15,6 @@ import unittest
 from pathlib import Path
 
 TMP = Path(tempfile.mkdtemp(prefix="rbrel-"))
-os.environ["OPRG_STATE_DIR"] = str(TMP / "state")
-os.environ["OPRG_CACHE_DIR"] = str(TMP / "cache")
 ROUTES = TMP / "routes.json"
 CALLS = TMP / "calls.log"
 FAKE = TMP / "gh"
@@ -34,12 +32,37 @@ sys.exit(1)
 """
 )
 FAKE.chmod(0o755)
-os.environ["OPRG_GH_BIN"] = str(FAKE)
+_ENV = {
+    "OPRG_STATE_DIR": str(TMP / "state"),
+    "OPRG_CACHE_DIR": str(TMP / "cache"),
+    "OPRG_GH_BIN": str(FAKE),
+}
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import contextlib  # noqa: E402
+import importlib  # noqa: E402
 
 import runbook_releases as rr  # noqa: E402
+
+_saved = {}
+
+
+def setUpModule():
+    """The module reads its paths and gh binary at import: set them, reload it, undo all of it afterwards."""
+    for k in _ENV:
+        _saved[k] = os.environ.get(k)
+    os.environ.update(_ENV)
+    importlib.reload(rr)
+
+
+def tearDownModule():
+    for k, v in _saved.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
+    importlib.reload(rr)
+
 
 A = [
     'azurerm_automation_runbook.rb["team-prefix-cmdb-emptyproduct_removal"]',

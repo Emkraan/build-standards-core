@@ -116,6 +116,19 @@ def _key(p):
     return p["key"]
 
 
+def _decorate(data, brief_fn, cron_fn):
+    """The approval brief's and the cron pulse's additions to a page payload, each only when its module is present."""
+    for mod, fn in (("approval_brief", brief_fn), ("cron_pulse", cron_fn)):
+        m = load(mod)
+        if m is not None and hasattr(m, fn):
+            data = getattr(m, fn)(data)
+    return data
+
+
+def _decorate_platform(data):
+    return _decorate(data, "decorate_plan", "decorate_primary")
+
+
 # (method, path, module, function, adapter(module) -> handler(req) or None for the default)
 def _table():
     G, P = "GET", "POST"
@@ -466,6 +479,42 @@ def _table():
         ),
         # sidebar badges (server/modules/badges.py)
         (G, "/api/badges", "badges", "get", None),
+        # platform reviews (server/modules/platform_reviews.py; the estate values are the review config `platform` object)
+        (
+            G,
+            "/api/platform-reviews",
+            "platform_reviews",
+            "get",
+            lambda m: lambda r: _decorate_platform(m.get()),
+        ),
+        (
+            P,
+            "/api/platform-reviews/approve",
+            "platform_reviews",
+            "decide",
+            lambda m: lambda r: m.decide(_payload(r), "approve"),
+        ),
+        (
+            P,
+            "/api/platform-reviews/request-changes",
+            "platform_reviews",
+            "decide",
+            lambda m: lambda r: m.decide(_payload(r), "request-changes"),
+        ),
+        (P, "/api/platform-reviews/window-override", "platform_reviews", "window_override", None),
+        (P, "/api/platform-reviews/resolve-thread", "platform_reviews", "resolve_thread", None),
+        (P, "/api/platform-reviews/triage", "platform_reviews", "triage", None),
+        (P, "/api/platform-reviews/decide-fix", "platform_reviews", "decide_fix", None),
+        (
+            P,
+            "/api/platform-reviews/remove-hold-label",
+            "platform_reviews",
+            "remove_hold_label",
+            None,
+        ),
+        (P, "/api/platform-reviews/accept-risk", "platform_reviews", "accept_risk", None),
+        (P, "/api/platform-reviews/approve-merge", "platform_reviews", "approve_merge", None),
+        (P, "/api/platform-reviews/release-deletes", "runbook_releases", "release", None),
         # documentation coverage (server/modules/doc_coverage.py; the audit is engine/doc_audit.py)
         (G, "/api/doc-coverage", "doc_coverage", "get", lambda m: lambda r: m.get(_tackles())),
         (

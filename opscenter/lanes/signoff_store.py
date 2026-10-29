@@ -51,8 +51,10 @@ def _save(data):
     os.replace(tmp, p)
 
 
-def record(pr, head_sha, lane, source, hits, extra=None, now=None):
-    """Sign off PR `pr` in `lane` at `head_sha`, covering `hits` (each {fp, cfp, reason, path, rule})."""
+def record(pr, head_sha, lane, source, hits, plan=None, extra=None, now=None):
+    """Sign off PR `pr` in `lane` at `head_sha`, covering `hits` (each {fp, cfp, reason, path, rule}). `plan` is the
+    plan_facts of the plan the owner saw (kept as `plan`); `extra` keys (apply_ok, apply_why, confirm_name, plan_head,
+    grants) are kept under `extra` and also at the top of the record."""
     if lane not in (OWN, ENGINEER):
         raise ValueError(f"unknown lane {lane!r}")
     stamp = now if now is not None else time.time()
@@ -67,8 +69,12 @@ def record(pr, head_sha, lane, source, hits, extra=None, now=None):
         "hits": [dict(h) for h in (hits or [])],
         "revoked": False,
     }
+    if plan:
+        rec["plan"] = plan
     if extra:
         rec["extra"] = extra
+        for k, v in extra.items():
+            rec.setdefault(k, v)
     data = _load()
     rows = data["prs"].setdefault(str(int(pr)), [])
     rows.append(rec)
@@ -155,16 +161,40 @@ def latest_epoch(pr):
 
 
 def plan_facts(plan):
-    """What the owner saw in the plan when signing: the grant addresses it creates or changes."""
+    """What the owner saw in the plan when signing: the grant addresses it creates or changes, whether the plan is final
+    and readable (completed, no errors; `unverifiable` when it is not), and its resources as [address, action]."""
+    plan = plan or {}
+    resources = plan.get("resources") or []
     grants = sorted(
         {
             r.get("address", "")
-            for r in (plan or {}).get("resources") or []
+            for r in resources
             if GRANT_RE.search(r.get("address", ""))
             and r.get("action") in ("create", "update", "replace")
         }
     )
-    return {"grants": grants}
+    final = (
+        bool(plan)
+        and plan.get("status") == "completed"
+        and plan.get("conclusion") in (None, "success")
+    )
+    return {
+        "grants": grants,
+        "final": final,
+        "unverifiable": bool(plan.get("errors")) or not plan,
+        "resources": [[r.get("address", ""), r.get("action", "")] for r in resources],
+        "destroy": int(plan.get("destroy") or 0),
+        "replace": int(plan.get("replace") or 0),
+    }
+
+
+def confirm_needed(plan, pr=None):
+    """The name the owner must type to cover the apply of this plan: the root of the first deleted or replaced resource,
+    else None (a plan that deletes nothing needs no typed name)."""
+    for r in (plan or {}).get("resources") or []:
+        if r.get("action") in ("delete", "replace") and r.get("root"):
+            return str(r["root"])
+    return None
 
 
 def review(rec, hits, plan):
@@ -179,12 +209,18 @@ def review(rec, hits, plan):
             plan_new.append("plan not final")
         if plan.get("errors"):
             plan_new.append("plan has errors")
-        if int(plan.get("destroy") or 0) or int(plan.get("replace") or 0):
-            plan_new.append("plan destroys or replaces")
-        if plan.get("destroyed") or plan.get("replaced"):
-            plan_new.append("plan names destroyed or replaced objects")
-        seen = set(((rec.get("extra") or {}).get("grants")) or [])
+        named = list(plan.get("destroyed") or []) + list(plan.get("replaced") or [])
+        if named:
+            plan_new.append("destroys " + ", ".join(named))
+        elif int(plan.get("destroy") or 0) or int(plan.get("replace") or 0):
+            plan_new.append("destroys or replaces")
+        seen = set(
+            ((rec.get("extra") or {}).get("grants"))
+            or ((rec.get("plan") or {}).get("grants"))
+            or []
+        )
         grants = [g for g in plan_facts(plan)["grants"] if g not in seen]
         if grants:
             plan_new.append("plan adds grants: " + ", ".join(grants))
-    return {"ok": not new and not plan_new, "new": new, "plan_new": plan_new}
+    carried = bool(rec) and (not hits or len(new) < len(hits))
+    return {"ok": not new and not plan_new, "new": new, "plan_new": plan_new, "carried": carried}
