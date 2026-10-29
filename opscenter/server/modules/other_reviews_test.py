@@ -60,11 +60,15 @@ def setUpModule():
     import other_reviews
     import review_acted
 
-    importlib.reload(review_acted)  # its store path is read at import
+    _saved["_store"] = review_acted.STORE
+    review_acted.STORE = TMP / "acted.json"  # its store path is read at import
     o = importlib.reload(other_reviews)
 
 
 def tearDownModule():
+    import review_acted
+
+    review_acted.STORE = _saved.pop("_store")
     for k, v in _saved.items():
         if v is None:
             os.environ.pop(k, None)
