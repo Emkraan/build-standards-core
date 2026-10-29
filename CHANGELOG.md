@@ -1,10 +1,16 @@
 # Changelog
 
-## 2026-10-29 (v1.93.0, ops center plan reviews)
+## 2026-10-29 (v1.94.0, ops center plan reviews)
 
 The plan review queue server half. Opt in: new `server/modules/tf_reviews.py`.
 
 - Held plan PRs and gate decisions; approve and reject re-verify the runs at the current head, retry a code host 5xx, keep the card pending while any run still waits, and record or revoke the owner's one sign-off through the sign-off store (DESIGN.md 12.30). Tests: 8.
+
+## 2026-10-29 (v1.93.0, ops center card brief)
+
+The approval brief for cards that are not pull requests. Opt in: new `server/modules/card_brief.py`, read by the approval brief.
+
+- Owner applies, privileged deployments and runbook delete releases get the same three paragraphs, a deterministic warning when an open PR changes the same root, and an access table; what is the consumer's (admin account, why a root is owner-applied, why an environment needs the owner, tier names, release and image gate environments, pool host sign-in grants) is one data file (DESIGN.md 12.43). Tests: 67.
 
 ## 2026-10-29 (v1.92.0, ops center repo reviews)
 
