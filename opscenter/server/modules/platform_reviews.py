@@ -8,7 +8,7 @@ Purpose: The platform reviews page backend. Merges, for the repo named by `plan_
            - the owner's own PRs (hold classification, sign-off, Approve and merge) and the PR review verdict
          Actions (approve, request changes, sign off, accept the risk, release deletes) go through the code host as the
          configured owner. Every estate value (repo, owner login, tier names, workflow names, label and marker strings,
-         the review script) is the `platform` object of the review config (DESIGN.md 12.46) and has a null default;
+         the review script) is the `platform` object of the review config (DESIGN.md 12.47) and has a null default;
          with no repo configured the page is empty and a write answers 501.
 Date:    2026-10-06
 """
