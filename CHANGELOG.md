@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.99.0, ops center design status)
+
+DESIGN.md only: the lift status after the server halves.
+
+- 12.7 and 12.21 say what is lifted and that the platform reviews page server half is not; the label hold and approval brief sections are renumbered 12.44 and 12.45 (12.40 and 12.41 were each claimed twice).
+
 ## 2026-10-29 (v1.98.0, ops center owner-applied roots)
 
 The owner-applied Terraform roots server half. Opt in: new `server/modules/owner_roots.py`.
