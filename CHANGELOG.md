@@ -1,10 +1,16 @@
 # Changelog
 
-## 2026-10-29 (v1.89.0, ops center repo reviews)
+## 2026-10-29 (v1.90.0, ops center repo reviews)
 
 The other repos page server half. Opt in: new `server/modules/repo_reviews.py`; `review_config` gains `repo_labels`, `autofix_lanes` and `autofix_after`.
 
 - Open PRs that need the owner (failing checks with the files the log names, stale green, review requested), issues by who moves next, shipped PRs, and the core merge lane and own-PR auto-fix lane rows; re-run failed jobs pinned to the head seen (DESIGN.md 12.29). Tests: 13.
+
+## 2026-10-29 (v1.89.0, ops center label hold explainer)
+
+Why a PR sits on a hold label. Opt in: new `lanes/label_hold.py`.
+
+- Who placed the hold label and when, the newest decisions-log note that names the PR, and the owner's triage markers for the head, so the card says what clearing the hold would do; the labels and the display zone are configuration (DESIGN.md 12.40). Tests: 14.
 
 ## 2026-10-29 (v1.88.0, ops center plan context)
 
