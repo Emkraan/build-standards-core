@@ -1324,6 +1324,7 @@ the standard drops: it is waiting on something named here.
 | (2.6) | analyzer: contract, handled match, first seen, routing, collector, bundle builder, wake gate | lifted: `engine/` (`contract`, `handled`, `first_seen`, `routing`, `collect`, `analysis_bundle`, `board_build`), `gates/action_center_gate.py`, `server/modules/routing_api.py` (12.13) |
 | (server modules, debt page) | debt and improvements page server half | lifted: `server/modules/eng_backlog.py` (12.25) |
 | (doc audit) | documentation audit and coverage page | lifted: `engine/doc_audit.py`, `server/modules/doc_coverage.py` (12.26); the docs home read is a driver the consumer supplies |
+| (runtime restart) | runtime restart card | lifted: `server/modules/runtime_restart.py`; the restart is a consumer script (12.35) |
 | (review helpers) | live code host facts and review conversations | lifted: `server/modules/live_truth.py`, `lanes/review_threads.py` (12.27) |
 | (server modules, core consumption) | the core consumption panel's server half | lifted: `server/modules/core_consumption.py` (12.24) |
 | (server) | the running server and its routes | lifted as a generic server: `server/` (12.21); the agent session routes and some page halves are not lifted |
@@ -1766,3 +1767,7 @@ position; it reuses `lanes/merge_queue.read`). The first read of a key blocks on
 `others` drops the owner's own (the merge queue resolves those), `notify` posts one PR comment that @-tags each author not named by an earlier
 comment (automated authors are listed, never tagged; the comment carries a marker naming the head and thread ids so a second call posts nothing),
 and `resolve` resolves one thread only when it is open on that PR. Every read failure raises `ThreadError`, so a caller fails closed.
+
+### 12.35 Runtime restart card
+
+`server/modules/runtime_restart.py` serves `GET` and `POST /api/hermes-restart` (the path the lifted app calls). The restart is never done by this server, so nothing here can take the backend down while work is running: a Python file the consumer supplies (`OPSCENTER_RUNTIME_RESTART_SCRIPT`) exposes `status()` (pending, last result, stale, busy jobs, safe), `request(mode, note, who)` for mode `now` or `idle`, and `cancel()`, and does the restart itself. The card's `alert` is `pending` when a restart is queued, `failed` when the last one failed and was not refused, and `stale` when plugins or config changed after the runtime started. With no script the card is empty (`configured` false) and a POST is 501; a script that cannot be loaded degrades to an error on the card, never an exception; an action other than now, idle or cancel is 400. The module in the handoff named one agent runtime and its script path; core names neither.

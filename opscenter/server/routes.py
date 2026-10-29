@@ -259,6 +259,9 @@ def _table():
             ),
         ),
         (P, "/api/eng-backlog/tackle", "eng_backlog", "tackle_item", lambda m: _eng_tackle(m)),
+        # runtime restart card (server/modules/runtime_restart.py; the path is the one the app calls)
+        (G, "/api/hermes-restart", "runtime_restart", "get", None),
+        (P, "/api/hermes-restart", "runtime_restart", "post", None),
         # documentation coverage (server/modules/doc_coverage.py; the audit is engine/doc_audit.py)
         (G, "/api/doc-coverage", "doc_coverage", "get", lambda m: lambda r: m.get(_tackles())),
         (

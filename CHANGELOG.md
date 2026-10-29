@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.83.0, ops center runtime restart card)
+
+The agent runtime restart card server half. Opt in: new `server/modules/runtime_restart.py`.
+
+- GET shows whether the runtime needs a restart and what is running; POST queues a restart (now or when idle) or cancels it. The restart is a script the consumer supplies; with none the card is empty and a write is 501 (DESIGN.md 12.35). Tests: 4.
+
 ## 2026-10-29 (v1.82.0, shell client package: older names and keys)
 
 The shell client package accepts the names Olympus already runs with. Opt in: the defaults are unchanged.

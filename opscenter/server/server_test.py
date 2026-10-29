@@ -338,6 +338,13 @@ class Routes(unittest.TestCase):
         )
         self.assertEqual(self.js("POST", "/api/infra/fallback-order", {"ids": ["a"]})[0], 501)
 
+    def test_the_restart_card_is_empty_with_no_script_and_a_write_is_501(self):
+        os.environ.pop("OPSCENTER_RUNTIME_RESTART_SCRIPT", None)
+        s, body = self.js("GET", "/api/hermes-restart")
+        self.assertEqual((s, body["configured"], body["alert"]), (200, False, None))
+        self.assertEqual(self.js("POST", "/api/hermes-restart", {"action": "now"})[0], 501)
+        self.assertEqual(self.js("POST", "/api/hermes-restart", {"action": "x"})[0], 400)
+
     def test_the_runtime_routes_answer_with_no_runtime_configured_by_default(self):
         os.environ.pop("OPSCENTER_RUNTIME_CMD", None)
         s, body = self.js("GET", "/api/tackle")
