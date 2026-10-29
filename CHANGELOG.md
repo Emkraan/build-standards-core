@@ -1,10 +1,16 @@
 # Changelog
 
-## 2026-10-29 (v1.83.0, ops center label hold explainer)
+## 2026-10-29 (v1.84.0, ops center label hold explainer)
 
 Why a PR sits on a hold label. Opt in: new `lanes/label_hold.py`.
 
 - Who placed the hold label and when, the newest decisions-log note that names the PR, and the owner's triage markers for the head, so the card says what clearing the hold would do; the labels and the display zone are configuration (DESIGN.md 12.40). Tests: 14.
+
+## 2026-10-29 (v1.83.0, ops center privileged reviews and review config)
+
+The privileged deployments lane server half and the shared review config. Opt in: new `server/modules/privileged_reviews.py` and `review_config.py`.
+
+- Approve, reject and retry re-verify the run at the queued commit before deciding as the owner; the repo, owner login and environment names are data in one JSON file, and with none configured the page is empty and a decision is 501 (DESIGN.md 12.28). Tests: 13.
 
 ## 2026-10-29 (v1.82.0, shell client package: older names and keys)
 
