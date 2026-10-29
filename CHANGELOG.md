@@ -1,10 +1,16 @@
 # Changelog
 
-## 2026-10-29 (v1.92.0, ops center card brief)
+## 2026-10-29 (v1.93.0, ops center card brief)
 
 The approval brief for cards that are not pull requests. Opt in: new `server/modules/card_brief.py`, read by the approval brief.
 
 - Owner applies, privileged deployments and runbook delete releases get the same three paragraphs, a deterministic warning when an open PR changes the same root, and an access table; what is the consumer's (admin account, why a root is owner-applied, why an environment needs the owner, tier names, release and image gate environments, pool host sign-in grants) is one data file (DESIGN.md 12.43). Tests: 67.
+
+## 2026-10-29 (v1.92.0, ops center repo reviews)
+
+The other repos page server half. Opt in: new `server/modules/repo_reviews.py`; `review_config` gains `repo_labels`, `autofix_lanes` and `autofix_after`.
+
+- Open PRs that need the owner (failing checks with the files the log names, stale green, review requested), issues by who moves next, shipped PRs, and the core merge lane and own-PR auto-fix lane rows; re-run failed jobs pinned to the head seen (DESIGN.md 12.29). Tests: 13.
 
 ## 2026-10-29 (v1.91.0, ops center approval brief)
 

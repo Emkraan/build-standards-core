@@ -1331,6 +1331,8 @@ the standard drops: it is waiting on something named here.
 | (maintenance hold) | maintenance window hold for the review pages | lifted: `lanes/maintenance_hold.py` (12.41) |
 | (review helpers) | live code host facts and review conversations | lifted: `server/modules/live_truth.py`, `lanes/review_threads.py` (12.27) |
 | (privileged reviews) | privileged deployments lane and review config | lifted: `server/modules/privileged_reviews.py`, `review_config.py` (12.28) |
+| (repo reviews) | other repos review page | lifted: `server/modules/repo_reviews.py` (12.29) |
+
 | (plan context) | facts for apply cards | lifted: `server/modules/tf_context.py`; principal names are a provider slot (12.40) |
 
 
@@ -1778,6 +1780,8 @@ position; it reuses `lanes/merge_queue.read`). The first read of a key blocks on
 comment (automated authors are listed, never tagged; the comment carries a marker naming the head and thread ids so a second call posts nothing),
 and `resolve` resolves one thread only when it is open on that PR. Every read failure raises `ThreadError`, so a caller fails closed.
 
+
+
 ### 12.35 Runtime restart card
 
 `server/modules/runtime_restart.py` serves `GET` and `POST /api/hermes-restart` (the path the lifted app calls). The restart is never done by this server, so nothing here can take the backend down while work is running: a Python file the consumer supplies (`OPSCENTER_RUNTIME_RESTART_SCRIPT`) exposes `status()` (pending, last result, stale, busy jobs, safe), `request(mode, note, who)` for mode `now` or `idle`, and `cancel()`, and does the restart itself. The card's `alert` is `pending` when a restart is queued, `failed` when the last one failed and was not refused, and `stale` when plugins or config changed after the runtime started. With no script the card is empty (`configured` false) and a POST is 501; a script that cannot be loaded degrades to an error on the card, never an exception; an action other than now, idle or cancel is 400. The module in the handoff named one agent runtime and its script path; core names neither.
@@ -1795,6 +1799,22 @@ after an earlier approval) re-verifies under a lock: the queued commit equals th
 `typed_confirm`, the run is still waiting on that environment at the same attempt, approvals only on `main`, and the pending deployment ids
 exist. Only then does it decide the pending deployment through the code host and log the decision. An approve is refused while the run's plan
 is identical to one whose apply failed (retry is the path), and an optional guard (the other-PR dependency check when the Olympus page is
+present) can refuse it. Routes: `GET /api/privileged-reviews`, `POST /api/olympus-reviews/deployment/approve`, `/reject`, `/retry` (the path
+the app already calls). Nothing is decided automatically.
+
+### 12.29 Repo reviews
+
+`server/modules/repo_reviews.py` serves the other repos page for the repos in `repo_reviews` (review_config; none configured is an empty page).
+A PR needs the owner when a check is failing (the failing job's log is read once per head and the changed files it names are listed), when it
+is green and mergeable but unmerged for 30 minutes, or when the owner's review is requested; a PR a lane is working is in progress. Rows come
+from the consumer's lanes through files the core already reads: `own_lane` state for the repos in `autofix_lanes` (the sentence after a fix
+clears is `autofix_after`), and the core merge lane's state file (`CORE_LANE_STATE`, default under the agent home) for `core_lane_repo`, which
+is ignored when absent, stale (15 minutes), failing, off or a dry run. In owner mode a PR that clears every gate is the core owner's to merge
+in version order, never the owner's to act on. Open issues the owner opened or is assigned are listed by who moves next (a reply from someone
+else, or quiet for `REPO_REVIEWS_ISSUE_QUIET_DAYS`, needs the owner); with no `owner` configured there are no issue rows. Routes:
+`GET /api/repo-reviews` (decorated with the cron pulse when that module is present), `POST /api/repo-reviews/rerun` (re-runs the failed jobs
+at the head the owner saw, refused when the PR moved on, 400 for an unlisted repo).
+
 present) can refuse it. Routes: `GET /api/privileged-reviews`, `POST /api/platform-reviews/deployment/approve`, `/reject`, `/retry` (the path
 the app already calls). Nothing is decided automatically.
 

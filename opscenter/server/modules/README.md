@@ -27,7 +27,7 @@ One stdlib Python module per page or lane backend (opscenter/DESIGN.md section 1
 | `eng_backlog.py` | The Debt and improvements page: TD and IMP entries parsed from two markdown files, decisions that rewrite one Status line in place, page-only snooze (DESIGN.md 12.25) | `eng_backlog_test.py` (10) |
 | `doc_coverage.py` | The Knowledge page's documentation coverage: registry joined with the audit store, snooze and ignore, the badge count and the tackle item (DESIGN.md 12.26) | `doc_coverage_test.py` (9) |
 | `core_consumption.py` | The core consumption panel: rows from the nightly consumption feed (no gh on read), and the approvals as single gh calls (DESIGN.md 12.24) | `core_consumption_test.py` (28) |
-
+| `repo_reviews.py` | The other repos page: PRs that need the owner (failing checks with the files named, stale green, review requested), issues by who moves next, shipped PRs, the core merge lane and auto-fix lane rows, re-run failed jobs (DESIGN.md 12.29) | `repo_reviews_test.py` (13) |
 
 | `card_brief.py` | The brief for owner apply, privileged deployment and runbook release cards: overlap warning from code, access table, rule-by-rule auto-approve text; estate wording is one data file (DESIGN.md 12.43) | `card_brief_test.py` (67) |
 | `approval_brief.py` | The approval brief on decision cards: three plain paragraphs from a consumer model command over a deterministic draft, secret-safe diff, style validator, cache by head (DESIGN.md 12.41) | `approval_brief_test.py` (28) |
