@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.95.0, ops center other repo reviews)
+
+The second repo's review page server half. Opt in: new `server/modules/other_reviews.py`; the privileged deployment decisions move to the path the app calls (`/api/platform-reviews/deployment/{approve,reject,retry}`).
+
+- Escalated engineer PRs, the owner's own PRs by what the own-PR lane is doing, merge and approve pinned to the head seen, and the lane's decision cards; the escalation source, lane command and policy file are consumer slots with null defaults (DESIGN.md 12.31). Tests: 10.
+
 ## 2026-10-29 (v1.94.0, ops center plan reviews)
 
 The plan review queue server half. Opt in: new `server/modules/tf_reviews.py`.

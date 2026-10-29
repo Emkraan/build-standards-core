@@ -51,6 +51,15 @@ def _decorate_repos(data):
     )
 
 
+def _decorate_other(data):
+    cron = load("cron_pulse")
+    return (
+        cron.decorate_secondary(data)
+        if cron is not None and hasattr(cron, "decorate_secondary")
+        else data
+    )
+
+
 def _priv_decide(act):
     def adapter(mod):
         def h(req):
@@ -280,6 +289,33 @@ def _table():
         # runtime restart card (server/modules/runtime_restart.py; the path is the one the app calls)
         (G, "/api/hermes-restart", "runtime_restart", "get", None),
         (P, "/api/hermes-restart", "runtime_restart", "post", None),
+        # the other repo's reviews (server/modules/other_reviews.py; the path is the one the app calls)
+        (
+            G,
+            "/api/team_prefix-reviews",
+            "other_reviews",
+            "get",
+            lambda m: lambda r: _decorate_other(m.get(force=_fresh(r))),
+        ),
+        (P, "/api/team_prefix-reviews/merge", "other_reviews", "merge", None),
+        (P, "/api/team_prefix-reviews/approve", "other_reviews", "approve", None),
+        (P, "/api/team_prefix-reviews/decide-fix", "other_reviews", "decide_fix", None),
+        # plan reviews (server/modules/tf_reviews.py)
+        (G, "/api/tf-reviews", "tf_reviews", "get", None),
+        (
+            P,
+            "/api/tf-reviews/approve",
+            "tf_reviews",
+            "decide",
+            lambda m: lambda r: m.decide(_payload(r).get("pr"), "approved"),
+        ),
+        (
+            P,
+            "/api/tf-reviews/reject",
+            "tf_reviews",
+            "decide",
+            lambda m: lambda r: m.decide(_payload(r).get("pr"), "rejected"),
+        ),
         # other repos (server/modules/repo_reviews.py)
         (
             G,

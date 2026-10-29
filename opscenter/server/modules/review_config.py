@@ -14,6 +14,7 @@ Keys:    owner            the owner's login on the code host (the identity every
          repo_reviews     list of owner/name the repo reviews page covers
          repo_labels      {owner/name: tab label} for the repo reviews page
          autofix_lanes    {owner/name: own lane target} for repos whose own PRs have an auto-fix lane
+         other_lane       own lane target name of the other repo page (default "other")
          autofix_after    {lane target: sentence} what happens once that lane's fix clears
 Run:     python3 review_config_test.py
 """
@@ -35,6 +36,7 @@ _KEYS = (
     "repo_labels",
     "autofix_lanes",
     "autofix_after",
+    "other_lane",
 )
 
 
@@ -82,6 +84,10 @@ def other_repo():
 
 def core_lane_repo():
     return _str("core_lane_repo")
+
+
+def lane_name():
+    return _str("other_lane") or "other"
 
 
 def privileged_envs():
