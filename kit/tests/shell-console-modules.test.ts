@@ -111,7 +111,7 @@ describe('helpers', () => {
     delete m.description;
     const text = autoDescription(m);
     expect(text).toMatch(/^Console: /);
-    expect(text).toContain('Home, People');
+    expect(text).toContain('Pages: Home and People.');
     expect(text.length).toBeLessThanOrEqual(400);
     m.pages = Array.from({ length: 80 }, (_, i) => ({ ...m.pages[0], key: `p${i}`, route: `/p${i}`, label: `Page number ${i}` }));
     const long = autoDescription(m);

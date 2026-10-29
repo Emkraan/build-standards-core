@@ -63,7 +63,7 @@ def _decorate_other(data):
 def _priv_decide(act):
     def adapter(mod):
         def h(req):
-            guard = getattr(load("olympus_reviews"), "dep_guard", None)
+            guard = getattr(load("platform_reviews"), "dep_guard", None)
             return mod.decide(req.payload(), act, guard=guard)
 
         return h
@@ -286,6 +286,9 @@ def _table():
             ),
         ),
         (P, "/api/eng-backlog/tackle", "eng_backlog", "tackle_item", lambda m: _eng_tackle(m)),
+        # runtime restart card (server/modules/runtime_restart.py; the path is the one the app calls)
+        (G, "/api/hermes-restart", "runtime_restart", "get", None),
+        (P, "/api/hermes-restart", "runtime_restart", "post", None),
         # the other repo's reviews (server/modules/other_reviews.py; the path is the one the app calls)
         (
             G,
@@ -344,6 +347,24 @@ def _table():
             "privileged_reviews",
             "decide",
             _priv_decide("retry"),
+        ),
+        # approval briefs (server/modules/approval_brief.py; the model is the consumer's command)
+        (P, "/api/reviews/brief", "approval_brief", "request", None),
+        # plan reviews (server/modules/tf_reviews.py)
+        (G, "/api/tf-reviews", "tf_reviews", "get", None),
+        (
+            P,
+            "/api/tf-reviews/approve",
+            "tf_reviews",
+            "decide",
+            lambda m: lambda r: m.decide(_payload(r).get("pr"), "approved"),
+        ),
+        (
+            P,
+            "/api/tf-reviews/reject",
+            "tf_reviews",
+            "decide",
+            lambda m: lambda r: m.decide(_payload(r).get("pr"), "rejected"),
         ),
         # documentation coverage (server/modules/doc_coverage.py; the audit is engine/doc_audit.py)
         (G, "/api/doc-coverage", "doc_coverage", "get", lambda m: lambda r: m.get(_tackles())),
