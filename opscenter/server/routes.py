@@ -54,7 +54,7 @@ def _decorate_repos(data):
 def _priv_decide(act):
     def adapter(mod):
         def h(req):
-            guard = getattr(load("olympus_reviews"), "dep_guard", None)
+            guard = getattr(load("platform_reviews"), "dep_guard", None)
             return mod.decide(req.payload(), act, guard=guard)
 
         return h
@@ -277,6 +277,43 @@ def _table():
             ),
         ),
         (P, "/api/eng-backlog/tackle", "eng_backlog", "tackle_item", lambda m: _eng_tackle(m)),
+        # runtime restart card (server/modules/runtime_restart.py; the path is the one the app calls)
+        (G, "/api/hermes-restart", "runtime_restart", "get", None),
+        (P, "/api/hermes-restart", "runtime_restart", "post", None),
+        # other repos (server/modules/repo_reviews.py)
+        (
+            G,
+            "/api/repo-reviews",
+            "repo_reviews",
+            "get",
+            lambda m: lambda r: _decorate_repos(m.get(force=_fresh(r))),
+        ),
+        (P, "/api/repo-reviews/rerun", "repo_reviews", "rerun", None),
+        # privileged deployments (server/modules/privileged_reviews.py; the estate values are review_config.py)
+        (G, "/api/privileged-reviews", "privileged_reviews", "get", None),
+        (
+            P,
+            "/api/platform-reviews/deployment/approve",
+            "privileged_reviews",
+            "decide",
+            _priv_decide("approve"),
+        ),
+        (
+            P,
+            "/api/platform-reviews/deployment/reject",
+            "privileged_reviews",
+            "decide",
+            _priv_decide("reject"),
+        ),
+        (
+            P,
+            "/api/platform-reviews/deployment/retry",
+            "privileged_reviews",
+            "decide",
+            _priv_decide("retry"),
+        ),
+        # approval briefs (server/modules/approval_brief.py; the model is the consumer's command)
+        (P, "/api/reviews/brief", "approval_brief", "request", None),
         # plan reviews (server/modules/tf_reviews.py)
         (G, "/api/tf-reviews", "tf_reviews", "get", None),
         (
@@ -292,38 +329,6 @@ def _table():
             "tf_reviews",
             "decide",
             lambda m: lambda r: m.decide(_payload(r).get("pr"), "rejected"),
-        ),
-        # other repos (server/modules/repo_reviews.py)
-        (
-            G,
-            "/api/repo-reviews",
-            "repo_reviews",
-            "get",
-            lambda m: lambda r: _decorate_repos(m.get(force=_fresh(r))),
-        ),
-        (P, "/api/repo-reviews/rerun", "repo_reviews", "rerun", None),
-        # privileged deployments (server/modules/privileged_reviews.py; the estate values are review_config.py)
-        (G, "/api/privileged-reviews", "privileged_reviews", "get", None),
-        (
-            P,
-            "/api/olympus-reviews/deployment/approve",
-            "privileged_reviews",
-            "decide",
-            _priv_decide("approve"),
-        ),
-        (
-            P,
-            "/api/olympus-reviews/deployment/reject",
-            "privileged_reviews",
-            "decide",
-            _priv_decide("reject"),
-        ),
-        (
-            P,
-            "/api/olympus-reviews/deployment/retry",
-            "privileged_reviews",
-            "decide",
-            _priv_decide("retry"),
         ),
         # documentation coverage (server/modules/doc_coverage.py; the audit is engine/doc_audit.py)
         (G, "/api/doc-coverage", "doc_coverage", "get", lambda m: lambda r: m.get(_tackles())),
