@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.90.0, ops center maintenance window hold)
+
+The review pages' side of the maintenance window hold. Opt in: new `lanes/maintenance_hold.py`.
+
+- The Needs me preview of what an approval would do now, the held cards, approve without enqueue with one window comment per head, and the emergency override on a held card pinned to the held head with a recorded reason (DESIGN.md 12.41). Tests: 9.
+
 ## 2026-10-29 (v1.89.0, ops center label hold explainer)
 
 Why a PR sits on a hold label. Opt in: new `lanes/label_hold.py`.
