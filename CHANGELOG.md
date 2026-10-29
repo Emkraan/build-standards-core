@@ -6,6 +6,12 @@ The review pages' side of the maintenance window hold. Opt in: new `lanes/mainte
 
 - The Needs me preview of what an approval would do now, the held cards, approve without enqueue with one window comment per head, and the emergency override on a held card pinned to the held head with a recorded reason (DESIGN.md 12.41). Tests: 9.
 
+## 2026-10-29 (v1.88.0, ops center plan context)
+
+Plain-language facts for Terraform apply cards. Opt in: new `server/modules/tf_context.py`, used by the approval brief.
+
+- Open PRs that change the same root, the plan text parsed into resources with one sentence each, and principal names through an optional provider (null default: none); the repo is `plan_repo` in review_config and the roots spec path is configurable (DESIGN.md 12.40). Tests: 5.
+
 ## 2026-10-29 (v1.87.0, ops center runtime restart card)
 
 The agent runtime restart card server half. Opt in: new `server/modules/runtime_restart.py`.
