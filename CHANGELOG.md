@@ -1,16 +1,41 @@
 # Changelog
 
-## 2026-10-29 (v1.82.0, ops center repo reviews)
+## 2026-10-29 (v1.88.0, ops center repo reviews)
 
 The other repos page server half. Opt in: new `server/modules/repo_reviews.py`; `review_config` gains `repo_labels`, `autofix_lanes` and `autofix_after`.
 
 - Open PRs that need the owner (failing checks with the files the log names, stale green, review requested), issues by who moves next, shipped PRs, and the core merge lane and own-PR auto-fix lane rows; re-run failed jobs pinned to the head seen (DESIGN.md 12.29). Tests: 13.
 
-## 2026-10-29 (v1.81.0, ops center privileged reviews and review config)
+## 2026-10-29 (v1.87.0, ops center runtime restart card)
+
+The agent runtime restart card server half. Opt in: new `server/modules/runtime_restart.py`.
+
+- GET shows whether the runtime needs a restart and what is running; POST queues a restart (now or when idle) or cancels it. The restart is a script the consumer supplies; with none the card is empty and a write is 501 (DESIGN.md 12.35). Tests: 4.
+
+## 2026-10-29 (v1.86.0, ops center PR landing facts)
+
+The structured ask for PR cards. Opt in: new `lanes/pr_landing.py`.
+
+- What the owner is asked to approve, who asked, what lands at the merge per Terraform root, why it needs the owner, the risks and what the buttons do, all from facts; the apply tier, shared module paths and the gates per applier are data (DESIGN.md 12.42). Tests: 16.
+
+## 2026-10-29 (v1.83.0, ops center privileged reviews and review config)
 
 The privileged deployments lane server half and the shared review config. Opt in: new `server/modules/privileged_reviews.py` and `review_config.py`.
 
 - Approve, reject and retry re-verify the run at the queued commit before deciding as the owner; the repo, owner login and environment names are data in one JSON file, and with none configured the page is empty and a decision is 501 (DESIGN.md 12.28). Tests: 13.
+
+## 2026-10-29 (v1.82.0, shell client package: older names and keys)
+
+The shell client package accepts the names Olympus already runs with. Opt in: the defaults are unchanged.
+
+- `AuthMode` accepts `hub` and `tool` next to `shell` and `module` (same behaviour, `isShellMode` exported); `createAuth` takes `returnToKey` and `acceptReturnToKeys`, so a saved return target survives a rename (`standards/web-shell-packages.md` section 4). Tests: 3.
+
+## 2026-10-29 (v1.81.0, shell module contract: layout merge and Olympus wording)
+
+The shell module contract package gains the layout merge Olympus runs, with its typed contracts. Opt in: new exports; the validator's problem strings and `autoDescription` now carry the Olympus wording.
+
+- `effectiveLayout`, `visibleNav`, `landingRoute`, `visibleTiles`, `homeContributions` and `moduleForPath`, with `ModuleManifest`, `Overrides`, `EffectiveModule` and the other types in `index.d.ts` (`standards/web-shell-packages.md` section 2.1). Tests: 22, run by `npm run test:server`.
+- The validator and registry messages and `autoDescription` ("Pages: A, B and C.") take the Olympus wording; the 33 kit checks still pass (one expectation updated).
 
 ## 2026-10-29 (v1.80.0, shell server package: request telemetry and gateway names)
 
@@ -235,7 +260,6 @@ Third lift of the shell shared packages ([standards/web-shell-packages.md](stand
   or product value is baked in. Peer dependencies: React, `@azure/msal-browser` and the kit.
 - Tests: `kit/tests/app-client/` (162 checks with a fake MSAL client) run in the kit workflow. The kit gains `@azure/msal-browser` as a dev
   dependency, a `paths` entry and a vitest alias so the package, which sits outside the kit folder, resolves the kit's own copies.
-
 ## 2026-10-28 (v1.53.0, ops center pre-push gate)
 
 Seventeenth piece of the ops center lift (opscenter/DESIGN.md section 12.11). Opt in: no rule is added and nothing a consumer runs
@@ -1200,7 +1224,6 @@ consumer report.
   down the position, Space or Enter drops, Escape cancels; every step is announced in a polite live region. The board holds
   no data rules and never reorders itself.
 - Tests in `kit/tests/lane-board.test.tsx`, gallery specimen `lane-board`, docs in `kit/README.md`.
-
 ## 2026-10-24 (v1.10.0, ops center design)
 
 Carried over from the previous core repository (opened 2026-10-23), where the owner made the decisions
@@ -1214,7 +1237,6 @@ recommended.
   kit shell, the slot interfaces with reference adapters for the code host, work tracker and docs home,
   every parameter including the declared exceptions, the deploy contract, automerge, `adopt`, the build
   plan (P1 to P3, then R1 to R9) and each consumer's migration path.
-
 ## 2026-10-24 (v1.9.0, confirm runs its action, D-005)
 
 Approved consumer item D-005 (consumer report on the intake).
@@ -1228,7 +1250,6 @@ Approved consumer item D-005 (consumer report on the intake).
 - Without `action` or `validate` the dialog behaves as before. Tests for the busy run, the failed run and
   retry, validation, and the unchanged default; gallery specimen `confirm-action`; docs in
   `kit/README.md`.
-
 ## 2026-10-24 (v1.8.0, AccountMenu actions, D-004)
 
 Approved consumer item D-004 (consumer report on the intake).
@@ -1241,7 +1262,6 @@ Approved consumer item D-004 (consumer report on the intake).
 - New type `AccountAction`. Defaults unchanged. Tests for the unchanged default, an action with its
   status in an open panel, and a busy action; gallery specimen `account-actions`; docs in
   `kit/README.md`.
-
 ## 2026-10-24 (v1.7.0, search routing, D-003)
 
 Approved consumer item D-003 (consumer report on the intake).
@@ -1253,7 +1273,6 @@ Approved consumer item D-003 (consumer report on the intake).
   app that still mounts its own during a migration. Unset, both behave as before.
 - Tests for the event export and listener, the unchanged default and the routed trigger through the
   feed strip; gallery specimen `search-routing`; docs in `kit/README.md`.
-
 ## 2026-10-24 (v1.6.0, Table phone cards and sticky-head opt-out, D-002)
 
 Approved consumer item D-002 (consumer report on the intake).
@@ -1266,7 +1285,6 @@ Approved consumer item D-002 (consumer report on the intake).
 - Defaults unchanged. Tests for the defaults, the labels and the wrapper attributes; a real-browser
   check in `kit/visual/interactions.visual.ts` that the rows become labelled cards at 390px and a table
   again at 1280px; gallery specimen `phone-cards`; docs in `kit/README.md`.
-
 ## 2026-10-24 (v1.5.0, ThemeToggle system option, D-001)
 
 Approved consumer item D-001 (consumer report on the intake).
@@ -1311,7 +1329,6 @@ Carried over from the previous core repository (item D-011 of a consumer report,
   key); CONSUMING.md and the `core-update.yml` comment (`CORE_TOKEN` only opens the PR on the
   consumer's own repo).
 - Tests: the git fallback (highest semver tag, clone at a ref, one plain message for a missing ref).
-
 ## 2026-10-24 (v1.0.0, core-ci is one job)
 
 BREAKING for every consumer's merge gate. The workflow file changed: copy `core-ci.yml` again, then in
@@ -1391,7 +1408,6 @@ One owner-approved item from the consumer report #117.
 - Tests in `kit/tests/tile-reorder-edge.test.tsx` (end zone drop, already last, hidden tile, highlight reset,
   both axes, right to left, keyboard unchanged, axe). Gallery specimen `tile-edge`. Docs in `kit/README.md`
   and `standards/web-ui.md`.
-
 ## 2026-10-23 (v0.98.0, palette ranking, toolbar and richer rows, #117 K-10)
 
 One owner-approved item from the consumer report #117.
@@ -1442,7 +1458,6 @@ One owner-approved item from the consumer report #117.
 - Defaults are unchanged: a type with no seed behaves exactly as before.
 - New `kit/tests/record-preview-seed.test.tsx` and a gallery specimen `record-preview-seed`. Docs in
   `standards/web-ui.md` and `kit/README.md`.
-
 ## 2026-10-23 (v0.94.0, facts: lazy disclosure, status tones, layout hook)
 
 - `Disclosure` gets opt in `lazy` (#117 K-6): the children mount when the panel opens and unmount on close.
@@ -1455,7 +1470,6 @@ One owner-approved item from the consumer report #117.
   spacing route (#117 K-6). Defaults emit no style attribute, so existing consumers are unchanged.
 - Tests in `kit/tests/markdown-facts.test.tsx`, a gallery specimen in Facts, docs in `standards/web-ui.md`
   and the kit README.
-
 ## 2026-10-23 (v0.93.0, pagination for an unknown total)
 
 - `Pagination` `total` is optional (or null) for a server paged list that cannot say how many rows exist.
@@ -1492,7 +1506,6 @@ One owner-approved design item from the consumer report #117.
   retry state kept for an unmarked error, Enter and validate in both outcomes, no `validate`, empty
   text, `clearOnSelect`, messages, Field description and axe in both text states, arrows wrap).
   Gallery: a card with the state at rest and a live one. Visual baselines are generated in CI.
-
 ## 2026-10-23 (v0.91.0, root rules option in the scope plugin, #117 K-3)
 
 - `scopeModuleCss` takes `root: 'wrapper' | 'document'` (default `wrapper`, today's behaviour). In `document`
@@ -1508,7 +1521,6 @@ One owner-approved design item from the consumer report #117.
 - Tests in `kit/tests/scope-css.test.ts` (both root modes through PostCSS and applied in jsdom with the
   attribute on the document element, the default unchanged, rename cases, option validation). Documented
   in `standards/web-shell.md` section 5 and `kit/README.md`.
-
 ## 2026-10-23 (v0.90.0, manifest extensions in the registry generator, #117 K-2)
 
 - `kit/scripts/build-registry.mjs` takes host manifest keys, opt in. `--allow-keys a,b,x-*` (repeatable,
@@ -1527,7 +1539,6 @@ One owner-approved design item from the consumer report #117.
 - Tests in `kit/tests/build-registry.test.ts` (parsing, key matching, type inference, hook, typecheck of a
   committed generated fixture in `kit/tests/fixtures/registry-host`). Docs in `standards/web-shell.md`
   section 3 and `kit/README.md`.
-
 ## 2026-10-23 (v0.89.0, switch control in the collapsed rail, #117 K-1)
 
 One owner-approved kit item from the shell verification report. Both options are opt in, so every current
@@ -1596,7 +1607,6 @@ One owner-approved design item from the consumer report #115.
   `data-tip` is left alone, and an empty `title` is dropped.
 - Tests in `kit/tests/tooltip-title.test.tsx` (hover, keyboard focus, icon-only name with axe, existing
   label kept, existing `data-tip` kept).
-
 ## 2026-10-23 (v0.84.0, table density, #115 D-007)
 
 One owner-approved design item from the consumer report #115.
@@ -1607,7 +1617,6 @@ One owner-approved design item from the consumer report #115.
   spacing and are not changed.
 - Gallery shows a compact table under the default one. Visual baselines are generated in CI. Tests in
   `kit/tests/table.test.tsx` (the attribute, the default, and rows and roles unchanged).
-
 ## 2026-10-23 (v0.83.0, noreply merges with no account setting)
 
 A consumer could not turn on the GitHub email privacy settings v0.82.0 required: its account also pushes
