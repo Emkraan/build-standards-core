@@ -1,10 +1,16 @@
 # Changelog
 
-## 2026-10-29 (v1.82.0, ops center maintenance window hold)
+## 2026-10-29 (v1.84.0, ops center maintenance window hold)
 
 The review pages' side of the maintenance window hold. Opt in: new `lanes/maintenance_hold.py`.
 
 - The Needs me preview of what an approval would do now, the held cards, approve without enqueue with one window comment per head, and the emergency override on a held card pinned to the held head with a recorded reason (DESIGN.md 12.41). Tests: 9.
+
+## 2026-10-29 (v1.82.0, shell client package: older names and keys)
+
+The shell client package accepts the names Olympus already runs with. Opt in: the defaults are unchanged.
+
+- `AuthMode` accepts `hub` and `tool` next to `shell` and `module` (same behaviour, `isShellMode` exported); `createAuth` takes `returnToKey` and `acceptReturnToKeys`, so a saved return target survives a rename (`standards/web-shell-packages.md` section 4). Tests: 3.
 
 ## 2026-10-29 (v1.81.0, shell module contract: layout merge and Olympus wording)
 
