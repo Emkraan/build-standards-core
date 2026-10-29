@@ -32,6 +32,7 @@ from __future__ import annotations
 import contextlib
 import datetime as dt
 import hashlib
+import importlib
 import json
 import os
 import re
@@ -45,18 +46,17 @@ from pathlib import Path
 import paths
 import review_config as cfg
 
+# card_brief is a separate lift: without it there are no cards for owner applies, privileged runs or releases
 try:
-    import card_brief
-except (
-    ImportError
-):  # a separate lift: without it there are no cards for owner applies, privileged runs or releases
+    card_brief = importlib.import_module("card_brief")
+except ImportError:
 
     class card_brief:  # noqa: N801 - a namespace standing in for the module
         LANES = ()
 
 
 try:
-    import pr_landing
+    pr_landing = importlib.import_module("pr_landing")
 except ImportError:  # a separate lift: without it a card has no landing facts and says so
 
     class pr_landing:  # noqa: N801 - a namespace standing in for the module
@@ -1373,18 +1373,14 @@ def decorate_other(data):
 def _plan_page():
     """The plan reviews page data (the plan page module), or {} while that module is not in the tree."""
     try:
-        import platform_reviews
-
-        return platform_reviews.get() or {}
+        return importlib.import_module("platform_reviews").get() or {}
     except ImportError:
         return {}
 
 
 def _other_page():
     try:
-        import other_reviews
-
-        return other_reviews.get() or {}
+        return importlib.import_module("other_reviews").get() or {}
     except ImportError:
         return {}
 

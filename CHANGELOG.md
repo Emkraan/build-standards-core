@@ -12,12 +12,35 @@ The approval brief on Reviews cards. Opt in: new `server/modules/approval_brief.
 
 - Three plain paragraphs on every card that asks the owner to decide, written in the background by the consumer's model command and always backed by a deterministic draft; no model configured means the draft only (DESIGN.md 12.41). Tests: 28.
 
-## 2026-10-29 (v1.90.0, ops center plan context)
+## 2026-10-29 (v1.90.0, ops center maintenance window hold)
+
+The review pages' side of the maintenance window hold. Opt in: new `lanes/maintenance_hold.py`.
+
+- The Needs me preview of what an approval would do now, the held cards, approve without enqueue with one window comment per head, and the emergency override on a held card pinned to the held head with a recorded reason (DESIGN.md 12.41). Tests: 9.
+
+## 2026-10-29 (v1.89.0, ops center label hold explainer)
+
+Why a PR sits on a hold label. Opt in: new `lanes/label_hold.py`.
+
+- Who placed the hold label and when, the newest decisions-log note that names the PR, and the owner's triage markers for the head, so the card says what clearing the hold would do; the labels and the display zone are configuration (DESIGN.md 12.40). Tests: 14.
+
+## 2026-10-29 (v1.88.0, ops center plan context)
 
 Plain-language facts for Terraform apply cards. Opt in: new `server/modules/tf_context.py`, used by the approval brief.
 
 - Open PRs that change the same root, the plan text parsed into resources with one sentence each, and principal names through an optional provider (null default: none); the repo is `plan_repo` in review_config and the roots spec path is configurable (DESIGN.md 12.40). Tests: 5.
 
+## 2026-10-29 (v1.87.0, ops center runtime restart card)
+
+The agent runtime restart card server half. Opt in: new `server/modules/runtime_restart.py`.
+
+- GET shows whether the runtime needs a restart and what is running; POST queues a restart (now or when idle) or cancels it. The restart is a script the consumer supplies; with none the card is empty and a write is 501 (DESIGN.md 12.35). Tests: 4.
+
+## 2026-10-29 (v1.86.0, ops center PR landing facts)
+
+The structured ask for PR cards. Opt in: new `lanes/pr_landing.py`.
+
+- What the owner is asked to approve, who asked, what lands at the merge per Terraform root, why it needs the owner, the risks and what the buttons do, all from facts; the apply tier, shared module paths and the gates per applier are data (DESIGN.md 12.42). Tests: 16.
 ## 2026-10-29 (v1.83.0, ops center privileged reviews and review config)
 
 The privileged deployments lane server half and the shared review config. Opt in: new `server/modules/privileged_reviews.py` and `review_config.py`.
