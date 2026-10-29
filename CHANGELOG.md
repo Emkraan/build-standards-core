@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.92.0, ops center repo reviews)
+
+The other repos page server half. Opt in: new `server/modules/repo_reviews.py`; `review_config` gains `repo_labels`, `autofix_lanes` and `autofix_after`.
+
+- Open PRs that need the owner (failing checks with the files the log names, stale green, review requested), issues by who moves next, shipped PRs, and the core merge lane and own-PR auto-fix lane rows; re-run failed jobs pinned to the head seen (DESIGN.md 12.29). Tests: 13.
+
 ## 2026-10-29 (v1.91.0, ops center approval brief)
 
 The approval brief on Reviews cards. Opt in: new `server/modules/approval_brief.py` and `POST /api/reviews/brief`.

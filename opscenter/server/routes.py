@@ -44,6 +44,13 @@ def _search(mod):
     return h
 
 
+def _decorate_repos(data):
+    cron = load("cron_pulse")
+    return (
+        cron.decorate_repos(data) if cron is not None and hasattr(cron, "decorate_repos") else data
+    )
+
+
 def _priv_decide(act):
     def adapter(mod):
         def h(req):
@@ -273,6 +280,15 @@ def _table():
         # runtime restart card (server/modules/runtime_restart.py; the path is the one the app calls)
         (G, "/api/hermes-restart", "runtime_restart", "get", None),
         (P, "/api/hermes-restart", "runtime_restart", "post", None),
+        # other repos (server/modules/repo_reviews.py)
+        (
+            G,
+            "/api/repo-reviews",
+            "repo_reviews",
+            "get",
+            lambda m: lambda r: _decorate_repos(m.get(force=_fresh(r))),
+        ),
+        (P, "/api/repo-reviews/rerun", "repo_reviews", "rerun", None),
         # privileged deployments (server/modules/privileged_reviews.py; the estate values are review_config.py)
         (G, "/api/privileged-reviews", "privileged_reviews", "get", None),
         (

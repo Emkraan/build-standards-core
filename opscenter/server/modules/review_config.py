@@ -12,6 +12,9 @@ Keys:    owner            the owner's login on the code host (the identity every
          other_repo       owner/name of a second repo with its own review page
          core_lane_repo   owner/name of the repo that is the core consumer lane (repo reviews)
          repo_reviews     list of owner/name the repo reviews page covers
+         repo_labels      {owner/name: tab label} for the repo reviews page
+         autofix_lanes    {owner/name: own lane target} for repos whose own PRs have an auto-fix lane
+         autofix_after    {lane target: sentence} what happens once that lane's fix clears
 Run:     python3 review_config_test.py
 """
 
@@ -29,6 +32,9 @@ _KEYS = (
     "other_repo",
     "core_lane_repo",
     "repo_reviews",
+    "repo_labels",
+    "autofix_lanes",
+    "autofix_after",
 )
 
 
@@ -91,6 +97,11 @@ def typed_confirm():
 def repo_reviews():
     v = load().get("repo_reviews")
     return [str(x) for x in v if "/" in str(x)] if isinstance(v, list) else []
+
+
+def map_of(key):
+    v = load().get(key)
+    return {str(k): str(x) for k, x in v.items()} if isinstance(v, dict) else {}
 
 
 def need(value, what):

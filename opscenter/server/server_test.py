@@ -359,6 +359,19 @@ class Routes(unittest.TestCase):
         finally:
             os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
 
+    def test_repo_reviews_with_no_config_answer_empty(self):
+        os.environ["OPSCENTER_REVIEWS_CONFIG"] = os.path.join(
+            os.environ["OPSCENTER_STATE_DIR"], "none.json"
+        )
+        try:
+            s, body = self.js("GET", "/api/repo-reviews")
+            self.assertEqual((s, body["repos"]), (200, []))
+            self.assertEqual(
+                self.js("POST", "/api/repo-reviews/rerun", {"repo": "x", "pr": 1})[0], 400
+            )
+        finally:
+            os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
+
     def test_the_brief_route_with_nothing_configured_is_a_400(self):
         os.environ["OPSCENTER_REVIEWS_CONFIG"] = os.path.join(
             os.environ["OPSCENTER_STATE_DIR"], "none.json"
