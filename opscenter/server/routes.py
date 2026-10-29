@@ -44,18 +44,6 @@ def _search(mod):
     return h
 
 
-def _plan_move(fn, p):
-    if not isinstance(p.get("path"), str):
-        raise ValueError("path required")
-    return fn(p["path"], p.get("version"), what_if=bool(p.get("what_if")))
-
-
-def _key(p):
-    if not isinstance(p.get("key"), str):
-        raise ValueError("key required")
-    return p["key"]
-
-
 def _decorate_repos(data):
     cron = load("cron_pulse")
     return (
@@ -75,7 +63,7 @@ def _decorate_other(data):
 def _priv_decide(act):
     def adapter(mod):
         def h(req):
-            guard = getattr(load("olympus_reviews"), "dep_guard", None)
+            guard = getattr(load("platform_reviews"), "dep_guard", None)
             return mod.decide(req.payload(), act, guard=guard)
 
         return h
@@ -114,6 +102,18 @@ def _eng_tackle(mod):
         return dict(rt.start(fp, "debt", item["title"], item, str(p.get("context") or "")), fp=fp)
 
     return h
+
+
+def _plan_move(fn, p):
+    if not isinstance(p.get("path"), str):
+        raise ValueError("path required")
+    return fn(p["path"], p.get("version"), what_if=bool(p.get("what_if")))
+
+
+def _key(p):
+    if not isinstance(p.get("key"), str):
+        raise ValueError("key required")
+    return p["key"]
 
 
 # (method, path, module, function, adapter(module) -> handler(req) or None for the default)
@@ -298,6 +298,9 @@ def _table():
             ),
         ),
         (P, "/api/eng-backlog/tackle", "eng_backlog", "tackle_item", lambda m: _eng_tackle(m)),
+        # runtime restart card (server/modules/runtime_restart.py; the path is the one the app calls)
+        (G, "/api/hermes-restart", "runtime_restart", "get", None),
+        (P, "/api/hermes-restart", "runtime_restart", "post", None),
         # the other repo's reviews (server/modules/other_reviews.py; the path is the one the app calls)
         (
             G,
@@ -309,92 +312,6 @@ def _table():
         (P, "/api/team_prefix-reviews/merge", "other_reviews", "merge", None),
         (P, "/api/team_prefix-reviews/approve", "other_reviews", "approve", None),
         (P, "/api/team_prefix-reviews/decide-fix", "other_reviews", "decide_fix", None),
-        # owner-applied roots (server/modules/owner_roots.py; the cloud is its provider slot)
-        (G, "/api/owner-roots", "owner_roots", "get", None),
-        (
-            P,
-            "/api/owner-roots/plan",
-            "owner_roots",
-            "request",
-            lambda m: lambda r: m.request(_payload(r), "plan"),
-        ),
-        (
-            P,
-            "/api/owner-roots/plan-all",
-            "owner_roots",
-            "request",
-            lambda m: lambda r: m.request(_payload(r), "plan-all"),
-        ),
-        (
-            P,
-            "/api/owner-roots/apply",
-            "owner_roots",
-            "request",
-            lambda m: lambda r: m.request(_payload(r), "apply"),
-        ),
-        (
-            P,
-            "/api/owner-roots/signin",
-            "owner_roots",
-            "request",
-            lambda m: lambda r: m.request(_payload(r), "signin"),
-        ),
-        # infrastructure (server/modules/infra.py; spend, cron, the VM and the log come from its provider)
-        (G, "/api/infra/spend", "infra", "spend", None),
-        (G, "/api/infra/cron", "infra", "cron", None),
-        (G, "/api/infra/github", "infra", "github", None),
-        (G, "/api/infra/runners", "infra", "runners", None),
-        (G, "/api/infra/live-jobs", "infra", "live_jobs", None),
-        (
-            G,
-            "/api/infra/job-log",
-            "infra",
-            "job_log",
-            lambda m: lambda r: m.job_log(r.arg("runner"), r.arg("lines") or "60"),
-        ),
-        (G, "/api/infra/badge", "infra", "badge_problems", None),
-        # plans (server/modules/plans.py)
-        (G, "/api/plans", "plans", "items", None),
-        (G, "/api/plans/file", "plans", "read", lambda m: lambda r: m.read(r.arg("path"))),
-        (
-            P,
-            "/api/plans/archive",
-            "plans",
-            "archive",
-            lambda m: lambda r: _plan_move(m.archive, _payload(r)),
-        ),
-        (
-            P,
-            "/api/plans/restore",
-            "plans",
-            "restore",
-            lambda m: lambda r: _plan_move(m.restore, _payload(r)),
-        ),
-        (
-            P,
-            "/api/plans/create",
-            "plans",
-            "create_tracker",
-            lambda m: (
-                lambda r: m.create_tracker(
-                    _key(_payload(r)),
-                    _payload(r).get("slug"),
-                    _payload(r).get("title", ""),
-                    what_if=bool(_payload(r).get("what_if")),
-                )
-            ),
-        ),
-        (
-            P,
-            "/api/plans/dismiss",
-            "plans",
-            "dismiss_untracked",
-            lambda m: (
-                lambda r: m.dismiss_untracked(
-                    _key(_payload(r)), what_if=bool(_payload(r).get("what_if"))
-                )
-            ),
-        ),
         # plan reviews (server/modules/tf_reviews.py)
         (G, "/api/tf-reviews", "tf_reviews", "get", None),
         (
@@ -442,6 +359,110 @@ def _table():
             "privileged_reviews",
             "decide",
             _priv_decide("retry"),
+        ),
+        # approval briefs (server/modules/approval_brief.py; the model is the consumer's command)
+        (P, "/api/reviews/brief", "approval_brief", "request", None),
+        # plan reviews (server/modules/tf_reviews.py)
+        (G, "/api/tf-reviews", "tf_reviews", "get", None),
+        (
+            P,
+            "/api/tf-reviews/approve",
+            "tf_reviews",
+            "decide",
+            lambda m: lambda r: m.decide(_payload(r).get("pr"), "approved"),
+        ),
+        (
+            P,
+            "/api/tf-reviews/reject",
+            "tf_reviews",
+            "decide",
+            lambda m: lambda r: m.decide(_payload(r).get("pr"), "rejected"),
+        ),
+        # plans (server/modules/plans.py)
+        (G, "/api/plans", "plans", "items", None),
+        (G, "/api/plans/file", "plans", "read", lambda m: lambda r: m.read(r.arg("path"))),
+        (
+            P,
+            "/api/plans/archive",
+            "plans",
+            "archive",
+            lambda m: lambda r: _plan_move(m.archive, _payload(r)),
+        ),
+        (
+            P,
+            "/api/plans/restore",
+            "plans",
+            "restore",
+            lambda m: lambda r: _plan_move(m.restore, _payload(r)),
+        ),
+        (
+            P,
+            "/api/plans/create",
+            "plans",
+            "create_tracker",
+            lambda m: (
+                lambda r: m.create_tracker(
+                    _key(_payload(r)),
+                    _payload(r).get("slug"),
+                    _payload(r).get("title", ""),
+                    what_if=bool(_payload(r).get("what_if")),
+                )
+            ),
+        ),
+        (
+            P,
+            "/api/plans/dismiss",
+            "plans",
+            "dismiss_untracked",
+            lambda m: (
+                lambda r: m.dismiss_untracked(
+                    _key(_payload(r)), what_if=bool(_payload(r).get("what_if"))
+                )
+            ),
+        ),
+        # infrastructure (server/modules/infra.py; spend, cron, the VM and the log come from its provider)
+        (G, "/api/infra/spend", "infra", "spend", None),
+        (G, "/api/infra/cron", "infra", "cron", None),
+        (G, "/api/infra/github", "infra", "github", None),
+        (G, "/api/infra/runners", "infra", "runners", None),
+        (G, "/api/infra/live-jobs", "infra", "live_jobs", None),
+        (
+            G,
+            "/api/infra/job-log",
+            "infra",
+            "job_log",
+            lambda m: lambda r: m.job_log(r.arg("runner"), r.arg("lines") or "60"),
+        ),
+        (G, "/api/infra/badge", "infra", "badge_problems", None),
+        # owner-applied roots (server/modules/owner_roots.py; the cloud is its provider slot)
+        (G, "/api/owner-roots", "owner_roots", "get", None),
+        (
+            P,
+            "/api/owner-roots/plan",
+            "owner_roots",
+            "request",
+            lambda m: lambda r: m.request(_payload(r), "plan"),
+        ),
+        (
+            P,
+            "/api/owner-roots/plan-all",
+            "owner_roots",
+            "request",
+            lambda m: lambda r: m.request(_payload(r), "plan-all"),
+        ),
+        (
+            P,
+            "/api/owner-roots/apply",
+            "owner_roots",
+            "request",
+            lambda m: lambda r: m.request(_payload(r), "apply"),
+        ),
+        (
+            P,
+            "/api/owner-roots/signin",
+            "owner_roots",
+            "request",
+            lambda m: lambda r: m.request(_payload(r), "signin"),
         ),
         # documentation coverage (server/modules/doc_coverage.py; the audit is engine/doc_audit.py)
         (G, "/api/doc-coverage", "doc_coverage", "get", lambda m: lambda r: m.get(_tackles())),
@@ -635,9 +656,6 @@ def build(registry=None):
     acc = load("model_accounts")
     if acc is not None and hasattr(acc, "sample"):
         r.background.append((acc.sample, 600))
-    roots = load("owner_roots")
-    if roots is not None and hasattr(roots, "maybe_refresh") and roots.configured():
-        r.background.append((roots.maybe_refresh, 60))
     return r
 
 

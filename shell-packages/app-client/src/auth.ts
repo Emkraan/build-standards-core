@@ -6,10 +6,17 @@ import { CacheLookupPolicy, EventType, PublicClientApplication } from '@azure/ms
 import type { AccountInfo, AuthenticationResult, Configuration, EventMessage, IPublicClientApplication } from '@azure/msal-browser';
 import { safeReturnTo } from './returnTo';
 
-/** The shell owns the sign-in surface. A module bounces a signed-out caller to it. */
-export type AuthMode = 'shell' | 'module';
+/**
+ * The shell owns the sign-in surface. A module bounces a signed-out caller to it. `hub` and `tool` are
+ * the same two modes under the names a shell that started as a hub with tools already runs with: they
+ * behave exactly like `shell` and `module`, and `auth.mode` reports the name it was given.
+ */
+export type AuthMode = 'shell' | 'module' | 'hub' | 'tool';
 
-/** The session key the shell's sign-in page stores a module's ?returnTo under. */
+/** True for the mode that owns the sign-in surface (`shell`, or its older name `hub`). */
+export const isShellMode = (mode: AuthMode): boolean => mode === 'shell' || mode === 'hub';
+
+/** The default session key the shell's sign-in page stores a module's ?returnTo under. */
 export const RETURN_TO_KEY = 'shell.returnTo';
 
 export interface AuthError extends Error {
@@ -27,6 +34,13 @@ export interface AuthOptions {
   /** The default API scope, for example api://<api>/access_as_user. Empty means no token. */
   apiScope: string;
   mode: AuthMode;
+  /**
+   * The session key the return target is stored under. Default RETURN_TO_KEY. A shell that already ships a key
+   * passes it, so a target saved before a deploy still lands after it.
+   */
+  returnToKey?: string | undefined;
+  /** More keys a saved target is read from (and cleared under) next to `returnToKey`, for a rename. */
+  acceptReturnToKeys?: readonly string[] | undefined;
   /** Local `vite dev` with no client id: no Entra flow, the API's dev identity applies. */
   devBypass?: boolean | undefined;
   /** sessionStorage key of the 401 loop guard, one per app (for example "example:login-attempt-at"). */
@@ -238,13 +252,25 @@ export function createAuth(options: AuthOptions): Auth {
   const authority = options.authority || `https://login.microsoftonline.com/${options.tenantId}`;
   const apiScope = options.apiScope || '';
   const mode = options.mode;
-  const postLogoutPath = options.postLogoutPath ?? (mode === 'shell' ? '/signed-out' : '/');
+  const isShell = isShellMode(mode);
+  const returnToKey = options.returnToKey || RETURN_TO_KEY;
+  const returnToKeys = [returnToKey, ...(options.acceptReturnToKeys ?? []).filter((k) => k && k !== returnToKey)];
+  // The first key that holds a value wins; every key is cleared with it.
+  const readReturnTo = (): string | null => {
+    for (const key of returnToKeys) {
+      const value = readSession(key);
+      if (value) return value;
+    }
+    return null;
+  };
+  const clearReturnTo = (): void => { for (const key of returnToKeys) removeSession(key); };
+  const postLogoutPath = options.postLogoutPath ?? (isShell ? '/signed-out' : '/');
   // A module owns its base path only, on a segment boundary ("/example/" never owns
   // "/example-admin"). No base path, or the bare root, owns nothing.
   const basePath = options.basePath ? (options.basePath.endsWith('/') ? options.basePath : `${options.basePath}/`) : '';
   const ownsPath =
     options.ownsPath ??
-    (mode === 'shell' || !basePath || basePath === '/'
+    (isShell || !basePath || basePath === '/'
       ? () => false
       : (path: string) => path === basePath.slice(0, -1) || path.startsWith(basePath));
   const navigate = options.navigate ?? ((url: string) => win.location.replace(url));
@@ -367,7 +393,7 @@ export function createAuth(options: AuthOptions): Auth {
     }
     if (!params.has('returnTo')) return;
     const target = safeReturnTo(params.get('returnTo'), origin);
-    if (target) writeSession(RETURN_TO_KEY, target);
+    if (target) writeSession(returnToKey, target);
     params.delete('returnTo');
     const rest = params.toString();
     try {
@@ -398,7 +424,7 @@ export function createAuth(options: AuthOptions): Auth {
 
   async function boot(): Promise<BootResult> {
     await initialize();
-    if (mode === 'shell') adoptReturnToQuery();
+    if (isShell) adoptReturnToQuery();
     const legacyStart = readSession(legacyStartPageKey(clientId));
     let result: AuthenticationResult | null = null;
     let redirectError: unknown;
@@ -433,9 +459,9 @@ export function createAuth(options: AuthOptions): Auth {
       target = safeReturnTo(result.state, origin) ?? safeReturnTo(legacyStart, origin);
     }
     // A module bounced a signed-out caller to the shell, which stored the module's path.
-    if (mode === 'shell') {
-      const stored = safeReturnTo(readSession(RETURN_TO_KEY), origin);
-      removeSession(RETURN_TO_KEY);
+    if (isShell) {
+      const stored = safeReturnTo(readReturnTo(), origin);
+      clearReturnTo();
       target = target ?? stored;
     }
     if (target) return withError({ forwarded: route(target), account });
@@ -643,11 +669,11 @@ export function createAuth(options: AuthOptions): Auth {
   async function login(returnTo?: string | null): Promise<void> {
     await initialize();
     // A module never runs its own interactive sign-in: the shell owns it.
-    if (mode === 'module') {
+    if (!isShell) {
       bounceToShell(safeReturnTo(returnTo ?? null, origin));
       return;
     }
-    const stored = safeReturnTo(readSession(RETURN_TO_KEY), origin);
+    const stored = safeReturnTo(readReturnTo(), origin);
     const state = safeReturnTo(returnTo ?? stored ?? currentPath(), origin, { allowRoot: true }) ?? '/';
     await msal.loginRedirect({ ...loginRequest, state });
   }
@@ -661,7 +687,7 @@ export function createAuth(options: AuthOptions): Auth {
         /* a cache clear must never block sign-out */
       }
     }
-    removeSession(RETURN_TO_KEY);
+    clearReturnTo();
     await msal.logoutRedirect({ postLogoutRedirectUri: `${origin}${postLogoutPath}` });
   }
 
@@ -674,7 +700,7 @@ export function createAuth(options: AuthOptions): Auth {
     await initialize();
     if (devBypass) return true;
     if (getAccount()) return true;
-    if (mode === 'shell') return false;
+    if (isShell) return false;
     // No silent SSO here. ssoSilent is the hidden iframe the origin root refuses to be framed in
     // (X-Frame-Options DENY), so it only ever waited out the MSAL timeout (about 10 s) before
     // this same bounce. The shell runs the sign-in and sends the caller straight back.
@@ -701,7 +727,7 @@ export function createAuth(options: AuthOptions): Auth {
     } catch {
       /* storage unavailable */
     }
-    if (mode === 'shell') login(currentPath()).catch(() => undefined);
+    if (isShell) login(currentPath()).catch(() => undefined);
     else bounceToShell();
     // The page is navigating away. Wait for it, and reject if the navigation never happens so
     // a cached read is not left in flight forever.

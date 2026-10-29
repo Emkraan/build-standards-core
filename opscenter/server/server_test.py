@@ -338,6 +338,13 @@ class Routes(unittest.TestCase):
         )
         self.assertEqual(self.js("POST", "/api/infra/fallback-order", {"ids": ["a"]})[0], 501)
 
+    def test_the_restart_card_is_empty_with_no_script_and_a_write_is_501(self):
+        os.environ.pop("OPSCENTER_RUNTIME_RESTART_SCRIPT", None)
+        s, body = self.js("GET", "/api/hermes-restart")
+        self.assertEqual((s, body["configured"], body["alert"]), (200, False, None))
+        self.assertEqual(self.js("POST", "/api/hermes-restart", {"action": "now"})[0], 501)
+        self.assertEqual(self.js("POST", "/api/hermes-restart", {"action": "x"})[0], 400)
+
     def test_privileged_reviews_with_no_review_config_answer_empty_and_a_decision_is_501(self):
         os.environ["OPSCENTER_REVIEWS_CONFIG"] = os.path.join(
             os.environ["OPSCENTER_STATE_DIR"], "none.json"
@@ -352,21 +359,63 @@ class Routes(unittest.TestCase):
         finally:
             os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
 
-    def test_owner_roots_with_nothing_configured_answer_empty_and_refuse_writes(self):
-        os.environ["OWNER_ROOTS_CACHE"] = os.path.join(
-            os.environ["OPSCENTER_STATE_DIR"], "owner-roots"
+    def test_repo_reviews_with_no_config_answer_empty(self):
+        os.environ["OPSCENTER_REVIEWS_CONFIG"] = os.path.join(
+            os.environ["OPSCENTER_STATE_DIR"], "none.json"
         )
         try:
-            s, body = self.js("GET", "/api/owner-roots")
+            s, body = self.js("GET", "/api/repo-reviews")
+            self.assertEqual((s, body["repos"]), (200, []))
             self.assertEqual(
-                (s, body["items"], body["running"], body["signin"]), (200, [], False, None)
+                self.js("POST", "/api/repo-reviews/rerun", {"repo": "x", "pr": 1})[0], 400
             )
-            self.assertEqual(
-                self.js("POST", "/api/owner-roots/apply", {"name": "x", "tier": "y"})[0], 404
-            )
-            self.assertEqual(self.js("POST", "/api/owner-roots/nope", {})[0], 404)
         finally:
-            os.environ.pop("OWNER_ROOTS_CACHE", None)
+            os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
+
+    def test_the_brief_route_with_nothing_configured_is_a_400(self):
+        os.environ["OPSCENTER_REVIEWS_CONFIG"] = os.path.join(
+            os.environ["OPSCENTER_STATE_DIR"], "none.json"
+        )
+        os.environ.pop("APPROVAL_BRIEF_MODEL_CMD", None)
+        try:
+            self.assertEqual(
+                self.js("POST", "/api/reviews/brief", {"repo": "plan", "pr": 1})[0], 400
+            )
+        finally:
+            os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
+
+    def test_plan_reviews_with_no_config_answer_empty_and_a_decision_is_501(self):
+        os.environ["OPSCENTER_REVIEWS_CONFIG"] = os.path.join(
+            os.environ["OPSCENTER_STATE_DIR"], "none.json"
+        )
+        try:
+            s, body = self.js("GET", "/api/tf-reviews")
+            self.assertEqual((s, body["pending"]), (200, []))
+            self.assertEqual(self.js("POST", "/api/tf-reviews/approve", {"pr": 1})[0], 501)
+        finally:
+            os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
+
+    def test_other_reviews_with_no_config_answer_empty_and_a_write_is_501(self):
+        os.environ["OPSCENTER_REVIEWS_CONFIG"] = os.path.join(
+            os.environ["OPSCENTER_STATE_DIR"], "none.json"
+        )
+        try:
+            s, body = self.js("GET", "/api/team_prefix-reviews")
+            self.assertEqual((s, body["needs_me"]), (200, []))
+            payload = {"pr": 1, "head_sha": "a" * 40}
+            self.assertEqual(self.js("POST", "/api/team_prefix-reviews/merge", payload)[0], 501)
+        finally:
+            os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
+
+    def test_the_plans_routes_read_the_folder_and_refuse_a_path_outside_it(self):
+        s, body = self.js("GET", "/api/plans")
+        self.assertEqual(s, 200)
+        self.assertIn("projects", body)
+        self.assertEqual(self.js("GET", "/api/plans/file?path=../../etc/passwd")[0], 403)
+        self.assertEqual(self.js("POST", "/api/plans/archive", {})[0], 400)
+        self.assertEqual(
+            self.js("POST", "/api/plans/create", {"key": "nonsense", "slug": "x"})[0], 400
+        )
 
     def test_the_infra_routes_answer_empty_with_nothing_configured(self):
         for k in ("INFRA_REPOS", "INFRA_RUNNER_REPO", "OPSCENTER_INFRA_PROVIDER"):
@@ -384,51 +433,21 @@ class Routes(unittest.TestCase):
         self.assertEqual(self.js("GET", "/api/infra/job-log?runner=r1")[0], 501)
         self.assertEqual(self.js("GET", "/api/infra/job-log?runner=../x")[0], 400)
 
-    def test_the_plans_routes_read_the_folder_and_refuse_a_path_outside_it(self):
-        s, body = self.js("GET", "/api/plans")
-        self.assertEqual(s, 200)
-        self.assertIn("projects", body)
-        self.assertEqual(self.js("GET", "/api/plans/file?path=../../etc/passwd")[0], 403)
-        self.assertEqual(self.js("POST", "/api/plans/archive", {})[0], 400)
-        self.assertEqual(
-            self.js("POST", "/api/plans/create", {"key": "nonsense", "slug": "x"})[0], 400
-        )
-
-    def test_other_reviews_with_no_config_answer_empty_and_a_write_is_501(self):
-        os.environ["OPSCENTER_REVIEWS_CONFIG"] = os.path.join(
-            os.environ["OPSCENTER_STATE_DIR"], "none.json"
+    def test_owner_roots_with_nothing_configured_answer_empty_and_refuse_writes(self):
+        os.environ["OWNER_ROOTS_CACHE"] = os.path.join(
+            os.environ["OPSCENTER_STATE_DIR"], "owner-roots"
         )
         try:
-            s, body = self.js("GET", "/api/team_prefix-reviews")
-            self.assertEqual((s, body["needs_me"]), (200, []))
-            payload = {"pr": 1, "head_sha": "a" * 40}
-            self.assertEqual(self.js("POST", "/api/team_prefix-reviews/merge", payload)[0], 501)
-        finally:
-            os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
-
-    def test_plan_reviews_with_no_config_answer_empty_and_a_decision_is_501(self):
-        os.environ["OPSCENTER_REVIEWS_CONFIG"] = os.path.join(
-            os.environ["OPSCENTER_STATE_DIR"], "none.json"
-        )
-        try:
-            s, body = self.js("GET", "/api/tf-reviews")
-            self.assertEqual((s, body["pending"]), (200, []))
-            self.assertEqual(self.js("POST", "/api/tf-reviews/approve", {"pr": 1})[0], 501)
-        finally:
-            os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
-
-    def test_repo_reviews_with_no_config_answer_empty(self):
-        os.environ["OPSCENTER_REVIEWS_CONFIG"] = os.path.join(
-            os.environ["OPSCENTER_STATE_DIR"], "none.json"
-        )
-        try:
-            s, body = self.js("GET", "/api/repo-reviews")
-            self.assertEqual((s, body["repos"]), (200, []))
+            s, body = self.js("GET", "/api/owner-roots")
             self.assertEqual(
-                self.js("POST", "/api/repo-reviews/rerun", {"repo": "x", "pr": 1})[0], 400
+                (s, body["items"], body["running"], body["signin"]), (200, [], False, None)
             )
+            self.assertEqual(
+                self.js("POST", "/api/owner-roots/apply", {"name": "x", "tier": "y"})[0], 404
+            )
+            self.assertEqual(self.js("POST", "/api/owner-roots/nope", {})[0], 404)
         finally:
-            os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
+            os.environ.pop("OWNER_ROOTS_CACHE", None)
 
     def test_the_runtime_routes_answer_with_no_runtime_configured_by_default(self):
         os.environ.pop("OPSCENTER_RUNTIME_CMD", None)

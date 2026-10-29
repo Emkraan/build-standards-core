@@ -12,6 +12,11 @@
 //   originGuard          403 for a write, or a preflighted request, from an origin off the allowlist
 //   serverTiming         Server-Timing header plus one structured log line per request
 //   recordTiming / timed record named marks on the current request
+//   requestTelemetry     request telemetry for serverTiming's sink (App Insights, Entra auth only,
+//                        the client is injected by the app)
+//   createExportRetry    bounded retry of span batches whose export failed with a transient error
+//                        (token not ready, timeout)
+//   closeTelemetryOnShutdown  flush telemetry on SIGTERM / SIGINT
 //   whatsNewHandler      GET handler for a module's release notes, behind the module's own access check
 //   gatewayGuard         accept a request only when it carries the gateway token the tier's API
 //                        gateway adds, log only until enforcement is on
@@ -924,10 +929,14 @@ export function isDeclaredRoute(route) {
  *   log?: ((line: string) => void) | null,
  *   sink?: ((record: RequestLogRecord) => void) | null,
  *   skip?: (req: any) => boolean,
+ *   timingKey?: string,
  * }} [options]
  */
 export function serverTiming(options = {}) {
   const { timingAllowOrigins = [], headerForAll = false, log = (line) => console.log(line), sink = null, skip } = options;
+  // A shell whose own code reads the record under a key of its own names it here. The record is the
+  // same object under both keys, so marks recorded through either one add up.
+  const extraKey = typeof options.timingKey === "string" && options.timingKey ? Symbol.for(options.timingKey) : null;
   const tao = new Set(timingAllowOrigins);
 
   /**
@@ -939,6 +948,7 @@ export function serverTiming(options = {}) {
     /** @type {RequestTiming} */
     const timing = { start: performance.now(), marks: [] };
     req[TIMING_KEY] = timing;
+    if (extraKey) req[extraKey] = timing;
     let headerMs = 0;
     // The app this middleware is mounted on (a sub-app swaps req.app while it
     // runs, so read it now).
@@ -1025,6 +1035,55 @@ export function serverTiming(options = {}) {
  * }} RequestLogRecord
  */
 
+// --- App Insights request telemetry ---
+
+const MONITOR_RESOURCE = "https://monitor.azure.com/";
+// Mark descriptions are cache states ("hit", "miss", "shared"): lowercase words only,
+// so an id, email or token can never ride along in one.
+const DESC_RE = /^[a-z][a-z_-]{0,23}$/;
+const EXPORT_LOG_INTERVAL_MS = 5 * 60 * 1000;
+// Health probes are never sent (the log line keeps them when the app does).
+const HEALTH_ROUTE_RE = /^\/(api\/)?health(\/|$)/;
+/**
+ * Parse an App Insights connection or authentication string
+ * ("Key=Value;Key=Value") into a lowercase-keyed map.
+ * @param {unknown} raw
+ * @returns {Record<string, string>}
+ */
+export function parseSettingString(raw) {
+  /** @type {Record<string, string>} */
+  const out = {};
+  for (const part of String(raw || "").split(";")) {
+    const i = part.indexOf("=");
+    if (i <= 0) continue;
+    const key = part.slice(0, i).trim().toLowerCase();
+    const value = part.slice(i + 1).trim();
+    if (key) out[key] = value;
+  }
+  return out;
+}
+
+/**
+ * One App Service managed identity token request (IDENTITY_ENDPOINT /
+ * IDENTITY_HEADER, the pattern every API on the platform uses), or null.
+ * @param {string} resource
+ * @param {string} [clientId] user-assigned identity client id
+ * @returns {Promise<{ token: string, expiresAt: number } | null>}
+ */
+async function appServiceToken(resource, clientId) {
+  const endpoint = process.env.IDENTITY_ENDPOINT;
+  const header = process.env.IDENTITY_HEADER;
+  if (!endpoint || !header) return null;
+  const url = new URL(endpoint);
+  url.searchParams.set("resource", resource);
+  url.searchParams.set("api-version", "2019-08-01");
+  if (clientId) url.searchParams.set("client_id", clientId);
+  const res = await fetch(url.toString(), { headers: { "X-IDENTITY-HEADER": header }, signal: AbortSignal.timeout(5000) });
+  if (!res.ok) return null;
+  const body = /** @type {{ access_token?: string, expires_on?: string | number }} */ (await res.json());
+  return body.access_token ? { token: body.access_token, expiresAt: parseExpiresOn(body.expires_on) } : null;
+}
+
 /**
  * Remove anything that looks like a credential or key from an error message
  * before it is logged, and keep it short.
@@ -1035,9 +1094,597 @@ export function safeMessage(err) {
   return msg
     .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]")
     .replace(/eyJ[A-Za-z0-9._-]{20,}/g, "[redacted]")
-    .replace(/(Key|ClientId)=[^;\s]+/gi, "$1=[redacted]")
+    .replace(/(InstrumentationKey|ClientId)=[^;\s]+/gi, "$1=[redacted]")
     .slice(0, 200);
 }
+
+// Retry of a failed export. The exporter runs with offline storage off, so a
+// batch it cannot send is gone. Right after an App Service start the managed
+// identity endpoint can answer before it is ready, and the exporter then fails
+// the first batch with "Failed to refresh access token.". Those batches are
+// kept here and sent again a few seconds later.
+const DEFAULT_RETRY_DELAYS_MS = [2000, 5000, 10000];
+const DEFAULT_MAX_BUFFERED_SPANS = 2000;
+// A retry send that never calls back counts as a failed attempt after this.
+const RETRY_SEND_TIMEOUT_MS = 30_000;
+// Waiting batches sent at once when the exporter recovers.
+const RETRY_CONCURRENCY = 4;
+// Only failures where nothing can have reached ingestion are retried, so a
+// retry never counts a request twice: no token, the identity endpoint, a
+// refused connection or a name that did not resolve, or an answer that says
+// the data was not taken (429, 503). A timeout, a reset connection or another
+// 5xx may have landed and is not retried. Ingestion rejecting the data (400,
+// 401, 403) is not retried either. The exporter itself turns 429 and 5xx
+// answers and dropped connections into a success when offline storage is
+// off, so in practice the token failure is what reaches this check.
+const TRANSIENT_EXPORT_ERROR_RE = /access token|token refresh|refresh.{0,20}token|credential|managed identity|ECONNREFUSED|EAI_AGAIN|ENOTFOUND/i;
+const TRANSIENT_STATUS = new Set([429, 503]);
+// The ingestion token request at startup and on each refresh never waits
+// longer than this, so a hung identity endpoint cannot hold the single-flight
+// slot that the first export joins.
+const TOKEN_FETCH_TIMEOUT_MS = 10_000;
+
+/**
+ * Resolve with the promise's value, or with null after ms (never rejects
+ * because of the timer, a rejection of the promise passes through).
+ * @template T
+ * @param {Promise<T> | T} promise
+ * @param {number} ms
+ * @returns {Promise<T | null>}
+ */
+function withTimeout(promise, ms) {
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let t;
+  const timer = new Promise((resolve) => {
+    t = setTimeout(() => resolve(null), ms);
+    if (typeof t.unref === "function") t.unref();
+  });
+  return /** @type {Promise<T | null>} */ (Promise.race([Promise.resolve(promise), timer]).finally(() => clearTimeout(t)));
+}
+
+/**
+ * True when a failed export result is worth sending again because nothing can
+ * have reached ingestion: a token or identity failure, a refused connection
+ * or unresolved name, or a 429 / 503 answer.
+ * @param {unknown} result an OpenTelemetry ExportResult ({ code, error })
+ * @returns {boolean}
+ */
+export function isTransientExportFailure(result) {
+  if (!result || typeof result !== "object") return false;
+  const r = /** @type {{ code?: number, error?: any }} */ (result);
+  if (r.code === 0) return false;
+  const err = r.error;
+  if (!err) return false;
+  const status = Number(err.statusCode || err.status || 0);
+  if (TRANSIENT_STATUS.has(status)) return true;
+  if (status >= 400) return false;
+  const text = [err.name, err.code, err.message].filter((x) => typeof x === "string").join(" ");
+  return TRANSIENT_EXPORT_ERROR_RE.test(text);
+}
+
+/**
+ * Bounded retry for span batches whose export failed with a transient error.
+ *
+ * `export(spans, done)` sends a batch through `send` and always calls `done`
+ * once, at once, with the first result (it never waits for a retry, so the
+ * span processor and requests are never held up). A transient failure keeps
+ * the batch and sends it again after each delay in `delaysMs` (default 2 s,
+ * 5 s, 10 s). A batch that still fails after the last delay is dropped. At
+ * most `maxBuffered` spans (default 2000) wait at once: the oldest go first
+ * and are counted. A successful export or retry sends the waiting batches
+ * right away (at most 4 at once), since the token is ready by then.
+ *
+ * Outcomes are logged as one JSON line each, at most one line per outcome
+ * and reason per `logIntervalMs` with the counts added up in between:
+ * `export_retried` (count) and `export_dropped` (count, reason
+ * retries_exhausted, buffer_full, timeout or shutdown, error). A retry that
+ * never answers within sendTimeoutMs is dropped, not sent a third time, so a
+ * late answer can never count a request twice. A failure that is not
+ * transient keeps the existing `export_failed` line. Lines carry counts and a
+ * redacted error message only, never span content.
+ *
+ * `drain(timeoutMs)` stops keeping new failures and makes one last attempt
+ * for every waiting batch (no further retry), each bounded by timeoutMs.
+ * `stop()` cancels the timers, drops anything still waiting, logs any counts
+ * still held, and from then on writes each outcome line at once.
+ *
+ * @param {{
+ *   send: (spans: any[]) => Promise<any>,
+ *   log: (line: string) => void,
+ *   now?: () => number,
+ *   delaysMs?: number[],
+ *   maxBuffered?: number,
+ *   logIntervalMs?: number,
+ *   sendTimeoutMs?: number,
+ *   onFailure?: (spans: any[], result: any) => void,
+ * }} options
+ */
+export function createExportRetry(options) {
+  const { send, log } = options;
+  const now = typeof options.now === "function" ? options.now : Date.now;
+  const delaysMs = Array.isArray(options.delaysMs) ? options.delaysMs.filter((d) => Number.isFinite(d) && d >= 0) : DEFAULT_RETRY_DELAYS_MS;
+  const maxBuffered = Number.isFinite(options.maxBuffered) && Number(options.maxBuffered) >= 0 ? Number(options.maxBuffered) : DEFAULT_MAX_BUFFERED_SPANS;
+  const logIntervalMs = Number.isFinite(options.logIntervalMs) ? Number(options.logIntervalMs) : EXPORT_LOG_INTERVAL_MS;
+  const sendTimeoutMs = Number.isFinite(options.sendTimeoutMs) ? Number(options.sendTimeoutMs) : RETRY_SEND_TIMEOUT_MS;
+
+  /** @typedef {{ spans: any[], attempts: number, timer: ReturnType<typeof setTimeout> | null, error: string }} Pending */
+  /** @type {Pending[]} */
+  const queue = [];
+  let buffered = 0;
+  let stopped = false;
+  // After stop(), outcome lines are written at once (the process is exiting).
+  let finished = false;
+  let activeRetries = 0;
+  /** @type {Set<Promise<void>>} */
+  const inFlight = new Set();
+  const totals = { retried: 0, dropped: 0 };
+
+  // Rate-limited outcome lines, keyed by event and reason.
+  /** @type {Map<string, { last: number, count: number, line: Record<string, unknown> }>} */
+  const notes = new Map();
+  /** @param {Record<string, unknown>} line */
+  const emit = (line) => { try { log(JSON.stringify({ msg: "appinsights", ...line })); } catch { /* logging never breaks export */ } };
+  /**
+   * @param {"export_retried" | "export_dropped"} event
+   * @param {string} reason
+   * @param {number} count
+   * @param {string} [error]
+   */
+  const note = (event, reason, count, error) => {
+    if (count <= 0) return;
+    if (event === "export_retried") totals.retried += count; else totals.dropped += count;
+    const key = `${event}:${reason}`;
+    const n = notes.get(key) || { last: -Infinity, count: 0, line: {} };
+    n.count += count;
+    n.line = event === "export_retried" ? { event } : { event, reason, ...(error ? { error } : {}) };
+    notes.set(key, n);
+    if (finished || now() - n.last >= logIntervalMs) {
+      emit({ ...n.line, count: n.count });
+      n.last = now();
+      n.count = 0;
+    }
+  };
+  const flushNotes = () => {
+    for (const n of notes.values()) {
+      if (n.count > 0) { emit({ ...n.line, count: n.count }); n.last = now(); n.count = 0; }
+    }
+  };
+
+  /**
+   * The first answer of one send. A retry gives up after timeoutMs. A first
+   * send has no timer of its own (timeoutMs 0), the span processor already
+   * bounds it and its token request is bounded too.
+   * @param {any[]} spans
+   * @param {number} timeoutMs
+   * @returns {Promise<any>}
+   */
+  const sendOnce = (spans, timeoutMs) => new Promise((resolve) => {
+    let settled = false;
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    let t;
+    /** @param {any} result */
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      if (t) clearTimeout(t);
+      resolve(result);
+    };
+    if (timeoutMs > 0) {
+      t = setTimeout(() => finish({ code: 1, error: new Error("export timed out"), timedOut: true }), timeoutMs);
+      if (typeof t.unref === "function") t.unref();
+    }
+    try {
+      Promise.resolve(send(spans)).then(finish, (err) => finish({ code: 1, error: err }));
+    } catch (err) {
+      finish({ code: 1, error: err });
+    }
+  });
+
+  /** @param {Pending} p */
+  const remove = (p) => {
+    const i = queue.indexOf(p);
+    if (i < 0) return false;
+    queue.splice(i, 1);
+    buffered -= p.spans.length;
+    if (p.timer) clearTimeout(p.timer);
+    p.timer = null;
+    return true;
+  };
+
+  /** @param {Pending} p */
+  const schedule = (p) => {
+    if (stopped) return;
+    const delay = delaysMs[p.attempts];
+    p.timer = setTimeout(() => { p.timer = null; track(attempt(p, true)); }, delay);
+    if (p.timer && typeof p.timer.unref === "function") p.timer.unref();
+  };
+
+  /** @param {Promise<void>} job */
+  const track = (job) => {
+    inFlight.add(job);
+    job.finally(() => inFlight.delete(job));
+  };
+
+  // Keep at most maxBuffered spans waiting, dropping the oldest first.
+  const enforceCap = () => {
+    let over = buffered - maxBuffered;
+    let dropped = 0;
+    while (over > 0 && queue.length > 0) {
+      const head = /** @type {Pending} */ (queue[0]);
+      if (head.spans.length <= over) {
+        remove(head);
+        over -= head.spans.length;
+        dropped += head.spans.length;
+      } else {
+        head.spans.splice(0, over);
+        buffered -= over;
+        dropped += over;
+        over = 0;
+      }
+    }
+    note("export_dropped", "buffer_full", dropped);
+  };
+
+  /**
+   * @param {any[]} spans
+   * @param {number} attempts retries already made for this batch
+   * @param {string} error
+   */
+  const keep = (spans, attempts, error) => {
+    if (spans.length === 0) return;
+    if (stopped) { note("export_dropped", "shutdown", spans.length, error); return; }
+    if (attempts >= delaysMs.length) { note("export_dropped", "retries_exhausted", spans.length, error); return; }
+    /** @type {Pending} */
+    const p = { spans: spans.slice(), attempts, timer: null, error };
+    queue.push(p);
+    buffered += p.spans.length;
+    schedule(p);
+    enforceCap();
+  };
+
+  /**
+   * One retry of a waiting batch.
+   * @param {Pending} p
+   * @param {boolean} retryAgain false for the last attempt at shutdown
+   * @param {number} [timeoutMs] send timeout for this attempt
+   * @returns {Promise<void>}
+   */
+  const attempt = async (p, retryAgain, timeoutMs = sendTimeoutMs) => {
+    if (!remove(p)) return; // trimmed by the cap or already sent
+    activeRetries++;
+    let result;
+    try {
+      result = await sendOnce(p.spans, timeoutMs);
+    } finally {
+      activeRetries--;
+    }
+    if (result && result.code === 0) {
+      note("export_retried", "", p.spans.length);
+      // The token is ready: send what else waits, a few at a time.
+      if (!stopped) sendWaiting();
+      return;
+    }
+    const error = safeMessage((result && result.error) || "export failed");
+    if (!retryAgain) { note("export_dropped", "shutdown", p.spans.length, error); return; }
+    // A send that never answered may still land later. Sending the batch
+    // again could count those requests twice, so it is dropped instead.
+    if (result && result.timedOut) { note("export_dropped", "timeout", p.spans.length, error); return; }
+    keep(p.spans, p.attempts + 1, error);
+  };
+
+  // Send waiting batches now (the exporter just proved it can send), at most
+  // RETRY_CONCURRENCY at once. Each success starts the next ones.
+  const sendWaiting = () => {
+    for (const p of queue.slice()) {
+      if (activeRetries >= RETRY_CONCURRENCY) return;
+      track(attempt(p, true));
+    }
+  };
+
+  return {
+    /**
+     * Wraps the exporter's export. `done` is called exactly once.
+     * @param {any[]} spans
+     * @param {(result: any) => void} done
+     */
+    export(spans, done) {
+      const batch = Array.isArray(spans) ? spans.slice() : [];
+      sendOnce(batch, 0).then((result) => {
+        try {
+          if (result && result.code === 0) {
+            if (queue.length > 0 && !stopped) sendWaiting();
+          } else if (isTransientExportFailure(result)) {
+            keep(batch, 0, safeMessage(result.error));
+          } else if (typeof options.onFailure === "function") {
+            options.onFailure(batch, result);
+          }
+        } catch { /* retry bookkeeping never breaks export */ }
+        done(result);
+      });
+    },
+    /**
+     * Stop keeping new failures and make one last attempt for every waiting
+     * batch, each bounded by timeoutMs, so every batch is sent or counted as
+     * dropped before this resolves. Retries already in flight are waited on
+     * for at most timeoutMs as well.
+     * @param {number} [timeoutMs]
+     * @returns {Promise<void>}
+     */
+    async drain(timeoutMs = 1500) {
+      stopped = true;
+      for (const p of queue) { if (p.timer) clearTimeout(p.timer); p.timer = null; }
+      for (const p of queue.slice()) track(attempt(p, false, timeoutMs));
+      /** @type {ReturnType<typeof setTimeout> | undefined} */
+      let t;
+      const timeout = new Promise((resolve) => { t = setTimeout(resolve, timeoutMs + 50); });
+      await Promise.race([Promise.allSettled([...inFlight]), timeout]);
+      clearTimeout(t);
+    },
+    /** Cancel the timers, drop anything still waiting, log held counts. */
+    stop() {
+      stopped = true;
+      finished = true;
+      let left = 0;
+      for (const p of queue.slice()) { left += p.spans.length; remove(p); }
+      note("export_dropped", "shutdown", left);
+      flushNotes();
+    },
+    /** @returns {{ buffered: number, batches: number, inFlight: number, retried: number, dropped: number }} */
+    stats() {
+      return { buffered, batches: queue.length, inFlight: inFlight.size, retried: totals.retried, dropped: totals.dropped };
+    },
+  };
+}
+
+/**
+ * App Insights request telemetry for serverTiming's `sink`.
+ *
+ * The package keeps no runtime dependencies: the app passes `load`, which
+ * require()s the client (@azure/monitor-opentelemetry-exporter plus
+ * @opentelemetry/sdk-trace-base and @opentelemetry/resources) from its own
+ * package.json. `load` runs only when telemetry is enabled, so a server
+ * without the setting never loads the client.
+ *
+ * Enabled only when APPLICATIONINSIGHTS_CONNECTION_STRING is set AND
+ * APPLICATIONINSIGHTS_AUTHENTICATION_STRING is "Authorization=AAD" (Entra
+ * auth with the App Service managed identity, optional ClientId=<id> for a
+ * user-assigned identity). The components run with local auth disabled, so
+ * there is no key path. Anything missing or failing disables telemetry with
+ * one log line and never throws: startup and requests are never affected.
+ *
+ * Each request becomes one App Insights request named "<METHOD> <route
+ * template>" with its status, duration and the Server-Timing marks. It is
+ * built only from the serverTiming record (route template, never the URL),
+ * so no query string, header, token, email or IP leaves the process. Mark
+ * descriptions are sent only when they are short lowercase words ("hit",
+ * "miss"). Health probe routes are skipped, and a route that serverTiming did
+ * not resolve from the app's route definitions is sent as "-".
+ *
+ * A batch whose export fails with a transient error (the managed identity
+ * token not ready yet right after a start, a timeout) is kept and sent again
+ * after 2, 5 and 10 seconds (retryDelaysMs), with at most 2000 spans waiting
+ * (maxBufferedSpans, oldest dropped first and counted). Retries run on
+ * timers and never hold up startup or a request. The identity token is asked
+ * for once at startup without waiting, so the first export usually finds it
+ * cached. See createExportRetry for the log lines.
+ *
+ * Side effect: when enabled it sets APPLICATIONINSIGHTS_STATSBEAT_DISABLED=true
+ * for the process unless the app already set it (the exporter reads that
+ * variable only, there is no option for it), so the exporter's own usage
+ * pings to Microsoft stay off.
+ *
+ * @param {RequestTelemetryOptions} options
+ * @returns {RequestTelemetry}
+ */
+export function requestTelemetry(options) {
+  const opts = options || /** @type {RequestTelemetryOptions} */ ({});
+  const log = typeof opts.log === "function" ? opts.log : (/** @type {string} */ line) => console.log(line);
+  const now = typeof opts.now === "function" ? opts.now : Date.now;
+  const connectionString = opts.connectionString !== undefined ? opts.connectionString : process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
+  const authString = opts.authenticationString !== undefined ? opts.authenticationString : process.env.APPLICATIONINSIGHTS_AUTHENTICATION_STRING;
+  const noop = async () => {};
+  /** @param {string} reason @returns {RequestTelemetry} */
+  const disabled = (reason) => {
+    log(JSON.stringify({ msg: "appinsights", enabled: false, reason }));
+    return { enabled: false, reason, sink: null, flush: noop, close: noop };
+  };
+
+  if (!connectionString) return { enabled: false, reason: "not configured", sink: null, flush: noop, close: noop };
+  const conn = parseSettingString(connectionString);
+  if (!conn.instrumentationkey || !conn.ingestionendpoint) return disabled("connection string has no InstrumentationKey or IngestionEndpoint");
+  const auth = parseSettingString(authString);
+  if (String(auth.authorization || "").toLowerCase() !== "aad") return disabled("APPLICATIONINSIGHTS_AUTHENTICATION_STRING is not Authorization=AAD");
+  const clientId = auth.clientid || undefined;
+  const fetchToken = typeof opts.getToken === "function" ? opts.getToken : appServiceToken;
+  if (typeof opts.getToken !== "function" && (!process.env.IDENTITY_ENDPOINT || !process.env.IDENTITY_HEADER)) {
+    return disabled("no managed identity in this environment");
+  }
+  if (typeof opts.load !== "function") return disabled("no client loader");
+
+  try {
+    // The exporter's own usage pings to Microsoft (statsbeat) stay off unless
+    // the app set the variable itself. Set before load() so nothing the client
+    // reads at require time sees it unset.
+    if (process.env.APPLICATIONINSIGHTS_STATSBEAT_DISABLED === undefined) process.env.APPLICATIONINSIGHTS_STATSBEAT_DISABLED = "true";
+
+    const mods = opts.load();
+    const { AzureMonitorTraceExporter } = mods.exporter;
+    const { BasicTracerProvider, BatchSpanProcessor } = mods.traceBase;
+    const { resourceFromAttributes } = mods.resources;
+
+    const tokenTimeoutMs = Number.isFinite(opts.tokenTimeoutMs) && Number(opts.tokenTimeoutMs) > 0 ? Number(opts.tokenTimeoutMs) : TOKEN_FETCH_TIMEOUT_MS;
+    const tokens = createTokenCache({ fetchToken: () => withTimeout(fetchToken(MONITOR_RESOURCE, clientId), tokenTimeoutMs), now });
+    const credential = {
+      /** @returns {Promise<{ token: string, expiresOnTimestamp: number } | null>} */
+      async getToken() {
+        // A hung or failing identity endpoint yields null (the exporter retries
+        // the batch later), never a rejection.
+        const token = await tokens.get().catch(() => null);
+        // The cache refreshes 5 minutes early, so a token it hands out is
+        // good for at least that long.
+        return token ? { token, expiresOnTimestamp: now() + 5 * 60 * 1000 } : null;
+      },
+    };
+
+    const exporter = new AzureMonitorTraceExporter({
+      connectionString,
+      credential,
+      disableOfflineStorage: true,
+      ...(opts.exporterOptions || {}),
+    });
+
+    // One log line per failing window, never one per request.
+    let lastFailureLog = -Infinity;
+    const origExport = exporter.export.bind(exporter);
+    // A transient failure (the managed identity token not ready yet right
+    // after a start, a dropped connection) keeps the batch and sends it again
+    // after 2, 5 and 10 seconds. The exporter calls back more than once for a
+    // failed batch (the failure, then a success), so only the first answer
+    // counts.
+    const retry = createExportRetry({
+      send: (spans) => new Promise((resolve) => { origExport(spans, resolve); }),
+      log,
+      now,
+      delaysMs: opts.retryDelaysMs,
+      maxBuffered: opts.maxBufferedSpans,
+      onFailure: (spans, result) => {
+        if (now() - lastFailureLog >= EXPORT_LOG_INTERVAL_MS) {
+          lastFailureLog = now();
+          log(JSON.stringify({ msg: "appinsights", event: "export_failed", count: spans.length, error: safeMessage(result.error || "export failed") }));
+        }
+      },
+    });
+    exporter.export = (/** @type {any[]} */ spans, /** @type {(r: any) => void} */ done) => retry.export(spans, done);
+
+    // Ask the identity endpoint for the ingestion token now, without waiting,
+    // so the first export after a start finds it cached. A failure is never
+    // cached, the first export asks again.
+    tokens.get().catch(() => null);
+
+    /** @type {Record<string, string>} */
+    const resourceAttrs = { "service.name": opts.roleName || process.env.WEBSITE_SITE_NAME || "api" };
+    if (opts.roleVersion) resourceAttrs["service.version"] = String(opts.roleVersion);
+    const provider = new BasicTracerProvider({
+      resource: resourceFromAttributes(resourceAttrs),
+      spanProcessors: [new BatchSpanProcessor(exporter)],
+    });
+    const tracer = provider.getTracer("app-server");
+
+    /** @param {RequestLogRecord} record */
+    const sink = (record) => {
+      try {
+        if (!record || record.msg !== "request") return;
+        const end = now();
+        const ms = Number.isFinite(record.ms) && record.ms >= 0 ? record.ms : 0;
+        const method = String(record.method || "GET").toUpperCase().slice(0, 16);
+        let route = String(record.route || "-");
+        if (HEALTH_ROUTE_RE.test(route)) return;
+        // Only a template resolved from the app's route definitions is a name.
+        if (route.length > 256 || !declaredRoutes.has(route)) route = "-";
+        const status = Number(record.status) || 0;
+        /** @type {Record<string, string | number | boolean>} */
+        const attributes = {
+          "http.request.method": method,
+          "http.route": route,
+          "http.response.status_code": status,
+        };
+        for (const [name, dur] of Object.entries(record.timings || {})) {
+          if (TOKEN_RE.test(name) && Number.isFinite(dur)) attributes[`timing.${name}`] = dur;
+        }
+        for (const [name, desc] of Object.entries(record.desc || {})) {
+          if (TOKEN_RE.test(name) && DESC_RE.test(String(desc))) attributes[`timing.${name}.desc`] = String(desc);
+        }
+        if (record.aborted) attributes["request.aborted"] = true;
+        // SpanKind.SERVER is 1 and SpanStatusCode.ERROR is 2 in @opentelemetry/api.
+        const span = tracer.startSpan(`${method} ${route}`, { kind: 1, startTime: end - ms, attributes });
+        if (status >= 500) span.setStatus({ code: 2 });
+        span.end(end);
+      } catch { /* telemetry never breaks a response */ }
+    };
+
+    log(JSON.stringify({ msg: "appinsights", enabled: true, role: resourceAttrs["service.name"] }));
+    return {
+      enabled: true,
+      sink,
+      flush: async () => { try { await provider.forceFlush(); } catch { /* best effort */ } },
+      // One last attempt for batches waiting on a retry (at most 1.5 s),
+      // alongside the normal shutdown flush. closeTelemetryOnShutdown still caps the
+      // whole close at its own short timeout.
+      close: async () => {
+        // The last retry attempt and the live flush run side by side, so a hung
+        // retry never eats into the time the newest spans get.
+        await Promise.all([
+          retry.drain(1500).catch(() => {}),
+          provider.shutdown().catch(() => {}),
+        ]);
+        retry.stop();
+      },
+    };
+  } catch (err) {
+    return disabled(`client failed to start: ${safeMessage(err)}`);
+  }
+}
+
+/**
+ * Flush and close telemetry when the process is told to stop (App Service
+ * sends SIGTERM on every restart and deploy), so the last batch of requests
+ * is not lost. Waits at most timeoutMs, then lets the signal take its normal
+ * course: when no other listener is left for it, the signal is raised again
+ * with the default action, so the exit looks exactly as it did without this.
+ * A no-op when telemetry is off. Returns a function that removes the listeners.
+ * @param {RequestTelemetry} telemetry
+ * @param {{ signals?: NodeJS.Signals[], timeoutMs?: number, exit?: (signal: NodeJS.Signals) => void }} [options]
+ * @returns {() => void}
+ */
+export function closeTelemetryOnShutdown(telemetry, options = {}) {
+  const { signals = ["SIGTERM", "SIGINT"], timeoutMs = 3000, exit } = options;
+  if (!telemetry || !telemetry.enabled) return () => {};
+  /** @type {Map<NodeJS.Signals, () => void>} */
+  const handlers = new Map();
+  const remove = () => { for (const [sig, fn] of handlers) process.removeListener(sig, fn); };
+  for (const sig of signals) {
+    const onSignal = () => {
+      remove();
+      /** @type {ReturnType<typeof setTimeout> | undefined} */
+      let timer;
+      const timeout = new Promise((resolve) => { timer = setTimeout(resolve, timeoutMs); });
+      Promise.race([telemetry.close().catch(() => {}), timeout]).finally(() => {
+        clearTimeout(timer);
+        if (exit) return exit(sig);
+        // Another listener owns shutdown, leave the exit to it.
+        if (process.listenerCount(sig) === 0) process.kill(process.pid, sig);
+      });
+    };
+    handlers.set(sig, onSignal);
+    process.on(sig, onSignal);
+  }
+  return remove;
+}
+
+/**
+ * @typedef {{
+ *   load: () => { exporter: any, traceBase: any, resources: any },
+ *   roleName?: string,
+ *   roleVersion?: string,
+ *   connectionString?: string,
+ *   authenticationString?: string,
+ *   getToken?: (resource: string, clientId?: string) => Promise<{ token: string, expiresAt: number } | null>,
+ *   log?: (line: string) => void,
+ *   exporterOptions?: Record<string, unknown>,
+ *   now?: () => number,
+ *   retryDelaysMs?: number[],
+ *   maxBufferedSpans?: number,
+ *   tokenTimeoutMs?: number,
+ * }} RequestTelemetryOptions
+ *
+ * @typedef {{
+ *   enabled: boolean,
+ *   reason?: string,
+ *   sink: ((record: RequestLogRecord) => void) | null,
+ *   flush: () => Promise<void>,
+ *   close: () => Promise<void>,
+ * }} RequestTelemetry
+ */
 
 // --- What's new ---
 
@@ -1100,6 +1747,9 @@ export function whatsNewHandler(options) {
 
 
 // --- Gateway guard ---
+//
+// The header name, the role and the request property are options: the defaults below are the
+// core's, a shell with its own names passes them (header, role, requestProperty).
 //
 // Every module API is meant to be reached through the tier's API gateway only. The gateway adds a directory access token
 // minted by its own managed identity in the X-Gateway-Token header (the gateway's managed identity authentication policy
@@ -1279,16 +1929,18 @@ export async function verifyGatewayToken(token, cfg) {
  * (req.headers and req.rawHeaders, matched in any case). headersDistinct is built from rawHeaders
  * on first read, so it never sees the value.
  * @param {any} req
+ * @param {string} [header] header name, default GATEWAY_HEADER
  * @returns {string | undefined}
  */
-function takeGatewayHeader(req) {
+export function takeGatewayHeader(req, header = GATEWAY_HEADER) {
+  const name = String(header || GATEWAY_HEADER).toLowerCase();
   const h = req && req.headers;
-  const raw = h ? h[GATEWAY_HEADER] : undefined;
-  if (h) delete h[GATEWAY_HEADER];
+  const raw = h ? h[name] : undefined;
+  if (h) delete h[name];
   const rh = req && req.rawHeaders;
   if (Array.isArray(rh)) {
     for (let i = rh.length - 2; i >= 0; i -= 2) {
-      if (String(rh[i]).toLowerCase() === GATEWAY_HEADER) rh.splice(i, 2);
+      if (String(rh[i]).toLowerCase() === name) rh.splice(i, 2);
     }
   }
   return Array.isArray(raw) ? raw[0] : raw;
@@ -1310,7 +1962,7 @@ function takeGatewayHeader(req) {
  * Refusals log one line per kind and reason per logIntervalMs with a count. A GET or HEAD to a
  * platform ping path with no Authorization header is logged as platform_ping, not (would_)refused.
  * Marks the request "gw" (ok, exempt, or the failure reason) for Server-Timing and telemetry.
- * @param {{ env?: Record<string, string | undefined>, enforce?: boolean | string, principalId?: string, audience?: string | string[], tenantId?: string, exempt?: readonly string[], platformPingPaths?: readonly string[], keys?: { get(kid: string): Promise<any>, warm?: () => void }, fetchKeys?: (url: string) => Promise<any>, log?: (line: string) => void, now?: () => number, logIntervalMs?: number }} [options]
+ * @param {{ header?: string, role?: string, requestProperty?: string, refusalMessage?: string, env?: Record<string, string | undefined>, enforce?: boolean | string, principalId?: string, audience?: string | string[], tenantId?: string, exempt?: readonly string[], platformPingPaths?: readonly string[], keys?: { get(kid: string): Promise<any>, warm?: () => void }, fetchKeys?: (url: string) => Promise<any>, log?: (line: string) => void, now?: () => number, logIntervalMs?: number }} [options]
  */
 export function gatewayGuard(options = {}) {
   const env = options.env ?? process.env;
@@ -1323,6 +1975,10 @@ export function gatewayGuard(options = {}) {
   const log = options.log ?? ((/** @type {string} */ line) => console.warn(line));
   const now = options.now ?? Date.now;
   const logIntervalMs = options.logIntervalMs ?? 60000;
+  const header = String(options.header || GATEWAY_HEADER).toLowerCase();
+  const role = options.role ?? GATEWAY_ROLE;
+  const requestProperty = String(options.requestProperty || "gateway");
+  const refusalMessage = options.refusalMessage ?? "This API is reachable only through the API gateway.";
   const configured = GUID_RE.test(principalId) && GUID_RE.test(tenantId) && audiences.length > 0;
   const keys = configured ? options.keys ?? createSigningKeyCache({ tenantId, fetchKeys: options.fetchKeys, now }) : null;
   if (keys && typeof keys.warm === "function") keys.warm();
@@ -1357,7 +2013,7 @@ export function gatewayGuard(options = {}) {
 
   /** @type {(req: any, res: any, next: (err?: unknown) => void) => void} */
   return function gatewayGuardMiddleware(req, res, next) {
-    const raw = takeGatewayHeader(req);
+    const raw = takeGatewayHeader(req, header);
     if (!configured && !enforce) {
       next();
       return;
@@ -1373,7 +2029,7 @@ export function gatewayGuard(options = {}) {
     const t0 = performance.now();
     const token = raw;
     const check = configured && keys
-      ? verifyGatewayToken(token, { tenantId, principalId, audiences, keys })
+      ? verifyGatewayToken(token, { tenantId, principalId, audiences, keys, role })
       : Promise.resolve({ ok: false, reason: "unconfigured" });
     const settled = check.catch(() => ({ ok: false, reason: "error" }));
     if (!enforce) {
@@ -1390,13 +2046,14 @@ export function gatewayGuard(options = {}) {
         const reason = result.ok ? "ok" : result.reason || "error";
         recordTiming(req, "gw", performance.now() - t0, reason);
         req.gateway = { ok: result.ok, reason };
+        if (requestProperty !== "gateway") req[requestProperty] = req.gateway;
         if (result.ok) return next();
         note(reason, ping);
         if (reason === "keys_unavailable") {
           res.status(503).json({ error: "Service unavailable", message: "Try again shortly." });
           return;
         }
-        res.status(403).json({ error: "Forbidden", message: "This API is reachable only through the API gateway." });
+        res.status(403).json({ error: "Forbidden", message: refusalMessage });
       })
       .catch(next);
   };

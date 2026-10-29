@@ -51,13 +51,22 @@ PROV.write_text(
     "    def health(self):\n        return [('OK', 'fine'), ('WARN', 'backup is old')]\n"
     "    def fallback_active(self):\n        return True\n"
 )
-os.environ["GH_BIN"] = str(GH)
-for k in ("INFRA_REPOS", "INFRA_RUNNER_REPO", "OPSCENTER_INFRA_PROVIDER", "INFRA_BILLING_USER"):
-    os.environ.pop(k, None)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import infra  # noqa: E402
 import swr  # noqa: E402
+
+_old_gh = infra.GH
+
+
+def setUpModule():
+    infra.GH = str(GH)
+
+
+def tearDownModule():
+    infra.GH = _old_gh
+    for k in ("INFRA_REPOS", "INFRA_RUNNER_REPO", "OPSCENTER_INFRA_PROVIDER", "INFRA_BILLING_USER"):
+        os.environ.pop(k, None)
 
 
 class Infra(unittest.TestCase):
