@@ -144,7 +144,8 @@ class Reviews(unittest.TestCase):
         state = None
         while time.time() < deadline:
             self.y.apply_finished()
-            state = next(j["state"] for j in self.y.jobs()["jobs"] if j["id"] == job["id"])
+            # the drafter rewrites the job file in place, so a read can land mid-write and miss the job once
+            state = next((j["state"] for j in self.y.jobs()["jobs"] if j["id"] == job["id"]), None)
             if state == "failed":
                 break
             time.sleep(0.2)
