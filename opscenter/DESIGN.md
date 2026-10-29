@@ -1323,6 +1323,7 @@ the standard drops: it is waiting on something named here.
 | (2.4) | swr, alerts, review tombstones, paths | lifted: `server/modules/` |
 | (2.6) | analyzer: contract, handled match, first seen, routing, collector, bundle builder, wake gate | lifted: `engine/` (`contract`, `handled`, `first_seen`, `routing`, `collect`, `analysis_bundle`, `board_build`), `gates/action_center_gate.py`, `server/modules/routing_api.py` (12.13) |
 | (doc audit) | documentation audit and coverage page | lifted: `engine/doc_audit.py`, `server/modules/doc_coverage.py` (12.26); the docs home read is a driver the consumer supplies |
+| (server modules, core consumption) | the core consumption panel's server half | lifted: `server/modules/core_consumption.py` (12.24) |
 | (server) | the running server and its routes | lifted as a generic server: `server/` (12.21); the agent session routes and some page halves are not lifted |
 | (4) | the app | lifted: `opscenter/app`, all 114 source files, typecheck, unit tests and build in CI; the browser tests are `npm run test:browser` |
 
@@ -1706,6 +1707,16 @@ the app shows; the consumer supplies one command, `OPSCENTER_RUNTIME_CMD` (a JSO
 - Routes: `GET /api/tackle`, `POST /api/tackle {fp, context, mode}`, `POST /api/tackle/resolve`, `POST /api/jira/tackle {key, context}`,
   `POST /api/pr/discuss {repo, pr, context}` (a discussion of the pull request by repository and number). Differences from the running code:
   it launched one agent's desktop chat and matched sessions by prompt in that agent's database; that is the consumer's command now.
+
+### 12.24 The core consumption panel
+
+`server/modules/core_consumption.py` reads only the consumption feed (`~/.config/build-standards-core/consumption.json`, or
+`CORE_CONSUMPTION_FILE`; format `build-standards-consumption/1`, any other format is an error state with no rows) and turns it into the panel's
+rows; the read path makes no gh call, and the result is cached 60 s. Approvals are the only writes, each a single gh call (`CORE_CONSUMPTION_GH`
+names the binary): `pr ready`, `pr merge` (only when the live checks pass, by the repository's declared method, pinned to the head the owner
+saw) or `issue comment` with the owner's decision text. It never pushes, never writes another app's files and never bypasses a merge gate. An
+approval stays shown as done until a newer feed replaces the snapshot that still lists the item. Routes: `GET /api/core-consumption`,
+`POST /api/core-consumption/approve-pr` and `approve-item`. The module needed no change beyond the formatter: it already had no estate names.
 
 ### 12.26 Documentation audit and coverage
 
