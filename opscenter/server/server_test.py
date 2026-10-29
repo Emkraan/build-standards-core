@@ -359,6 +359,18 @@ class Routes(unittest.TestCase):
         finally:
             os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
 
+    def test_the_brief_route_with_nothing_configured_is_a_400(self):
+        os.environ["OPSCENTER_REVIEWS_CONFIG"] = os.path.join(
+            os.environ["OPSCENTER_STATE_DIR"], "none.json"
+        )
+        os.environ.pop("APPROVAL_BRIEF_MODEL_CMD", None)
+        try:
+            self.assertEqual(
+                self.js("POST", "/api/reviews/brief", {"repo": "plan", "pr": 1})[0], 400
+            )
+        finally:
+            os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
+
     def test_the_runtime_routes_answer_with_no_runtime_configured_by_default(self):
         os.environ.pop("OPSCENTER_RUNTIME_CMD", None)
         s, body = self.js("GET", "/api/tackle")
