@@ -1,10 +1,16 @@
 # Changelog
 
-## 2026-10-29 (v1.102.0, ops center badges)
+## 2026-10-29 (v1.103.0, ops center badges)
 
 The combined sidebar badges payload. Opt in: new `server/modules/badges.py`.
 
 - GET /api/badges collects the board, debt, knowledge, links, infrastructure, builds, core and alerts counts from the lifted modules with the same filters as each page; every section is guarded, so a missing module or unreadable source is that section's zero value (DESIGN.md 12.46). Tests: 5.
+
+## 2026-10-29 (v1.102.0, ops center host pool view)
+
+The optional host pool evidence for a pool roll's Destroy approval card. Opt in: new `server/modules/pool_view.py`; `card_brief` looks the module up by this name.
+
+- Off by default. The read is the consumer's command, so core touches no cloud session; with it configured the card shows whether every retiring host is drained and idle and a new host is serving (DESIGN.md 12.46). Tests: 10.
 
 ## 2026-10-29 (v1.101.0, client feed imports the kit by a peer name)
 

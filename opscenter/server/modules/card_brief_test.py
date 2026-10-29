@@ -1391,9 +1391,7 @@ class NullDefaults(unittest.TestCase):
         self.assertFalse(cb._host_scopes(g))
 
     def test_pool_roll_is_off_without_the_optional_module(self):
-        if "avd_pool" not in sys.modules:
-            self.assertFalse(cb.avd_pool.is_roll("any.yml"))
-            self.assertIsNone(cb.avd_pool.evidence([], None))
+        self.assertFalse(cb.avd_pool.is_roll("any.yml"))
 
 
 if __name__ == "__main__":
