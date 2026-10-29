@@ -30,6 +30,7 @@ from __future__ import annotations
 import contextlib
 import datetime as dt
 import hashlib
+import importlib
 import json
 import os
 import re
@@ -39,9 +40,10 @@ import paths
 import review_config as cfg
 import tf_context
 
+# avd_pool is a separate, consumer specific module: without it no card is a pool roll
 try:
-    import avd_pool
-except ImportError:  # a separate, consumer specific module: without it no card is a pool roll
+    avd_pool = importlib.import_module("avd_pool")
+except ImportError:
 
     class avd_pool:  # noqa: N801 - a namespace standing in for the module
         is_roll = staticmethod(lambda workflow: False)
