@@ -71,6 +71,33 @@ import approval_brief as ab  # noqa: E402
 import card_brief as cb  # noqa: E402
 import tf_context as tc  # noqa: E402
 
+_ENV = {
+    "APPROVAL_BRIEF_STORE": os.environ["APPROVAL_BRIEF_STORE"],
+    "APPROVAL_BRIEF_WORK": os.environ["APPROVAL_BRIEF_WORK"],
+    "APPROVAL_BRIEF_TIERS": os.environ["APPROVAL_BRIEF_TIERS"],
+    "OPRG_GH_BIN": os.environ["OPRG_GH_BIN"],
+    "TF_CONTEXT_CACHE": os.environ["TF_CONTEXT_CACHE"],
+    "TF_CONTEXT_GIT": os.environ["TF_CONTEXT_GIT"],
+    "TF_CONTEXT_PROVIDER": os.environ["TF_CONTEXT_PROVIDER"],
+    "OPSCENTER_REVIEWS_CONFIG": os.environ["OPSCENTER_REVIEWS_CONFIG"],
+    "CARD_BRIEF_DATA": os.environ["CARD_BRIEF_DATA"],
+    "OWNER_ROOTS_CACHE": os.environ["OWNER_ROOTS_CACHE"],
+}
+
+
+def setUpModule():
+    # the whole suite shares one interpreter: re-point the modules at this file's scratch tree
+    os.environ.update(_ENV)
+    ab.STORE, ab.WORK, ab.GH = TMP / "approval-briefs.json", TMP / "work", "/fake/gh"
+    tc.CACHE, tc.GIT, tc.GH, tc.OWNER_LOGS = (
+        TMP / "ctx",
+        "/fake/git",
+        "/fake/gh",
+        TMP / "owner-roots" / "logs",
+    )
+    cb.PRIV_PLANS = TMP / "owner-roots" / "plans"
+
+
 PID = "11111111-1111-4111-8111-111111111111"
 SUB = "22222222-2222-4222-8222-222222222222"
 OTHER = "33333333-3333-4333-8333-333333333333"

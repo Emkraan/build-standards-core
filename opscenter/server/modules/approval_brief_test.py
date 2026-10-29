@@ -42,6 +42,25 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import approval_brief as ab  # noqa: E402
 
+_ENV = {
+    "APPROVAL_BRIEF_STORE": os.environ["APPROVAL_BRIEF_STORE"],
+    "APPROVAL_BRIEF_WORK": os.environ["APPROVAL_BRIEF_WORK"],
+    "APPROVAL_BRIEF_TIERS": os.environ["APPROVAL_BRIEF_TIERS"],
+    "APPROVAL_BRIEF_MODEL_CMD": os.environ["APPROVAL_BRIEF_MODEL_CMD"],
+    "APPROVAL_BRIEF_RULES": os.environ["APPROVAL_BRIEF_RULES"],
+    "OPSCENTER_REVIEWS_CONFIG": os.environ["OPSCENTER_REVIEWS_CONFIG"],
+    "APPROVAL_BRIEF_POLICY": os.environ["APPROVAL_BRIEF_POLICY"],
+    "OPRG_GH_BIN": os.environ["OPRG_GH_BIN"],
+}
+
+
+def setUpModule():
+    # the whole suite shares one interpreter: re-point the modules at this file's scratch tree
+    os.environ.update(_ENV)
+    ab.STORE, ab.WORK, ab.GH = TMP / "approval-briefs.json", TMP / "work", "/nonexistent/gh"
+    ab.POLICY = TMP / "policy.json"
+
+
 HEAD = "a" * 40
 GOOD = {
     "does": "This turns on Entra sign-in on the existing tier Postgres server and adds a small subnet for admin jobs.",

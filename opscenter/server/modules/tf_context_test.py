@@ -8,6 +8,7 @@ Run:     python3 tf_context_test.py
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -82,6 +83,16 @@ GUID = "11111111-2222-3333-4444-555555555555"
 GUID2 = "66666666-2222-3333-4444-555555555555"
 
 import tf_context as t  # noqa: E402
+
+_REAL_RUN, _REAL_GIT = t._run, shutil.which("git") or "git"
+_ENV = {"TF_CONTEXT_REPO": str(CLONE), "TF_CONTEXT_CACHE": str(S / "cache")}
+
+
+def setUpModule():
+    # the whole suite shares one interpreter: re-point the module at this file's scratch tree
+    os.environ.update(_ENV)
+    os.environ.pop("TF_CONTEXT_PROVIDER", None)
+    t.REPO_DIR, t.CACHE, t._run, t.GIT = CLONE, S / "cache", _REAL_RUN, _REAL_GIT
 
 
 class Ctx(unittest.TestCase):
