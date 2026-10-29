@@ -464,6 +464,8 @@ def _table():
             "request",
             lambda m: lambda r: m.request(_payload(r), "signin"),
         ),
+        # sidebar badges (server/modules/badges.py)
+        (G, "/api/badges", "badges", "get", None),
         # documentation coverage (server/modules/doc_coverage.py; the audit is engine/doc_audit.py)
         (G, "/api/doc-coverage", "doc_coverage", "get", lambda m: lambda r: m.get(_tackles())),
         (

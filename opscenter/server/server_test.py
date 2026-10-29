@@ -449,6 +449,11 @@ class Routes(unittest.TestCase):
         finally:
             os.environ.pop("OWNER_ROOTS_CACHE", None)
 
+    def test_badges_answer_the_zero_shape_with_nothing_configured(self):
+        s, body = self.js("GET", "/api/badges")
+        self.assertEqual((s, body["action_open"], body["knowledge"]), (200, [], 0))
+        self.assertEqual(body["infra"]["count"], 0)
+
     def test_the_runtime_routes_answer_with_no_runtime_configured_by_default(self):
         os.environ.pop("OPSCENTER_RUNTIME_CMD", None)
         s, body = self.js("GET", "/api/tackle")
