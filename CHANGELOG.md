@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.82.0, shell client package: older names and keys)
+
+The shell client package accepts the names Olympus already runs with. Opt in: the defaults are unchanged.
+
+- `AuthMode` accepts `hub` and `tool` next to `shell` and `module` (same behaviour, `isShellMode` exported); `createAuth` takes `returnToKey` and `acceptReturnToKeys`, so a saved return target survives a rename (`standards/web-shell-packages.md` section 4). Tests: 3.
+
 ## 2026-10-29 (v1.81.0, shell module contract: layout merge and Olympus wording)
 
 The shell module contract package gains the layout merge Olympus runs, with its typed contracts. Opt in: new exports; the validator's problem strings and `autoDescription` now carry the Olympus wording.
