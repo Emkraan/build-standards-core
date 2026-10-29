@@ -1,7 +1,7 @@
 /* shell-packages/app-client: the shared browser client for multi-module shell apps. One sign-in boot, one
    API client with a shared cache, the useResource hook and the console feed strip. */
 
-export { RETURN_TO_KEY, createAuth } from './auth';
+export { RETURN_TO_KEY, createAuth, isShellMode } from './auth';
 export type { Auth, AuthError, AuthMode, AuthOptions, BootResult, TokenOptions } from './auth';
 export { safeReturnTo } from './returnTo';
 export { createApi, qs } from './api';
