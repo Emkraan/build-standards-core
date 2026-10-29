@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.79.0, ops center review helpers)
+
+Two helpers the review pages share. New `server/modules/live_truth.py` and `lanes/review_threads.py`.
+
+- `live_truth` serves cached live code host facts (open PR heads, a run, one PR's queue state) refreshed in the background, unknown is None; `review_threads` reads open review conversations, tags each author once and resolves one on request (DESIGN.md 12.27). Tests: 12.
+
 ## 2026-10-28 (v1.78.0, ops center debt and improvements)
 
 The Debt and improvements page server half. Opt in: new `server/modules/eng_backlog.py` and routes.
