@@ -1303,7 +1303,7 @@ the standard drops: it is waiting on something named here.
 | 6 | merge queue | lifted: `lanes/merge_queue.py`, `gh_run_jobs.py` |
 | 7 | queued docs approvals | lifted: `lanes/queued_approvals.py` with the docs home adapter as a command that defaults to nothing (12.17); the documentation audit it can trigger is the consumer's |
 | 8 | change freeze gate | lifted: `lanes/freeze_gate.py` |
-| 9, 10 | plan gate, privileged apply review | plan gate lifted: `lanes/tfplan_gate.py` with a reference sign-off store; the privileged lane is a plug-in seam (`set_privileged_gate`) |
+| 9, 10 | plan gate, privileged apply review | plan gate lifted: `lanes/tfplan_gate.py` with a reference sign-off store; the privileged lane is lifted too (`server/modules/privileged_reviews.py`, 12.28) and the seam (`set_privileged_gate`) stays for a consumer lane |
 | 11 | dark launches | lifted: `server/modules/dark_launches.py` |
 | 12 | cron card map, run now | lifted: `server/modules/cron_pulse.py` (parameters in 12.8) |
 | 13 | builds page | lifted: the app page and `server/modules/builds.py` (12.20) |
@@ -1312,12 +1312,10 @@ the standard drops: it is waiting on something named here.
 | 18 | sprint close, retro, ticket progress, needs me | lifted: `gates/sprint_close_gate.py`, `tracker/` (`work.py`, `needs_me.py`, `ticket_progress.py`, `retro_row.py`, the reference `driver.py`) and `gates/retro_row_gate.py` (12.15) |
 | 19 | 1:1 board, yearly export | lifted: `people/` (`one_on_ones.py`, `team_away.py`, `yearly_reviews.py`) with the four adapters as commands and files with a null default (12.14); the yearly drafter is the consumer's command |
 | 20 | links check | lifted: `server/modules/link_health.py` (catalog is the consumer's file) |
-| 21 | knowledge proposals | lifted: proposal rewrite gate, applied log, `engine/publish_mode.py`; the queued approvals applier is not |
+| 21 | knowledge proposals | lifted: proposal rewrite gate, applied log, `engine/publish_mode.py`; the queued approvals applier is item 7 |
 | 22 | plans reconcile | lifted: `gates/plans_reconcile_gate.py` |
 | 23 | pull request dependencies, search | lifted: `server/modules/pr_deps.py`, `ops_search.py` |
 | 24 | cron catalog gate, sitrep, hermetic test home, reviews visibility check | cron catalog gate, hermetic home, reviews visibility check and the sitrep (`gates/sitrep.py`, `sitrep_prerun.py`) lifted; the live ref check is `engine/ref_status.py` (12.18) |
-
-| 24 | cron catalog gate, sitrep, hermetic test home, reviews visibility check | cron catalog gate, hermetic home, reviews visibility check and the sitrep (`gates/sitrep.py`, `sitrep_prerun.py`) lifted; the live ref check is a plug-in the consumer supplies (`ref_status` is not lifted) |
 | (tools) | export path map, per pull request changelog tool | lifted: `tools/livepath.py`, `tools/changelog.py` (both configured by JSON files, `tools/README.md`) |
 | (collector) | inbound mail and chat monitor gates | lifted: `gates/inbound_mail_gate.py`, `inbound_chat_gate.py`, `inbound_score.py` (12.19) |
 | (2.4) | swr, alerts, review tombstones, paths | lifted: `server/modules/` |
@@ -1326,10 +1324,7 @@ the standard drops: it is waiting on something named here.
 | (doc audit) | documentation audit and coverage page | lifted: `engine/doc_audit.py`, `server/modules/doc_coverage.py` (12.26); the docs home read is a driver the consumer supplies |
 | (runtime restart) | runtime restart card | lifted: `server/modules/runtime_restart.py`; the restart is a consumer script (12.35) |
 | (platform reviews) | the platform reviews page server half | lifted: `server/modules/platform_reviews.py`; every estate value is the review config `platform` object (12.47) |
-
 | (badges) | sidebar badges payload | lifted: `server/modules/badges.py` (12.48) |
-| (platform reviews) | the platform reviews page server half | not lifted: needs the consumer apply workflows, tiers and review script as data; every module it imports is lifted (12.7 rows above) |
-
 | (PR landing) | structured ask for PR cards | lifted: `lanes/pr_landing.py` (12.42) |
 | (label hold) | hold label explainer | lifted: `lanes/label_hold.py` (12.44) |
 | (maintenance hold) | maintenance window hold for the review pages | lifted: `lanes/maintenance_hold.py` (12.41) |
@@ -1337,24 +1332,20 @@ the standard drops: it is waiting on something named here.
 | (privileged reviews) | privileged deployments lane and review config | lifted: `server/modules/privileged_reviews.py`, `review_config.py` (12.28) |
 | (repo reviews) | other repos review page | lifted: `server/modules/repo_reviews.py` (12.29) |
 | (plan reviews) | plan review queue | lifted: `server/modules/tf_reviews.py` (12.30) |
-
 | (plan context) | facts for apply cards | lifted: `server/modules/tf_context.py`; principal names are a provider slot (12.40) |
-
-
 | (approval brief) | brief on decision cards | lifted: `server/modules/approval_brief.py`; the model is a consumer command (12.45) |
 | (card brief) | brief for non-PR cards | lifted: `server/modules/card_brief.py`; estate wording is one data file, pool roll evidence an optional module (12.43) |
 | (host pool view) | optional pool evidence on a pool roll card | lifted: `server/modules/pool_view.py`, off by default; the read is a consumer command (12.46) |
-
 | (other repo reviews) | second repo review page | lifted: `server/modules/other_reviews.py`; the escalation source is a consumer command (12.31) |
 | (plans) | plans page | lifted: `server/modules/plans.py` (12.32) |
 | (infrastructure) | infrastructure page | lifted: `server/modules/infra.py`; the runtime-bound feeds are a provider slot (12.33) |
 | (owner-applied roots) | owner apply page | lifted: `server/modules/owner_roots.py`; the cloud is a provider slot (12.34) |
 | (server modules, core consumption) | the core consumption panel's server half | lifted: `server/modules/core_consumption.py` (12.24) |
-| (server) | the running server and its routes | lifted as a generic server: `server/` (12.21); the agent session routes and some page halves are not lifted |
+| (server) | the running server and its routes | lifted as a generic server: `server/` (12.21); the agent session routes are the runtime slot (12.23) and every page half is lifted |
 | (4) | the app | lifted: `opscenter/app`, all 114 source files, typecheck, unit tests and build in CI; the browser tests are `npm run test:browser` |
 
 The server (12.21) is lifted as a generic one: the gate, the registry, static serving, the action handled and approvals stores and the
-routes of every lifted module. The routes that start agent sessions are the runtime slot (12.23); the server halves of the pages named in 12.21 land one by one.
+routes of every lifted module. The routes that start agent sessions are the runtime slot (12.23); every page's server half is in `server/modules/` and what is estate is configuration or a provider slot (12.28 to 12.47).
 The pages whose server half is optional (people, tracker, review lanes) render only when their slot is on.
 
 ### 12.8 Module parameters (the five modules that named estate repositories or files)
@@ -1684,10 +1675,8 @@ the agent session routes below, and answered every origin with a wildcard CORS h
   `/api/approve` (approved and rejected go to the approvals inbox, changes to the proposal feedback file, optionally reworded by
   `OPSCENTER_REWRITE_CMD`), and the routes of every lifted module in `server/modules/` and the tracker and people packages; a module that is not
   in the tree is skipped, so a consumer that lifts fewer pages gets fewer routes.
-- Not lifted: the routes that start an agent session are the runtime slot (12.23, null default). The one server half still waiting is the
-  platform reviews page (`/api/platform-reviews`, its hold, sign-off, destroy routing and thread waits): it names the consumer's apply
-  workflows, tiers and review script throughout, so it needs those as data before it can lift. Every other page's server half is in
-  `server/modules/` (12.7).
+- The routes that start an agent session are the runtime slot (12.23, null default). Every page's server half is in `server/modules/` (12.7); what is
+  estate is configuration or a provider slot with a null default.
 
 ### 12.22 Model accounts provider slot (item 17)
 

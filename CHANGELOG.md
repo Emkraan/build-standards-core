@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.105.0, ops center final lift status)
+
+DESIGN.md and one docstring only.
+
+- The 12.7 table is one table again and says every page half is lifted (the platform reviews row, the privileged lane, the queued approvals applier); the 12.21 not-lifted note is replaced.
+
 ## 2026-10-29 (v1.104.0, ops center platform reviews)
 
 The platform reviews page server half and the sign-off contract it needs. Opt in: new `server/modules/platform_reviews.py`; `lanes/signoff_store.py` gains `plan_facts` fields, `confirm_needed`, a `plan` argument to `record` and a `carried` flag in `review`.
