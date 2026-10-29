@@ -1324,9 +1324,14 @@ the standard drops: it is waiting on something named here.
 | (2.6) | analyzer: contract, handled match, first seen, routing, collector, bundle builder, wake gate | lifted: `engine/` (`contract`, `handled`, `first_seen`, `routing`, `collect`, `analysis_bundle`, `board_build`), `gates/action_center_gate.py`, `server/modules/routing_api.py` (12.13) |
 | (server modules, debt page) | debt and improvements page server half | lifted: `server/modules/eng_backlog.py` (12.25) |
 | (doc audit) | documentation audit and coverage page | lifted: `engine/doc_audit.py`, `server/modules/doc_coverage.py` (12.26); the docs home read is a driver the consumer supplies |
+| (runtime restart) | runtime restart card | lifted: `server/modules/runtime_restart.py`; the restart is a consumer script (12.35) |
+
+| (PR landing) | structured ask for PR cards | lifted: `lanes/pr_landing.py` (12.42) |
 | (review helpers) | live code host facts and review conversations | lifted: `server/modules/live_truth.py`, `lanes/review_threads.py` (12.27) |
 | (privileged reviews) | privileged deployments lane and review config | lifted: `server/modules/privileged_reviews.py`, `review_config.py` (12.28) |
 | (plan context) | facts for apply cards | lifted: `server/modules/tf_context.py`; principal names are a provider slot (12.40) |
+
+
 | (approval brief) | brief on decision cards | lifted: `server/modules/approval_brief.py`; the model is a consumer command (12.41) |
 | (server modules, core consumption) | the core consumption panel's server half | lifted: `server/modules/core_consumption.py` (12.24) |
 | (server) | the running server and its routes | lifted as a generic server: `server/` (12.21); the agent session routes and some page halves are not lifted |
@@ -1770,6 +1775,10 @@ position; it reuses `lanes/merge_queue.read`). The first read of a key blocks on
 comment (automated authors are listed, never tagged; the comment carries a marker naming the head and thread ids so a second call posts nothing),
 and `resolve` resolves one thread only when it is open on that PR. Every read failure raises `ThreadError`, so a caller fails closed.
 
+### 12.35 Runtime restart card
+
+`server/modules/runtime_restart.py` serves `GET` and `POST /api/hermes-restart` (the path the lifted app calls). The restart is never done by this server, so nothing here can take the backend down while work is running: a Python file the consumer supplies (`OPSCENTER_RUNTIME_RESTART_SCRIPT`) exposes `status()` (pending, last result, stale, busy jobs, safe), `request(mode, note, who)` for mode `now` or `idle`, and `cancel()`, and does the restart itself. The card's `alert` is `pending` when a restart is queued, `failed` when the last one failed and was not refused, and `stale` when plugins or config changed after the runtime started. With no script the card is empty (`configured` false) and a POST is 501; a script that cannot be loaded degrades to an error on the card, never an exception; an action other than now, idle or cancel is 400. The module in the handoff named one agent runtime and its script path; core names neither.
+
 ### 12.28 Review config and the privileged deployments lane
 
 `server/modules/review_config.py` holds every estate value the review pages need in one JSON file (`OPSCENTER_REVIEWS_CONFIG`, default
@@ -1783,8 +1792,16 @@ after an earlier approval) re-verifies under a lock: the queued commit equals th
 `typed_confirm`, the run is still waiting on that environment at the same attempt, approvals only on `main`, and the pending deployment ids
 exist. Only then does it decide the pending deployment through the code host and log the decision. An approve is refused while the run's plan
 is identical to one whose apply failed (retry is the path), and an optional guard (the other-PR dependency check when the Olympus page is
-present) can refuse it. Routes: `GET /api/privileged-reviews`, `POST /api/olympus-reviews/deployment/approve`, `/reject`, `/retry` (the path
+present) can refuse it. Routes: `GET /api/privileged-reviews`, `POST /api/platform-reviews/deployment/approve`, `/reject`, `/retry` (the path
 the app already calls). Nothing is decided automatically.
+
+### 12.42 PR landing facts
+
+`lanes/pr_landing.py` builds the deterministic part of a PR approval card from facts only; a model never decides which root a merge applies. `compact_plan` reduces the PR plan run to per-root counts and a capped resource list. `landing(plan_rows, files, roots_spec)` says, per planned root and tier, whether the merge applies it: only the apply tier is applied by the merge (other tiers are applied from the branch before it), a root absent from the spec is an app root picked when the PR changed a shared module or its own folder, a root with no pipeline applier (`owner`) is never applied by the merge, and a spec'd root lands when the PR changed a path it watches (its folder plus the spec's watch list) or `deploy.json` inputs it reads. An unreadable file list is `unknown` and claims nothing; a plan that never ran is `no_plan`, one that could not be read is `plan_unread`. Each root carries its counts, the access grants and identity objects the plan changes, its applier, the gate that follows (the destroy gate when it destroys and the applier is covered) and the reason. `needs_confirm` is true when what lands destroys or changes identity objects, which is when the Approve and merge click asks for the typed name. `structure` returns the card fields for the owner's own PR (`pr_signoff`) and an engineer PR (`pr_engineer`): the ask, who asked (with the ticket from the branch or title), the rows that say why it waits on the owner, risks, what the click does, and the typed-name field. `check_prose` refuses a model brief that says a root the merge does not apply is applied. The estate values are `OPSCENTER_LANDING_CONFIG` (default `<state>/landing-config.json`, every key optional): `apply_tier` (default `prod`), `shared_modules` (path prefixes, default none), `gates` (applier to what follows; `tfapply` defaults to none), `destroy_gate` and `destroy_appliers`. No route: the approval brief page that calls it is lifted separately.
+
+### 12.40 Plan context
+
+`server/modules/tf_context.py` gives the approval brief (12.41) the facts it cannot get from the plan alone. Open PRs that touch the same root: the open PR list of `plan_repo` (review_config 12.28) is read in a background thread (single flight, refreshed after 120 seconds, unknown after 900, never reported as no overlap when it could not be read) and each PR's changed files are matched to a root's directory, its tier vars file and the local modules it calls, all read from origin/main of the local clone (`TF_CONTEXT_REPO`, spec path `TF_CONTEXT_SPEC`, default `.github/terraform-roots.json`, schema in 12.34); applying from main while such a PR is open undoes or pre-empts it. The plan text is parsed into resources (address, action, attributes, ids added or removed) with one plain sentence per resource, and the .tf files that declare a plan's resources tie a privileged run to the roots it really changes. Principal ids are resolved to names only through the consumer's provider (`TF_CONTEXT_PROVIDER=path/to/file.py:ClassName` with an optional `resolve_principal(id) -> {name, kind}`): the old module ran a cloud CLI session of the owner for this, which core does not, so with no provider names are unknown and the brief says so. A page GET never waits on the code host or the provider.
 
 ### 12.40 Plan context
 

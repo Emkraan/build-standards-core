@@ -47,7 +47,7 @@ def _search(mod):
 def _priv_decide(act):
     def adapter(mod):
         def h(req):
-            guard = getattr(load("olympus_reviews"), "dep_guard", None)
+            guard = getattr(load("platform_reviews"), "dep_guard", None)
             return mod.decide(req.payload(), act, guard=guard)
 
         return h
@@ -270,25 +270,28 @@ def _table():
             ),
         ),
         (P, "/api/eng-backlog/tackle", "eng_backlog", "tackle_item", lambda m: _eng_tackle(m)),
+        # runtime restart card (server/modules/runtime_restart.py; the path is the one the app calls)
+        (G, "/api/hermes-restart", "runtime_restart", "get", None),
+        (P, "/api/hermes-restart", "runtime_restart", "post", None),
         # privileged deployments (server/modules/privileged_reviews.py; the estate values are review_config.py)
         (G, "/api/privileged-reviews", "privileged_reviews", "get", None),
         (
             P,
-            "/api/olympus-reviews/deployment/approve",
+            "/api/platform-reviews/deployment/approve",
             "privileged_reviews",
             "decide",
             _priv_decide("approve"),
         ),
         (
             P,
-            "/api/olympus-reviews/deployment/reject",
+            "/api/platform-reviews/deployment/reject",
             "privileged_reviews",
             "decide",
             _priv_decide("reject"),
         ),
         (
             P,
-            "/api/olympus-reviews/deployment/retry",
+            "/api/platform-reviews/deployment/retry",
             "privileged_reviews",
             "decide",
             _priv_decide("retry"),
