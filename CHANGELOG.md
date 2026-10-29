@@ -1,10 +1,16 @@
 # Changelog
 
-## 2026-10-29 (v1.88.0, ops center label hold explainer)
+## 2026-10-29 (v1.89.0, ops center label hold explainer)
 
 Why a PR sits on a hold label. Opt in: new `lanes/label_hold.py`.
 
 - Who placed the hold label and when, the newest decisions-log note that names the PR, and the owner's triage markers for the head, so the card says what clearing the hold would do; the labels and the display zone are configuration (DESIGN.md 12.40). Tests: 14.
+
+## 2026-10-29 (v1.88.0, ops center plan context)
+
+Plain-language facts for Terraform apply cards. Opt in: new `server/modules/tf_context.py`, used by the approval brief.
+
+- Open PRs that change the same root, the plan text parsed into resources with one sentence each, and principal names through an optional provider (null default: none); the repo is `plan_repo` in review_config and the roots spec path is configurable (DESIGN.md 12.40). Tests: 5.
 
 ## 2026-10-29 (v1.87.0, ops center runtime restart card)
 
