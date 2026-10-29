@@ -44,6 +44,18 @@ def _search(mod):
     return h
 
 
+def _plan_move(fn, p):
+    if not isinstance(p.get("path"), str):
+        raise ValueError("path required")
+    return fn(p["path"], p.get("version"), what_if=bool(p.get("what_if")))
+
+
+def _key(p):
+    if not isinstance(p.get("key"), str):
+        raise ValueError("key required")
+    return p["key"]
+
+
 def _decorate_repos(data):
     cron = load("cron_pulse")
     return (
@@ -297,6 +309,48 @@ def _table():
         (P, "/api/team_prefix-reviews/merge", "other_reviews", "merge", None),
         (P, "/api/team_prefix-reviews/approve", "other_reviews", "approve", None),
         (P, "/api/team_prefix-reviews/decide-fix", "other_reviews", "decide_fix", None),
+        # plans (server/modules/plans.py)
+        (G, "/api/plans", "plans", "items", None),
+        (G, "/api/plans/file", "plans", "read", lambda m: lambda r: m.read(r.arg("path"))),
+        (
+            P,
+            "/api/plans/archive",
+            "plans",
+            "archive",
+            lambda m: lambda r: _plan_move(m.archive, _payload(r)),
+        ),
+        (
+            P,
+            "/api/plans/restore",
+            "plans",
+            "restore",
+            lambda m: lambda r: _plan_move(m.restore, _payload(r)),
+        ),
+        (
+            P,
+            "/api/plans/create",
+            "plans",
+            "create_tracker",
+            lambda m: (
+                lambda r: m.create_tracker(
+                    _key(_payload(r)),
+                    _payload(r).get("slug"),
+                    _payload(r).get("title", ""),
+                    what_if=bool(_payload(r).get("what_if")),
+                )
+            ),
+        ),
+        (
+            P,
+            "/api/plans/dismiss",
+            "plans",
+            "dismiss_untracked",
+            lambda m: (
+                lambda r: m.dismiss_untracked(
+                    _key(_payload(r)), what_if=bool(_payload(r).get("what_if"))
+                )
+            ),
+        ),
         # plan reviews (server/modules/tf_reviews.py)
         (G, "/api/tf-reviews", "tf_reviews", "get", None),
         (

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.84.0, ops center plans)
+
+The Plans page server half. Opt in: new `server/modules/plans.py`; the registry maps a `PermissionError` to 403.
+
+- Trackers, standalone plans and the archive from markdown front matter, one file's text for the reader, archive and restore on the owner's click, freshness against the PRs and ticket changes on each tracker, and the untracked-work strip; the ticket prefix, browse URL and repos are data (DESIGN.md 12.32). Tests: 22.
+
 ## 2026-10-29 (v1.83.0, ops center other repo reviews)
 
 The second repo's review page server half. Opt in: new `server/modules/other_reviews.py`; the privileged deployment decisions move to the path the app calls (`/api/platform-reviews/deployment/{approve,reject,retry}`).
