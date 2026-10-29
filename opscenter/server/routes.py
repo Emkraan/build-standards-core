@@ -51,21 +51,13 @@ def _decorate_repos(data):
     )
 
 
-def _decorate(data, brief_fn, cron_fn):
-    """The approval brief's and the cron pulse's additions to a page payload, each only when its module is present."""
-    for mod, fn in (("approval_brief", brief_fn), ("cron_pulse", cron_fn)):
-        m = load(mod)
-        if m is not None and hasattr(m, fn):
-            data = getattr(m, fn)(data)
-    return data
-
-
 def _decorate_other(data):
-    return _decorate(data, "decorate_other", "decorate_secondary")
-
-
-def _decorate_platform(data):
-    return _decorate(data, "decorate_plan", "decorate_primary")
+    cron = load("cron_pulse")
+    return (
+        cron.decorate_secondary(data)
+        if cron is not None and hasattr(cron, "decorate_secondary")
+        else data
+    )
 
 
 def _priv_decide(act):
@@ -122,6 +114,19 @@ def _key(p):
     if not isinstance(p.get("key"), str):
         raise ValueError("key required")
     return p["key"]
+
+
+def _decorate(data, brief_fn, cron_fn):
+    """The approval brief's and the cron pulse's additions to a page payload, each only when its module is present."""
+    for mod, fn in (("approval_brief", brief_fn), ("cron_pulse", cron_fn)):
+        m = load(mod)
+        if m is not None and hasattr(m, fn):
+            data = getattr(m, fn)(data)
+    return data
+
+
+def _decorate_platform(data):
+    return _decorate(data, "decorate_plan", "decorate_primary")
 
 
 # (method, path, module, function, adapter(module) -> handler(req) or None for the default)
@@ -472,6 +477,8 @@ def _table():
             "request",
             lambda m: lambda r: m.request(_payload(r), "signin"),
         ),
+        # sidebar badges (server/modules/badges.py)
+        (G, "/api/badges", "badges", "get", None),
         # platform reviews (server/modules/platform_reviews.py; the estate values are the review config `platform` object)
         (
             G,
@@ -700,12 +707,6 @@ def build(registry=None):
     acc = load("model_accounts")
     if acc is not None and hasattr(acc, "sample"):
         r.background.append((acc.sample, 600))
-    plat = load("platform_reviews")
-    if plat is not None and hasattr(plat, "thread_wait_tick"):
-        r.background.append((plat.thread_wait_tick, 60))
-    roots = load("owner_roots")
-    if roots is not None and hasattr(roots, "maybe_refresh") and roots.configured():
-        r.background.append((roots.maybe_refresh, 60))
     return r
 
 

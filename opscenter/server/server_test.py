@@ -449,6 +449,11 @@ class Routes(unittest.TestCase):
         finally:
             os.environ.pop("OWNER_ROOTS_CACHE", None)
 
+    def test_badges_answer_the_zero_shape_with_nothing_configured(self):
+        s, body = self.js("GET", "/api/badges")
+        self.assertEqual((s, body["action_open"], body["knowledge"]), (200, [], 0))
+        self.assertEqual(body["infra"]["count"], 0)
+
     def test_platform_reviews_with_no_config_answer_empty_and_a_write_is_501(self):
         os.environ["OPSCENTER_REVIEWS_CONFIG"] = os.path.join(
             os.environ["OPSCENTER_STATE_DIR"], "none.json"
