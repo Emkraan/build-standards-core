@@ -1326,6 +1326,7 @@ the standard drops: it is waiting on something named here.
 | (doc audit) | documentation audit and coverage page | lifted: `engine/doc_audit.py`, `server/modules/doc_coverage.py` (12.26); the docs home read is a driver the consumer supplies |
 | (review helpers) | live code host facts and review conversations | lifted: `server/modules/live_truth.py`, `lanes/review_threads.py` (12.27) |
 | (privileged reviews) | privileged deployments lane and review config | lifted: `server/modules/privileged_reviews.py`, `review_config.py` (12.28) |
+| (repo reviews) | other repos review page | lifted: `server/modules/repo_reviews.py` (12.29) |
 | (server modules, core consumption) | the core consumption panel's server half | lifted: `server/modules/core_consumption.py` (12.24) |
 | (server) | the running server and its routes | lifted as a generic server: `server/` (12.21); the agent session routes and some page halves are not lifted |
 | (4) | the app | lifted: `opscenter/app`, all 114 source files, typecheck, unit tests and build in CI; the browser tests are `npm run test:browser` |
@@ -1783,3 +1784,16 @@ exist. Only then does it decide the pending deployment through the code host and
 is identical to one whose apply failed (retry is the path), and an optional guard (the other-PR dependency check when the Olympus page is
 present) can refuse it. Routes: `GET /api/privileged-reviews`, `POST /api/olympus-reviews/deployment/approve`, `/reject`, `/retry` (the path
 the app already calls). Nothing is decided automatically.
+
+### 12.29 Repo reviews
+
+`server/modules/repo_reviews.py` serves the other repos page for the repos in `repo_reviews` (review_config; none configured is an empty page).
+A PR needs the owner when a check is failing (the failing job's log is read once per head and the changed files it names are listed), when it
+is green and mergeable but unmerged for 30 minutes, or when the owner's review is requested; a PR a lane is working is in progress. Rows come
+from the consumer's lanes through files the core already reads: `own_lane` state for the repos in `autofix_lanes` (the sentence after a fix
+clears is `autofix_after`), and the core merge lane's state file (`CORE_LANE_STATE`, default under the agent home) for `core_lane_repo`, which
+is ignored when absent, stale (15 minutes), failing, off or a dry run. In owner mode a PR that clears every gate is the core owner's to merge
+in version order, never the owner's to act on. Open issues the owner opened or is assigned are listed by who moves next (a reply from someone
+else, or quiet for `REPO_REVIEWS_ISSUE_QUIET_DAYS`, needs the owner); with no `owner` configured there are no issue rows. Routes:
+`GET /api/repo-reviews` (decorated with the cron pulse when that module is present), `POST /api/repo-reviews/rerun` (re-runs the failed jobs
+at the head the owner saw, refused when the PR moved on, 400 for an unlisted repo).

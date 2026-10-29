@@ -44,6 +44,13 @@ def _search(mod):
     return h
 
 
+def _decorate_repos(data):
+    cron = load("cron_pulse")
+    return (
+        cron.decorate_repos(data) if cron is not None and hasattr(cron, "decorate_repos") else data
+    )
+
+
 def _priv_decide(act):
     def adapter(mod):
         def h(req):
@@ -270,11 +277,38 @@ def _table():
             ),
         ),
         (P, "/api/eng-backlog/tackle", "eng_backlog", "tackle_item", lambda m: _eng_tackle(m)),
+        # other repos (server/modules/repo_reviews.py)
+        (
+            G,
+            "/api/repo-reviews",
+            "repo_reviews",
+            "get",
+            lambda m: lambda r: _decorate_repos(m.get(force=_fresh(r))),
+        ),
+        (P, "/api/repo-reviews/rerun", "repo_reviews", "rerun", None),
         # privileged deployments (server/modules/privileged_reviews.py; the estate values are review_config.py)
         (G, "/api/privileged-reviews", "privileged_reviews", "get", None),
-        (P, "/api/olympus-reviews/deployment/approve", "privileged_reviews", "decide", _priv_decide("approve")),
-        (P, "/api/olympus-reviews/deployment/reject", "privileged_reviews", "decide", _priv_decide("reject")),
-        (P, "/api/olympus-reviews/deployment/retry", "privileged_reviews", "decide", _priv_decide("retry")),
+        (
+            P,
+            "/api/olympus-reviews/deployment/approve",
+            "privileged_reviews",
+            "decide",
+            _priv_decide("approve"),
+        ),
+        (
+            P,
+            "/api/olympus-reviews/deployment/reject",
+            "privileged_reviews",
+            "decide",
+            _priv_decide("reject"),
+        ),
+        (
+            P,
+            "/api/olympus-reviews/deployment/retry",
+            "privileged_reviews",
+            "decide",
+            _priv_decide("retry"),
+        ),
         # documentation coverage (server/modules/doc_coverage.py; the audit is engine/doc_audit.py)
         (G, "/api/doc-coverage", "doc_coverage", "get", lambda m: lambda r: m.get(_tackles())),
         (
