@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.101.0, client feed imports the kit by a peer name)
+
+`shell-packages/app-client/src/feed.tsx` imports the kit as `@shell/kit` instead of `@build-standards/kit`.
+
+- A consumer maps `@shell/kit` to its own kit in `tsconfig` `paths` and the bundler alias, so a kit with another package name needs no core source edit. The core's `kit/` tsconfig and vitest alias map it to `./src/index.ts`. Client tests unchanged (165 pass).
+
 ## 2026-10-29 (v1.100.0, one consumer preset for the server package)
 
 `shell-packages/app-server`: a shell names itself once. Opt in, defaults unchanged.

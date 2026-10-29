@@ -7,7 +7,7 @@ export default defineConfig({
   resolve: {
     // The shell packages sit outside the kit folder; their bare imports resolve to the kit's copies.
     dedupe: ['react', 'react-dom', '@azure/msal-browser'],
-    alias: { '@build-standards/kit': fileURLToPath(new URL('./src/index.ts', import.meta.url)) },
+    alias: { '@shell/kit': fileURLToPath(new URL('./src/index.ts', import.meta.url)) },
   },
   test: {
     environment: 'jsdom',
