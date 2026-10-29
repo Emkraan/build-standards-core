@@ -198,6 +198,16 @@ def _table():
                 )
             ),
         ),
+        # core consumption panel (server/modules/core_consumption.py)
+        (
+            G,
+            "/api/core-consumption",
+            "core_consumption",
+            "get",
+            lambda m: lambda r: m.get(fresh=_fresh(r)),
+        ),
+        (P, "/api/core-consumption/approve-pr", "core_consumption", "approve_pr", None),
+        (P, "/api/core-consumption/approve-item", "core_consumption", "approve_item", None),
         # model accounts (server/modules/model_accounts.py, provider slot)
         (G, "/api/infra/accounts", "model_accounts", "get", None),
         (G, "/api/llm-fallback", "model_fallback", "get", None),
