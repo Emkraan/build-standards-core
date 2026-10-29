@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-28 (v1.77.0, ops center documentation audit)
+
+The documentation audit and the Knowledge page's coverage server half. Opt in: new `engine/doc_audit.py` and `server/modules/doc_coverage.py`.
+
+- Rules R1 to R12 over a registry, driven by `DOC_AUDIT_CONFIG`; the docs home is read through the consumer's driver (`DOCS_HOME_CMD`) and the audit fails closed without one (DESIGN.md 12.26). Tests: 17 (a real git origin and a fake driver) and 9.
+
 ## 2026-10-28 (v1.75.0, ops center core consumption panel)
 
 The core consumption panel server half. Opt in: new `server/modules/core_consumption.py` and routes.
