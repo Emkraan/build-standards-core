@@ -1,10 +1,16 @@
 # Changelog
 
-## 2026-10-29 (v1.90.0, ops center repo reviews)
+## 2026-10-29 (v1.91.0, ops center repo reviews)
 
 The other repos page server half. Opt in: new `server/modules/repo_reviews.py`; `review_config` gains `repo_labels`, `autofix_lanes` and `autofix_after`.
 
 - Open PRs that need the owner (failing checks with the files the log names, stale green, review requested), issues by who moves next, shipped PRs, and the core merge lane and own-PR auto-fix lane rows; re-run failed jobs pinned to the head seen (DESIGN.md 12.29). Tests: 13.
+
+## 2026-10-29 (v1.90.0, ops center maintenance window hold)
+
+The review pages' side of the maintenance window hold. Opt in: new `lanes/maintenance_hold.py`.
+
+- The Needs me preview of what an approval would do now, the held cards, approve without enqueue with one window comment per head, and the emergency override on a held card pinned to the held head with a recorded reason (DESIGN.md 12.41). Tests: 9.
 
 ## 2026-10-29 (v1.89.0, ops center label hold explainer)
 
