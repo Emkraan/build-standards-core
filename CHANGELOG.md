@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-28 (v1.78.0, ops center debt and improvements)
+
+The Debt and improvements page server half. Opt in: new `server/modules/eng_backlog.py` and routes.
+
+- The markdown files stay the source of truth; decisions rewrite one Status line under a lock (DESIGN.md 12.25). Tackle goes through the runtime slot. Tests: 10.
+
 ## 2026-10-28 (v1.77.0, ops center documentation audit)
 
 The documentation audit and the Knowledge page's coverage server half. Opt in: new `engine/doc_audit.py` and `server/modules/doc_coverage.py`.

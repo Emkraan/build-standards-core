@@ -63,6 +63,20 @@ def _doc_tackle(mod):
     return h
 
 
+def _eng_tackle(mod):
+    import runtime_slot as rt
+
+    def h(req):
+        rt._need()
+        p = req.payload()
+        row = mod.find(str(p.get("uid") or ""))
+        item = mod.tackle_item(row)
+        fp = f"eng-{row['uid']}"
+        return dict(rt.start(fp, "debt", item["title"], item, str(p.get("context") or "")), fp=fp)
+
+    return h
+
+
 # (method, path, module, function, adapter(module) -> handler(req) or None for the default)
 def _table():
     G, P = "GET", "POST"
@@ -218,6 +232,33 @@ def _table():
                 )
             ),
         ),
+        # debt and improvements (server/modules/eng_backlog.py)
+        (G, "/api/eng-backlog", "eng_backlog", "items", None),
+        (
+            P,
+            "/api/eng-backlog/decide",
+            "eng_backlog",
+            "set_status",
+            lambda m: (
+                lambda r: m.set_status(
+                    str(_payload(r).get("uid") or ""),
+                    str(_payload(r).get("act") or ""),
+                    str(_payload(r).get("note") or ""),
+                )
+            ),
+        ),
+        (
+            P,
+            "/api/eng-backlog/handle",
+            "eng_backlog",
+            "handle",
+            lambda m: (
+                lambda r: m.handle(
+                    str(_payload(r).get("uid") or ""), str(_payload(r).get("act") or "")
+                )
+            ),
+        ),
+        (P, "/api/eng-backlog/tackle", "eng_backlog", "tackle_item", lambda m: _eng_tackle(m)),
         # documentation coverage (server/modules/doc_coverage.py; the audit is engine/doc_audit.py)
         (G, "/api/doc-coverage", "doc_coverage", "get", lambda m: lambda r: m.get(_tackles())),
         (

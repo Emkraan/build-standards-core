@@ -1322,6 +1322,7 @@ the standard drops: it is waiting on something named here.
 | (collector) | inbound mail and chat monitor gates | lifted: `gates/inbound_mail_gate.py`, `inbound_chat_gate.py`, `inbound_score.py` (12.19) |
 | (2.4) | swr, alerts, review tombstones, paths | lifted: `server/modules/` |
 | (2.6) | analyzer: contract, handled match, first seen, routing, collector, bundle builder, wake gate | lifted: `engine/` (`contract`, `handled`, `first_seen`, `routing`, `collect`, `analysis_bundle`, `board_build`), `gates/action_center_gate.py`, `server/modules/routing_api.py` (12.13) |
+| (server modules, debt page) | debt and improvements page server half | lifted: `server/modules/eng_backlog.py` (12.25) |
 | (doc audit) | documentation audit and coverage page | lifted: `engine/doc_audit.py`, `server/modules/doc_coverage.py` (12.26); the docs home read is a driver the consumer supplies |
 | (server modules, core consumption) | the core consumption panel's server half | lifted: `server/modules/core_consumption.py` (12.24) |
 | (server) | the running server and its routes | lifted as a generic server: `server/` (12.21); the agent session routes and some page halves are not lifted |
@@ -1739,3 +1740,16 @@ duplicate roots, close-out state, job files, discovery of directories and loose 
 only) in `doc-handled.json`, `open_count` for the badge (open things plus one per duplicate set), and the tackle item. Routes `GET /api/doc-coverage`,
 `POST /api/doc-coverage/handle` and `/tackle`; tackle runs through the runtime slot (12.23) and answers 501 without a runtime. The running prompt's
 skill names and write guard instructions were the agent's own and are not in core (`DOC_AUDIT_WIKI_URL` supplies the link prefix for the prompt).
+
+### 12.25 Debt and improvements
+
+`server/modules/eng_backlog.py` parses every `TD-NNN` (technical debt) and `IMP-NNN` (improvement) heading of two markdown files
+(`ENGBL_TD`, default `<root>/engineering-state/technical-debt.md`; `ENGBL_IMP`, default `<root>/state/improvement-backlog.md`) into the
+page's rows: bucket (decide, todo, parked, done), outcome, severity (debt), goals and effort (improvements), owner, date, body. The files stay
+the source of truth. A decision (approve, park, decline, reopen for improvements; accept, resolve for debt) rewrites only that entry's
+Status line in place under a file lock and keeps the old text after "Earlier:"; accepting a risk or closing debt needs a reason, and an entry
+whose heading is not unique is refused. Snooze is page-only (7 days, `ENGBL_HANDLED`). Routes: `GET /api/eng-backlog`, `POST
+/api/eng-backlog/decide`, `/handle` and `/tackle`. Tackle goes through the runtime slot (12.23): the entry as written and its source file
+become the session's prompt, and with no runtime configured the route answers 501. Differences from the running code: the long first-person
+session prompt (skills to load, message and comment rules, a resolve script path) was the agent's own and is not in core; the session's
+instructions are the runtime command's.

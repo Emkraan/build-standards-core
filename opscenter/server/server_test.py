@@ -346,6 +346,7 @@ class Routes(unittest.TestCase):
             ("/api/tackle", {"fp": "x"}),
             ("/api/jira/tackle", {"key": "A-1"}),
             ("/api/pr/discuss", {"repo": "o/r", "pr": 1}),
+            ("/api/eng-backlog/tackle", {"uid": "x"}),
             ("/api/doc-coverage/tackle", {"id": "x"}),
         ):
             s, body = self.js("POST", path, payload)
