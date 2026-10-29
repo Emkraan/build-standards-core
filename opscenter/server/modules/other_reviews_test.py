@@ -58,7 +58,9 @@ def setUpModule():
     os.environ.update(ENV)
     os.environ.pop("OPSCENTER_ESCALATIONS_CMD", None)
     import other_reviews
+    import review_acted
 
+    importlib.reload(review_acted)  # its store path is read at import
     o = importlib.reload(other_reviews)
 
 
