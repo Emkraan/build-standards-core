@@ -6,6 +6,13 @@ The shell client package accepts the names Olympus already runs with. Opt in: th
 
 - `AuthMode` accepts `hub` and `tool` next to `shell` and `module` (same behaviour, `isShellMode` exported); `createAuth` takes `returnToKey` and `acceptReturnToKeys`, so a saved return target survives a rename (`standards/web-shell-packages.md` section 4). Tests: 3.
 
+## 2026-10-29 (v1.80.0, shell server package: request telemetry and gateway names)
+
+The shell server package gains what Olympus runs and the core was missing. Opt in: new exports only, the defaults are unchanged.
+
+- Request telemetry: `requestTelemetry`, `createExportRetry`, `isTransientExportFailure`, `parseSettingString` and `closeTelemetryOnShutdown`, with the transient-only export retry and the shutdown flush (`standards/web-shell-packages.md` section 5.1). Tests: 34.
+- Gateway names: `gatewayGuard` takes `header`, `role`, `requestProperty` and `refusalMessage`, and `takeGatewayHeader(req, header)` is exported, so a shell keeps its own header, role and request property (section 5.2). `serverTiming` takes `timingKey` to store the record under a key of the shell's own. Tests: 8.
+
 ## 2026-10-29 (v1.79.0, ops center review helpers)
 
 Two helpers the review pages share. New `server/modules/live_truth.py` and `lanes/review_threads.py`.
