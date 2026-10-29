@@ -120,7 +120,7 @@ Express style stack (`req`, `res`, `next`) and the CommonJS servers `require` it
 | `safeMessage` | An error message with bearer tokens and key values removed, short enough to log |
 
 The gateway guard reads `GATEWAY_ENFORCE`, `GATEWAY_PRINCIPAL_ID`, `GATEWAY_AUDIENCE` and `TENANT_ID` from the
-environment. With none set and enforcement off it only removes the header; some but not all set logs a
+environment (the names are the core's defaults; the consumer preset in 5.2 renames them). With none set and enforcement off it only removes the header; some but not all set logs a
 `misconfigured` line at startup. Mount it before the bearer check.
 
 ### 5.1 Request telemetry
@@ -155,7 +155,19 @@ telemetry is on, so a server without the setting never loads the client.
 
 ### 5.2 Naming a gateway
 
-`gatewayGuard` takes the names a shell already runs with, so adopting the package changes nothing on the wire:
+A shell names itself once, with `setConsumerPreset({ ... })` at startup (`getConsumerPreset` reads it,
+`resetConsumerPreset` is for tests). Every gateway function (`gatewayGuard`, `verifyGatewayToken`,
+`takeGatewayHeader`), the telemetry defaults and the timing key read it, and a per-call option still wins.
+A field left out keeps the core default, and each call replaces the previous preset. The fields:
+
+| Field | Default | Read by |
+|---|---|---|
+| `header`, `role`, `requestProperty`, `refusalMessage` | `x-gateway-token`, `gateway`, `gateway`, the gateway message | the guard, `verifyGatewayToken` (role), the strip step |
+| `settings.enforce`, `settings.principalId`, `settings.audience`, `settings.tenantId` | `GATEWAY_ENFORCE`, `GATEWAY_PRINCIPAL_ID`, `GATEWAY_AUDIENCE`, `TENANT_ID` | the guard reads these env names, and the `misconfigured` startup line prints the names in force |
+| `serviceName`, `tracerScope` | `api`, `app-server` | `requestTelemetry`: the `service.name` used when neither `roleName` nor `WEBSITE_SITE_NAME` is set, and the tracer scope (option `tracerScope` overrides) |
+| `timingKey` | `shell.app-server.timing` | the base `Symbol.for` key `serverTiming` and `recordTiming` use |
+
+`gatewayGuard` also takes the names per call, so adopting the package changes nothing on the wire:
 `header` (default `x-gateway-token`; matched in any case and removed from `req.headers` and `req.rawHeaders`),
 `role` (default `gateway`; `""` skips the role check; `verifyGatewayToken` takes the same value as `role`),
 `requestProperty` (default `gateway`; the checked result `{ ok, reason }` is also set under this name, next to
@@ -170,7 +182,7 @@ telemetry is on, so a server without the setting never loads the client.
 | `kit/tests/shell-rbac.test.ts` | The ceiling, fail-closed stale ids, the wildcard rule, view-as, tab computation and the client helpers |
 | `tests/test_console_module_schema.py` | The same manifest fixtures against the JSON schema ([web-shell-manifest.md](web-shell-manifest.md)) |
 | `kit/tests/app-client/*.test.ts` | The sign-in boot (silent, redirect, loop guard, return target, module bounce, configuration errors), the API client (token, errors, single flight, cache, 401 handling, persistence), the store, `useResource` and the feed strip, with a fake MSAL client |
-| `kit/tests/app-server/*.test.js` | The group cache (TTL, bound, single flight, fail closed, scoped lists), CORS and the origin guard, Server-Timing and route naming on real Express apps, the request telemetry (settings, record mapping, flush and close) and its export retry, the release notes handler, and the gateway token check against a local signing key, including a custom header, role and request property. Run by `npm run test:server` inside `kit` |
+| `kit/tests/app-server/*.test.js` | The group cache (TTL, bound, single flight, fail closed, scoped lists), CORS and the origin guard, Server-Timing and route naming on real Express apps, the request telemetry (settings, record mapping, flush and close) and its export retry, the release notes handler, and the gateway token check against a local signing key, including a custom header, role and request property and the consumer preset. Run by `npm run test:server` inside `kit` |
 
 The kit workflow runs on a change under `shell-packages/` or the manifest fixtures.
 

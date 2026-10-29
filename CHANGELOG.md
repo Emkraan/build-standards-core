@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-29 (v1.100.0, one consumer preset for the server package)
+
+`shell-packages/app-server`: a shell names itself once. Opt in, defaults unchanged.
+
+- New `setConsumerPreset`, `getConsumerPreset`, `resetConsumerPreset` and `CONSUMER_PRESET_DEFAULTS`: gateway header, role, request property and refusal message, the four setting names, the default telemetry `service.name` and tracer scope, and the timing key base symbol. `gatewayGuard`, `verifyGatewayToken` and `takeGatewayHeader` read it, so a consumer's own tests that call them with defaults pass unchanged; per-call options still override.
+- The `misconfigured` startup line prints the setting names in force instead of the core's.
+- `requestTelemetry` takes `tracerScope`; its `service.name` fallback and the scope default come from the preset. `serverTiming` and `recordTiming` use the preset timing key, read per request. Tests: 9.
+
 ## 2026-10-29 (v1.99.0, ops center design status)
 
 DESIGN.md only: the lift status after the server halves.

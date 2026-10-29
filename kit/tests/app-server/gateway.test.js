@@ -12,6 +12,10 @@ import {
   parseGatewayEnforce,
   createSigningKeyCache,
   GATEWAY_HEADER,
+  setConsumerPreset,
+  getConsumerPreset,
+  resetConsumerPreset,
+  CONSUMER_PRESET_DEFAULTS,
 } from "../../../shell-packages/app-server/index.js";
 
 const TENANT = "11111111-2222-3333-4444-555555555555";
@@ -396,4 +400,106 @@ test("an empty role skips the role check and a refusal message can be set", asyn
 test("verifyGatewayToken takes the role from its settings", async () => {
   assert.deepEqual(await verifyGatewayToken(mint({ roles: [CUSTOM_ROLE] }), { ...cfg, role: CUSTOM_ROLE }), { ok: true });
   assert.deepEqual(await verifyGatewayToken(mint({ roles: [CUSTOM_ROLE] }), cfg), { ok: false, reason: "role" });
+});
+
+// --- Consumer preset: set once, read by every gateway function ---
+
+const PRESET = {
+  header: "X-Shell-Gateway",
+  role: CUSTOM_ROLE,
+  requestProperty: "shellGateway",
+  refusalMessage: "Use the shell gateway.",
+  settings: { enforce: "SHELL_ENFORCE", principalId: "SHELL_PRINCIPAL", audience: "SHELL_AUDIENCE", tenantId: "SHELL_TENANT" },
+};
+const PRESET_ENV = { SHELL_TENANT: TENANT, SHELL_PRINCIPAL: GATEWAY_OID, SHELL_AUDIENCE: AUD, SHELL_ENFORCE: "on" };
+
+test("preset: with no preset the core defaults stand", () => {
+  resetConsumerPreset();
+  assert.deepEqual(getConsumerPreset(), CONSUMER_PRESET_DEFAULTS);
+  assert.equal(getConsumerPreset().header, GATEWAY_HEADER);
+});
+
+test("preset: verifyGatewayToken, takeGatewayHeader and the guard read it with no per-call options", async () => {
+  setConsumerPreset(PRESET);
+  try {
+    assert.equal(getConsumerPreset().header, CUSTOM_HEADER, "header is lower cased");
+    assert.deepEqual(await verifyGatewayToken(mint({ roles: [CUSTOM_ROLE] }), cfg), { ok: true });
+    assert.deepEqual(await verifyGatewayToken(mint(), cfg), { ok: false, reason: "role" });
+    assert.equal(takeGatewayHeader({ headers: { [CUSTOM_HEADER]: "tok" }, rawHeaders: [] }), "tok");
+
+    const app = express();
+    /** @type {any[]} */
+    const seen = [];
+    app.use(gatewayGuard({ log: () => {}, keys, env: PRESET_ENV }));
+    app.get("/api/things", (req, res) => {
+      const r = /** @type {any} */ (req);
+      seen.push({ headers: { ...req.headers }, shellGateway: r.shellGateway, gateway: r.gateway });
+      res.json({ ok: true });
+    });
+    const server = app.listen(0);
+    await new Promise((r) => server.once("listening", r));
+    const port = /** @type {import("node:net").AddressInfo} */ (server.address()).port;
+    /** @param {Record<string, string>} h */
+    const get = (h) => fetch(`http://127.0.0.1:${port}/api/things`, { headers: h });
+    try {
+      assert.equal((await get({ [CUSTOM_HEADER]: mint({ roles: [CUSTOM_ROLE] }) })).status, 200);
+      assert.equal(seen[0].headers[CUSTOM_HEADER], undefined, "the preset header is stripped");
+      assert.deepEqual(seen[0].shellGateway, { ok: true, reason: "ok" });
+      assert.deepEqual(seen[0].gateway, seen[0].shellGateway);
+      const refused = await get({ [CUSTOM_HEADER]: mint() });
+      assert.equal(refused.status, 403);
+      assert.equal(/** @type {any} */ (await refused.json()).message, "Use the shell gateway.");
+    } finally {
+      await new Promise((r) => server.close(r));
+    }
+  } finally {
+    resetConsumerPreset();
+  }
+});
+
+test("preset: a per-call option still overrides it", async () => {
+  setConsumerPreset(PRESET);
+  try {
+    assert.deepEqual(await verifyGatewayToken(mint(), { ...cfg, role: "gateway" }), { ok: true });
+    assert.equal(takeGatewayHeader({ headers: { "x-other": "tok" }, rawHeaders: [] }, "x-other"), "tok");
+    const lines = /** @type {string[]} */ ([]);
+    const mw = gatewayGuard({ env: { ...PRESET_ENV, SHELL_TENANT: "nope" }, log: (l) => lines.push(l), header: "x-call-header", tenantId: TENANT });
+    const req = { path: "/api/things", headers: { "x-call-header": "t", [CUSTOM_HEADER]: "keep" }, rawHeaders: [] };
+    mw(req, {}, () => {});
+    assert.deepEqual(req.headers, { [CUSTOM_HEADER]: "keep" });
+    assert.ok(!lines.some((l) => l.includes("misconfigured")), "the tenant came from the option");
+  } finally {
+    resetConsumerPreset();
+  }
+});
+
+test("preset: the misconfigured log prints the setting names the consumer configured", () => {
+  setConsumerPreset(PRESET);
+  try {
+    const lines = /** @type {string[]} */ ([]);
+    gatewayGuard({ env: { SHELL_PRINCIPAL: "not-a-guid" }, log: (l) => lines.push(l) });
+    const mis = lines.map((l) => JSON.parse(l)).find((o) => o.gateway === "misconfigured");
+    assert.deepEqual(mis.missing_or_invalid, ["SHELL_PRINCIPAL", "SHELL_TENANT", "SHELL_AUDIENCE"]);
+  } finally {
+    resetConsumerPreset();
+  }
+  const lines = /** @type {string[]} */ ([]);
+  gatewayGuard({ env: { GATEWAY_PRINCIPAL_ID: "not-a-guid" }, log: (l) => lines.push(l) });
+  const mis = lines.map((l) => JSON.parse(l)).find((o) => o.gateway === "misconfigured");
+  assert.deepEqual(mis.missing_or_invalid, ["GATEWAY_PRINCIPAL_ID", "TENANT_ID", "GATEWAY_AUDIENCE"]);
+});
+
+test("preset: each call replaces the last, empty fields fall back, an empty role skips the role check", async () => {
+  setConsumerPreset(PRESET);
+  setConsumerPreset({ header: "  ", role: "" });
+  try {
+    const p = getConsumerPreset();
+    assert.equal(p.header, GATEWAY_HEADER);
+    assert.equal(p.requestProperty, "gateway");
+    assert.deepEqual(p.settings, CONSUMER_PRESET_DEFAULTS.settings);
+    assert.deepEqual(await verifyGatewayToken(mint({ roles: [] }), cfg), { ok: true });
+    assert.throws(() => { /** @type {any} */ (p).header = "x"; });
+  } finally {
+    resetConsumerPreset();
+  }
 });

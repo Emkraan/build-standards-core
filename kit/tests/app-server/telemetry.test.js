@@ -2,7 +2,7 @@ import { test, before } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
 import express from "express";
-import { requestTelemetry, parseSettingString, safeMessage, serverTiming, isDeclaredRoute } from "../../../shell-packages/app-server/index.js";
+import { requestTelemetry, parseSettingString, safeMessage, serverTiming, isDeclaredRoute, setConsumerPreset, getConsumerPreset } from "../../../shell-packages/app-server/index.js";
 
 const CONN = "InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;ApplicationId=11111111-1111-1111-1111-111111111111";
 const AAD = "Authorization=AAD";
@@ -31,7 +31,9 @@ function fakeClient(opts = {}) {
       seen.resource = o.resource;
       this.processor = o.spanProcessors[0];
     }
-    getTracer() {
+    /** @param {string} name */
+    getTracer(name) {
+      seen.tracerScope = name;
       return {
         /** @param {string} name @param {any} o */
         startSpan: (name, o) => {
@@ -322,5 +324,28 @@ test("credential: the default token path calls the App Service identity endpoint
     if (saved.e === undefined) delete process.env.IDENTITY_ENDPOINT; else process.env.IDENTITY_ENDPOINT = saved.e;
     if (saved.h === undefined) delete process.env.IDENTITY_HEADER; else process.env.IDENTITY_HEADER = saved.h;
     await new Promise((resolve) => server.close(() => resolve(null)));
+  }
+});
+
+test("requestTelemetry: service name and tracer scope default from the consumer preset, an option wins", async () => {
+  const saved = getConsumerPreset();
+  try {
+    const a = fakeClient();
+    requestTelemetry({ connectionString: CONN, authenticationString: AAD, getToken: tokenOk, load: a.load, log: () => {} });
+    assert.equal(a.seen.resource.attributes["service.name"], "api");
+    assert.equal(a.seen.tracerScope, "app-server");
+
+    setConsumerPreset({ serviceName: "example-api", tracerScope: "@example/app-server" });
+    const b = fakeClient();
+    requestTelemetry({ connectionString: CONN, authenticationString: AAD, getToken: tokenOk, load: b.load, log: () => {} });
+    assert.equal(b.seen.resource.attributes["service.name"], "example-api");
+    assert.equal(b.seen.tracerScope, "@example/app-server");
+
+    const c = fakeClient();
+    requestTelemetry({ connectionString: CONN, authenticationString: AAD, getToken: tokenOk, load: c.load, roleName: "console-api", tracerScope: "own-scope", log: () => {} });
+    assert.equal(c.seen.resource.attributes["service.name"], "console-api");
+    assert.equal(c.seen.tracerScope, "own-scope");
+  } finally {
+    setConsumerPreset(saved);
   }
 });
