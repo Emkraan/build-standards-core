@@ -1,10 +1,17 @@
 # Changelog
 
-## 2026-10-29 (v1.80.0, ops center privileged reviews and review config)
+## 2026-10-29 (v1.81.0, ops center privileged reviews and review config)
 
 The privileged deployments lane server half and the shared review config. Opt in: new `server/modules/privileged_reviews.py` and `review_config.py`.
 
 - Approve, reject and retry re-verify the run at the queued commit before deciding as the owner; the repo, owner login and environment names are data in one JSON file, and with none configured the page is empty and a decision is 501 (DESIGN.md 12.28). Tests: 13.
+
+## 2026-10-29 (v1.80.0, shell server package: request telemetry and gateway names)
+
+The shell server package gains what Olympus runs and the core was missing. Opt in: new exports only, the defaults are unchanged.
+
+- Request telemetry: `requestTelemetry`, `createExportRetry`, `isTransientExportFailure`, `parseSettingString` and `closeTelemetryOnShutdown`, with the transient-only export retry and the shutdown flush (`standards/web-shell-packages.md` section 5.1). Tests: 34.
+- Gateway names: `gatewayGuard` takes `header`, `role`, `requestProperty` and `refusalMessage`, and `takeGatewayHeader(req, header)` is exported, so a shell keeps its own header, role and request property (section 5.2). `serverTiming` takes `timingKey` to store the record under a key of the shell's own. Tests: 8.
 
 ## 2026-10-29 (v1.79.0, ops center review helpers)
 
