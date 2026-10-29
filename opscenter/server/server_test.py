@@ -346,9 +346,17 @@ class Routes(unittest.TestCase):
             ("/api/tackle", {"fp": "x"}),
             ("/api/jira/tackle", {"key": "A-1"}),
             ("/api/pr/discuss", {"repo": "o/r", "pr": 1}),
+            ("/api/doc-coverage/tackle", {"id": "x"}),
         ):
             s, body = self.js("POST", path, payload)
             self.assertEqual((s, body["error"]), (501, "no runtime configured"), path)
+
+    def test_the_documentation_coverage_page_answers_empty_without_files(self):
+        s, body = self.js("GET", "/api/doc-coverage")
+        self.assertEqual((s, body["things"], body["open_count"]), (200, [], 0))
+        self.assertEqual(
+            self.js("POST", "/api/doc-coverage/handle", {"id": "x", "act": "snooze"})[0], 404
+        )
 
     def test_a_refused_provider_answers_403_with_the_reason(self):
         os.environ["OPSCENTER_MODEL_ACCOUNTS_PROVIDER"] = "nocolon"

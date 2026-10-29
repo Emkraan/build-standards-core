@@ -9,6 +9,7 @@ they need the runtime slot (DESIGN.md 12.21).
 
 import importlib
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -39,6 +40,25 @@ def _link_state(link_health):
 def _search(mod):
     def h(req):
         return mod.search(req.arg("q"))
+
+    return h
+
+
+def _tackles():
+    import runtime_slot as rt
+
+    return rt.get()["sessions"]
+
+
+def _doc_tackle(mod):
+    import runtime_slot as rt
+
+    def h(req):
+        rt._need()
+        p = req.payload()
+        item = mod.tackle_item(str(p.get("id") or ""), os.environ.get("DOC_AUDIT_WIKI_URL", ""))
+        fp = item["refs"][0]
+        return dict(rt.start(fp, "doc", item["title"], item, str(p.get("context") or "")), fp=fp)
 
     return h
 
@@ -198,6 +218,20 @@ def _table():
                 )
             ),
         ),
+        # documentation coverage (server/modules/doc_coverage.py; the audit is engine/doc_audit.py)
+        (G, "/api/doc-coverage", "doc_coverage", "get", lambda m: lambda r: m.get(_tackles())),
+        (
+            P,
+            "/api/doc-coverage/handle",
+            "doc_coverage",
+            "handle",
+            lambda m: (
+                lambda r: m.handle(
+                    str(_payload(r).get("id") or ""), str(_payload(r).get("act") or "")
+                )
+            ),
+        ),
+        (P, "/api/doc-coverage/tackle", "doc_coverage", "tackle_item", lambda m: _doc_tackle(m)),
         # model accounts (server/modules/model_accounts.py, provider slot)
         (G, "/api/infra/accounts", "model_accounts", "get", None),
         (G, "/api/llm-fallback", "model_fallback", "get", None),

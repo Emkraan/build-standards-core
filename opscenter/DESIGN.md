@@ -1322,6 +1322,7 @@ the standard drops: it is waiting on something named here.
 | (collector) | inbound mail and chat monitor gates | lifted: `gates/inbound_mail_gate.py`, `inbound_chat_gate.py`, `inbound_score.py` (12.19) |
 | (2.4) | swr, alerts, review tombstones, paths | lifted: `server/modules/` |
 | (2.6) | analyzer: contract, handled match, first seen, routing, collector, bundle builder, wake gate | lifted: `engine/` (`contract`, `handled`, `first_seen`, `routing`, `collect`, `analysis_bundle`, `board_build`), `gates/action_center_gate.py`, `server/modules/routing_api.py` (12.13) |
+| (doc audit) | documentation audit and coverage page | lifted: `engine/doc_audit.py`, `server/modules/doc_coverage.py` (12.26); the docs home read is a driver the consumer supplies |
 | (server) | the running server and its routes | lifted as a generic server: `server/` (12.21); the agent session routes and some page halves are not lifted |
 | (4) | the app | lifted: `opscenter/app`, all 114 source files, typecheck, unit tests and build in CI; the browser tests are `npm run test:browser` |
 
@@ -1658,7 +1659,7 @@ the agent session routes below, and answered every origin with a wildcard CORS h
   in the tree is skipped, so a consumer that lifts fewer pages gets fewer routes.
 - Not lifted, and why: the routes that start an agent session (tackle, discuss, the session list), which need a runtime slot contract the
   consumer defines (a command that launches a session and reports back); the server halves of the infra, privileged and per product review pages, plans, engineering backlog, core consumption, owner roots, repo reviews and approval brief
-  pages; the doc audit. Each follows the registry the same way and lands when its module does.
+  pages. Each follows the registry the same way and lands when its module does.
 
 ### 12.22 Model accounts provider slot (item 17)
 
@@ -1705,3 +1706,25 @@ the app shows; the consumer supplies one command, `OPSCENTER_RUNTIME_CMD` (a JSO
 - Routes: `GET /api/tackle`, `POST /api/tackle {fp, context, mode}`, `POST /api/tackle/resolve`, `POST /api/jira/tackle {key, context}`,
   `POST /api/pr/discuss {repo, pr, context}` (a discussion of the pull request by repository and number). Differences from the running code:
   it launched one agent's desktop chat and matched sessions by prompt in that agent's database; that is the consumer's command now.
+
+### 12.26 Documentation audit and coverage
+
+`engine/doc_audit.py` is the daily audit (a cron script, no model call). It checks every thing of the registry (`<state>/dashboard/doc-inventory.json`)
+against rules R1 to R12 and writes the durable gap store (`doc-gaps.json`); a failed run keeps the previous store and records `last_error`. One run
+at a time (flock), `--report`, `--dry-run` and `--wait-lock` as before. The rules: R1 a docs home page exists (tier A live is high); R2 the
+required page types under it (tier A: design, runbook, troubleshooting, release process, changelog, and a quick card when the thing has a service
+desk; tier B: a runbook and a changelog); R3 a changelog per release (repository file or docs home page, held to each release after a week); R4 render
+drift (repository docs changed long after the newest page); R5 review age; R6 metadata (owner, version); R7 placement under the expected parent;
+R8 a machine readable release marker; R9 things in the repositories no registry entry covers; R10 agent jobs with no catalog description; R11
+duplicate page titles in the configured trees; R12 shipped changes the close-out found undescribed. The store carries first seen, a generation that
+bumps when a new gap opens (the key `doc-<id>-g<n>`), closed gaps and the surface slice (high and medium things, capped at 5).
+
+The docs home is read only and is a slot: the driver in `DOCS_HOME_CMD` (the contract of `lanes/queued_approvals.py`, section 12.17) answers
+`getConfluencePage` and `searchConfluenceUsingCql`; with none configured the audit fails closed. The running code imported the write guard's
+session class and read another tool's token file; neither is in core. Estate specifics are `DOC_AUDIT_CONFIG` (repos, ownership page id, link prefix,
+duplicate roots, close-out state, job files, discovery of directories and loose file trees, owner exclusions); every key is optional.
+
+`server/modules/doc_coverage.py` is the Knowledge page's server half: the registry joined with the store, Snooze (7 days) and Ignore (this generation
+only) in `doc-handled.json`, `open_count` for the badge (open things plus one per duplicate set), and the tackle item. Routes `GET /api/doc-coverage`,
+`POST /api/doc-coverage/handle` and `/tackle`; tackle runs through the runtime slot (12.23) and answers 501 without a runtime. The running prompt's
+skill names and write guard instructions were the agent's own and are not in core (`DOC_AUDIT_WIKI_URL` supplies the link prefix for the prompt).
