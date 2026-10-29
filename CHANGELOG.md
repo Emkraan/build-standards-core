@@ -6,6 +6,13 @@ The shell client package accepts the names Olympus already runs with. Opt in: th
 
 - `AuthMode` accepts `hub` and `tool` next to `shell` and `module` (same behaviour, `isShellMode` exported); `createAuth` takes `returnToKey` and `acceptReturnToKeys`, so a saved return target survives a rename (`standards/web-shell-packages.md` section 4). Tests: 3.
 
+## 2026-10-29 (v1.81.0, shell module contract: layout merge and Olympus wording)
+
+The shell module contract package gains the layout merge Olympus runs, with its typed contracts. Opt in: new exports; the validator's problem strings and `autoDescription` now carry the Olympus wording.
+
+- `effectiveLayout`, `visibleNav`, `landingRoute`, `visibleTiles`, `homeContributions` and `moduleForPath`, with `ModuleManifest`, `Overrides`, `EffectiveModule` and the other types in `index.d.ts` (`standards/web-shell-packages.md` section 2.1). Tests: 22, run by `npm run test:server`.
+- The validator and registry messages and `autoDescription` ("Pages: A, B and C.") take the Olympus wording; the 33 kit checks still pass (one expectation updated).
+
 ## 2026-10-29 (v1.80.0, shell server package: request telemetry and gateway names)
 
 The shell server package gains what Olympus runs and the core was missing. Opt in: new exports only, the defaults are unchanged.
