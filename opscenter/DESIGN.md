@@ -1332,6 +1332,7 @@ the standard drops: it is waiting on something named here.
 | (review helpers) | live code host facts and review conversations | lifted: `server/modules/live_truth.py`, `lanes/review_threads.py` (12.27) |
 | (privileged reviews) | privileged deployments lane and review config | lifted: `server/modules/privileged_reviews.py`, `review_config.py` (12.28) |
 | (repo reviews) | other repos review page | lifted: `server/modules/repo_reviews.py` (12.29) |
+| (plan reviews) | plan review queue | lifted: `server/modules/tf_reviews.py` (12.30) |
 
 | (plan context) | facts for apply cards | lifted: `server/modules/tf_context.py`; principal names are a provider slot (12.40) |
 
@@ -1814,6 +1815,10 @@ in version order, never the owner's to act on. Open issues the owner opened or i
 else, or quiet for `REPO_REVIEWS_ISSUE_QUIET_DAYS`, needs the owner); with no `owner` configured there are no issue rows. Routes:
 `GET /api/repo-reviews` (decorated with the cron pulse when that module is present), `POST /api/repo-reviews/rerun` (re-runs the failed jobs
 at the head the owner saw, refused when the PR moved on, 400 for an unlisted repo).
+
+### 12.30 Plan reviews
+
+`server/modules/tf_reviews.py` reads the queue the consumer's plan gate writes (`<state>/tf-review/queue.json`, `TFGATE_STATE_DIR`) and the gate's decisions log. `GET /api/tf-reviews` returns pending held PRs (with the assessment only when it is for the current head), parked holds (the owner's PR still being moved by something else, not the owner's yet) and recent decisions. `POST /api/tf-reviews/approve` and `/reject` take `{pr}`: under a lock the PR must be open at the queued head, and each run still waiting at that head has its pending plan deployment decided (the environment is `plan_env`, the repo `plan_repo`, the identity `owner`, all from review_config 12.28; a 5xx from the code host is retried three times). A run that still fails keeps the card pending and the answer names it, so a card never vanishes with a run held. The decision stores the content fingerprints of the held hits: an approval can carry from them, a rejection revokes them. The owner's approve of the owner's own PR records the one sign-off, and a reject revokes it, through the sign-off store (`lanes/signoff_store.py`, or the module named by `OPSCENTER_SIGNOFF_MODULE` offering `record`, `revoke` and `OWN`). `approve_for_signoff(pr, head)` approves a PR's waits on the same head from a sign-off elsewhere, touching only a pending card for that exact head. With no repo, environment or owner configured the page is empty and a decision is 501.
 
 present) can refuse it. Routes: `GET /api/privileged-reviews`, `POST /api/platform-reviews/deployment/approve`, `/reject`, `/retry` (the path
 the app already calls). Nothing is decided automatically.

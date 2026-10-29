@@ -384,6 +384,17 @@ class Routes(unittest.TestCase):
         finally:
             os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
 
+    def test_plan_reviews_with_no_config_answer_empty_and_a_decision_is_501(self):
+        os.environ["OPSCENTER_REVIEWS_CONFIG"] = os.path.join(
+            os.environ["OPSCENTER_STATE_DIR"], "none.json"
+        )
+        try:
+            s, body = self.js("GET", "/api/tf-reviews")
+            self.assertEqual((s, body["pending"]), (200, []))
+            self.assertEqual(self.js("POST", "/api/tf-reviews/approve", {"pr": 1})[0], 501)
+        finally:
+            os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
+
     def test_the_runtime_routes_answer_with_no_runtime_configured_by_default(self):
         os.environ.pop("OPSCENTER_RUNTIME_CMD", None)
         s, body = self.js("GET", "/api/tackle")
