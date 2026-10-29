@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-29 (v1.81.0, shell client package: older names and keys)
+## 2026-10-29 (v1.82.0, shell client package: older names and keys)
 
 The shell client package accepts the names Olympus already runs with. Opt in: the defaults are unchanged.
 
