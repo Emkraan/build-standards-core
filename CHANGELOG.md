@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.82.0, ops center plan reviews)
+
+The plan review queue server half. Opt in: new `server/modules/tf_reviews.py`.
+
+- Held plan PRs and gate decisions; approve and reject re-verify the runs at the current head, retry a code host 5xx, keep the card pending while any run still waits, and record or revoke the owner's one sign-off through the sign-off store (DESIGN.md 12.30). Tests: 8.
+
 ## 2026-10-29 (v1.81.0, ops center repo reviews)
 
 The other repos page server half. Opt in: new `server/modules/repo_reviews.py`; `review_config` gains `repo_labels`, `autofix_lanes` and `autofix_after`.

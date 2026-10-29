@@ -277,6 +277,22 @@ def _table():
             ),
         ),
         (P, "/api/eng-backlog/tackle", "eng_backlog", "tackle_item", lambda m: _eng_tackle(m)),
+        # plan reviews (server/modules/tf_reviews.py)
+        (G, "/api/tf-reviews", "tf_reviews", "get", None),
+        (
+            P,
+            "/api/tf-reviews/approve",
+            "tf_reviews",
+            "decide",
+            lambda m: lambda r: m.decide(_payload(r).get("pr"), "approved"),
+        ),
+        (
+            P,
+            "/api/tf-reviews/reject",
+            "tf_reviews",
+            "decide",
+            lambda m: lambda r: m.decide(_payload(r).get("pr"), "rejected"),
+        ),
         # other repos (server/modules/repo_reviews.py)
         (
             G,
