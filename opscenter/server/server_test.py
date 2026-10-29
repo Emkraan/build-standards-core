@@ -352,6 +352,22 @@ class Routes(unittest.TestCase):
         finally:
             os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
 
+    def test_the_infra_routes_answer_empty_with_nothing_configured(self):
+        for k in ("INFRA_REPOS", "INFRA_RUNNER_REPO", "OPSCENTER_INFRA_PROVIDER"):
+            os.environ.pop(k, None)
+        for path, key in (
+            ("/api/infra/spend", "months"),
+            ("/api/infra/cron", "jobs"),
+            ("/api/infra/github", "prs"),
+            ("/api/infra/runners", "runners"),
+            ("/api/infra/live-jobs", "runs"),
+        ):
+            s, body = self.js("GET", path)
+            self.assertEqual((s, body[key]), (200, []), path)
+        self.assertEqual(self.js("GET", "/api/infra/badge")[1]["count"], 0)
+        self.assertEqual(self.js("GET", "/api/infra/job-log?runner=r1")[0], 501)
+        self.assertEqual(self.js("GET", "/api/infra/job-log?runner=../x")[0], 400)
+
     def test_the_plans_routes_read_the_folder_and_refuse_a_path_outside_it(self):
         s, body = self.js("GET", "/api/plans")
         self.assertEqual(s, 200)

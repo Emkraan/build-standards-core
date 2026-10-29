@@ -309,6 +309,20 @@ def _table():
         (P, "/api/team_prefix-reviews/merge", "other_reviews", "merge", None),
         (P, "/api/team_prefix-reviews/approve", "other_reviews", "approve", None),
         (P, "/api/team_prefix-reviews/decide-fix", "other_reviews", "decide_fix", None),
+        # infrastructure (server/modules/infra.py; spend, cron, the VM and the log come from its provider)
+        (G, "/api/infra/spend", "infra", "spend", None),
+        (G, "/api/infra/cron", "infra", "cron", None),
+        (G, "/api/infra/github", "infra", "github", None),
+        (G, "/api/infra/runners", "infra", "runners", None),
+        (G, "/api/infra/live-jobs", "infra", "live_jobs", None),
+        (
+            G,
+            "/api/infra/job-log",
+            "infra",
+            "job_log",
+            lambda m: lambda r: m.job_log(r.arg("runner"), r.arg("lines") or "60"),
+        ),
+        (G, "/api/infra/badge", "infra", "badge_problems", None),
         # plans (server/modules/plans.py)
         (G, "/api/plans", "plans", "items", None),
         (G, "/api/plans/file", "plans", "read", lambda m: lambda r: m.read(r.arg("path"))),
