@@ -417,6 +417,22 @@ class Routes(unittest.TestCase):
             self.js("POST", "/api/plans/create", {"key": "nonsense", "slug": "x"})[0], 400
         )
 
+    def test_the_infra_routes_answer_empty_with_nothing_configured(self):
+        for k in ("INFRA_REPOS", "INFRA_RUNNER_REPO", "OPSCENTER_INFRA_PROVIDER"):
+            os.environ.pop(k, None)
+        for path, key in (
+            ("/api/infra/spend", "months"),
+            ("/api/infra/cron", "jobs"),
+            ("/api/infra/github", "prs"),
+            ("/api/infra/runners", "runners"),
+            ("/api/infra/live-jobs", "runs"),
+        ):
+            s, body = self.js("GET", path)
+            self.assertEqual((s, body[key]), (200, []), path)
+        self.assertEqual(self.js("GET", "/api/infra/badge")[1]["count"], 0)
+        self.assertEqual(self.js("GET", "/api/infra/job-log?runner=r1")[0], 501)
+        self.assertEqual(self.js("GET", "/api/infra/job-log?runner=../x")[0], 400)
+
     def test_the_runtime_routes_answer_with_no_runtime_configured_by_default(self):
         os.environ.pop("OPSCENTER_RUNTIME_CMD", None)
         s, body = self.js("GET", "/api/tackle")

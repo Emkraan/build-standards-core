@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.97.0, ops center infrastructure page)
+
+The Infrastructure page server half. Opt in: new `server/modules/infra.py`.
+
+- The code host view, the CI runner fleet and the live job and step progress are generic; spend, scheduled jobs, the runner VM, a running step's log, backup status and health checks come from an optional provider with a null default (DESIGN.md 12.33). Tests: 5.
+
 ## 2026-10-29 (v1.96.0, ops center plans)
 
 The Plans page server half. Opt in: new `server/modules/plans.py`; the registry maps a `PermissionError` to 403.
