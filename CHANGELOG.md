@@ -1,10 +1,16 @@
 # Changelog
 
-## 2026-10-29 (v1.82.0, ops center label hold explainer)
+## 2026-10-29 (v1.83.0, ops center label hold explainer)
 
 Why a PR sits on a hold label. Opt in: new `lanes/label_hold.py`.
 
 - Who placed the hold label and when, the newest decisions-log note that names the PR, and the owner's triage markers for the head, so the card says what clearing the hold would do; the labels and the display zone are configuration (DESIGN.md 12.40). Tests: 14.
+
+## 2026-10-29 (v1.82.0, shell client package: older names and keys)
+
+The shell client package accepts the names Olympus already runs with. Opt in: the defaults are unchanged.
+
+- `AuthMode` accepts `hub` and `tool` next to `shell` and `module` (same behaviour, `isShellMode` exported); `createAuth` takes `returnToKey` and `acceptReturnToKeys`, so a saved return target survives a rename (`standards/web-shell-packages.md` section 4). Tests: 3.
 
 ## 2026-10-29 (v1.81.0, shell module contract: layout merge and Olympus wording)
 
