@@ -407,6 +407,16 @@ class Routes(unittest.TestCase):
         finally:
             os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
 
+    def test_the_plans_routes_read_the_folder_and_refuse_a_path_outside_it(self):
+        s, body = self.js("GET", "/api/plans")
+        self.assertEqual(s, 200)
+        self.assertIn("projects", body)
+        self.assertEqual(self.js("GET", "/api/plans/file?path=../../etc/passwd")[0], 403)
+        self.assertEqual(self.js("POST", "/api/plans/archive", {})[0], 400)
+        self.assertEqual(
+            self.js("POST", "/api/plans/create", {"key": "nonsense", "slug": "x"})[0], 400
+        )
+
     def test_the_runtime_routes_answer_with_no_runtime_configured_by_default(self):
         os.environ.pop("OPSCENTER_RUNTIME_CMD", None)
         s, body = self.js("GET", "/api/tackle")

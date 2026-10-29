@@ -76,6 +76,8 @@ def error_status(exc):
         v = getattr(exc, attr, None)
         if isinstance(v, int) and not isinstance(v, bool) and 400 <= v <= 599:
             return v
+    if isinstance(exc, PermissionError):
+        return 403
     if isinstance(exc, ValueError):
         return 400
     if isinstance(exc, KeyError):
