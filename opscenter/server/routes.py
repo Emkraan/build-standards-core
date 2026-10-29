@@ -44,6 +44,17 @@ def _search(mod):
     return h
 
 
+def _priv_decide(act):
+    def adapter(mod):
+        def h(req):
+            guard = getattr(load("olympus_reviews"), "dep_guard", None)
+            return mod.decide(req.payload(), act, guard=guard)
+
+        return h
+
+    return adapter
+
+
 def _tackles():
     import runtime_slot as rt
 
@@ -259,9 +270,35 @@ def _table():
             ),
         ),
         (P, "/api/eng-backlog/tackle", "eng_backlog", "tackle_item", lambda m: _eng_tackle(m)),
+<<<<<<< HEAD
         # runtime restart card (server/modules/runtime_restart.py; the path is the one the app calls)
         (G, "/api/hermes-restart", "runtime_restart", "get", None),
         (P, "/api/hermes-restart", "runtime_restart", "post", None),
+=======
+        # privileged deployments (server/modules/privileged_reviews.py; the estate values are review_config.py)
+        (G, "/api/privileged-reviews", "privileged_reviews", "get", None),
+        (
+            P,
+            "/api/olympus-reviews/deployment/approve",
+            "privileged_reviews",
+            "decide",
+            _priv_decide("approve"),
+        ),
+        (
+            P,
+            "/api/olympus-reviews/deployment/reject",
+            "privileged_reviews",
+            "decide",
+            _priv_decide("reject"),
+        ),
+        (
+            P,
+            "/api/olympus-reviews/deployment/retry",
+            "privileged_reviews",
+            "decide",
+            _priv_decide("retry"),
+        ),
+>>>>>>> origin/main
         # documentation coverage (server/modules/doc_coverage.py; the audit is engine/doc_audit.py)
         (G, "/api/doc-coverage", "doc_coverage", "get", lambda m: lambda r: m.get(_tackles())),
         (

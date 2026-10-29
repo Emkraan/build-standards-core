@@ -1,10 +1,16 @@
 # Changelog
 
-## 2026-10-29 (v1.83.0, ops center runtime restart card)
+## 2026-10-29 (v1.84.0, ops center runtime restart card)
 
 The agent runtime restart card server half. Opt in: new `server/modules/runtime_restart.py`.
 
 - GET shows whether the runtime needs a restart and what is running; POST queues a restart (now or when idle) or cancels it. The restart is a script the consumer supplies; with none the card is empty and a write is 501 (DESIGN.md 12.35). Tests: 4.
+
+## 2026-10-29 (v1.83.0, ops center privileged reviews and review config)
+
+The privileged deployments lane server half and the shared review config. Opt in: new `server/modules/privileged_reviews.py` and `review_config.py`.
+
+- Approve, reject and retry re-verify the run at the queued commit before deciding as the owner; the repo, owner login and environment names are data in one JSON file, and with none configured the page is empty and a decision is 501 (DESIGN.md 12.28). Tests: 13.
 
 ## 2026-10-29 (v1.82.0, shell client package: older names and keys)
 

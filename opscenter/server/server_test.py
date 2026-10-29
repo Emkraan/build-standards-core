@@ -338,12 +338,28 @@ class Routes(unittest.TestCase):
         )
         self.assertEqual(self.js("POST", "/api/infra/fallback-order", {"ids": ["a"]})[0], 501)
 
+<<<<<<< HEAD
     def test_the_restart_card_is_empty_with_no_script_and_a_write_is_501(self):
         os.environ.pop("OPSCENTER_RUNTIME_RESTART_SCRIPT", None)
         s, body = self.js("GET", "/api/hermes-restart")
         self.assertEqual((s, body["configured"], body["alert"]), (200, False, None))
         self.assertEqual(self.js("POST", "/api/hermes-restart", {"action": "now"})[0], 501)
         self.assertEqual(self.js("POST", "/api/hermes-restart", {"action": "x"})[0], 400)
+=======
+    def test_privileged_reviews_with_no_review_config_answer_empty_and_a_decision_is_501(self):
+        os.environ["OPSCENTER_REVIEWS_CONFIG"] = os.path.join(
+            os.environ["OPSCENTER_STATE_DIR"], "none.json"
+        )
+        try:
+            s, body = self.js("GET", "/api/privileged-reviews")
+            self.assertEqual((s, body["pending"]), (200, []))
+            body = {"key": "destroy:1", "head_sha": "a" * 40}
+            self.assertEqual(
+                self.js("POST", "/api/olympus-reviews/deployment/approve", body)[0], 501
+            )
+        finally:
+            os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
+>>>>>>> origin/main
 
     def test_the_runtime_routes_answer_with_no_runtime_configured_by_default(self):
         os.environ.pop("OPSCENTER_RUNTIME_CMD", None)
