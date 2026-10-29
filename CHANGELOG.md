@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.92.0, ops center card brief)
+
+The approval brief for cards that are not pull requests. Opt in: new `server/modules/card_brief.py`, read by the approval brief.
+
+- Owner applies, privileged deployments and runbook delete releases get the same three paragraphs, a deterministic warning when an open PR changes the same root, and an access table; what is the consumer's (admin account, why a root is owner-applied, why an environment needs the owner, tier names, release and image gate environments, pool host sign-in grants) is one data file (DESIGN.md 12.43). Tests: 67.
+
 ## 2026-10-29 (v1.91.0, ops center approval brief)
 
 The approval brief on Reviews cards. Opt in: new `server/modules/approval_brief.py` and `POST /api/reviews/brief`.
