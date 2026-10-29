@@ -120,6 +120,8 @@ export declare function formatServerTiming(marks: TimingMark[], totalMs: number)
 
 export declare function originGuard(options: { allowedOrigins: string[]; preflightHeaders?: string[] }): (req: any, res: any, next: (err?: unknown) => void) => void;
 
+export declare function parseSettingString(raw: unknown): Record<string, string>;
+
 
 export type WhatsNewLabel = "New features" | "Security improvements" | "Bug fixes" | "Faster performance" | "Maintenance and reliability";
 export interface WhatsNewRelease { version: string; labels: WhatsNewLabel[]; highlight?: string }
@@ -140,7 +142,86 @@ export declare function serverTiming(options?: {
   log?: ((line: string) => void) | null;
   sink?: ((record: RequestLogRecord) => void) | null;
   skip?: (req: any) => boolean;
+  /** Also store the request's timing record under Symbol.for(timingKey), for a shell whose own code reads that key. */
+  timingKey?: string;
 }): (req: any, res: any, next: (err?: unknown) => void) => void;
+
+export interface RequestTelemetryOptions {
+  /** require() the client from the app: { exporter, traceBase, resources }. Called only when enabled. */
+  load: () => { exporter: any; traceBase: any; resources: any };
+  /** App Insights cloud role name. Default WEBSITE_SITE_NAME. */
+  roleName?: string;
+  roleVersion?: string;
+  /** Default APPLICATIONINSIGHTS_CONNECTION_STRING. */
+  connectionString?: string;
+  /** Default APPLICATIONINSIGHTS_AUTHENTICATION_STRING. Must be Authorization=AAD. */
+  authenticationString?: string;
+  /** Token source for https://monitor.azure.com/. Default: App Service managed identity. */
+  getToken?: (resource: string, clientId?: string) => Promise<{ token: string; expiresAt: number } | null>;
+  log?: (line: string) => void;
+  exporterOptions?: Record<string, unknown>;
+  now?: () => number;
+  /** Delays before each retry of a batch that failed with a transient error. Default [2000, 5000, 10000]. */
+  retryDelaysMs?: number[];
+  /** Most spans waiting for a retry at once, oldest dropped first. Default 2000. */
+  maxBufferedSpans?: number;
+  /** A token request that has not answered by then counts as no token. Default 10000. */
+  tokenTimeoutMs?: number;
+}
+
+export interface RequestTelemetry {
+  enabled: boolean;
+  reason?: string;
+  /** Pass to serverTiming({ sink }). null when disabled. */
+  sink: ((record: RequestLogRecord) => void) | null;
+  flush(): Promise<void>;
+  close(): Promise<void>;
+}
+
+/** True when nothing of a failed export can have reached ingestion: a token or identity failure, a refused connection or unresolved name, or a 429 / 503 answer. */
+export declare function isTransientExportFailure(result: unknown): boolean;
+
+export interface ExportRetryOptions {
+  /** Sends one batch, resolving with the exporter's first result ({ code, error }). */
+  send: (spans: any[]) => Promise<any>;
+  log: (line: string) => void;
+  now?: () => number;
+  /** Default [2000, 5000, 10000]: one retry after each delay, then the batch is dropped. */
+  delaysMs?: number[];
+  /** Default 2000. */
+  maxBuffered?: number;
+  /** One outcome line per event and reason per window. Default 5 minutes. */
+  logIntervalMs?: number;
+  /** A retry send that never answers counts as failed after this. Default 30000. */
+  sendTimeoutMs?: number;
+  /** Called for a failure that is not transient (not retried). */
+  onFailure?: (spans: any[], result: any) => void;
+}
+
+export interface ExportRetry {
+  /** Exporter-shaped export: done is called once, at once, with the first result. */
+  export(spans: any[], done: (result: any) => void): void;
+  /** Stop keeping new failures and make one last attempt for every waiting batch, each bounded by timeoutMs (default 1500). */
+  drain(timeoutMs?: number): Promise<void>;
+  /** Cancel timers, drop what still waits, log held counts. */
+  stop(): void;
+  stats(): { buffered: number; batches: number; inFlight: number; retried: number; dropped: number };
+}
+
+/** Bounded retry for span batches whose export failed with a transient error. */
+export declare function createExportRetry(options: ExportRetryOptions): ExportRetry;
+
+/** Sets APPLICATIONINSIGHTS_STATSBEAT_DISABLED=true for the process when enabled, unless already set. */
+export declare function requestTelemetry(options: RequestTelemetryOptions): RequestTelemetry;
+
+/**
+ * Close (flush) telemetry on SIGTERM / SIGINT within timeoutMs (default 3000), then let the
+ * signal exit the process as before. A no-op when telemetry is off. Returns an unregister function.
+ */
+export declare function closeTelemetryOnShutdown(
+  telemetry: RequestTelemetry,
+  options?: { signals?: NodeJS.Signals[]; timeoutMs?: number; exit?: (signal: NodeJS.Signals) => void },
+): () => void;
 
 // --- Gateway guard ---
 
@@ -176,6 +257,12 @@ export declare function verifyGatewayToken(
   cfg: { tenantId: string; principalId: string; audiences: string[]; keys: SigningKeySource; role?: string; nowSeconds?: number },
 ): Promise<GatewayVerifyResult>;
 
+/**
+ * Read the gateway header and remove it from req.headers and req.rawHeaders (any case).
+ * The header name defaults to GATEWAY_HEADER.
+ */
+export declare function takeGatewayHeader(req: any, header?: string): string | undefined;
+
 export interface GatewayGuardOptions {
   env?: Record<string, string | undefined>;
   enforce?: boolean | string;
@@ -190,6 +277,14 @@ export interface GatewayGuardOptions {
   log?: (line: string) => void;
   now?: () => number;
   logIntervalMs?: number;
+  /** Header the gateway puts its token in. Default GATEWAY_HEADER. It is stripped from the request whatever the settings. */
+  header?: string;
+  /** App role the token must carry. Default GATEWAY_ROLE. An empty string skips the role check. */
+  role?: string;
+  /** Request property that carries { ok, reason } once checked, set next to req.gateway. Default "gateway". */
+  requestProperty?: string;
+  /** Body message of the 403. Default "This API is reachable only through the API gateway." */
+  refusalMessage?: string;
 }
 
 export declare function gatewayGuard(
