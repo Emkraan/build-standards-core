@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BrowserAuthError, CacheLookupPolicy, InteractionRequiredAuthError, ServerError } from '@azure/msal-browser';
 import type { AccountInfo, IPublicClientApplication } from '@azure/msal-browser';
-import { RETURN_TO_KEY, createAuth, safeReturnTo } from '../../../shell-packages/app-client/src';
+import { RETURN_TO_KEY, createAuth, isShellMode, safeReturnTo } from '../../../shell-packages/app-client/src';
 import type { AuthOptions } from '../../../shell-packages/app-client/src';
 
 const ORIGIN = window.location.origin;
@@ -193,6 +193,75 @@ describe('createAuth boot', () => {
     const { auth, navigate } = make(fakeMsal(), { mode: 'module', basePath: '/example/', ownsPath: undefined });
     expect((await auth.boot()).forwarded).toBe(false);
     expect(navigate).not.toHaveBeenCalled();
+  });
+});
+
+describe('createAuth older names and keys', () => {
+  it('hub is shell and tool is module: the same flows, auth.mode reports the name given', async () => {
+    expect(isShellMode('hub')).toBe(true);
+    expect(isShellMode('shell')).toBe(true);
+    expect(isShellMode('tool')).toBe(false);
+    expect(isShellMode('module')).toBe(false);
+
+    // hub consumes the stored return target like shell, and logs out to /signed-out
+    window.sessionStorage.setItem(RETURN_TO_KEY, '/xerox/devices');
+    const hub = make(fakeMsal(), { mode: 'hub' });
+    expect(hub.auth.mode).toBe('hub');
+    expect((await hub.auth.boot()).forwarded).toBe(true);
+    expect(hub.navigate).toHaveBeenCalledWith('/xerox/devices');
+    await hub.auth.logout();
+    expect(hub.auth.msal.logoutRedirect).toHaveBeenCalledWith({ postLogoutRedirectUri: `${ORIGIN}/signed-out` });
+
+    // tool bounces to the shell sign-in like module, never its own login, and logs out to /
+    const msal = fakeMsal([]);
+    const tool = make(msal, { mode: 'tool', basePath: '/example/' });
+    expect(tool.auth.mode).toBe('tool');
+    expect(await tool.auth.ensureSessionOrBounce()).toBe(false);
+    expect(tool.navigate.mock.calls[0]?.[0]).toMatch(/\/\?returnTo=/);
+    expect(msal.loginRedirect).not.toHaveBeenCalled();
+    window.sessionStorage.setItem(RETURN_TO_KEY, '/xerox/devices');
+    expect((await make(fakeMsal(), { mode: 'tool', basePath: '/example/', ownsPath: undefined }).auth.boot()).forwarded).toBe(false);
+    const toolOut = make(fakeMsal(), { mode: 'tool', basePath: '/example/' });
+    await toolOut.auth.logout();
+    expect(toolOut.auth.msal.logoutRedirect).toHaveBeenCalledWith({ postLogoutRedirectUri: `${ORIGIN}/` });
+  });
+
+  it('returnToKey stores, reads and clears the target under the shell\'s own key', async () => {
+    window.sessionStorage.clear();
+    window.sessionStorage.setItem('own.returnTo', '/xerox/devices');
+    window.sessionStorage.setItem(RETURN_TO_KEY, '/klaxon/alerts');
+    const { auth, navigate } = make(fakeMsal(), { returnToKey: 'own.returnTo' });
+    expect((await auth.boot()).forwarded).toBe(true);
+    expect(navigate).toHaveBeenCalledWith('/xerox/devices');
+    expect(window.sessionStorage.getItem('own.returnTo')).toBeNull();
+    expect(window.sessionStorage.getItem(RETURN_TO_KEY)).toBe('/klaxon/alerts');
+
+    window.history.replaceState(null, '', '/?returnTo=%2Fexample%2Fusers');
+    try {
+      await make(fakeMsal([]), { returnToKey: 'own.returnTo' }).auth.boot();
+      expect(window.sessionStorage.getItem('own.returnTo')).toBe('/example/users');
+      expect(window.sessionStorage.getItem(RETURN_TO_KEY)).toBe('/klaxon/alerts');
+    } finally {
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
+  it('acceptReturnToKeys reads a target saved under an older key and clears every key', async () => {
+    window.sessionStorage.clear();
+    window.sessionStorage.setItem('old.returnTo', '/xerox/devices');
+    const { auth, navigate } = make(fakeMsal(), { returnToKey: 'own.returnTo', acceptReturnToKeys: ['old.returnTo', 'own.returnTo'] });
+    expect((await auth.boot()).forwarded).toBe(true);
+    expect(navigate).toHaveBeenCalledWith('/xerox/devices');
+    expect(window.sessionStorage.getItem('old.returnTo')).toBeNull();
+
+    // the configured key wins when both hold a target
+    window.sessionStorage.setItem('old.returnTo', '/klaxon/alerts');
+    window.sessionStorage.setItem('own.returnTo', '/talos/fleet');
+    const second = make(fakeMsal(), { returnToKey: 'own.returnTo', acceptReturnToKeys: ['old.returnTo'] });
+    await second.auth.boot();
+    expect(second.navigate).toHaveBeenCalledWith('/talos/fleet');
+    expect(window.sessionStorage.getItem('old.returnTo')).toBeNull();
+    expect(window.sessionStorage.getItem('own.returnTo')).toBeNull();
   });
 });
 

@@ -7,6 +7,7 @@ import express from "express";
 import {
   gatewayGuard,
   verifyGatewayToken,
+  takeGatewayHeader,
   gatewayAudiences,
   parseGatewayEnforce,
   createSigningKeyCache,
@@ -303,4 +304,96 @@ test("log only: a ping is logged as platform_ping and still served", async () =>
   } finally {
     await s.close();
   }
+});
+
+// A shell with its own header, role and request property passes them as options.
+const CUSTOM_HEADER = "x-shell-gateway";
+const CUSTOM_ROLE = "shell:gateway";
+
+/** @param {Record<string, unknown>} [opts] */
+async function serveCustom(opts = {}) {
+  const app = express();
+  /** @type {any[]} */
+  const seen = [];
+  app.use(gatewayGuard({
+    log: () => {},
+    keys,
+    env: { ...ENV, GATEWAY_ENFORCE: "on" },
+    header: CUSTOM_HEADER,
+    role: CUSTOM_ROLE,
+    requestProperty: "shellGateway",
+    ...opts,
+  }));
+  app.get("/api/things", (req, res) => {
+    const r = /** @type {any} */ (req);
+    seen.push({ headers: { ...req.headers }, raw: [...req.rawHeaders], shellGateway: r.shellGateway, gateway: r.gateway });
+    res.json({ ok: true });
+  });
+  const server = app.listen(0);
+  await new Promise((r) => server.once("listening", r));
+  const port = /** @type {import("node:net").AddressInfo} */ (server.address()).port;
+  /** @param {Record<string, string>} h */
+  const get = (h) => fetch(`http://127.0.0.1:${port}/api/things`, { headers: h });
+  return { get, seen, close: () => new Promise((r) => server.close(r)) };
+}
+
+test("a custom header and role: the token under the custom name passes and the header is stripped", async () => {
+  const s = await serveCustom();
+  try {
+    assert.equal((await s.get({ [CUSTOM_HEADER]: mint({ roles: [CUSTOM_ROLE] }) })).status, 200);
+    const got = s.seen[0];
+    assert.equal(got.headers[CUSTOM_HEADER], undefined);
+    assert.ok(!got.raw.some((/** @type {string} */ h) => h.toLowerCase() === CUSTOM_HEADER));
+    assert.deepEqual(got.shellGateway, { ok: true, reason: "ok" });
+    assert.deepEqual(got.gateway, got.shellGateway, "req.gateway is set next to the custom property");
+  } finally {
+    await s.close();
+  }
+});
+
+test("a custom header and role: the core's header and role no longer count", async () => {
+  const s = await serveCustom();
+  try {
+    assert.equal((await s.get({ [GATEWAY_HEADER]: mint({ roles: [CUSTOM_ROLE] }) })).status, 403, "wrong header");
+    assert.equal((await s.get({ [CUSTOM_HEADER]: mint() })).status, 403, "token carries the core role, not the custom one");
+    assert.equal(s.seen.length, 0);
+  } finally {
+    await s.close();
+  }
+});
+
+test("a custom header is stripped from req.headers whatever the settings", async () => {
+  const mw = gatewayGuard({ env: {}, log: () => {}, header: "X-Shell-Gateway" });
+  const req = { path: "/api/things", headers: { [CUSTOM_HEADER]: "tok", [GATEWAY_HEADER]: "keep", a: "1" }, rawHeaders: ["X-Shell-Gateway", "tok", "A", "1"] };
+  let called = false;
+  mw(req, {}, () => { called = true; });
+  assert.ok(called);
+  assert.deepEqual(req.headers, { [GATEWAY_HEADER]: "keep", a: "1" }, "only the configured header goes");
+  assert.deepEqual(req.rawHeaders, ["A", "1"]);
+});
+
+test("takeGatewayHeader reads, removes and defaults to the core header", () => {
+  const a = { headers: { [GATEWAY_HEADER]: "t1" }, rawHeaders: ["X-Gateway-Token", "t1"] };
+  assert.equal(takeGatewayHeader(a), "t1");
+  assert.deepEqual(a, { headers: {}, rawHeaders: [] });
+  const b = { headers: { [CUSTOM_HEADER]: ["t2", "t3"] }, rawHeaders: [] };
+  assert.equal(takeGatewayHeader(b, "X-Shell-Gateway"), "t2");
+  assert.deepEqual(b.headers, {});
+});
+
+test("an empty role skips the role check and a refusal message can be set", async () => {
+  const s = await serveCustom({ role: "", refusalMessage: "Use the gateway." });
+  try {
+    assert.equal((await s.get({ [CUSTOM_HEADER]: mint({ roles: [] }) })).status, 200);
+    const res = await s.get({});
+    assert.equal(res.status, 403);
+    assert.equal(/** @type {any} */ (await res.json()).message, "Use the gateway.");
+  } finally {
+    await s.close();
+  }
+});
+
+test("verifyGatewayToken takes the role from its settings", async () => {
+  assert.deepEqual(await verifyGatewayToken(mint({ roles: [CUSTOM_ROLE] }), { ...cfg, role: CUSTOM_ROLE }), { ok: true });
+  assert.deepEqual(await verifyGatewayToken(mint({ roles: [CUSTOM_ROLE] }), cfg), { ok: false, reason: "role" });
 });

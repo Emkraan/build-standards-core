@@ -239,3 +239,41 @@ test("originGuard: configured entries are normalised (case, trailing slash)", ()
   assert.equal(guard(mw, "POST", "https://console.test", BEARER).nextCalled, true);
   assert.equal(guard(mw, "POST", "https://console.test.evil", BEARER).nextCalled, false);
 });
+
+test("serverTiming: a timingKey stores the same record under the shell's own key, marks add up", async () => {
+  /** @type {any} */
+  let own;
+  /** @type {any} */
+  let core;
+  const srv = await withServer({ log: null, timingKey: "shell.test.timing" }, async (req, res) => {
+    own = req[Symbol.for("shell.test.timing")];
+    core = req[Symbol.for("shell.app-server.timing")];
+    recordTiming(req, "jwt", 3);
+    own.marks.push({ name: "extra", dur: 1 });
+    res.end("ok");
+  });
+  try {
+    const r = await fetch(srv.url, { headers: {} });
+    await r.text();
+    assert.ok(own && core, "both keys carry a record");
+    assert.equal(own, core, "the same object, so marks recorded through either key add up");
+    assert.deepEqual(own.marks.map((/** @type {any} */ m) => m.name), ["jwt", "extra"]);
+  } finally {
+    await srv.close();
+  }
+});
+
+test("serverTiming: without a timingKey only the core key is set", async () => {
+  /** @type {symbol[]} */
+  let keys = [];
+  const srv = await withServer({ log: null }, async (req, res) => {
+    keys = Object.getOwnPropertySymbols(req).filter((s) => String(s.description).includes("timing"));
+    res.end("ok");
+  });
+  try {
+    await (await fetch(srv.url)).text();
+    assert.deepEqual(keys.map((s) => s.description), ["shell.app-server.timing"]);
+  } finally {
+    await srv.close();
+  }
+});
