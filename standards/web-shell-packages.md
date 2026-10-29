@@ -93,6 +93,15 @@ The auth options carry no tenant or product value: `clientId`, `tenantId`, `apiS
 `postLogoutPath` come from the app. The authority defaults to the Microsoft identity platform for the tenant and can be
 set.
 
+Two names a shell may already run with are accepted, so adopting the package changes nothing a user can see:
+
+- **Mode.** `mode` is `shell` or `module`; `hub` and `tool` are the same two modes under their older names
+  (`isShellMode(mode)` is true for `shell` and `hub`). `auth.mode` reports the name it was given.
+- **Return key.** The target a module bounce saved is stored under `RETURN_TO_KEY` (`shell.returnTo`) unless the app
+  passes `returnToKey`. `acceptReturnToKeys` lists more keys a target is read from and cleared under, so a target saved
+  under an older key before a deploy still lands after it. The key holding a target first wins; the configured key is
+  looked at first.
+
 ## 5. Server package
 
 Plain ESM, no runtime dependency, every vendor call injected or read from an environment variable. It plugs into an
