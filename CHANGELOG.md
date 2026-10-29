@@ -1,10 +1,16 @@
 # Changelog
 
-## 2026-10-29 (v1.84.0, ops center label hold explainer)
+## 2026-10-29 (v1.87.0, ops center label hold explainer)
 
 Why a PR sits on a hold label. Opt in: new `lanes/label_hold.py`.
 
 - Who placed the hold label and when, the newest decisions-log note that names the PR, and the owner's triage markers for the head, so the card says what clearing the hold would do; the labels and the display zone are configuration (DESIGN.md 12.40). Tests: 14.
+
+## 2026-10-29 (v1.86.0, ops center PR landing facts)
+
+The structured ask for PR cards. Opt in: new `lanes/pr_landing.py`.
+
+- What the owner is asked to approve, who asked, what lands at the merge per Terraform root, why it needs the owner, the risks and what the buttons do, all from facts; the apply tier, shared module paths and the gates per applier are data (DESIGN.md 12.42). Tests: 16.
 
 ## 2026-10-29 (v1.83.0, ops center privileged reviews and review config)
 

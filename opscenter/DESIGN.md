@@ -1324,6 +1324,7 @@ the standard drops: it is waiting on something named here.
 | (2.6) | analyzer: contract, handled match, first seen, routing, collector, bundle builder, wake gate | lifted: `engine/` (`contract`, `handled`, `first_seen`, `routing`, `collect`, `analysis_bundle`, `board_build`), `gates/action_center_gate.py`, `server/modules/routing_api.py` (12.13) |
 | (server modules, debt page) | debt and improvements page server half | lifted: `server/modules/eng_backlog.py` (12.25) |
 | (doc audit) | documentation audit and coverage page | lifted: `engine/doc_audit.py`, `server/modules/doc_coverage.py` (12.26); the docs home read is a driver the consumer supplies |
+| (PR landing) | structured ask for PR cards | lifted: `lanes/pr_landing.py` (12.42) |
 | (label hold) | hold label explainer | lifted: `lanes/label_hold.py` (12.40) |
 | (review helpers) | live code host facts and review conversations | lifted: `server/modules/live_truth.py`, `lanes/review_threads.py` (12.27) |
 | (privileged reviews) | privileged deployments lane and review config | lifted: `server/modules/privileged_reviews.py`, `review_config.py` (12.28) |
@@ -1784,6 +1785,10 @@ exist. Only then does it decide the pending deployment through the code host and
 is identical to one whose apply failed (retry is the path), and an optional guard (the other-PR dependency check when the Olympus page is
 present) can refuse it. Routes: `GET /api/privileged-reviews`, `POST /api/olympus-reviews/deployment/approve`, `/reject`, `/retry` (the path
 the app already calls). Nothing is decided automatically.
+
+### 12.42 PR landing facts
+
+`lanes/pr_landing.py` builds the deterministic part of a PR approval card from facts only; a model never decides which root a merge applies. `compact_plan` reduces the PR plan run to per-root counts and a capped resource list. `landing(plan_rows, files, roots_spec)` says, per planned root and tier, whether the merge applies it: only the apply tier is applied by the merge (other tiers are applied from the branch before it), a root absent from the spec is an app root picked when the PR changed a shared module or its own folder, a root with no pipeline applier (`owner`) is never applied by the merge, and a spec'd root lands when the PR changed a path it watches (its folder plus the spec's watch list) or `deploy.json` inputs it reads. An unreadable file list is `unknown` and claims nothing; a plan that never ran is `no_plan`, one that could not be read is `plan_unread`. Each root carries its counts, the access grants and identity objects the plan changes, its applier, the gate that follows (the destroy gate when it destroys and the applier is covered) and the reason. `needs_confirm` is true when what lands destroys or changes identity objects, which is when the Approve and merge click asks for the typed name. `structure` returns the card fields for the owner's own PR (`pr_signoff`) and an engineer PR (`pr_engineer`): the ask, who asked (with the ticket from the branch or title), the rows that say why it waits on the owner, risks, what the click does, and the typed-name field. `check_prose` refuses a model brief that says a root the merge does not apply is applied. The estate values are `OPSCENTER_LANDING_CONFIG` (default `<state>/landing-config.json`, every key optional): `apply_tier` (default `prod`), `shared_modules` (path prefixes, default none), `gates` (applier to what follows; `tfapply` defaults to none), `destroy_gate` and `destroy_appliers`. No route: the approval brief page that calls it is lifted separately.
 
 ### 12.40 Label hold explainer
 
