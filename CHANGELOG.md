@@ -1,11 +1,17 @@
 # Changelog
 
-## 2026-10-29 (v1.79.0, shell server package: request telemetry and gateway names)
+## 2026-10-29 (v1.80.0, shell server package: request telemetry and gateway names)
 
 The shell server package gains what Olympus runs and the core was missing. Opt in: new exports only, the defaults are unchanged.
 
 - Request telemetry: `requestTelemetry`, `createExportRetry`, `isTransientExportFailure`, `parseSettingString` and `closeTelemetryOnShutdown`, with the transient-only export retry and the shutdown flush (`standards/web-shell-packages.md` section 5.1). Tests: 34.
 - Gateway names: `gatewayGuard` takes `header`, `role`, `requestProperty` and `refusalMessage`, and `takeGatewayHeader(req, header)` is exported, so a shell keeps its own header, role and request property (section 5.2). `serverTiming` takes `timingKey` to store the record under a key of the shell's own. Tests: 8.
+
+## 2026-10-29 (v1.79.0, ops center review helpers)
+
+Two helpers the review pages share. New `server/modules/live_truth.py` and `lanes/review_threads.py`.
+
+- `live_truth` serves cached live code host facts (open PR heads, a run, one PR's queue state) refreshed in the background, unknown is None; `review_threads` reads open review conversations, tags each author once and resolves one on request (DESIGN.md 12.27). Tests: 12.
 
 ## 2026-10-28 (v1.78.0, ops center debt and improvements)
 
