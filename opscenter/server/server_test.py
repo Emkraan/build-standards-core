@@ -433,6 +433,22 @@ class Routes(unittest.TestCase):
         self.assertEqual(self.js("GET", "/api/infra/job-log?runner=r1")[0], 501)
         self.assertEqual(self.js("GET", "/api/infra/job-log?runner=../x")[0], 400)
 
+    def test_owner_roots_with_nothing_configured_answer_empty_and_refuse_writes(self):
+        os.environ["OWNER_ROOTS_CACHE"] = os.path.join(
+            os.environ["OPSCENTER_STATE_DIR"], "owner-roots"
+        )
+        try:
+            s, body = self.js("GET", "/api/owner-roots")
+            self.assertEqual(
+                (s, body["items"], body["running"], body["signin"]), (200, [], False, None)
+            )
+            self.assertEqual(
+                self.js("POST", "/api/owner-roots/apply", {"name": "x", "tier": "y"})[0], 404
+            )
+            self.assertEqual(self.js("POST", "/api/owner-roots/nope", {})[0], 404)
+        finally:
+            os.environ.pop("OWNER_ROOTS_CACHE", None)
+
     def test_the_runtime_routes_answer_with_no_runtime_configured_by_default(self):
         os.environ.pop("OPSCENTER_RUNTIME_CMD", None)
         s, body = self.js("GET", "/api/tackle")

@@ -434,6 +434,36 @@ def _table():
             lambda m: lambda r: m.job_log(r.arg("runner"), r.arg("lines") or "60"),
         ),
         (G, "/api/infra/badge", "infra", "badge_problems", None),
+        # owner-applied roots (server/modules/owner_roots.py; the cloud is its provider slot)
+        (G, "/api/owner-roots", "owner_roots", "get", None),
+        (
+            P,
+            "/api/owner-roots/plan",
+            "owner_roots",
+            "request",
+            lambda m: lambda r: m.request(_payload(r), "plan"),
+        ),
+        (
+            P,
+            "/api/owner-roots/plan-all",
+            "owner_roots",
+            "request",
+            lambda m: lambda r: m.request(_payload(r), "plan-all"),
+        ),
+        (
+            P,
+            "/api/owner-roots/apply",
+            "owner_roots",
+            "request",
+            lambda m: lambda r: m.request(_payload(r), "apply"),
+        ),
+        (
+            P,
+            "/api/owner-roots/signin",
+            "owner_roots",
+            "request",
+            lambda m: lambda r: m.request(_payload(r), "signin"),
+        ),
         # documentation coverage (server/modules/doc_coverage.py; the audit is engine/doc_audit.py)
         (G, "/api/doc-coverage", "doc_coverage", "get", lambda m: lambda r: m.get(_tackles())),
         (
