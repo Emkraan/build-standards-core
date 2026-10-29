@@ -41,7 +41,7 @@
       "@azure/msal-browser": [
         "./node_modules/@azure/msal-browser"
       ],
-      "@build-standards/kit": [
+      "@shell/kit": [
         "./src/index.ts"
       ]
     }

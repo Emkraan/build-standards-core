@@ -5,8 +5,8 @@
 
 import { useMemo } from 'react';
 import type { ReactNode } from 'react';
-import { FeedStrip, safeHref } from '@build-standards/kit';
-import type { FeedItem, FeedTone, HealthLine, HealthStatus } from '@build-standards/kit';
+import { FeedStrip, safeHref } from '@shell/kit';
+import type { FeedItem, FeedTone, HealthLine, HealthStatus } from '@shell/kit';
 import type { Api } from './api';
 import { useResource } from './useResource';
 import { defaultStore } from './cache';

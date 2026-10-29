@@ -78,7 +78,9 @@ own tab logic, and records the exception for the manifest rules.
 ## 4. Client package
 
 TypeScript source that each app compiles itself (no build step). Peer dependencies: React, `@azure/msal-browser` and the
-kit (`@build-standards/kit`, for `FeedStrip` and `safeHref`). The folder has one entry, `src/index.ts`.
+kit (for `FeedStrip` and `safeHref`), imported under the neutral peer name `@shell/kit`. The consumer maps that name to its own
+kit once, in `tsconfig` `paths` and the bundler alias, so no core source is edited whatever the kit package is called (the
+core's own `kit/` maps it to `./src/index.ts`). The folder has one entry, `src/index.ts`.
 
 | Export | Purpose |
 |---|---|
