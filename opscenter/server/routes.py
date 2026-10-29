@@ -293,6 +293,8 @@ def _table():
             "decide",
             _priv_decide("retry"),
         ),
+        # approval briefs (server/modules/approval_brief.py; the model is the consumer's command)
+        (P, "/api/reviews/brief", "approval_brief", "request", None),
         # documentation coverage (server/modules/doc_coverage.py; the audit is engine/doc_audit.py)
         (G, "/api/doc-coverage", "doc_coverage", "get", lambda m: lambda r: m.get(_tackles())),
         (

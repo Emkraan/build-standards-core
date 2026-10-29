@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.91.0, ops center approval brief)
+
+The approval brief on Reviews cards. Opt in: new `server/modules/approval_brief.py` and `POST /api/reviews/brief`.
+
+- Three plain paragraphs on every card that asks the owner to decide, written in the background by the consumer's model command and always backed by a deterministic draft; no model configured means the draft only (DESIGN.md 12.41). Tests: 28.
+
 ## 2026-10-29 (v1.90.0, ops center plan context)
 
 Plain-language facts for Terraform apply cards. Opt in: new `server/modules/tf_context.py`, used by the approval brief.
