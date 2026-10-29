@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.82.0, ops center label hold explainer)
+
+Why a PR sits on a hold label. Opt in: new `lanes/label_hold.py`.
+
+- Who placed the hold label and when, the newest decisions-log note that names the PR, and the owner's triage markers for the head, so the card says what clearing the hold would do; the labels and the display zone are configuration (DESIGN.md 12.40). Tests: 14.
+
 ## 2026-10-29 (v1.81.0, shell module contract: layout merge and Olympus wording)
 
 The shell module contract package gains the layout merge Olympus runs, with its typed contracts. Opt in: new exports; the validator's problem strings and `autoDescription` now carry the Olympus wording.

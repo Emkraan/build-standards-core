@@ -1324,6 +1324,7 @@ the standard drops: it is waiting on something named here.
 | (2.6) | analyzer: contract, handled match, first seen, routing, collector, bundle builder, wake gate | lifted: `engine/` (`contract`, `handled`, `first_seen`, `routing`, `collect`, `analysis_bundle`, `board_build`), `gates/action_center_gate.py`, `server/modules/routing_api.py` (12.13) |
 | (server modules, debt page) | debt and improvements page server half | lifted: `server/modules/eng_backlog.py` (12.25) |
 | (doc audit) | documentation audit and coverage page | lifted: `engine/doc_audit.py`, `server/modules/doc_coverage.py` (12.26); the docs home read is a driver the consumer supplies |
+| (label hold) | hold label explainer | lifted: `lanes/label_hold.py` (12.40) |
 | (review helpers) | live code host facts and review conversations | lifted: `server/modules/live_truth.py`, `lanes/review_threads.py` (12.27) |
 | (server modules, core consumption) | the core consumption panel's server half | lifted: `server/modules/core_consumption.py` (12.24) |
 | (server) | the running server and its routes | lifted as a generic server: `server/` (12.21); the agent session routes and some page halves are not lifted |
@@ -1766,3 +1767,7 @@ position; it reuses `lanes/merge_queue.read`). The first read of a key blocks on
 `others` drops the owner's own (the merge queue resolves those), `notify` posts one PR comment that @-tags each author not named by an earlier
 comment (automated authors are listed, never tagged; the comment carries a marker naming the head and thread ids so a second call posts nothing),
 and `resolve` resolves one thread only when it is open on that PR. Every read failure raises `ThreadError`, so a caller fails closed.
+
+### 12.40 Label hold explainer
+
+`lanes/label_hold.py` answers three things about one of the owner's PRs sitting on a hold label (default `do-not-merge`, `OPSCENTER_HOLD_LABELS` comma separated): who applied the label and when (the label event on the PR timeline, cached 10 minutes), the newest entry of the decisions log (`OPRG_DECISIONS_LOG`, default `<state>/decisions-log.md`) that names the PR and uses hold wording, and which blocking review findings the owner's triage markers (`<!-- triage:<head> H1 H2 -->`, posted after the newest review comment for that head) already answer. `triage_context` feeds the approval brief; `describe` writes the plain sentence and the next step, ASCII only and with no semicolons. The override label (`OPSCENTER_OVERRIDE_LABEL`, default `ai-review-override`) is applied only when the review verdict for the head is blocked and every blocking id is triaged. Pure helpers take their inputs as arguments; the code host runner is the caller's `gh(args, raw=False)`. Times display in `OPSCENTER_TZ` (default UTC). The server module `other_reviews` imports it optionally for the triage context. No route: it is a library the review pages call.
