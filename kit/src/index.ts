@@ -124,7 +124,7 @@ export { SearchInput } from './primitives/SearchInput';
 export type { SearchInputProps } from './primitives/SearchInput';
 export { MatrixGrid } from './primitives/MatrixGrid';
 export type { MatrixColumn, MatrixDensity, MatrixGridProps, MatrixRow, MatrixTone } from './primitives/MatrixGrid';
-export { MonthGrid, addDays, isoDay, monthWeeks, planWeek } from './primitives/MonthGrid';
+export { MonthGrid, addDays, isIsoDay, isoDay, monthWeeks, planWeek } from './primitives/MonthGrid';
 export type { MonthGridBar, MonthGridDay, MonthGridEvent, MonthGridProps, MonthGridTone, MonthGridWeekPlan } from './primitives/MonthGrid';
 export { LaneBoard } from './primitives/LaneBoard';
 export type { LaneBoardCard, LaneBoardLane, LaneBoardMove, LaneBoardProps } from './primitives/LaneBoard';

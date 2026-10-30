@@ -10,8 +10,10 @@ import { useShortcut } from '../lib/shortcuts';
 import { Badge } from '../primitives/marks';
 import { useShell } from './context';
 
-/** Slides one marker (.nav-glider) to the link with aria-current="page". */
-export function useNavGlider(containerRef: RefObject<HTMLElement | null>, gliderRef: RefObject<HTMLElement | null>): void {
+/** Slides one marker (.nav-glider) to the link with aria-current="page". A container its parent hides has no
+    size to measure: a caller that shows and hides it passes the open state as `remeasureKey`, and the marker is
+    placed again once the list is back in layout. */
+export function useNavGlider(containerRef: RefObject<HTMLElement | null>, gliderRef: RefObject<HTMLElement | null>, remeasureKey?: unknown): void {
   useIsoLayoutEffect(() => {
     const container = containerRef.current;
     const glider = gliderRef.current;
@@ -36,7 +38,7 @@ export function useNavGlider(containerRef: RefObject<HTMLElement | null>, glider
       mo.disconnect();
       ro?.disconnect();
     };
-  }, []);
+  }, [remeasureKey]);
 }
 
 export interface RailProps {

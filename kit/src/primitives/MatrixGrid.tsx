@@ -30,7 +30,8 @@ export interface MatrixRow {
   label: ReactNode;
   /** Spoken name when `label` is not plain text. */
   name?: string | undefined;
-  /** Rows with the same group value sit under one group heading. Rows must already be in order. */
+  /** Rows with the same group value sit under one group heading. Rows must already be in order: a group that
+      comes back after another group gets a second heading. */
   group?: string | undefined;
 }
 
@@ -58,7 +59,7 @@ export interface MatrixGridProps extends Omit<HTMLAttributes<HTMLDivElement>, 'c
   columnWidth?: string | undefined;
   /** Max height of the scroll area (a CSS length). Without it the grid takes its height and only scrolls sideways. */
   maxHeight?: string | undefined;
-  /** Shown when there are no rows. */
+  /** Shown when there are no rows or no columns, since a grid without cells has nothing to focus. */
   empty?: ReactNode;
 }
 
@@ -99,10 +100,10 @@ export function MatrixGrid({
 
   // Group headings go before the first row of each group.
   const body = useMemo(() => {
-    const out: Array<{ kind: 'group'; group: string } | { kind: 'row'; row: MatrixRow; index: number }> = [];
+    const out: Array<{ kind: 'group'; group: string; index: number } | { kind: 'row'; row: MatrixRow; index: number }> = [];
     let last: string | undefined;
     rows.forEach((row, index) => {
-      if (row.group !== undefined && row.group !== last) out.push({ kind: 'group', group: row.group });
+      if (row.group !== undefined && row.group !== last) out.push({ kind: 'group', group: row.group, index });
       last = row.group;
       out.push({ kind: 'row', row, index });
     });
@@ -130,6 +131,8 @@ export function MatrixGrid({
       case 'End': go(ctrl ? rowCount - 1 : r, colCount - 1); break;
       case 'Enter':
       case ' ': {
+        // Space on a read only cell would otherwise scroll the page.
+        if (e.key === ' ') e.preventDefault();
         const row = rows[r];
         const col = columns[c];
         if (!onCellActivate || !row || !col) return;
@@ -159,7 +162,7 @@ export function MatrixGrid({
       style={vars}
       onKeyDown={onKeyDown}
     >
-      {rowCount === 0 ? (
+      {rowCount === 0 || colCount === 0 ? (
         empty ?? <EmptyState compact title="Nothing here yet" />
       ) : (
         <table className="matrix-table" role="grid" aria-label={label} aria-rowcount={rowCount + 1} aria-colcount={colCount + 1}>
@@ -176,7 +179,7 @@ export function MatrixGrid({
           <tbody>
             {body.map((item) =>
               item.kind === 'group' ? (
-                <tr key={`g:${item.group}`} className="matrix-group">
+                <tr key={`g:${item.index}`} className="matrix-group">
                   <th scope="rowgroup" colSpan={colCount + 1}>{item.group}</th>
                 </tr>
               ) : (

@@ -1,7 +1,9 @@
 /* ContextPanel and AppShell contextPanel: the second navigation level beside the rail. */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import axe from 'axe-core';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AppShell, ContextPanel, NavGroup, NavItem, Rail } from '../src';
 import { installMatchMedia, resetMedia } from './helpers';
 
@@ -95,5 +97,40 @@ describe('ContextPanel', () => {
       </ContextPanel>,
     );
     expect(screen.getByRole('link', { name: 'A' }).getAttribute('href')).toBe('/a');
+  });
+});
+
+describe('ContextPanel glider and layout', () => {
+  const sizes = ['offsetWidth', 'offsetHeight', 'offsetLeft', 'offsetTop'] as const;
+  const saved = sizes.map((k) => [k, Object.getOwnPropertyDescriptor(HTMLElement.prototype, k)] as const);
+  afterEach(() => {
+    for (const [k, d] of saved) {
+      if (d) Object.defineProperty(HTMLElement.prototype, k, d);
+      else delete (HTMLElement.prototype as unknown as Record<string, unknown>)[k];
+    }
+  });
+
+  it('places the glider again when the folded list opens, not while it is hidden', () => {
+    // A hidden list has no layout: every offset reads 0 until the panel is open.
+    for (const k of sizes) {
+      Object.defineProperty(HTMLElement.prototype, k, {
+        configurable: true,
+        get(this: HTMLElement) {
+          return this.closest('.context-panel')?.hasAttribute('data-open') ? 120 : 0;
+        },
+      });
+    }
+    const { container } = render(panel);
+    const glider = container.querySelector('.context-panel .nav-glider') as HTMLElement;
+    expect(glider.style.width).toBe('0px');
+    fireEvent.click(screen.getByRole('button', { name: 'Sections' }));
+    expect(glider.style.width).toBe('120px');
+    expect(glider.style.height).toBe('120px');
+  });
+
+  it('lets the page column shrink beside the panel', () => {
+    const css = readFileSync(resolve(__dirname, '../src/styles/kit.css'), 'utf8');
+    expect(css).toMatch(/\.shell-main \{[^}]*min-width: 0/);
+    expect(css).toMatch(/\.shell-split > \.shell-main \{[^}]*min-width: 0/);
   });
 });
