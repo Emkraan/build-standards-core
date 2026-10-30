@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-30 (v1.109.0, hub Overview area cards)
+## 2026-10-30 (v1.110.0, hub Overview area cards)
 
 New opt in kit piece for the ops center layout: `HubOverview` and `AreaCard`.
 
@@ -11,6 +11,12 @@ New opt in kit piece for the ops center layout: `HubOverview` and `AreaCard`.
   summary line. The tone comes from the app's server list; the card applies no threshold.
 - Standards: "Hub Overview" in the web UI standard. Specimen `hub-overview` with baselines in both
   themes. Tests: 10.
+
+## 2026-10-29 (v1.108.0, ops center run contract)
+
+The server side of the run-with-safe-defaults contract. Opt in: `builds.dispatch`, `infra.task_run` and a wider `cron_pulse.run`.
+
+- A pipeline entry declares the workflow's fixed inputs; a start refuses unknown pipelines, inputs, values and refs, defaults to the safe values, dedupes a double click, refuses a paused or already running pipeline with a reason and says whether the run publishes. Maintenance tasks (a backup, a restore drill) are a consumer-configured command with the same contract; any scheduled job can Run now (DESIGN.md 12.49). Tests: 17.
 
 ## 2026-10-29 (v1.107.0, kit review fixes for MatrixGrid, MonthGrid and ContextPanel)
 
