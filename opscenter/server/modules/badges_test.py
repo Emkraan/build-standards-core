@@ -90,7 +90,16 @@ class Badges(unittest.TestCase):
         (d / "action-center.json").write_text(json.dumps({"items": items}))
 
     def test_nothing_configured_is_the_zero_shape_with_stable_keys(self):
-        got = b.get()
+        import problems
+
+        saved = problems._mod
+        problems._mod = lambda name: (
+            None
+        )  # other tests in the shared suite leave module state behind
+        try:
+            got = b.get()
+        finally:
+            problems._mod = saved
         self.assertEqual(
             set(got),
             {
