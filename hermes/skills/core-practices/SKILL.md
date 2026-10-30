@@ -171,6 +171,20 @@ How to use it:
 | `notifications.7` Scheduled jobs run under the guard | must | all | review | Scheduled jobs run through the guard wrapper, which sends one formatted alert on failure, preserves the exit code and avoids a second plain failure notice. |
 | `notifications.9` Email goes through one renderer behind a CI guard | must | all | test | Every email a tool sends goes through one block renderer: a fixed-width card, callouts without edge bars, a subject naming the change and item, lists capped at 12, public-hostname links and [TEST] self-tests to the sender only. A CI guard fails hand-built email HTML and platform-host links. |
 
+## ops-center-layout.md
+
+| Rule | Level | Applies to | Check | Statement |
+|---|---|---|---|---|
+| `ops-center-layout.1.1` Group by what we run, never by data source | must | local-ops | review | Group by what we run, never by data source. One hub per domain, with a tab per thing operated. Related operational views are not split across pages by where their data comes from (builds on one page, infrastructure on another). |
+| `ops-center-layout.1.2` Sections when a hub has more than about five items | must | local-ops | review | Sections when a hub has more than about five items. The top row is Overview plus titled sections; the second row is one tab per item in the open section. The route shape is `/<hub>/<section>/<item>`. The Overview groups its cards under the same section titles in the same order. |
+| `ops-center-layout.1.3` The Overview is one card per item | must | local-ops | test | The Overview is one card per item. A card shows a tone pill (healthy, worth a look, needs me), a one-line headline, at most four detail lines, and a link to its item. |
+| `ops-center-layout.1.4` One source of truth for counts | must | local-ops | repo-check | One source of truth for counts. The rail badge, the section and item tab counts and the Overview all read one server-side problem list. The client applies no thresholds of its own. Work in progress shows as a spinner, never red. |
+| `ops-center-layout.1.5` Current state and history are different things | must | local-ops | test | Current state and history are different things. A pipeline counts as failed only while its newest finished run on the default branch failed. Older runs fold under History, so a fixed failure never reads as current. |
+| `ops-center-layout.1.6` Newest first everywhere | must | local-ops | test | Newest first everywhere. Cards are ordered by latest activity with running items on top, runs by finish time, scheduled jobs by last run. |
+| `ops-center-layout.1.7` Every runnable thing has a start button in the UI | must | local-ops | test | Every runnable thing has a start button in the UI. Pipelines (Run workflow), scheduled jobs (Run now) and maintenance tasks (a backup, a restore drill) can be started from the item. The form opens with safe defaults (dry run on), says plainly when a run will publish, and the primary button then reads "Run for real". The contract in section 3 is the server side of the button. |
+| `ops-center-layout.1.8` Name hubs for the work, not the vendor or the tool | must | local-ops | review | Name hubs for the work, not the vendor or the tool. "Work tracking" instead of the tracker's name, "Pull requests" instead of "Reviews". The tool name stays in subtitles and links. |
+| `ops-center-layout.1.9` Old links never break | must | local-ops | repo-check | Old links never break. Every renamed or moved route redirects to its new home and keeps its tab and query string. The app keeps a lock file listing every route it has ever served. |
+
 ## pr-review-and-merge.md
 
 | Rule | Level | Applies to | Check | Statement |

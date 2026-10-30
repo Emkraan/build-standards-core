@@ -1377,6 +1377,136 @@ def rc022(repo):
     return many_files_per_app(hits, "permissions are compared by hand; one guard module owns it")
 
 
+# ---------------------------------------------------------------- RC023 counts come from the server, RC024 old links never break
+
+
+def ops_center_roots(repo):
+    """The folders that hold an ops center app: an opscenter or ops-center folder, or one with a routes lock file."""
+    roots = set()
+    for p in repo.paths:
+        m = re.match(r"^(.*?(?:^|/)(?:opscenter|ops-center))(?:/|$)", p)
+        if m:
+            roots.add(m.group(1) + "/")
+        if p.rsplit("/", 1)[-1] == "routes.lock.json":
+            roots.add(p.rsplit("/", 1)[0] + "/" if "/" in p else "")
+    return roots
+
+
+def is_ops_center(repo):
+    return bool(ops_center_roots(repo))
+
+
+def ops_center_files(repo, exts):
+    roots = ops_center_roots(repo)
+    return [p for p in repo.select(exts=exts, tests=False) if any(p.startswith(r) for r in roots)]
+
+
+COUNT_COMPARE = re.compile(
+    r"(?:\.length|[Cc]ount|[Tt]otal|[Ff]ailed|[Ff]ailing|[Ee]rrors?|[Pp]roblems?)\)?\s*(>=|<=|===|==|>|<)\s*(\d+)\b"
+)
+TONE_WORD = re.compile(
+    r"\b(?:tone|badge|severity|variant|level)\b|['\"`](?:bad|warn|warning|crit|critical|danger|needs[-_ ]?me|worth)"
+)
+
+
+def _is_threshold(op, n):
+    """A comparison with 0 or 1 asks whether there is anything at all; any other number is a threshold."""
+    n = int(n)
+    if op in (">",) and n == 0:
+        return False
+    if op == ">=" and n == 1:
+        return False
+    if op in ("==", "===") and n in (0, 1):
+        return False
+    if op == "<" and n == 1:
+        return False
+    return not (op == "<=" and n == 0)
+
+
+def rc023(repo):
+    if not is_ops_center(repo):
+        return []
+    out = []
+    for p in ops_center_files(repo, (".ts", ".tsx", ".js", ".jsx")):
+        lines = repo.text(p).splitlines()
+        for i, ln in enumerate(lines):
+            if is_comment(ln) or skipped(lines, i):
+                continue
+            prev = (
+                lines[i - 1]
+                if i and lines[i - 1].rstrip().endswith(("=", "?", ":", "(", "&&", "||"))
+                else ""
+            )
+            window = prev + " " + ln
+            for m in COUNT_COMPARE.finditer(ln):
+                if _is_threshold(m.group(1), m.group(2)) and TONE_WORD.search(window):
+                    out.append(
+                        (
+                            p,
+                            i + 1,
+                            "a count is compared with a number to decide a tone or badge; the server problem list decides",
+                        )
+                    )
+                    break
+    return out
+
+
+ROUTE_PATH = re.compile(r"""<Route\b[^>]*?\bpath=["'{`]+([^"'`}]+)""")
+LOCK_NAME = "routes.lock.json"
+
+
+def _route_files(repo):
+    return [
+        p
+        for p in ops_center_files(repo, (".ts", ".tsx", ".js", ".jsx"))
+        if "<Route" in repo.text(p)
+    ]
+
+
+def rc024(repo):
+    if not is_ops_center(repo):
+        return []
+    files = _route_files(repo)
+    if not files:
+        return []
+    routes = {}
+    for p in files:
+        text = repo.text(p)
+        for m in ROUTE_PATH.finditer(text):
+            line = line_of(text, m.start())
+            if not skipped(text.splitlines(), line - 1):
+                routes.setdefault(m.group(1).rstrip("/") or "/", (p, line))
+    locks = [p for p in repo.paths if p.rsplit("/", 1)[-1] == LOCK_NAME]
+    if not locks:
+        return [
+            (
+                files[0],
+                1,
+                f"no {LOCK_NAME}: list every route this app has served so a removal cannot go unnoticed",
+            )
+        ]
+    try:
+        locked = set(json.loads(repo.text(locks[0])).get("routes") or [])
+    except (ValueError, AttributeError):
+        return [(locks[0], 1, f"{LOCK_NAME} is not a JSON object with a routes list")]
+    locked = {str(r).rstrip("/") or "/" for r in locked}
+    out = []
+    for r in sorted(locked - set(routes)):
+        out.append(
+            (
+                locks[0],
+                1,
+                f"route {r} was served and is no longer routed: keep it as a redirect to its new home",
+            )
+        )
+    for r, (p, line) in sorted(routes.items()):
+        if r not in locked:
+            out.append(
+                (p, line, f"route {r} is not in {LOCK_NAME}: add it so a later removal is caught")
+            )
+    return out
+
+
 # id -> (title, doc rule ref, function)
 CHECKS = {
     "RC001": ("kill by name or pattern", "automation-safety.md 1.9", rc001),
@@ -1401,6 +1531,8 @@ CHECKS = {
     "RC020": ("no inline asset limit", "web-client-runtime.md 4.3", rc020),
     "RC021": ("bearer header built in many files", "web-client-runtime.md 5.1", rc021),
     "RC022": ("permissions compared by hand in many files", "rbac.md 3", rc022),
+    "RC023": ("client-side count threshold", "ops-center-layout.md 1.4", rc023),
+    "RC024": ("route removed without a redirect", "ops-center-layout.md 1.9", rc024),
 }
 
 
