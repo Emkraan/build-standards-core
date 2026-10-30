@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-30 (v1.109.0, hub Overview area cards)
+
+New opt in kit piece for the ops center layout: `HubOverview` and `AreaCard`.
+
+- `AreaCard`: a tone pill (healthy, worth a look, needs me), a one line headline, at most four detail
+  lines ("and N more" after that) and a link to the item. A running item wears the info tone with a
+  spinner, never red. The link uses the shell's link component.
+- `HubOverview`: one card per item grouped under the section titles in tab order, with an optional
+  summary line. The tone comes from the app's server list; the card applies no threshold.
+- Standards: "Hub Overview" in the web UI standard. Specimen `hub-overview` with baselines in both
+  themes. Tests: 10.
+
 ## 2026-10-29 (v1.107.0, kit review fixes for MatrixGrid, MonthGrid and ContextPanel)
 
 Fixes from the console migration review of the v1.56 to v1.58 kit pieces. Defaults and the opt-in

@@ -707,6 +707,28 @@ layout mode of `Table`. A page whose data is comparable across columns keeps `Ta
   indicator only, no edge accent. An option may carry a decorative `icon` before its label, and
   `iconOnly` shows the icon alone with the label kept as the accessible name and the tooltip.
 
+### Hub Overview (`HubOverview`, `AreaCard`)
+
+The Overview of a sectioned hub has one card per item, grouped under the same section titles in the
+same order as the tabs.
+
+- A card has a tone pill, a one line headline, at most four detail lines, and a link to the item (the
+  title). The pill reads `healthy` (good), `worth a look` (warn) or `needs me` (alert); a card in the
+  alert tone also gets the danger border. A fifth detail line and beyond fold into "and N more".
+- The tone is decided by the server's problem list, the same list that feeds the rail badge and the
+  tab counts of `HubHeader`. A card never judges a number against a threshold of its own, and the
+  Overview, the tabs and the badge never disagree.
+- Work in progress is a spinner. A running item takes the info tone and, when it is otherwise
+  healthy, reads `running`; it is never red for being busy.
+- Order cards by latest activity within a section, running items first, and give the summary line
+  (how many areas need attention) to the `summary` prop. An item with no data yet shows no card.
+- The link goes through the shell's link component, like the rail, and an unsafe target renders
+  without a link.
+
+**Acceptance:** a component test asserts the three tones, the four line limit and the "more" line, the
+running state, the grouping and order under the section titles, and axe; the gallery specimen
+`hub-overview` carries baselines in both themes.
+
 ### Toggle chips (`ChipGroup`)
 
 - `ChipGroup` (`.chip-group`, `.chip-btn`) is for filters where any number of options can be on,
