@@ -200,7 +200,10 @@ class Builds(unittest.TestCase):
         self.assertEqual(runs[3]["waiting_on"], ["production"])
         self.assertEqual(runs[1]["summary"], "version 1.3: 4 rows")
         self.assertEqual((d["running"], d["waiting"], d["active"]), (1, 1, True))
-        self.assertEqual(builds.badge(), {"running": 1, "waiting": 1})
+        self.assertEqual(
+            builds.badge(),
+            {"running": 1, "waiting": 1, "failed": [], "failed_items": []},
+        )
 
     def test_the_landed_command_output_is_the_landed_block_and_a_missing_command_is_no_block(self):
         self.basic()
@@ -225,7 +228,7 @@ class Builds(unittest.TestCase):
                 ],
             }
         )
-        r = builds.get()["pipelines"][0]["runs"][0]
+        r = next(p for p in builds.get()["pipelines"] if p["key"] == "rel")["runs"][0]
         self.assertEqual(
             r["reason"], {"where": 'build, step "compile"', "message": "the compile broke"}
         )
@@ -266,7 +269,7 @@ class Builds(unittest.TestCase):
 
     def test_a_refused_run_on_the_owners_branch_needs_action_and_another_persons_does_not(self):
         self.refused(own=True)
-        ref = builds.get()["pipelines"][1]["runs"][0]["refusal"]
+        ref = next(p for p in builds.get()["pipelines"] if p["key"] == "dep")["runs"][0]["refusal"]
         self.assertEqual(
             (ref["branch"], ref["behind"], ref["own"], ref["phase"]),
             ("tkt-1-x", 3, True, "needs_action"),
@@ -274,7 +277,7 @@ class Builds(unittest.TestCase):
         builds._own.clear()
         swr_clear()
         self.refused(own=False)
-        ref = builds.get()["pipelines"][1]["runs"][0]["refusal"]
+        ref = next(p for p in builds.get()["pipelines"] if p["key"] == "dep")["runs"][0]["refusal"]
         self.assertEqual((ref["own"], ref["phase"]), (False, "info"))
 
     def test_update_from_main_is_refused_for_a_bad_branch_a_changed_run_or_someone_elses_branch(

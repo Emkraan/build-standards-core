@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (v1.110.0, ops center problem list)
+
+The single server-side problem list. Opt in: new `server/modules/problems.py`; `GET /api/badges` gains `problems`.
+
+- The rail badge, the tab counts and the Overview cards all read one list of items with a tone, at most four detail lines and a place; builds report current state vs history (failed only while the newest finished run on main failed; running is never red) and are ordered newest first (DESIGN.md 12.50). Tests: 18.
+
 ## 2026-10-30 (v1.109.0, ops center layout standard)
 
 A new standard, `standards/ops-center-layout.md`, and its two repo checks, from the layout the owner approved on 2026-10-30. Opt in: nine rules for `local-ops`, listed as applicable to an ops center.
