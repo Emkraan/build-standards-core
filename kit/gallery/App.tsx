@@ -2648,9 +2648,6 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         <Specimen id="matrix-grid" title="Matrix grid (dense, sticky heads)">
           <MatrixGridSpecimen />
         </Specimen>
-        <Specimen id="hub-header" title="Sectioned hub header (two tab rows)">
-          <HubHeaderSpecimen />
-        </Specimen>
         <Specimen id="month-grid-bars" title="Month grid with lane-packed bars">
           <MonthGridBarsSpecimen />
         </Specimen>
@@ -2708,6 +2705,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="timeline" title="Timeline">
           <TimelineSpecimen />
+        </Specimen>
+        <Specimen id="hub-header" title="Sectioned hub header (two tab rows)">
+          <HubHeaderSpecimen />
         </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">
