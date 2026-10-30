@@ -159,6 +159,7 @@ value of the doc's registered rules (see the rules registry below).
 | Patterns | `standards/web-ui.md` sections 6, 11, 13, 19 to 25 | Shell, mobile drawer, search palette, rail, announcements and feed, build card, undo and confirm, required chrome | web |
 | Patterns | `standards/rbac.md` | Additive-union RBAC shape and the lockstep check | web |
 | Patterns | `standards/live-actions.md` | Actions in operator UIs against eventually consistent backends | all |
+| Patterns | `standards/ops-center-layout.md` | Ops center layout: hubs by what is run, sections, one card per item, one server problem list, current state vs history, run buttons with safe defaults, old links never break | local-ops |
 | Patterns | `standards/identity-and-people-data.md` | Directory as source of truth and the single roster | all (no rules yet) |
 | Patterns | `standards/notifications.md` | Message format and channel rules | all (no rules yet) |
 | App types | `standards/web-build.md` | Stack, layout, API envelope, auth, RBAC wiring and the verification gate for first-party web apps | web (no rules yet) |

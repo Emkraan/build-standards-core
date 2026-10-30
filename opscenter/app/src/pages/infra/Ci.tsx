@@ -98,6 +98,7 @@ export default function CiTab() {
           tone={online === data.runners.length && online > 0 ? 'success' : 'danger'}
         />
         <StatTile value={busy} label="runners busy" hue="blue" />
+        {/* core-exception: EXC-LAYOUT-4 removed when the layout adoption (ops center layout part 4) moves this count to the server list */}
         <StatTile value={data.queued.length} label="jobs queued" tone={data.queued.length > 3 ? 'warning' : 'success'} />
         <StatTile value={latest ? relTime(latest.time) : 'never'} label="last state backup" tone={backupTone as StatTone} />
       </div>
