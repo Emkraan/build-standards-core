@@ -184,6 +184,13 @@ def _table():
         ),
         (
             P,
+            "/api/builds/dispatch",
+            "builds",
+            "dispatch",
+            lambda m: lambda r: m.dispatch(_payload(r)),
+        ),
+        (
+            P,
             "/api/builds/update-from-main",
             "builds",
             "update_from_main",
@@ -447,6 +454,9 @@ def _table():
             lambda m: lambda r: m.job_log(r.arg("runner"), r.arg("lines") or "60"),
         ),
         (G, "/api/infra/badge", "infra", "badge_problems", None),
+        (G, "/api/infra/tasks", "infra", "tasks", None),
+        (P, "/api/infra/backup/run", "infra", "task_run", None),
+        (P, "/api/infra/tasks/run", "infra", "task_run", None),
         # owner-applied roots (server/modules/owner_roots.py; the cloud is its provider slot)
         (G, "/api/owner-roots", "owner_roots", "get", None),
         (
