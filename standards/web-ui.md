@@ -791,6 +791,46 @@ Every dialog uses `Modal`. No hand-rolled `fixed inset-0` overlays.
   `await confirm({ title, body, confirmLabel, danger })`. `usePrompt()` returns the trimmed value
   or null, with optional `validate`.
 
+### Run with safe defaults (`RunDialog`, `RunFields`, `useRunForm`)
+
+Every runnable thing in a tool (a pipeline, a scheduled job, a backup or restore drill) has a start
+button, and the form behind it opens with safe defaults. The kit owns the form; the app owns the fetch.
+
+- The form opens with the dry-run settings: `dry_run` on, a cautious `mode`, the safe choice of each
+  input. It opens on those values every time it is opened.
+- It says plainly when the run will publish. A note under the title reads "Defaults are the dry-run
+  settings, nothing is published." until the values would write, then "This run publishes or changes
+  something. Any job that writes still waits on its environment approval.", and the primary button
+  changes from "Run" to "Run for real" (and the dialog hue from blue to amber). A run writes when
+  `dry_run` is off or a `mode` input is anything but `dry-run`; `publishes` replaces that rule.
+- A paused or running item is refused with a reason. Pass `refusal` when the app already knows, and the
+  reason shows in the dialog and on the primary button before the click. When the server refuses
+  after the click, the run callback throws `RunRefusedError` (`runErrorFrom(status, body)` maps a 409
+  or a body with a `kind`), and the dialog stays open with the same notice. Any other error shows as
+  an alert and the user can try again. A click while a run is being queued does nothing.
+- The button only queues the run. Environment approvals still gate any job that writes, and the
+  dialog says so.
+- `RunFields` and `useRunForm` are the body and the state of the dialog, for an app that shows the
+  form in a sheet or on a page. `intro` and `refHint` carry the app's own words (the tool's name, the
+  branch rule); the safe-default wording is the kit's and is not replaced.
+
+**The server contract.** The dialog is a convenience, never the guard. The server keeps one fixed spec
+per runnable thing, `{ ref?: 'main' | 'branch', inputs: [{ name, type: 'string' | 'boolean' |
+'choice', default, options?, required?, pattern?, help? }] }`, and sends it to the form (the `RunSpec`
+type). The request carries `{ ref, inputs }`, and the server:
+
+1. checks every input against the spec again and refuses an unknown input or a value outside it;
+2. accepts the write from the same origin or loopback only;
+3. folds a repeated request inside a short window into the first and answers `already: true`;
+4. refuses a paused item and an item that is already running with HTTP 409 and `{ error, kind }`,
+   where `error` is the reason shown to the user and `kind` is `paused` or `running`;
+5. queues the run and nothing more: an environment approval still gates a job that writes.
+
+**Acceptance:** a component test asserts the dry-run defaults and the note, "Run for real" when the
+values write, the required-input wait and its reason, the request sent, `already`, a refusal before and
+after the click, another error, one call for repeated clicks, a reset on reopen, and axe; the gallery
+specimen `run-dialog` carries baselines in both themes.
+
 ### Record preview (`RecordPreviewProvider`, `RecordChip`, `createRecordRegistry`)
 
 One dialog previews any record by type and id from anywhere: a palette result, a cross link chip, a

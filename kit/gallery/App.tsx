@@ -147,7 +147,11 @@ import {
   RecordChip,
   RecordPreviewProvider,
   createRecordRegistry,
+  RunDialog,
+  RunFields,
+  useRunForm,
 } from '../src/index';
+import type { RunRefusal, RunSpec } from '../src/index';
 import type { AppAccent, ArtAnchors, BulkRunState, ComboboxFreeEntry, FilterClause, FilterField, HomeTool, LauncherTool, PaletteItem, Recent, ReleaseNote, SortDirection, SortState, TableColumn, ThemeChoice } from '../src/index';
 import { AreaChart, BarChart, ChartLegend, DonutChart, Gauge, LineChart, RingProgress, Sparkline } from '../src/charts';
 import { Graph, graphEdge } from '../src/graph';
@@ -535,6 +539,53 @@ function ContextPanelSpecimen() {
         </NavGroup>
       </ContextPanel>
       <p className="gallery-note">Mounted next to the rail with AppShell contextPanel. Below 900px it stacks above the page and folds.</p>
+    </div>
+  );
+}
+
+const RUN_SPEC: RunSpec = {
+  ref: 'branch',
+  inputs: [
+    { name: 'dry_run', type: 'boolean', default: true, help: 'Build and check only, publish nothing.' },
+    { name: 'channel', type: 'choice', default: 'beta', options: ['beta', 'stable'] },
+    { name: 'version', type: 'string', default: '', required: false, help: 'Leave empty to use the next version.' },
+  ],
+};
+
+function RunPane({ title, spec, refusal }: { title: string; spec: RunSpec; refusal?: RunRefusal }) {
+  const form = useRunForm({ spec, onRun: async () => undefined, ...(refusal ? { refusal } : {}) });
+  return (
+    <div className="gallery-run-pane">
+      <p className="gallery-note">{title}</p>
+      <RunFields form={form} intro="Starts the release workflow with these inputs." refHint="main, or a feature branch." />
+      <div className="gallery-run-foot">
+        <Button variant="primary" disabledReason={form.disabledReason}>{form.primaryLabel}</Button>
+      </div>
+    </div>
+  );
+}
+
+function RunDialogSpecimen() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="gallery-run-demo">
+      <RunPane title="Opens like this: dry run on, nothing is published" spec={RUN_SPEC} />
+      <RunPane
+        title="With dry run turned off: the note says it publishes"
+        spec={{ ...RUN_SPEC, inputs: RUN_SPEC.inputs.map((i) => (i.name === 'dry_run' ? { ...i, default: false } : i)) }}
+      />
+      <RunPane title="Refused with a reason" spec={RUN_SPEC} refusal={{ kind: 'running', reason: 'Run 812 of this workflow is still going.' }} />
+      <Button onClick={() => setOpen(true)}>Open the dialog</Button>
+      <RunDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Run release"
+        subtitle="release.yml"
+        spec={RUN_SPEC}
+        intro="Starts the release workflow with these inputs."
+        refHint="main, or a feature branch."
+        onRun={async () => ({ already: false })}
+      />
     </div>
   );
 }
@@ -2418,7 +2469,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars', 'run-dialog'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2617,6 +2668,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="matrix-grid" title="Matrix grid (dense, sticky heads)">
           <MatrixGridSpecimen />
+        </Specimen>
+        <Specimen id="run-dialog" title="Run with safe defaults">
+          <RunDialogSpecimen />
         </Specimen>
         <Specimen id="month-grid-bars" title="Month grid with lane-packed bars">
           <MonthGridBarsSpecimen />
