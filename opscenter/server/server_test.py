@@ -453,6 +453,8 @@ class Routes(unittest.TestCase):
         s, body = self.js("GET", "/api/badges")
         self.assertEqual((s, body["action_open"], body["knowledge"]), (200, [], 0))
         self.assertEqual(body["infra"]["count"], 0)
+        self.assertEqual(body["problems"]["items"], [])
+        self.assertEqual(body["problems"]["counts"]["total"], 0)
 
     def test_platform_reviews_with_no_config_answer_empty_and_a_write_is_501(self):
         os.environ["OPSCENTER_REVIEWS_CONFIG"] = os.path.join(

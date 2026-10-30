@@ -6,7 +6,7 @@ Purpose: The sidebar badges in one small payload (GET /api/badges): the same fil
          check that fails shows as one problem, never as clear. Nothing here names an estate.
 Date:    2026-10-29
 
-Keys: action_open (board fingerprints not handled), debt, knowledge, knowledge_pending, knowledge_docs, links, infra
+Keys: problems {items, counts} (problems.py, the single list), action_open (board fingerprints not handled), debt, knowledge, knowledge_pending, knowledge_docs, links, infra
       {count, items}, builds {running, waiting}, core, alerts.
 """
 
@@ -114,6 +114,25 @@ def _infra():
         return {"count": 1, "items": [f"Infrastructure checks failed: {e}"]}
 
 
+def _problems():
+    """The single problem list (problems.py): the rail badge, tab counts and Overview all read it."""
+    return _guard(
+        lambda: importlib.import_module("problems").collect(),
+        {
+            "items": [],
+            "counts": {
+                "needs_me": 0,
+                "worth_a_look": 0,
+                "healthy": 0,
+                "running": 0,
+                "total": 0,
+                "by_section": {},
+                "by_item": {},
+            },
+        },
+    )
+
+
 def get():
     docs = _call("doc_coverage", "badge", 0)
     pending = _pending()
@@ -128,4 +147,5 @@ def get():
         "links": _links(),
         "infra": _infra(),
         "alerts": _call("alerts", "badge", 0),
+        "problems": _problems(),
     }

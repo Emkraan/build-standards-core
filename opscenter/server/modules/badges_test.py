@@ -104,8 +104,10 @@ class Badges(unittest.TestCase):
                 "links",
                 "infra",
                 "alerts",
+                "problems",
             },
         )
+        self.assertEqual(got["problems"]["counts"]["total"], 0)
         self.assertEqual((got["action_open"], got["knowledge"], got["infra"]["count"]), ([], 0, 0))
 
     def test_handled_and_snoozed_items_are_not_open(self):
