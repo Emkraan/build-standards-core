@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
-import { setConsumerPreset, resetConsumerPreset, corsOptions, originGuard, serverTiming, recordTiming, timed, formatServerTiming } from "../../../shell-packages/app-server/index.js";
+import { P, restorePreset } from "./consumer-preset.js";
+import { setConsumerPreset, corsOptions, originGuard, serverTiming, recordTiming, timed, formatServerTiming } from "../../../shell-packages/app-server/index.js";
 
 /**
  * @param {ReturnType<typeof corsOptions>} opts
@@ -247,7 +248,7 @@ test("serverTiming: a timingKey stores the same record under the shell's own key
   let core;
   const srv = await withServer({ log: null, timingKey: "shell.test.timing" }, async (req, res) => {
     own = req[Symbol.for("shell.test.timing")];
-    core = req[Symbol.for("shell.app-server.timing")];
+    core = req[Symbol.for(P.timingKey)];
     recordTiming(req, "jwt", 3);
     own.marks.push({ name: "extra", dur: 1 });
     res.end("ok");
@@ -272,7 +273,7 @@ test("serverTiming: without a timingKey only the core key is set", async () => {
   });
   try {
     await (await fetch(srv.url)).text();
-    assert.deepEqual(keys.map((s) => s.description), ["shell.app-server.timing"]);
+    assert.deepEqual(keys.map((s) => s.description), [P.timingKey]);
   } finally {
     await srv.close();
   }
@@ -291,10 +292,10 @@ test("serverTiming: the base timing symbol follows the consumer preset, set afte
     const r = await fetch(srv.url);
     await r.text();
     assert.ok(seenReq[Symbol.for("shell.preset.timing")], "record under the preset key");
-    assert.equal(seenReq[Symbol.for("shell.app-server.timing")], undefined, "not under the core key");
+    assert.equal(seenReq[Symbol.for(P.timingKey)], undefined, "not under the suite's own key");
     assert.equal(seenReq[Symbol.for("shell.preset.timing")].marks[0].name, "jwt");
   } finally {
-    resetConsumerPreset();
+    restorePreset();
     await srv.close();
   }
 });

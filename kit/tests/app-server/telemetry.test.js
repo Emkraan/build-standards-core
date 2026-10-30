@@ -2,6 +2,7 @@ import { test, before } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
 import express from "express";
+import { P } from "./consumer-preset.js";
 import { requestTelemetry, parseSettingString, safeMessage, serverTiming, isDeclaredRoute, setConsumerPreset, getConsumerPreset } from "../../../shell-packages/app-server/index.js";
 
 const CONN = "InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;ApplicationId=11111111-1111-1111-1111-111111111111";
@@ -332,8 +333,8 @@ test("requestTelemetry: service name and tracer scope default from the consumer 
   try {
     const a = fakeClient();
     requestTelemetry({ connectionString: CONN, authenticationString: AAD, getToken: tokenOk, load: a.load, log: () => {} });
-    assert.equal(a.seen.resource.attributes["service.name"], "api");
-    assert.equal(a.seen.tracerScope, "app-server");
+    assert.equal(a.seen.resource.attributes["service.name"], P.serviceName);
+    assert.equal(a.seen.tracerScope, P.tracerScope);
 
     setConsumerPreset({ serviceName: "example-api", tracerScope: "@example/app-server" });
     const b = fakeClient();

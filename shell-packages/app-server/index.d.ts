@@ -225,7 +225,8 @@ export declare function closeTelemetryOnShutdown(
 
 // --- Gateway guard ---
 
-export declare const GATEWAY_HEADER: "x-gateway-token";
+/** Live binding: the preset header (the core's own, "x-gateway-token", until a preset is applied). */
+export declare let GATEWAY_HEADER: string;
 
 /** One place a shell names itself: read by every gateway function, the telemetry defaults and the timing key. */
 export interface ConsumerPreset {
@@ -252,11 +253,14 @@ export declare function setConsumerPreset(
   preset?: Partial<Omit<ConsumerPreset, "settings">> & { settings?: Partial<ConsumerPreset["settings"]> },
 ): Readonly<ConsumerPreset>;
 export declare function getConsumerPreset(): Readonly<ConsumerPreset>;
-/** Back to the core defaults (tests). */
+/** True once setConsumerPreset has been called. gatewayGuard throws without it unless enforce is passed. */
+export declare function isConsumerPresetApplied(): boolean;
+/** Back to the core defaults and not applied (tests). */
 export declare function resetConsumerPreset(): void;
 export declare const GATEWAY_EXEMPT_PATHS: readonly string[];
 export declare const GATEWAY_PLATFORM_PING_PATHS: readonly string[];
-export declare const GATEWAY_ROLE: "gateway";
+/** Live binding: the preset role (the core's own, "gateway", until a preset is applied). */
+export declare let GATEWAY_ROLE: string;
 
 export interface SigningKeySource {
   /** A key, null for an unknown key id, undefined when the keys cannot be read. */

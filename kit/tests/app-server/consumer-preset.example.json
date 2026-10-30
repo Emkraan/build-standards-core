@@ -1,0 +1,15 @@
+{
+  "header": "x-example-gateway",
+  "role": "example:gateway",
+  "requestProperty": "exampleGateway",
+  "refusalMessage": "Reach this API through the example gateway.",
+  "settings": {
+    "enforce": "EXAMPLE_GW_ENFORCE",
+    "principalId": "EXAMPLE_GW_PRINCIPAL",
+    "audience": "EXAMPLE_GW_AUDIENCE",
+    "tenantId": "EXAMPLE_TENANT"
+  },
+  "serviceName": "example-api",
+  "tracerScope": "@example/app-server",
+  "timingKey": "example.app-server.timing"
+}

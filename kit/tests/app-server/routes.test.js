@@ -1,6 +1,7 @@
 // Route names come only from route definitions. These tests run real Express 4
 // apps through serverTiming and check the name in the log record for mounts with params, nested routers,
 // camelCase and digit literals, unknown paths and 404s.
+import "./consumer-preset.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import express from "express";

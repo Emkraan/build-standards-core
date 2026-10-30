@@ -1,3 +1,4 @@
+import "./consumer-preset.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createGroupResolver, createTokenCache, parseExpiresOn } from "../../../shell-packages/app-server/index.js";

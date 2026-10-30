@@ -663,6 +663,11 @@ export const CONSUMER_PRESET_DEFAULTS = Object.freeze({
 
 /** @type {Readonly<ConsumerPreset>} */
 let consumerPreset = CONSUMER_PRESET_DEFAULTS;
+let consumerPresetApplied = false;
+
+// The header the core ships with. The guard always strips it, whatever the preset names, so a
+// token under the core's name never reaches a handler or a log.
+const CORE_GATEWAY_HEADER = "x-gateway-token";
 
 /**
  * Set the consumer preset. Fields left out keep the core default, so each call replaces the
@@ -690,7 +695,15 @@ export function setConsumerPreset(preset = {}) {
     tracerScope: text(preset.tracerScope, d.tracerScope),
     timingKey: text(preset.timingKey, d.timingKey),
   });
+  consumerPresetApplied = true;
+  GATEWAY_HEADER = consumerPreset.header;
+  GATEWAY_ROLE = consumerPreset.role;
   return consumerPreset;
+}
+
+/** True once setConsumerPreset has been called (an empty call counts: it chooses the core names on purpose). */
+export function isConsumerPresetApplied() {
+  return consumerPresetApplied;
 }
 
 /** The preset in force now. */
@@ -701,6 +714,9 @@ export function getConsumerPreset() {
 /** Back to the core defaults (tests). */
 export function resetConsumerPreset() {
   consumerPreset = CONSUMER_PRESET_DEFAULTS;
+  consumerPresetApplied = false;
+  GATEWAY_HEADER = consumerPreset.header;
+  GATEWAY_ROLE = consumerPreset.role;
 }
 
 // --- Server-Timing ---
@@ -1831,14 +1847,16 @@ export function whatsNewHandler(options) {
 // identity is assigned. Until GATEWAY_ENFORCE is "on" a request that fails the check is only
 // logged, and with no settings at all the guard does nothing.
 
-export const GATEWAY_HEADER = "x-gateway-token";
+// GATEWAY_HEADER and GATEWAY_ROLE are live bindings: they hold the preset's header and role, so an
+// importer always reads the names in force (the core's own until a preset is applied).
+export let GATEWAY_HEADER = "x-gateway-token";
 export const GATEWAY_EXEMPT_PATHS = Object.freeze(["/health", "/api/version", "/api/health"]);
 // The platform's own traffic: Always On pings "/" and the container start probe asks for
 // "/robots933456.txt". They are still refused, but logged as platform_ping so "refused" means a
 // caller that skipped the gateway. Matched on method, path and no Authorization header, never on the
 // user agent, which a caller can set.
 export const GATEWAY_PLATFORM_PING_PATHS = Object.freeze(["/", "/robots933456.txt"]);
-export const GATEWAY_ROLE = "gateway";
+export let GATEWAY_ROLE = "gateway";
 
 const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const JWT_PART_RE = /^[A-Za-z0-9_-]+$/;
@@ -1997,7 +2015,8 @@ export async function verifyGatewayToken(token, cfg) {
 
 /**
  * Read the gateway header and remove it from every header view Node keeps on the request
- * (req.headers and req.rawHeaders, matched in any case). headersDistinct is built from rawHeaders
+ * (req.headers and req.rawHeaders, matched in any case). The core's own header name goes too, so a
+ * token under either name never reaches a handler. headersDistinct is built from rawHeaders
  * on first read, so it never sees the value.
  * @param {any} req
  * @param {string} [header] header name, default the preset header
@@ -2007,11 +2026,14 @@ export function takeGatewayHeader(req, header = consumerPreset.header) {
   const name = String(header || consumerPreset.header).toLowerCase();
   const h = req && req.headers;
   const raw = h ? h[name] : undefined;
-  if (h) delete h[name];
   const rh = req && req.rawHeaders;
-  if (Array.isArray(rh)) {
-    for (let i = rh.length - 2; i >= 0; i -= 2) {
-      if (String(rh[i]).toLowerCase() === name) rh.splice(i, 2);
+  // The named header is the one read; the core's own header name is removed as well.
+  for (const gone of new Set([name, CORE_GATEWAY_HEADER])) {
+    if (h) delete h[gone];
+    if (Array.isArray(rh)) {
+      for (let i = rh.length - 2; i >= 0; i -= 2) {
+        if (String(rh[i]).toLowerCase() === gone) rh.splice(i, 2);
+      }
     }
   }
   return Array.isArray(raw) ? raw[0] : raw;
@@ -2030,13 +2052,24 @@ export function takeGatewayHeader(req, header = consumerPreset.header) {
  * The header is removed from req.headers and req.rawHeaders before anything else runs, whatever
  * the settings, so nothing downstream logs or forwards it. In log-only mode the request goes on at
  * once and the check runs beside it, so a slow key read never adds latency before enforcement.
- * Some but not all settings present is logged loudly at startup (misconfigured).
+ * Some but not all settings present is logged loudly at startup (misconfigured). It throws at
+ * startup when no consumer preset was applied and no enforce option was given (see above).
  * Refusals log one line per kind and reason per logIntervalMs with a count. A GET or HEAD to a
  * platform ping path with no Authorization header is logged as platform_ping, not (would_)refused.
  * Marks the request "gw" (ok, exempt, or the failure reason) for Server-Timing and telemetry.
  * @param {{ header?: string, role?: string, requestProperty?: string, refusalMessage?: string, env?: Record<string, string | undefined>, enforce?: boolean | string, principalId?: string, audience?: string | string[], tenantId?: string, exempt?: readonly string[], platformPingPaths?: readonly string[], keys?: { get(kid: string): Promise<any>, warm?: () => void }, fetchKeys?: (url: string) => Promise<any>, log?: (line: string) => void, now?: () => number, logIntervalMs?: number }} [options]
  */
 export function gatewayGuard(options = {}) {
+  // Fail closed on a forgotten preset: with none applied the guard would read the core's setting
+  // names, find nothing, and let every request through with no error. Apply the preset (an empty
+  // setConsumerPreset() chooses the core names on purpose) or pass enforce explicitly (false to run
+  // without enforcement on purpose).
+  if (!consumerPresetApplied && options.enforce === undefined) {
+    throw new Error(
+      "gatewayGuard: no consumer preset was applied and no enforce option was given. Call setConsumerPreset(...) " +
+      "at startup (an empty call chooses the core names), or pass enforce explicitly (enforce: false to run without enforcement).",
+    );
+  }
   const env = options.env ?? process.env;
   const names = consumerPreset.settings;
   const enforce = parseGatewayEnforce(options.enforce ?? env[names.enforce]);

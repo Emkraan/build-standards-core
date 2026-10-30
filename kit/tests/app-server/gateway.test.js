@@ -12,11 +12,14 @@ import {
   parseGatewayEnforce,
   createSigningKeyCache,
   GATEWAY_HEADER,
+  GATEWAY_ROLE,
   setConsumerPreset,
   getConsumerPreset,
   resetConsumerPreset,
   CONSUMER_PRESET_DEFAULTS,
+  isConsumerPresetApplied,
 } from "../../../shell-packages/app-server/index.js";
+import { P, restorePreset } from "./consumer-preset.js";
 
 const TENANT = "11111111-2222-3333-4444-555555555555";
 const GATEWAY_OID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
@@ -44,7 +47,7 @@ function mint(over = {}, opt = {}) {
     tid: TENANT,
     oid: GATEWAY_OID,
     idtyp: "app",
-    roles: ["gateway"],
+    roles: [P.role],
     nbf: now - 10,
     exp: now + 3600,
     ...over,
@@ -55,7 +58,7 @@ function mint(over = {}, opt = {}) {
 }
 
 const keys = createSigningKeyCache({ tenantId: TENANT, fetchKeys: async () => ({ keys: [{ ...jwk, kid: KID, use: "sig" }] }) });
-const ENV = { TENANT_ID: TENANT, GATEWAY_PRINCIPAL_ID: GATEWAY_OID, GATEWAY_AUDIENCE: AUD };
+const ENV = { [P.settings.tenantId]: TENANT, [P.settings.principalId]: GATEWAY_OID, [P.settings.audience]: AUD };
 const cfg = { tenantId: TENANT, principalId: GATEWAY_OID, audiences: gatewayAudiences(`${AUD},${AUD.replace("api://", "")}`), keys };
 
 test("a token from the tier's gateway identity passes", async () => {
@@ -142,7 +145,7 @@ test("signing keys: an outage after a good read keeps serving the last good keys
 
 test("the header is removed from headers and rawHeaders even with no settings", async () => {
   const mw = gatewayGuard({ env: {}, log: () => {} });
-  const req = { path: "/api/things", headers: { [GATEWAY_HEADER]: "tok", a: "1" }, rawHeaders: ["A", "1", "X-Gateway-Token", "tok", "x-gateway-token", "tok2"] };
+  const req = { path: "/api/things", headers: { [GATEWAY_HEADER]: "tok", a: "1" }, rawHeaders: ["A", "1", GATEWAY_HEADER.toUpperCase(), "tok", GATEWAY_HEADER, "tok2"] };
   let called = false;
   mw(req, {}, () => { called = true; });
   assert.ok(called);
@@ -153,8 +156,8 @@ test("the header is removed from headers and rawHeaders even with no settings", 
 test("some but not all settings logs misconfigured at startup", () => {
   /** @type {string[]} */
   const lines = [];
-  gatewayGuard({ env: { GATEWAY_PRINCIPAL_ID: GATEWAY_OID, GATEWAY_AUDIENCE: AUD }, log: (l) => lines.push(l) });
-  assert.ok(lines.some((l) => l.includes('"misconfigured"') && l.includes("TENANT_ID")));
+  gatewayGuard({ env: { [P.settings.principalId]: GATEWAY_OID, [P.settings.audience]: AUD }, log: (l) => lines.push(l) });
+  assert.ok(lines.some((l) => l.includes('"misconfigured"') && l.includes(P.settings.tenantId)));
 });
 
 test("log only does not wait on a slow signing key read", async () => {
@@ -221,7 +224,7 @@ test("log only with no settings at all changes nothing and logs nothing per requ
 });
 
 test("enforce: no token is 403, a good token passes and the header is removed, health stays open", async () => {
-  const s = await serve({ env: { ...ENV, GATEWAY_ENFORCE: "on" } });
+  const s = await serve({ env: { ...ENV, [P.settings.enforce]: "on" } });
   try {
     assert.equal((await s.get("/api/things")).status, 403);
     assert.equal((await s.get("/api/things", { [GATEWAY_HEADER]: mint({ oid: OTHER_OID }) })).status, 403);
@@ -236,7 +239,7 @@ test("enforce: no token is 403, a good token passes and the header is removed, h
 
 test("enforce with unreadable signing keys fails closed with 503", async () => {
   const dead = createSigningKeyCache({ tenantId: TENANT, fetchKeys: async () => { throw new Error("down"); } });
-  const s = await serve({ env: { ...ENV, GATEWAY_ENFORCE: "on" }, keys: dead });
+  const s = await serve({ env: { ...ENV, [P.settings.enforce]: "on" }, keys: dead });
   try {
     assert.equal((await s.get("/api/things", { [GATEWAY_HEADER]: mint() })).status, 503);
   } finally {
@@ -245,7 +248,7 @@ test("enforce with unreadable signing keys fails closed with 503", async () => {
 });
 
 test("enforce without settings refuses everything but health", async () => {
-  const s = await serve({ env: { GATEWAY_ENFORCE: "on" } });
+  const s = await serve({ env: { [P.settings.enforce]: "on" } });
   try {
     assert.equal((await s.get("/api/things", { [GATEWAY_HEADER]: mint() })).status, 403);
     assert.equal((await s.get("/health")).status, 200);
@@ -255,7 +258,7 @@ test("enforce without settings refuses everything but health", async () => {
 });
 
 test("platform pings are still refused but log as platform_ping, never as refused", async () => {
-  const s = await serve({ env: { ...ENV, GATEWAY_ENFORCE: "on" } });
+  const s = await serve({ env: { ...ENV, [P.settings.enforce]: "on" } });
   try {
     assert.equal((await s.get("/", { "user-agent": "AlwaysOn" })).status, 403);
     assert.equal((await s.get("/robots933456.txt", { "user-agent": "HealthCheck/1.0" })).status, 403);
@@ -269,7 +272,7 @@ test("platform pings are still refused but log as platform_ping, never as refuse
 });
 
 test("a ping path is a real refusal when it carries a bearer token, and other paths ignore the user agent", async () => {
-  const s = await serve({ env: { ...ENV, GATEWAY_ENFORCE: "on" } });
+  const s = await serve({ env: { ...ENV, [P.settings.enforce]: "on" } });
   try {
     assert.equal((await s.get("/", { authorization: "Bearer x" })).status, 403);
     assert.equal((await s.get("/api/things", { "user-agent": "AlwaysOn" })).status, 403);
@@ -283,7 +286,7 @@ test("a ping path is a real refusal when it carries a bearer token, and other pa
 
 test("platform_ping and refused keep separate log windows", async () => {
   let clock = 0;
-  const s = await serve({ env: { ...ENV, GATEWAY_ENFORCE: "on" }, now: () => clock });
+  const s = await serve({ env: { ...ENV, [P.settings.enforce]: "on" }, now: () => clock });
   try {
     await s.get("/");
     await s.get("/api/things");
@@ -322,7 +325,7 @@ async function serveCustom(opts = {}) {
   app.use(gatewayGuard({
     log: () => {},
     keys,
-    env: { ...ENV, GATEWAY_ENFORCE: "on" },
+    env: { ...ENV, [P.settings.enforce]: "on" },
     header: CUSTOM_HEADER,
     role: CUSTOM_ROLE,
     requestProperty: "shellGateway",
@@ -366,18 +369,18 @@ test("a custom header and role: the core's header and role no longer count", asy
   }
 });
 
-test("a custom header is stripped from req.headers whatever the settings", async () => {
+test("a custom header is stripped from req.headers whatever the settings", () => {
   const mw = gatewayGuard({ env: {}, log: () => {}, header: "X-Shell-Gateway" });
-  const req = { path: "/api/things", headers: { [CUSTOM_HEADER]: "tok", [GATEWAY_HEADER]: "keep", a: "1" }, rawHeaders: ["X-Shell-Gateway", "tok", "A", "1"] };
+  const req = { path: "/api/things", headers: { [CUSTOM_HEADER]: "tok", "x-other-header": "keep", a: "1" }, rawHeaders: ["X-Shell-Gateway", "tok", "A", "1"] };
   let called = false;
   mw(req, {}, () => { called = true; });
   assert.ok(called);
-  assert.deepEqual(req.headers, { [GATEWAY_HEADER]: "keep", a: "1" }, "only the configured header goes");
+  assert.deepEqual(req.headers, { "x-other-header": "keep", a: "1" }, "only the gateway header names go");
   assert.deepEqual(req.rawHeaders, ["A", "1"]);
 });
 
 test("takeGatewayHeader reads, removes and defaults to the core header", () => {
-  const a = { headers: { [GATEWAY_HEADER]: "t1" }, rawHeaders: ["X-Gateway-Token", "t1"] };
+  const a = { headers: { [GATEWAY_HEADER]: "t1" }, rawHeaders: [GATEWAY_HEADER.toUpperCase(), "t1"] };
   assert.equal(takeGatewayHeader(a), "t1");
   assert.deepEqual(a, { headers: {}, rawHeaders: [] });
   const b = { headers: { [CUSTOM_HEADER]: ["t2", "t3"] }, rawHeaders: [] };
@@ -413,10 +416,17 @@ const PRESET = {
 };
 const PRESET_ENV = { SHELL_TENANT: TENANT, SHELL_PRINCIPAL: GATEWAY_OID, SHELL_AUDIENCE: AUD, SHELL_ENFORCE: "on" };
 
-test("preset: with no preset the core defaults stand", () => {
+test("preset: with no preset the core defaults stand, and GATEWAY_HEADER and GATEWAY_ROLE are the core's", () => {
   resetConsumerPreset();
-  assert.deepEqual(getConsumerPreset(), CONSUMER_PRESET_DEFAULTS);
-  assert.equal(getConsumerPreset().header, GATEWAY_HEADER);
+  try {
+    assert.deepEqual(getConsumerPreset(), CONSUMER_PRESET_DEFAULTS);
+    assert.equal(isConsumerPresetApplied(), false);
+    assert.equal(GATEWAY_HEADER, "x-gateway-token");
+    assert.equal(GATEWAY_ROLE, "gateway");
+  } finally {
+    restorePreset();
+  }
+  assert.equal(isConsumerPresetApplied(), true);
 });
 
 test("preset: verifyGatewayToken, takeGatewayHeader and the guard read it with no per-call options", async () => {
@@ -453,14 +463,14 @@ test("preset: verifyGatewayToken, takeGatewayHeader and the guard read it with n
       await new Promise((r) => server.close(r));
     }
   } finally {
-    resetConsumerPreset();
+    restorePreset();
   }
 });
 
 test("preset: a per-call option still overrides it", async () => {
   setConsumerPreset(PRESET);
   try {
-    assert.deepEqual(await verifyGatewayToken(mint(), { ...cfg, role: "gateway" }), { ok: true });
+    assert.deepEqual(await verifyGatewayToken(mint(), { ...cfg, role: P.role }), { ok: true });
     assert.equal(takeGatewayHeader({ headers: { "x-other": "tok" }, rawHeaders: [] }, "x-other"), "tok");
     const lines = /** @type {string[]} */ ([]);
     const mw = gatewayGuard({ env: { ...PRESET_ENV, SHELL_TENANT: "nope" }, log: (l) => lines.push(l), header: "x-call-header", tenantId: TENANT });
@@ -469,7 +479,7 @@ test("preset: a per-call option still overrides it", async () => {
     assert.deepEqual(req.headers, { [CUSTOM_HEADER]: "keep" });
     assert.ok(!lines.some((l) => l.includes("misconfigured")), "the tenant came from the option");
   } finally {
-    resetConsumerPreset();
+    restorePreset();
   }
 });
 
@@ -481,12 +491,12 @@ test("preset: the misconfigured log prints the setting names the consumer config
     const mis = lines.map((l) => JSON.parse(l)).find((o) => o.gateway === "misconfigured");
     assert.deepEqual(mis.missing_or_invalid, ["SHELL_PRINCIPAL", "SHELL_TENANT", "SHELL_AUDIENCE"]);
   } finally {
-    resetConsumerPreset();
+    restorePreset();
   }
   const lines = /** @type {string[]} */ ([]);
-  gatewayGuard({ env: { GATEWAY_PRINCIPAL_ID: "not-a-guid" }, log: (l) => lines.push(l) });
+  gatewayGuard({ env: { [P.settings.principalId]: "not-a-guid" }, log: (l) => lines.push(l) });
   const mis = lines.map((l) => JSON.parse(l)).find((o) => o.gateway === "misconfigured");
-  assert.deepEqual(mis.missing_or_invalid, ["GATEWAY_PRINCIPAL_ID", "TENANT_ID", "GATEWAY_AUDIENCE"]);
+  assert.deepEqual(mis.missing_or_invalid, [P.settings.principalId, P.settings.tenantId, P.settings.audience]);
 });
 
 test("preset: each call replaces the last, empty fields fall back, an empty role skips the role check", async () => {
@@ -495,11 +505,79 @@ test("preset: each call replaces the last, empty fields fall back, an empty role
   try {
     const p = getConsumerPreset();
     assert.equal(p.header, GATEWAY_HEADER);
+    assert.equal(p.header, CONSUMER_PRESET_DEFAULTS.header);
     assert.equal(p.requestProperty, "gateway");
     assert.deepEqual(p.settings, CONSUMER_PRESET_DEFAULTS.settings);
     assert.deepEqual(await verifyGatewayToken(mint({ roles: [] }), cfg), { ok: true });
     assert.throws(() => { /** @type {any} */ (p).header = "x"; });
   } finally {
-    resetConsumerPreset();
+    restorePreset();
   }
+});
+
+test("fail closed: with no preset applied and no enforce option the guard throws at startup", () => {
+  resetConsumerPreset();
+  try {
+    assert.throws(() => gatewayGuard({ env: {}, log: () => {} }), /no consumer preset was applied/);
+    assert.throws(() => gatewayGuard({ env: ENV, log: () => {} }), /setConsumerPreset/);
+    // An explicit enforce (false on purpose) is a decision, so it starts.
+    assert.equal(typeof gatewayGuard({ env: {}, log: () => {}, enforce: false }), "function");
+    assert.equal(typeof gatewayGuard({ env: {}, log: () => {}, enforce: "on" }), "function");
+  } finally {
+    restorePreset();
+  }
+  // An applied preset (even an empty call) is a decision too.
+  assert.equal(typeof gatewayGuard({ env: {}, log: () => {} }), "function");
+});
+
+test("a token under the core's header name never reaches a handler, whatever the preset names", () => {
+  setConsumerPreset({ header: "X-Shell-Gateway", role: CUSTOM_ROLE, settings: P.settings });
+  try {
+    const mw = gatewayGuard({ env: {}, log: () => {} });
+    const req = {
+      path: "/api/things",
+      headers: { "x-gateway-token": "core", [CUSTOM_HEADER]: "own", a: "1" },
+      rawHeaders: ["X-Gateway-Token", "core", "A", "1", "X-Shell-Gateway", "own"],
+    };
+    mw(req, {}, () => {});
+    assert.deepEqual(req.headers, { a: "1" }, "both names are gone from req.headers");
+    assert.deepEqual(req.rawHeaders, ["A", "1"], "and from req.rawHeaders");
+    const t = { headers: { "x-gateway-token": "core", [CUSTOM_HEADER]: "own" }, rawHeaders: [] };
+    assert.equal(takeGatewayHeader(t), "own", "the preset header is the one read");
+    assert.deepEqual(t.headers, {});
+  } finally {
+    restorePreset();
+  }
+});
+
+test("a token under the core's header name is not accepted when the preset names another", async () => {
+  setConsumerPreset({ header: "X-Shell-Gateway", role: CUSTOM_ROLE, settings: P.settings });
+  try {
+    const app = express();
+    app.use(gatewayGuard({ log: () => {}, keys, env: { ...ENV, [P.settings.enforce]: "on" } }));
+    app.get("/api/things", (_req, res) => { res.json({ ok: true }); });
+    const server = app.listen(0);
+    await new Promise((r) => server.once("listening", r));
+    const port = /** @type {import("node:net").AddressInfo} */ (server.address()).port;
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/api/things`, { headers: { "x-gateway-token": mint({ roles: [CUSTOM_ROLE] }) } });
+      assert.equal(res.status, 403);
+    } finally {
+      await new Promise((r) => server.close(r));
+    }
+  } finally {
+    restorePreset();
+  }
+});
+
+test("GATEWAY_HEADER and GATEWAY_ROLE follow the preset as live bindings", () => {
+  setConsumerPreset({ header: "X-Shell-Gateway", role: CUSTOM_ROLE, settings: P.settings });
+  try {
+    assert.equal(GATEWAY_HEADER, CUSTOM_HEADER);
+    assert.equal(GATEWAY_ROLE, CUSTOM_ROLE);
+  } finally {
+    restorePreset();
+  }
+  assert.equal(GATEWAY_HEADER, P.header);
+  assert.equal(GATEWAY_ROLE, P.role);
 });
