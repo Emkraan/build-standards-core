@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-29 (v1.106.0, the gateway guard fails closed, consumer shape documented)
+
+`shell-packages/app-server` and the consumer guide, from the round 3 review.
+
+- `gatewayGuard` throws at startup when no consumer preset was applied and no `enforce` option was given, so a forgotten preset is an error, not a guard that admits everything. An empty `setConsumerPreset()` or an explicit `enforce` (false on purpose) starts it. New `isConsumerPresetApplied`.
+- The guard always strips the core's own `x-gateway-token` as well as the preset's header (`takeGatewayHeader` too); only the preset's header is read as the token.
+- `GATEWAY_HEADER` and `GATEWAY_ROLE` are live bindings that follow the preset.
+- The app-server tests read every name from the preset in force; `TEST_CONSUMER_PRESET` (JSON file or inline JSON) runs them under a consumer preset, `npm run test:server:consumer` does it with a synthetic example, and `npm run check` (CI) runs both. Tests: 4 new, 139 under the example preset.
+- web-shell-packages: the kit peer alias (section 4) and the supported consumer shape, apply, assert at load and re-export (new 5.3).
+
 ## 2026-10-29 (v1.105.0, ops center final lift status)
 
 DESIGN.md and one docstring only.

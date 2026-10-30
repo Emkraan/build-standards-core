@@ -25,11 +25,12 @@
     "gallery:changelog": "node scripts/gen-changelog.mjs --out gallery/generated/changelog.json --version next",
     "gallery:dev": "vite --config vite.gallery.config.ts",
     "gallery:build": "npm run gallery:changelog && vite build --config vite.gallery.config.ts",
-    "check": "npm run typecheck && npm run test && npm run test:server && npm run gallery:build",
+    "check": "npm run typecheck && npm run test && npm run test:server && npm run test:server:consumer && npm run gallery:build",
     "visual": "npm run gallery:build && playwright test",
     "visual:update": "node scripts/visual-update.mjs",
     "visual:report": "playwright show-report visual/report",
-    "test:server": "node --test \"tests/app-server/*.test.js\" \"tests/console-modules/*.test.js\""
+    "test:server": "node --test \"tests/app-server/*.test.js\" \"tests/console-modules/*.test.js\"",
+    "test:server:consumer": "TEST_CONSUMER_PRESET=tests/app-server/consumer-preset.example.json node --test \"tests/app-server/*.test.js\""
   },
   "peerDependencies": {
     "react": ">=18 <20",

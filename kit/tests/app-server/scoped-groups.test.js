@@ -1,5 +1,6 @@
 // Group lookups scoped to the groups an app references: batched checkMemberGroups
 // and a cache keyed by the referenced list.
+import "./consumer-preset.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { checkMemberGroups, createGroupResolver, normalizeGroupIds } from "../../../shell-packages/app-server/index.js";

@@ -1,4 +1,5 @@
 // whatsNewHandler / whatsNewNotes tests. All data is synthetic.
+import "./consumer-preset.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { whatsNewHandler, whatsNewNotes } from "../../../shell-packages/app-server/index.js";

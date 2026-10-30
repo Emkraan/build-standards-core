@@ -79,8 +79,20 @@ own tab logic, and records the exception for the manifest rules.
 
 TypeScript source that each app compiles itself (no build step). Peer dependencies: React, `@azure/msal-browser` and the
 kit (for `FeedStrip` and `safeHref`), imported under the neutral peer name `@shell/kit`. The consumer maps that name to its own
-kit once, in `tsconfig` `paths` and the bundler alias, so no core source is edited whatever the kit package is called (the
-core's own `kit/` maps it to `./src/index.ts`). The folder has one entry, `src/index.ts`.
+kit once, so no core source is edited whatever the kit package is called (the core's own `kit/` maps it to
+`./src/index.ts`). The folder has one entry, `src/index.ts`.
+
+**The kit peer alias.** One line in the client package's `package.json` covers typecheck, test and bundle, because Node
+resolution, TypeScript, the test runner and the bundler all follow it:
+
+```json
+{ "dependencies": { "@shell/kit": "npm:@example/kit@*" } }
+```
+
+`@example/kit` is the consumer's own kit package; in a workspace the alias resolves to the workspace copy (the same
+line in the workspace protocol of the package manager in use). A build that cannot use a dependency alias maps
+`@shell/kit` instead in `tsconfig` `paths` and in the bundler and test runner alias, as the core's own `kit/` does. Either
+way the mapping lives in the consumer's configuration, never in core source.
 
 | Export | Purpose |
 |---|---|
@@ -175,6 +187,51 @@ A field left out keeps the core default, and each call replaces the previous pre
 `requestProperty` (default `gateway`; the checked result `{ ok, reason }` is also set under this name, next to
 `req.gateway`) and `refusalMessage`. `takeGatewayHeader(req, header)` is the strip step on its own.
 
+Three rules keep a preset from being forgotten or half applied:
+
+- **The guard does not fail open.** `gatewayGuard` throws at startup when no preset was applied and no `enforce` option
+  was passed, so a consumer that forgets the preset gets an error instead of a guard that reads the core's setting
+  names, finds nothing and admits everything. An empty `setConsumerPreset()` chooses the core names on purpose;
+  `enforce: false` runs without enforcement on purpose. `isConsumerPresetApplied()` reports which.
+- **Both header names are stripped.** The guard removes the preset's header and the core's own `x-gateway-token` from
+  `req.headers` and `req.rawHeaders`, so a token under either name never reaches a handler or a log. Only the preset's
+  header is read as the token.
+- **`GATEWAY_HEADER` and `GATEWAY_ROLE` follow the preset.** They are live bindings: they hold the core names until a
+  preset is applied and the preset's names after, so an importer reads the names in force.
+
+### 5.3 The supported consumer shape
+
+The preset is process global and order dependent: it must be applied before the first `gatewayGuard`, `serverTiming` or
+`requestTelemetry` call. The supported shape is one entry file per server package in the consumer, and nothing imports
+the core index except that file:
+
+```js
+// the consumer's package main (for example server/shell/index.js)
+import { setConsumerPreset, GATEWAY_HEADER } from '@example/core-app-server';
+
+setConsumerPreset({
+  header: 'x-example-gateway',
+  role: 'example:gateway',
+  requestProperty: 'exampleGateway',
+  settings: { enforce: 'EXAMPLE_ENFORCE', principalId: 'EXAMPLE_PRINCIPAL', audience: 'EXAMPLE_AUDIENCE', tenantId: 'EXAMPLE_TENANT' },
+  serviceName: 'example-api',
+  tracerScope: '@example/app-server',
+  timingKey: 'example.app-server.timing',
+});
+if (GATEWAY_HEADER !== 'x-example-gateway') throw new Error('consumer preset was not applied');
+
+export * from '@example/core-app-server';
+```
+
+1. **Apply, assert, re-export.** The entry applies the preset, asserts it took effect at load (the header check above, so a
+   second copy of the core or a changed import order fails at startup, not in production), then re-exports the core index.
+2. **One copy.** The apps import the entry, never the core path, so there is one module instance and one preset. A bundler
+   that duplicates the core breaks the shared state; the load assertion catches it.
+3. **Run the package tests under the preset.** `npm run test:server:consumer` inside `kit` runs the app-server tests with
+   `TEST_CONSUMER_PRESET` set to a JSON file (or inline JSON) in the preset's shape; the suite reads every name it needs
+   from the preset in force, so the same assertions hold under any naming. The core runs it in CI against
+   `kit/tests/app-server/consumer-preset.example.json`; a consumer points it at its own preset file.
+
 ## 6. Tests
 
 | File | Proves |
@@ -184,7 +241,7 @@ A field left out keeps the core default, and each call replaces the previous pre
 | `kit/tests/shell-rbac.test.ts` | The ceiling, fail-closed stale ids, the wildcard rule, view-as, tab computation and the client helpers |
 | `tests/test_console_module_schema.py` | The same manifest fixtures against the JSON schema ([web-shell-manifest.md](web-shell-manifest.md)) |
 | `kit/tests/app-client/*.test.ts` | The sign-in boot (silent, redirect, loop guard, return target, module bounce, configuration errors), the API client (token, errors, single flight, cache, 401 handling, persistence), the store, `useResource` and the feed strip, with a fake MSAL client |
-| `kit/tests/app-server/*.test.js` | The group cache (TTL, bound, single flight, fail closed, scoped lists), CORS and the origin guard, Server-Timing and route naming on real Express apps, the request telemetry (settings, record mapping, flush and close) and its export retry, the release notes handler, and the gateway token check against a local signing key, including a custom header, role and request property and the consumer preset. Run by `npm run test:server` inside `kit` |
+| `kit/tests/app-server/*.test.js` | The group cache (TTL, bound, single flight, fail closed, scoped lists), CORS and the origin guard, Server-Timing and route naming on real Express apps, the request telemetry (settings, record mapping, flush and close) and its export retry, the release notes handler, and the gateway token check against a local signing key, including a custom header, role and request property and the consumer preset. Run by `npm run test:server` inside `kit`, and again under a consumer preset by `npm run test:server:consumer` |
 
 The kit workflow runs on a change under `shell-packages/` or the manifest fixtures.
 
