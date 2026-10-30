@@ -310,6 +310,14 @@ class RunTests(Base):
         self.assertTrue(r["already"])
         self.assertEqual(len(self.calls), 1)
 
+    def test_any_job_can_run_even_when_it_watches_no_card(self):
+        self.job("444444444444", prompt="nightly backup check", name="Backup")
+        self.write_jobs()
+        self.assertNotIn("444444444444", [j["id"] for j in self.cp.snapshot(fresh=True)["jobs"]])
+        r = self.cp.run("444444444444", spawn=self.spawn)
+        self.assertTrue(r["started"])
+        self.assertEqual(self.calls[0][0][1:], ["cron", "run", "444444444444"])
+
     def test_running_job_is_not_started_again(self):
         self.db([("111111111111", "scheduled", 1, "running", iso(-1), iso(-1), None)])
         r = self.cp.run("111111111111", spawn=self.spawn)

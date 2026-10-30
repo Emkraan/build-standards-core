@@ -15,12 +15,17 @@ Configuration (environment, all optional, nothing names an estate):
         spend() -> the Spend payload   cron() -> the Cron payload   vm() -> {name, status, cpus, memory_gib, disk_gib}
         backup() -> a backup status dict   job_log(runner, lines) -> [line]   health() -> [(level, detail)] with level "OK"
         for a passing check (anything else is a problem on the badge)   fallback_active() -> bool
+  INFRA_TASKS             a JSON file (default <state>/infra-tasks.json) of maintenance tasks the page may start (a backup, a restore
+                          drill): {"<name>": {"label", "argv": [command], "busy_argv": [command, exit 0 = running], "inputs": [spec],
+                          "log": path}}. The input spec is the builds run contract (DESIGN.md 12.49); each accepted input reaches the
+                          command as the environment variable TASK_INPUT_<NAME>. None configured: no task can start.
 """
 
 import datetime as dt
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import threading
 import time
@@ -539,6 +544,99 @@ def badge_problems():
         looks["ci"].append(f"{x.get('repo')}: {x.get('workflow')} is red on main")
     items = areas["jobs"] + areas["spend"] + areas["ci"]
     return {"count": len(items), "items": items, "areas": areas, "looks": looks}
+
+
+def _tasks():
+    f = os.environ.get("INFRA_TASKS") or str(paths.state_dir() / "infra-tasks.json")
+    try:
+        d = json.loads(Path(f).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    out = {}
+    for k, v in d.items() if isinstance(d, dict) else []:
+        if (
+            isinstance(v, dict)
+            and isinstance(v.get("argv"), list)
+            and v["argv"]
+            and re.fullmatch(r"[a-z0-9_-]{1,40}", str(k))
+        ):
+            out[str(k)] = v
+    return out
+
+
+def tasks():
+    """The maintenance tasks the page may start: [{name, label, inputs}] (none configured: [])."""
+    return [
+        {
+            "name": k,
+            "label": str(v.get("label") or k),
+            "inputs": [i for i in v.get("inputs") or [] if isinstance(i, dict) and i.get("name")],
+        }
+        for k, v in sorted(_tasks().items())
+    ]
+
+
+_task_started = {}  # (task, inputs) -> epoch of the last accepted start (stops double clicks)
+TASK_GAP_S = 20
+
+
+class TaskRefused(Exception):
+    def __init__(self, status, msg):
+        super().__init__(msg)
+        self.status = status
+
+
+def task_run(payload, spawn=None):
+    """POST /api/infra/backup/run {what, inputs?}: start a configured maintenance task (a backup, a restore drill) now. The
+    same contract as a workflow start: an unknown task is 404, an unknown or invalid input 400, a task already running 409 with
+    the reason, a repeat of the same start inside TASK_GAP_S answers {started: false, already: true}. The command and its
+    busy check are the consumer's; the inputs reach it as TASK_INPUT_<NAME> environment variables."""
+    payload = payload if isinstance(payload, dict) else {}
+    name = payload.get("what") or payload.get("task")
+    task = _tasks().get(str(name))
+    if not task:
+        raise TaskRefused(404, "Unknown task")
+    import builds
+
+    values = builds._dispatch_values(
+        {"inputs": [i for i in task.get("inputs") or [] if isinstance(i, dict) and i.get("name")]},
+        payload.get("inputs"),
+    )
+    busy = task.get("busy_argv")
+    if isinstance(busy, list) and busy:
+        try:
+            if (
+                subprocess.run([str(a) for a in busy], capture_output=True, timeout=15).returncode
+                == 0
+            ):
+                raise TaskRefused(409, f"{task.get('label') or name} is already running")
+        except (OSError, subprocess.SubprocessError):
+            pass  # an unreadable busy check never blocks the start
+    token = (str(name), tuple(sorted(values.items())))
+    with _lock:
+        last = _task_started.get(token)
+        if last and time.time() - last < TASK_GAP_S:
+            return {"started": False, "already": True}
+        argv = [str(a) for a in task["argv"]]
+        env = dict(os.environ, **{f"TASK_INPUT_{k.upper()}": v for k, v in values.items()})
+        if spawn:
+            spawn(argv, env)
+        else:
+            log = Path(task.get("log") or paths.state_dir() / "logs" / f"task-{name}.log")
+            log.parent.mkdir(parents=True, exist_ok=True)
+            with open(log, "ab") as fh:
+                subprocess.Popen(
+                    argv,
+                    stdout=fh,
+                    stderr=fh,
+                    stdin=subprocess.DEVNULL,
+                    start_new_session=True,
+                    env=env,
+                )
+        _task_started[token] = time.time()
+    swr.invalidate("infra:runners")
+    swr.invalidate("infra:health")
+    return {"started": True, "already": False, "task": str(name), "inputs": values}
 
 
 if __name__ == "__main__":
