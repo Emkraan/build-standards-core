@@ -28,7 +28,7 @@ Related: [Local Ops App](local-ops-app.md) (the server, the problem list, the po
    - Acceptance (test): a UI test renders the Overview for a fixture of items and asserts one card per item, a tone pill on each, no card with more than four detail lines and a link on each card.
 4. **One source of truth for counts.** The rail badge, the section and item tab counts and the Overview all read one server-side problem list. The client applies no thresholds of its own. Work in progress shows as a spinner, never red.
    - Prevents: a badge, a tab and a card that disagree, and a red mark for a job that is simply running.
-   - Acceptance (repo check RC023): no client source decides a tone, badge or severity from a count compared with a number; a test asserts the badge, tab and Overview counts equal the server list.
+   - Acceptance (test): a test asserts the badge, tab and Overview counts equal the server problem list, and no client source decides a tone, badge or severity from a count compared with a number.
 5. **Current state and history are different things.** A pipeline counts as failed only while its newest finished run on the default branch failed. Older runs fold under History, so a fixed failure never reads as current.
    - Prevents: a red mark that stays until the operator dismisses a failure that was fixed an hour ago.
    - Acceptance (test): with a fake code host whose newest finished run succeeded after an earlier failure, the problem list has no item for the pipeline and the page shows the failure only under History.
@@ -41,9 +41,9 @@ Related: [Local Ops App](local-ops-app.md) (the server, the problem list, the po
 8. **Name hubs for the work, not the vendor or the tool.** "Work tracking" instead of the tracker's name, "Pull requests" instead of "Reviews". The tool name stays in subtitles and links.
    - Prevents: a rail that has to be renamed when a tool is replaced.
    - Acceptance (review): no hub, section or tab title is a vendor or tool name.
-9. **Old links never break.** Every renamed or moved route redirects to its new home and keeps its tab and query string. The app keeps a lock file listing every route it has ever served.
+9. **Old links never break.** Every renamed or moved route redirects to its new home and keeps its tab and query string. The app keeps a lock file (`routes.lock.json`) listing every route it has ever served.
    - Prevents: a bookmark, a link in a ticket or a notification that lands on a blank page after a reorganisation.
-   - Acceptance (repo check RC024): every route in the lock file is still routed (a redirect counts) and every routed path is in the lock file; a test follows each redirect and asserts the tab and query string survive.
+   - Acceptance (test): a test follows every redirect and asserts the tab and query string survive; every route the app has served is still routed or redirected.
 
 ---
 
@@ -68,4 +68,4 @@ One server function builds the list: each item has an id, the hub, section and i
 
 ## 5. Checks
 
-RC023 fails a client source that decides a tone, badge or severity from a count compared with a number. RC024 fails an app whose routes and its lock file (`routes.lock.json`, next to the file that declares the routes) disagree. Both run on a repo that has an ops center app and are silenced for a line by the exception marker of the other repo checks. The remaining rules are proved by the tests named in their acceptance text and by review.
+Rules 4 and 9 are checkable from the source and get a repo check each (a client count threshold, a route missing from the app's lock file); the remaining rules are proved by the tests named in their acceptance text and by review.

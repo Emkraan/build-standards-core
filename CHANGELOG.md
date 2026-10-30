@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-30 (v1.108.0, ops center layout standard)
+
+A new standard, `standards/ops-center-layout.md`, from the layout the owner approved on 2026-10-30. Opt in: nine rules for `local-ops`, listed as applicable to an ops center.
+
+- Group by what is run, sections above about five items with `/<hub>/<section>/<item>` routes, one Overview card per item, one server problem list as the only source of counts, current state apart from history, newest first, run buttons with safe defaults and a fixed server contract, hubs named for the work and old links that never break. Checks for rules 4 and 9 follow in their own release.
+
 ## 2026-10-29 (v1.107.0, kit review fixes for MatrixGrid, MonthGrid and ContextPanel)
 
 Fixes from the console migration review of the v1.56 to v1.58 kit pieces. Defaults and the opt-in

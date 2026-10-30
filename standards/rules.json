@@ -4310,10 +4310,9 @@
         "local-ops"
       ],
       "check": {
-        "kind": "repo-check",
-        "id": "RC023"
+        "kind": "test"
       },
-      "acceptance": "repo check RC023 reports a client source that decides a tone, badge or severity from a count compared with a number; a test asserts the badge, tab and Overview counts equal the server list."
+      "acceptance": "a test asserts the badge, tab and Overview counts equal the server problem list, and a client source never decides a tone, badge or severity from a count compared with a number."
     },
     {
       "id": "ops-center-layout.1.5",
@@ -4375,16 +4374,15 @@
       "id": "ops-center-layout.1.9",
       "ref": "ops-center-layout.md 1.9",
       "title": "Old links never break",
-      "statement": "Old links never break. Every renamed or moved route redirects to its new home and keeps its tab and query string. The app keeps a lock file listing every route it has ever served.",
+      "statement": "Old links never break. Every renamed or moved route redirects to its new home and keeps its tab and query string. The app keeps a lock file (`routes.lock.json`) listing every route it has ever served.",
       "level": "must",
       "applies_to": [
         "local-ops"
       ],
       "check": {
-        "kind": "repo-check",
-        "id": "RC024"
+        "kind": "test"
       },
-      "acceptance": "repo check RC024 reports a route in the lock file that is no longer routed (a redirect counts) and a routed path missing from the lock file; a test follows each redirect and asserts the tab and query string survive."
+      "acceptance": "a test follows every redirect and asserts the tab and query string survive, and every route the app has served is still routed or redirected."
     }
   ]
 }
