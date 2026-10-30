@@ -57,6 +57,57 @@ class TestChecks(Tree):
             },
         )
 
+    def test_rc023_client_threshold_for_a_tone(self):
+        self.fails(
+            "RC023",
+            {"opscenter/app/src/Badge.tsx": "const tone = failedCount > 3 ? 'needs-me' : 'ok'\n"},
+        )
+        self.fails(
+            "RC023",
+            {
+                "opscenter/app/src/Rail.tsx": "const badge = items.length >= 5\n  ? 'bad'\n  : undefined\n"
+            },
+        )
+
+    def test_rc023_clean(self):
+        self.passes(
+            "RC023",
+            {
+                "opscenter/app/src/Badge.tsx": "const tone = problems.tone\nconst any = items.length > 0 ? 'show' : 'hide'\n"
+                "const first = rows.length >= 1\nconst page = rows.length > 20 ? rows.slice(0, 20) : rows\n"
+                "const t = failedCount > 3 ? 'bad' : 'ok' // core-exception: EXC-002\n",
+                "web/app/src/Other.tsx": "const tone = failedCount > 3 ? 'bad' : 'ok'\n",
+            },
+        )
+
+    def test_rc024_route_missing_from_the_lock_or_removed(self):
+        app = '<Routes><Route path="/work" element={<A/>}/><Route path="/new" element={<B/>}/></Routes>\n'
+        self.fails("RC024", {"opscenter/app/src/App.tsx": app})  # no lock file
+        found = self.fails(
+            "RC024",
+            {
+                "opscenter/app/src/App.tsx": app,
+                "opscenter/app/routes.lock.json": json.dumps({"routes": ["/work", "/old"]}),
+            },
+        )
+        text = " ".join(f[2] for f in found)
+        self.assertIn("/old was served and is no longer routed", text)
+        self.assertIn("/new is not in routes.lock.json", text)
+
+    def test_rc024_clean_when_a_redirect_keeps_the_old_route(self):
+        app = (
+            '<Routes><Route path="/work" element={<A/>}/>'
+            '<Route path="/jira" element={<Navigate to="/work" replace />}/></Routes>\n'
+        )
+        self.passes(
+            "RC024",
+            {
+                "opscenter/app/src/App.tsx": app,
+                "opscenter/app/routes.lock.json": json.dumps({"routes": ["/work", "/jira/"]}),
+                "web/app/src/App.tsx": '<Route path="/x" element={<A/>}/>\n',
+            },
+        )
+
     def test_rc002_gh_merge_without_sha(self):
         self.fails(
             "RC002",

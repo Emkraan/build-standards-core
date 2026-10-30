@@ -216,7 +216,9 @@ export function useAreas(): { areas: Area[]; loading: boolean } {
       key: 'ci',
       label: 'CI runners and backup',
       to: '/infra/ci',
+      // core-exception: EXC-LAYOUT-4 removed when the layout adoption (ops center layout part 4) moves this count to the server list
       tone: runnersBad || backupBad || drillBad ? 'alert' : fleet.queued.length > 3 ? 'warn' : 'good',
+      // core-exception: EXC-LAYOUT-4 removed when the layout adoption (ops center layout part 4) moves this count to the server list
       issues: [runnersBad, backupBad, drillBad, fleet.queued.length > 3].filter(Boolean).length,
       headline: `${online}/${fleet.runners.length} runners online, ${fleet.running.length} running, ${fleet.queued.length} queued`,
       detail: detail.length ? detail : [latest ? `last backup ${relTime(latest.time)}` : 'backup status unknown'],
