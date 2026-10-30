@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-30 (v1.109.0, ops center layout standard)
+
+A new standard, `standards/ops-center-layout.md`, and its two repo checks, from the layout the owner approved on 2026-10-30. Opt in: nine rules for `local-ops`, listed as applicable to an ops center.
+
+- Group by what is run, sections above about five items with `/<hub>/<section>/<item>` routes, one Overview card per item, one server problem list as the only source of counts, current state apart from history, newest first, run buttons with safe defaults and a fixed server contract, hubs named for the work and old links that never break. Rules 4 and 9 have repo checks in the same release: RC023 fails a client source that decides a tone, badge or severity from a count compared with a number, RC024 fails an ops center app whose routes and `routes.lock.json` disagree (a removed route must stay as a redirect). The core ops center app carries its lock file and records four old client thresholds as exceptions until its layout adoption.
+
 ## 2026-10-29 (v1.108.0, ops center run contract)
 
 The server side of the run-with-safe-defaults contract. Opt in: `builds.dispatch`, `infra.task_run` and a wider `cron_pulse.run`.
