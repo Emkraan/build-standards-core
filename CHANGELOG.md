@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-30 (v1.108.0, sectioned hub header)
+
+New opt in kit piece for the ops center layout: `HubHeader`, `hubPath` and `resolveHubRoute`. A hub
+that keeps using `Tabs` is unchanged.
+
+- `HubHeader`: the page header plus two tab rows, Overview and titled sections on top, one tab per item
+  below once a section is open. Route shape `<base>/<section>/<item>`. Router free (`onNavigate`).
+  Item counts and `live` come from the app; a section tab sums its items; work in progress is a
+  spinner, never red.
+- `hubPath` builds a route from an item or section key. `resolveHubRoute` gives `overview`, `item` or
+  `redirect`, so an old flat link and a bare section never break.
+- Standards: "Sectioned hubs" in the web UI standard. Specimen `hub-header` with baselines in both
+  themes. Tests: 11.
+
 ## 2026-10-29 (v1.107.0, kit review fixes for MatrixGrid, MonthGrid and ContextPanel)
 
 Fixes from the console migration review of the v1.56 to v1.58 kit pieces. Defaults and the opt-in
