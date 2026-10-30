@@ -600,7 +600,9 @@ def _reap(job_id, proc, log_path):
 
 
 def run(job_id, note=None, spawn=None):
-    """Trigger a job now through the Hermes cron API. Returns {started, job}. Never edits jobs.json."""
+    """Trigger a job now through the runtime's cron command. Returns {started, already, job}. Never edits the jobs file. The
+    run contract: a bad id or note is 400, an unknown job 404, a paused or finished job 409 with the reason, a job already
+    queued or running answers {started: false, already: true}."""
     job_id = str(job_id or "").strip()
     if not re.fullmatch(r"[0-9a-f]{12}", job_id):
         raise PulseError("bad job id", 400)
@@ -612,7 +614,11 @@ def run(job_id, note=None, spawn=None):
     snap = snapshot(fresh=True)
     row = next((j for j in snap["jobs"] if j["id"] == job_id), None)
     if row is None:
-        raise PulseError("unknown job (not a job that feeds the Reviews page)", 404)
+        # Any job can run from the Scheduled jobs tab, not only the ones that watch a card.
+        job = next((j for j in load_jobs() if j.get("id") == job_id), None)
+        if job is None:
+            raise PulseError("unknown job", 404)
+        row = _row(job, load_map(), inflight_runs(), _now())
     if not row["enabled"]:
         raise PulseError("job is paused or finished, resume it in Hermes first", 409)
     if row["running"] or row["queued"]:
