@@ -41,7 +41,8 @@ export function ContextPanel({
   const bodyId = `${useId()}-context`;
   const glideRef = useRef<HTMLDivElement | null>(null);
   const gliderRef = useRef<HTMLSpanElement | null>(null);
-  useNavGlider(glideRef, gliderRef);
+  // The list is display:none while folded below 900px, so the glider is placed again each time it opens.
+  useNavGlider(glideRef, gliderRef, open);
   const hasSubtitle = subtitle !== undefined && subtitle !== null && subtitle !== false && subtitle !== '';
   return (
     <aside className="context-panel" aria-label={title} data-open={open ? '' : undefined}>

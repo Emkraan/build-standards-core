@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-10-29 (v1.107.0, kit review fixes for MatrixGrid, MonthGrid and ContextPanel)
+
+Fixes from the console migration review of the v1.56 to v1.58 kit pieces. Defaults and the opt-in
+props are unchanged.
+
+- MatrixGrid: a group that returns after another group keeps its own heading and a unique key (it
+  gave duplicate React keys); no rows or no columns shows `empty` instead of a grid with no cell to
+  focus; Space on a read only cell no longer scrolls the page.
+- MonthGrid: an event whose `date` is not a real ISO day is left out and a bad `endDate` makes a one
+  day event, so nothing throws or misplaces a bar (new `isIsoDay`); events are indexed by the shown
+  weeks only, at most 42 steps per event instead of one per covered day; a cell renders an event list
+  only when it has events (a hidden spacer holds the lanes otherwise); the bar width reads
+  `--month-grid-cell-pad` and `--month-grid-cell-line`, the same variables as the cell box.
+- ContextPanel: the glider is placed again when the folded list opens (`useNavGlider` takes an
+  optional `remeasureKey`); `.shell-split > .shell-main` states `min-width: 0` itself.
+- Tests: 14 new, covering returning groups, empty columns, Space, bad dates, the day index, empty
+  lists, the bar variables, the glider on open and the page column. Standards text updated.
+
 ## 2026-10-29 (v1.106.0, the gateway guard fails closed, consumer shape documented)
 
 `shell-packages/app-server` and the consumer guide, from the round 3 review.

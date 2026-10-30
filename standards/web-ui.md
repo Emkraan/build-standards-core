@@ -578,10 +578,15 @@ meaning, so a matrix never sorts (the exception in the table rules above).
 - `cellTone` tints a cell with the tone recipes of section 17, and the tone never carries meaning
   alone: the cell also shows the mark. `cellLabel` gives the spoken meaning of a mark (a letter
   read as "Responsible"); left out, the cell content is read as it is.
-- Rows with the same `group` value sit under one group heading.
+- Rows with the same `group` value sit under one group heading. Rows must already be in order: a group
+  that returns after another group gets a second heading, never a merged one.
+- A matrix with no rows or no columns shows `empty`, not a grid: a grid with no cell has nothing to
+  focus. Space on a read only cell does nothing (it never scrolls the page).
 
-**Acceptance:** a component test asserts the grid roles, the roving tab stop and each key above, and the
-gallery specimen `matrix-grid` carries baselines in both themes.
+**Acceptance:** a component test asserts the grid roles, the roving tab stop and each key above, the
+empty state for no rows and for no columns, that returning groups keep their own headings and keys,
+that Space on a read only cell is prevented, and the gallery specimen `matrix-grid` carries baselines
+in both themes.
 ### Month calendar (`MonthGrid`)
 
 `MonthGrid` draws weeks of day cells and knows dates and layout only. What an event means (shift, leave,
@@ -600,10 +605,19 @@ and Space.
   when `onEventClick` is passed, replaceable through `renderEvent`. It sits in the cell of its first
   day, so a screen reader meets it once, and each day label counts the events that cover the day.
 - Interactive bars drag or resize only in the app; the grid has no pointer editing.
+- **Bad dates are never trusted.** An event whose `date` is not a real ISO day (`2026-6-5`,
+  `2026-02-30`, a date with a time) is left out, and an `endDate` that is not a real day or is before
+  `date` makes it a one day event. The grid never throws on them; the app validates before it passes
+  events (`isIsoDay` is exported for that). An event covers at most 366 days.
+- A cell announces an event list only when it has events: no empty list is rendered, and a cell that
+  only reserves the lanes for a bar from the left holds a hidden spacer.
+- The cell padding and border are `--month-grid-cell-pad` and `--month-grid-cell-line` on `.month-grid`,
+  and the bar width reads the same two variables, so a change goes there and the bars follow.
 
-**Acceptance:** a component test asserts the packer (lanes, order, clipping, hidden counts) and that the
-bars, continuations and "+N more" render, and the gallery specimen `month-grid-bars` carries baselines
-in both themes.
+**Acceptance:** a component test asserts the packer (lanes, order, clipping, hidden counts, bad dates), that
+the bars, continuations and "+N more" render, that bad dates neither throw nor misplace a bar, that no
+empty list is rendered, that the bar width and the cell box read the same variables, and the gallery
+specimen `month-grid-bars` carries baselines in both themes.
 
 ### Filter panel and bulk runs (`FilterPanel`, `useBulkRun`)
 
@@ -1499,10 +1513,15 @@ audit) lists them in a `ContextPanel` that the app passes to `AppShell contextPa
   a `footer`, and its list is a `nav` named `<title> sections` (or `navLabel`).
 - Below 900px the panel stacks above the page and its list folds behind a button (`toggleLabel`,
   `aria-expanded`), closed unless `defaultOpen`. The rail's drawer is not involved.
+- The folded list is `display: none`, so the gliding marker is placed again each time it opens
+  (`useNavGlider` takes an optional `remeasureKey` for a list that its parent shows and hides).
+- The page column keeps `min-width: 0` beside the panel, so a wide table or grid in the page scrolls
+  inside the page and never pushes the shell wider than the window.
 
 **Acceptance:** a component test asserts the panel is a direct sibling of `.shell-main` inside the
 shell, that it names itself and its list, that the active item carries `aria-current="page"`, that the
-fold button toggles `aria-expanded`, and that a shell without the prop is unchanged. The gallery
+fold button toggles `aria-expanded`, that the marker is placed when the folded list opens, that the
+page column has `min-width: 0`, and that a shell without the prop is unchanged. The gallery
 specimen `context-panel` carries baselines in both themes.
 
 ## 20. Announcements, the pulse feed, and the presenter

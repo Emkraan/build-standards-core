@@ -9,7 +9,11 @@
    across the days of a week and is packed into lanes (rows) so bars never overlap: a bar that crosses
    a week edge continues on the next week, `maxEvents` is the number of lanes, and bars that do not
    fit are counted in "+N more" on each day they cover. Without `endDate` or `laneBars` nothing
-   changes. */
+   changes.
+
+   Bad dates: an event whose `date` is not a real ISO day (YYYY-MM-DD, so not "2026-6-5" and not a date with
+   a time) is left out. An `endDate` that is not a real ISO day, or is before `date`, makes it a one day
+   event. The grid never throws on them. */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, HTMLAttributes, KeyboardEvent, ReactNode } from 'react';
@@ -98,6 +102,16 @@ export function isoDay(year: number, month: number, day: number): string {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 }
 
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** True for a real calendar day written as YYYY-MM-DD ("2026-02-30" and "2026-6-5" are not). */
+export function isIsoDay(value: unknown): value is string {
+  if (typeof value !== 'string' || !ISO_DAY.test(value)) return false;
+  const [y = 0, m = 0, d = 0] = value.split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
+}
+
 function parse(iso: string): Date {
   const [y = 1970, m = 1, d = 1] = iso.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d));
@@ -136,28 +150,39 @@ export function monthWeeks(year: number, month: number, weekStart: 0 | 1 = 0, to
 
 const MAX_SPAN_DAYS = 366;
 
-/** The last day an event covers: `endDate` when it is on or after `date`, else `date`. Capped at a year. */
-function lastDay(e: MonthGridEvent): string {
-  if (!e.endDate || e.endDate <= e.date) return e.date;
-  const cap = addDays(e.date, MAX_SPAN_DAYS - 1);
-  return e.endDate < cap ? e.endDate : cap;
+/** An event with its first and last covered day, both valid ISO days with start <= end. */
+interface Span {
+  event: MonthGridEvent;
+  order: number;
+  start: string;
+  end: string;
 }
 
-/**
- * Packs the events that touch one week (seven ISO days) into lanes. Events are placed by first column, longer
- * first, then in the order given, each in the lowest lane that is free for its whole width. A bar that does not
- * fit in `maxLanes` is counted in `hidden` for every column it covers.
- */
-export function planWeek(events: readonly MonthGridEvent[], week: readonly string[], maxLanes = 3): MonthGridWeekPlan {
+/** The covered days of each event: `endDate` when it is a real day on or after `date`, else `date`; capped at a
+    year. Events with no real `date` are dropped. */
+function spansOf(events: readonly MonthGridEvent[]): Span[] {
+  const out: Span[] = [];
+  events.forEach((event, order) => {
+    if (!isIsoDay(event.date)) return;
+    let end = event.date;
+    if (isIsoDay(event.endDate) && event.endDate > event.date) {
+      const cap = addDays(event.date, MAX_SPAN_DAYS - 1);
+      end = event.endDate < cap ? event.endDate : cap;
+    }
+    out.push({ event, order, start: event.date, end });
+  });
+  return out;
+}
+
+function packWeek(spans: readonly Span[], week: readonly string[], maxLanes: number): MonthGridWeekPlan {
   const first = week[0] ?? '';
   const last = week[week.length - 1] ?? '';
-  const items = events
-    .map((event, order) => ({ event, order, end: lastDay(event) }))
-    .filter((x) => x.event.date <= last && x.end >= first)
+  const items = spans
+    .filter((x) => x.start <= last && x.end >= first)
     .map((x) => {
-      const col = Math.max(0, week.indexOf(x.event.date < first ? first : x.event.date));
+      const col = Math.max(0, week.indexOf(x.start < first ? first : x.start));
       const endCol = week.indexOf(x.end > last ? last : x.end);
-      return { ...x, col, span: Math.max(1, endCol - col + 1), continuesLeft: x.event.date < first, continuesRight: x.end > last };
+      return { ...x, col, span: Math.max(1, endCol - col + 1), continuesLeft: x.start < first, continuesRight: x.end > last };
     })
     .sort((a, b) => a.col - b.col || b.span - a.span || a.order - b.order);
   const laneEnds: number[] = [];
@@ -174,6 +199,15 @@ export function planWeek(events: readonly MonthGridEvent[], week: readonly strin
     bars.push({ event: it.event, lane, col: it.col, span: it.span, continuesLeft: it.continuesLeft, continuesRight: it.continuesRight });
   }
   return { bars, lanes: laneEnds.length, hidden };
+}
+
+/**
+ * Packs the events that touch one week (seven ISO days) into lanes. Events are placed by first column, longer
+ * first, then in the order given, each in the lowest lane that is free for its whole width. A bar that does not
+ * fit in `maxLanes` is counted in `hidden` for every column it covers. Events with no real ISO `date` are left out.
+ */
+export function planWeek(events: readonly MonthGridEvent[], week: readonly string[], maxLanes = 3): MonthGridWeekPlan {
+  return packWeek(spansOf(events), week, maxLanes);
 }
 
 export function MonthGrid({
@@ -198,21 +232,32 @@ export function MonthGrid({
 }: MonthGridProps) {
   const todayIso = today ?? clockToday();
   const weeks = useMemo(() => monthWeeks(year, month, weekStart, todayIso), [year, month, weekStart, todayIso]);
+  const spans = useMemo(() => spansOf(events ?? []), [events]);
+  // Events are indexed by the days of the shown weeks only, so an event costs at most 42 steps however long it is.
   const byDate = useMemo(() => {
     const m = new Map<string, MonthGridEvent[]>();
-    for (const e of events ?? []) {
-      const end = lastDay(e);
-      for (let d = e.date; d <= end; d = addDays(d, 1)) {
-        const list = m.get(d);
-        if (list) list.push(e);
-        else m.set(d, [e]);
+    const days = weeks.flat().map((d) => d.date);
+    const firstDay = days[0];
+    const lastDay = days[days.length - 1];
+    if (!firstDay || !lastDay) return m;
+    const origin = parse(firstDay).getTime();
+    const index = (iso: string) => Math.round((parse(iso).getTime() - origin) / DAY_MS);
+    for (const sp of spans) {
+      if (sp.start > lastDay || sp.end < firstDay) continue;
+      const from = Math.max(0, index(sp.start));
+      const to = Math.min(days.length - 1, index(sp.end));
+      for (let i = from; i <= to; i++) {
+        const key = days[i] as string;
+        const list = m.get(key);
+        if (list) list.push(sp.event);
+        else m.set(key, [sp.event]);
       }
     }
     return m;
-  }, [events]);
+  }, [spans, weeks]);
   const plans = useMemo(
-    () => (laneBars ? weeks.map((w) => planWeek(events ?? [], w.map((d) => d.date), maxEvents)) : []),
-    [laneBars, weeks, events, maxEvents],
+    () => (laneBars ? weeks.map((w) => packWeek(spans, w.map((d) => d.date), maxEvents)) : []),
+    [laneBars, weeks, spans, maxEvents],
   );
   const inMonthDates = useMemo(() => weeks.flat().filter((d) => d.inMonth).map((d) => d.date), [weeks]);
 
@@ -324,26 +369,31 @@ export function MonthGrid({
               >
                 <span className="month-grid-num">{d.day}</span>
                 {renderDay?.(d, list)}
-                {laneBars && plan && plan.lanes > 0 && (
-                  <ul className="month-grid-lanes" aria-label="Events">
-                    {plan.bars.filter((b) => b.col === col).map((b) => (
-                      <li
-                        key={b.event.id}
-                        className="month-grid-event month-grid-bar"
-                        data-tone={b.event.tone ?? 'neutral'}
-                        data-left={b.continuesLeft ? '' : undefined}
-                        data-right={b.continuesRight ? '' : undefined}
-                        style={{ '--month-grid-lane': b.lane, '--month-grid-span': b.span } as CSSProperties}
-                      >
-                        {renderEvent ? renderEvent(b.event) : onEventClick ? (
-                          <button type="button" className="month-grid-chip" onClick={() => onEventClick(b.event)}>{b.event.label}</button>
-                        ) : (
-                          <span className="month-grid-chip">{b.event.label}</span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                {laneBars && plan && plan.lanes > 0 && (() => {
+                  const here = plan.bars.filter((b) => b.col === col);
+                  // A cell with no bar of its own still reserves the lanes, so a bar from the left runs over empty space.
+                  if (here.length === 0) return <div className="month-grid-lane-gap" aria-hidden="true" />;
+                  return (
+                    <ul className="month-grid-lanes" aria-label="Events">
+                      {here.map((b) => (
+                        <li
+                          key={b.event.id}
+                          className="month-grid-event month-grid-bar"
+                          data-tone={b.event.tone ?? 'neutral'}
+                          data-left={b.continuesLeft ? '' : undefined}
+                          data-right={b.continuesRight ? '' : undefined}
+                          style={{ '--month-grid-lane': b.lane, '--month-grid-span': b.span } as CSSProperties}
+                        >
+                          {renderEvent ? renderEvent(b.event) : onEventClick ? (
+                            <button type="button" className="month-grid-chip" onClick={() => onEventClick(b.event)}>{b.event.label}</button>
+                          ) : (
+                            <span className="month-grid-chip">{b.event.label}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  );
+                })()}
                 {shown.length > 0 && (
                   <ul className="month-grid-events" aria-label="Events">
                     {shown.map((ev) => (

@@ -126,3 +126,31 @@ describe('MatrixGrid keyboard', () => {
     expect(() => fireEvent.keyDown(cell(0, 0), { key: 'Enter' })).not.toThrow();
   });
 });
+
+describe('MatrixGrid review fixes', () => {
+  it('gives a group that returns after another group its own heading and key', () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const split: MatrixRow[] = [
+      { id: 'r1', label: 'One', group: 'Team A' },
+      { id: 'r2', label: 'Two', group: 'Team B' },
+      { id: 'r3', label: 'Three', group: 'Team A' },
+    ];
+    const { container } = render(<MatrixGrid label="M" columns={columns} rows={split} renderCell={show} />);
+    const headings = Array.from(container.querySelectorAll('.matrix-group th')).map((h) => h.textContent);
+    expect(headings).toEqual(['Team A', 'Team B', 'Team A']);
+    expect(err.mock.calls.flat().join(' ')).not.toMatch(/same key|unique "key"/);
+    err.mockRestore();
+  });
+
+  it('shows the empty state, not a cell-less grid, when there are no columns', () => {
+    render(<MatrixGrid label="M" columns={[]} rows={rows} renderCell={show} empty={<p>No columns</p>} />);
+    expect(screen.queryByRole('grid')).toBeNull();
+    expect(screen.getByText('No columns')).toBeTruthy();
+  });
+
+  it('keeps Space from scrolling the page on a read only cell, and leaves Enter alone', () => {
+    render(<MatrixGrid label="M" columns={columns} rows={rows} renderCell={show} />);
+    expect(fireEvent.keyDown(cell(0, 0), { key: ' ' })).toBe(false);
+    expect(fireEvent.keyDown(cell(0, 0), { key: 'Enter' })).toBe(true);
+  });
+});
