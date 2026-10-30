@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-30 (v1.108.0, sectioned hub header)
+## 2026-10-30 (v1.109.0, sectioned hub header)
 
 New opt in kit piece for the ops center layout: `HubHeader`, `hubPath` and `resolveHubRoute`. A hub
 that keeps using `Tabs` is unchanged.
@@ -13,6 +13,12 @@ that keeps using `Tabs` is unchanged.
   `redirect`, so an old flat link and a bare section never break.
 - Standards: "Sectioned hubs" in the web UI standard. Specimen `hub-header` with baselines in both
   themes. Tests: 11.
+
+## 2026-10-29 (v1.108.0, ops center run contract)
+
+The server side of the run-with-safe-defaults contract. Opt in: `builds.dispatch`, `infra.task_run` and a wider `cron_pulse.run`.
+
+- A pipeline entry declares the workflow's fixed inputs; a start refuses unknown pipelines, inputs, values and refs, defaults to the safe values, dedupes a double click, refuses a paused or already running pipeline with a reason and says whether the run publishes. Maintenance tasks (a backup, a restore drill) are a consumer-configured command with the same contract; any scheduled job can Run now (DESIGN.md 12.49). Tests: 17.
 
 ## 2026-10-29 (v1.107.0, kit review fixes for MatrixGrid, MonthGrid and ContextPanel)
 
