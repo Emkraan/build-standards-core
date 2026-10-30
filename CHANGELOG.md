@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-30 (v1.110.0, run with safe defaults dialog)
+## 2026-10-30 (v1.111.0, run with safe defaults dialog)
 
 New opt in kit piece for the ops center layout: `RunDialog`, `RunFields`, `useRunForm` and helpers.
 
@@ -15,6 +15,12 @@ New opt in kit piece for the ops center layout: `RunDialog`, `RunFields`, `useRu
   standard. The kit does no fetching.
 - Standards: "Run with safe defaults" in the web UI standard. Specimen `run-dialog` with baselines in
   both themes. Tests: 19.
+
+## 2026-10-29 (v1.108.0, ops center run contract)
+
+The server side of the run-with-safe-defaults contract. Opt in: `builds.dispatch`, `infra.task_run` and a wider `cron_pulse.run`.
+
+- A pipeline entry declares the workflow's fixed inputs; a start refuses unknown pipelines, inputs, values and refs, defaults to the safe values, dedupes a double click, refuses a paused or already running pipeline with a reason and says whether the run publishes. Maintenance tasks (a backup, a restore drill) are a consumer-configured command with the same contract; any scheduled job can Run now (DESIGN.md 12.49). Tests: 17.
 
 ## 2026-10-29 (v1.107.0, kit review fixes for MatrixGrid, MonthGrid and ContextPanel)
 

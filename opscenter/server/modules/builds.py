@@ -21,6 +21,19 @@ Parameters (BUILDS_CONFIG, a JSON file, default <state>/builds-config.json; ever
                     versus live, drift lines); none for a product means no landed block. The command is the consumer's (it may read a
                     release record, a device management service or a storage account)
   privileged_queue  the privileged approvals queue file (default <state>/tf-review/privileged-queue.json)
+  dispatch_gap_s    seconds a repeat start of the same workflow with the same inputs is answered as already started (default 20)
+
+Run contract (the server side of the Run workflow button, DESIGN.md 12.49). A pipeline entry may declare what a start may carry:
+  "ref": "main" | "branch"      where it may run: main only, or main or a branch matching branch_regex (default main)
+  "inputs": [{"name", "type": "boolean"|"choice"|"string", "default", "options", "pattern", "required", "help",
+              "publishes_when": the value that makes a run publish (true for a flag, a choice value), none: the input never does}]
+  "paused": true                a paused pipeline refuses a start (409)
+The inputs are a fixed copy of the workflow's own inputs. POST /api/builds/dispatch {pipeline, ref?, inputs?} refuses an unknown
+pipeline (404), an unknown input name (400 naming it), a value that is not valid for its input (400), a ref the workflow may not run
+from (400), a paused pipeline or a run already queued or running on that ref (409 with the reason); the same pipeline, ref and
+inputs inside dispatch_gap_s answers {started: false, already: true}. Left out, an input takes its default, and the form's defaults
+are the safe ones (a dry run). The answer says whether the run publishes. Environment approvals still gate every job that writes:
+this only queues the run.
 """
 
 import json
@@ -64,6 +77,14 @@ PIPELINES = [
 for _p in PIPELINES:
     _p.setdefault("product", _p["key"])
     _p.setdefault("label", _p["key"])
+DISPATCH = {
+    p["key"]: {
+        "ref": "branch" if p.get("ref") == "branch" else "main",
+        "inputs": [i for i in (p.get("inputs") or []) if isinstance(i, dict) and i.get("name")],
+        "paused": bool(p.get("paused")),
+    }
+    for p in PIPELINES
+}
 RUNS_PER_PIPELINE = 6
 BRANCH_OK = re.compile(str(_C.get("branch_regex") or r"^[a-z]+-\d+-"))
 SUMMARY_RE = re.compile(str(_C["summary_regex"])) if _C.get("summary_regex") else None
@@ -75,6 +96,8 @@ LANDED_CMDS = {
 REFUSED = re.compile(r"^(?:##\[error\]|::error::)?(\S+) is (\d+) commit\(s\) behind main\b")
 PENDING_TTL_S = 600  # an accepted update has this long to show a new run before it is flagged
 BEHIND_TTL_S = 60
+DISPATCH_GAP_S = int(_C.get("dispatch_gap_s") or 20)
+_RUNNING = ("in_progress", "queued", "requested", "pending", "waiting")
 
 
 def _refusal_workflows():
@@ -92,6 +115,7 @@ _pending = {}  # run id -> {"sha", "at", "how"} update accepted, waiting for the
 _conflicts = {}  # head sha -> files changed on both sides (None when they could not be listed)
 _errors = {}  # head sha -> last error line from an update attempt
 _action_lock = threading.Lock()
+_dispatched = {}  # (pipeline key, ref, inputs) -> epoch of the last accepted start (stops double clicks)
 
 
 def _gh_text(path, timeout=25):
@@ -554,6 +578,123 @@ def _landed(product, fresh=False):
 # ---- Feed -------------------------------------------------------------------------------------
 
 
+def _dispatch_values(spec, raw):
+    """Check every input against the fixed spec. Unknown names are refused, never passed through."""
+    raw = raw if isinstance(raw, dict) else {}
+    known = {i["name"] for i in spec["inputs"]}
+    extra = sorted(set(raw) - known)
+    if extra:
+        raise BuildsError(400, f"Unknown input: {', '.join(extra)}")
+    out = {}
+    for i in spec["inputs"]:
+        kind = i.get("type", "string")
+        v = raw.get(i["name"], i.get("default"))
+        if kind == "boolean":
+            if not isinstance(v, bool):
+                raise BuildsError(400, f"{i['name']} must be true or false")
+            out[i["name"]] = "true" if v else "false"
+            continue
+        v = "" if v is None else v
+        if not isinstance(v, str) or not v.isascii() or len(v) > 300 or "\n" in v:
+            raise BuildsError(400, f"{i['name']} must be one line of plain text")
+        v = v.strip()
+        if kind == "choice" and v not in (i.get("options") or []):
+            raise BuildsError(
+                400, f"{i['name']} must be one of {', '.join(i.get('options') or [])}"
+            )
+        if i.get("required") and not v:
+            raise BuildsError(400, f"{i['name']} is required")
+        if v and i.get("pattern") and not re.match(i["pattern"], v):
+            raise BuildsError(400, f"{i['name']} is not valid: {v}")
+        if v or i.get("required"):
+            out[i["name"]] = v
+    return out
+
+
+def _publishes(spec, values):
+    """True when a value the spec marks as publishing is the one this start carries."""
+    for i in spec["inputs"]:
+        if "publishes_when" not in i or i["name"] not in values:
+            continue
+        want = i["publishes_when"]
+        have = values[i["name"]]
+        if (
+            (have == "true")
+            if want is True
+            else (have == "false")
+            if want is False
+            else (have == str(want))
+        ):
+            return True
+    return False
+
+
+def _live_run(key, ref):
+    """The newest cached run of the pipeline on `ref` when it is queued, running or waiting, else None. Cache only: a
+    start never waits on the code host to be refused."""
+    feed = swr.peek("builds:feed") or {}
+    for p in feed.get("pipelines") or []:
+        if p.get("key") != key:
+            continue
+        for r in p.get("runs") or []:
+            if r.get("branch") == ref and r.get("status") in _RUNNING:
+                return r
+    return None
+
+
+def dispatch(payload, run=None):
+    """POST /api/builds/dispatch {pipeline, ref?, inputs?}. Starts the workflow through the code host. The module's docstring
+    has the contract: fixed input spec, unknown inputs refused, safe defaults, dedupe, paused and running refusals."""
+    payload = payload if isinstance(payload, dict) else {}
+    key = payload.get("pipeline")
+    pipe = next((p for p in PIPELINES if p["key"] == key), None)
+    spec = DISPATCH.get(key) if pipe else None
+    if not spec:
+        raise BuildsError(404, "Unknown pipeline")
+    ref = payload.get("ref") or "main"
+    if not isinstance(ref, str) or not (
+        ref == "main" or (spec["ref"] == "branch" and BRANCH_OK.match(ref))
+    ):
+        raise BuildsError(
+            400,
+            "This workflow runs from main"
+            if spec["ref"] == "main"
+            else "Ref must be main or a ticket branch",
+        )
+    values = _dispatch_values(spec, payload.get("inputs"))
+    if spec["paused"]:
+        raise BuildsError(409, f"{pipe['label']} is paused")
+    live = _live_run(key, ref)
+    if live:
+        raise BuildsError(
+            409, f"{pipe['label']} already has run {live.get('id')} {live.get('status')} on {ref}"
+        )
+    token = (key, ref, tuple(sorted(values.items())))
+    with _action_lock:
+        last = _dispatched.get(token)
+        if last and time.time() - last < DISPATCH_GAP_S:
+            return {"started": False, "already": True, "publishes": _publishes(spec, values)}
+        argv = [infra.GH, "workflow", "run", pipe["workflow"], "-R", REPO, "--ref", ref]
+        for k, v in values.items():
+            argv += ["-f", f"{k}={v}"]
+        p = (run or subprocess.run)(argv, capture_output=True, text=True, timeout=40)
+        if p.returncode != 0:
+            raise BuildsError(
+                502,
+                ((p.stderr or p.stdout) or "workflow run failed").strip().splitlines()[-1][:300],
+            )
+        _dispatched[token] = time.time()
+    swr.kick("builds:refresh", lambda: swr.cached("builds:feed", 8, _feed, fresh=True))
+    return {
+        "started": True,
+        "already": False,
+        "workflow": pipe["workflow"],
+        "ref": ref,
+        "inputs": values,
+        "publishes": _publishes(spec, values),
+    }
+
+
 def _feed():
     out = {"generated_utc": infra._utc_now(), "repo": REPO, "pipelines": [], "errors": []}
     priv = _priv_pending()
@@ -595,6 +736,7 @@ def _feed():
                 "label": p["label"],
                 "workflow": p["workflow"],
                 "refusal": bool(p.get("refusal")),
+                "dispatch": DISPATCH.get(p["key"]),
                 "url": f"https://github.com/{REPO}/actions/workflows/{p['workflow']}",
                 "runs": rv,
             }

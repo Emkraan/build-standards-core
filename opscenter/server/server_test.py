@@ -467,6 +467,14 @@ class Routes(unittest.TestCase):
         finally:
             os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
 
+    def test_the_run_routes_refuse_what_is_not_configured(self):
+        os.environ.pop("INFRA_TASKS", None)
+        self.assertEqual(self.js("POST", "/api/builds/dispatch", {"pipeline": "nope"})[0], 404)
+        self.assertEqual(self.js("POST", "/api/builds/dispatch", {})[0], 404)
+        s, body = self.js("GET", "/api/infra/tasks")
+        self.assertEqual((s, body), (200, []))
+        self.assertEqual(self.js("POST", "/api/infra/backup/run", {"what": "backup"})[0], 404)
+
     def test_the_runtime_routes_answer_with_no_runtime_configured_by_default(self):
         os.environ.pop("OPSCENTER_RUNTIME_CMD", None)
         s, body = self.js("GET", "/api/tackle")
