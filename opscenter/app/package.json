@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc -p tsconfig.app.json",
-    "test": "node --test tests/dataCache.test.mjs tests/ownPrs.test.mjs tests/polls.test.mjs tests/rosterStale.test.mjs",
+    "test": "node --test tests/dataCache.test.mjs tests/operations.test.mjs tests/ownPrs.test.mjs tests/polls.test.mjs tests/rosterStale.test.mjs",
     "lint": "oxlint",
     "build": "tsc -p tsconfig.app.json && vite build && npm run --silent check:bundle-size",
     "check": "npm run typecheck && npm run test && npm run build",

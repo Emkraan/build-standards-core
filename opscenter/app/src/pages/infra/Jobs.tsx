@@ -2,7 +2,8 @@
 import type { TableColumn } from '@kit'
 import { Button, Card, CardHead, Field, Input, Table, Toolbar } from '@kit'
 import { useState } from 'react'
-import { relTime } from '../../lib/data'
+import { postCronNow, relTime } from '../../lib/data'
+import { RunButton } from '../operations/RunButton'
 import { HEALTH_RANK, kindTone, nextIn, ts, useCron } from './data'
 import { HealthPill, JobModal } from './JobModal'
 import { FeedPending, Note, StatePill } from './parts'
@@ -38,6 +39,22 @@ export default function JobsTab() {
     { key: 'next', header: 'Next', value: (j) => ts(j.next_run_at), render: (j) => nextIn(j.next_run_at) },
     { key: 'outputs_d7', header: 'Logs 7d', numeric: true },
     { key: 'health', header: 'Health', value: (j) => HEALTH_RANK[j.health] ?? 9, render: (j) => <HealthPill j={j} /> },
+    {
+      key: 'run',
+      header: '',
+      render: (j) => (
+        <RunButton
+          label="Run now"
+          title={`Run ${j.name} now`}
+          subtitle={j.schedule}
+          inputs={[{ name: 'note', type: 'string', default: '', help: 'An optional note the run starts with.' }]}
+          refusal={j.enabled ? undefined : { kind: 'paused', reason: j.paused_reason || 'This job is paused.' }}
+          start={(req) => postCronNow(j.id, String(req.inputs.note || ''))}
+          onStarted={refresh}
+          variant="ghost"
+        />
+      ),
+    },
   ]
   return (
     <Card>

@@ -29,6 +29,7 @@ import { useActionCounts } from './lib/counts'
 import { useApprovals, useData, useJiraNeedsMe, useNow, useOneOnOnes } from './lib/data'
 import { APP_SUBTITLE } from './lib/config'
 import ActionHub from './pages/ActionHub'
+import { redirectOld } from './pages/operations/routes'
 import { NextOneOnOne, SyncChip, useFeed } from './shell/HeaderBits'
 import type { BadgeKey, NavDef } from './shell/nav'
 import { GROUPS, NAV, navFor } from './shell/nav'
@@ -38,11 +39,9 @@ import SearchPalette from './shell/SearchPalette'
 // app and only the team and spend pages use it). After first paint the rest prefetch while idle, so
 // switching pages stays instant.
 const PAGES = {
-  Builds: () => import('./pages/Builds'),
-  CoreConsumption: () => import('./pages/CoreConsumption'),
   Plans: () => import('./pages/Plans'),
   EngBacklog: () => import('./pages/EngBacklog'),
-  Infrastructure: () => import('./pages/Infrastructure'),
+  Operations: () => import('./pages/Operations'),
   JiraHub: () => import('./pages/JiraHub'),
   Knowledge: () => import('./pages/Knowledge'),
   Links: () => import('./pages/Links'),
@@ -51,11 +50,9 @@ const PAGES = {
   Search: () => import('./pages/Search'),
   TeamHub: () => import('./pages/TeamHub'),
 }
-const Builds = lazy(PAGES.Builds)
-const CoreConsumption = lazy(PAGES.CoreConsumption)
 const Plans = lazy(PAGES.Plans)
 const EngBacklog = lazy(PAGES.EngBacklog)
-const Infrastructure = lazy(PAGES.Infrastructure)
+const Operations = lazy(PAGES.Operations)
 const JiraHub = lazy(PAGES.JiraHub)
 const Knowledge = lazy(PAGES.Knowledge)
 const Links = lazy(PAGES.Links)
@@ -104,15 +101,17 @@ function badgeTip(key: BadgeKey, n: number): string {
       return `${n} improvements waiting on my decision`
     case 'oneonone':
       return `${n} open 1:1 topics`
-    case 'infra':
-      return `${n} platform problems`
-    case 'builds':
-      return `${n} builds running or waiting on approval`
-    case 'core':
-      return `${n} core approvals waiting on me (sync pull requests and report items)`
+    case 'operations':
+      return `${n} operations problems`
     case 'links':
       return `${n} links on the Links page no longer work (swap or remove them there)`
   }
+}
+
+// Old /builds, /core and /infra/<tab> links land on their item in Operations with the query string kept.
+function OldRoute() {
+  const { pathname, search, hash } = useLocation()
+  return <Navigate to={redirectOld(pathname, search, hash) ?? '/operations'} replace />
 }
 
 function GoShortcut({ id, keys, label, to }: { id: string; keys: string; label: string; to: string }) {
@@ -152,10 +151,8 @@ export default function App() {
     // Knowledge proposals waiting on my approval plus documentation gaps, server counted.
     knowledge: counts.knowledge,
     debt: counts.debt,
-    // Failing or overdue crons, a stalled scheduler, the Enterprise fallback, a failed nightly sync or backup.
-    infra: counts.infra,
-    builds: counts.builds,
-    core: counts.core,
+    // The server's problem list: failed pipelines, failing or overdue jobs, CI and backup, spend, core approvals.
+    operations: counts.operations,
     // Dead links on the Links page nobody has swapped or removed yet.
     links: counts.links,
   }
@@ -170,7 +167,7 @@ export default function App() {
     return (
       <>
         {count > 0 && n.badge && (
-          <span className="nb-count" data-tip={n.badge === 'infra' ? counts.infraItems.join('\n') : badgeTip(n.badge, count)}>
+          <span className="nb-count" data-tip={n.badge === 'operations' ? counts.operationsItems.join('\n') : badgeTip(n.badge, count)}>
             {count}
           </span>
         )}
@@ -289,10 +286,14 @@ export default function App() {
               <Route path="/links" element={<Links />} />
               <Route path="/drafts" element={<Navigate to="/plans" replace />} />
               <Route path="/search" element={<Search />} />
-              <Route path="/builds" element={<Builds />} />
-              <Route path="/core" element={<CoreConsumption />} />
-              <Route path="/infra" element={<Infrastructure />} />
-              <Route path="/infra/:tab" element={<Infrastructure />} />
+              <Route path="/operations" element={<Operations />} />
+              <Route path="/operations/:section" element={<Operations />} />
+              <Route path="/operations/:section/:item" element={<Operations />} />
+              {/* Builds, CI, spend and the core moved into Operations; old links keep their place (layout rule 9). */}
+              <Route path="/builds" element={<OldRoute />} />
+              <Route path="/core" element={<OldRoute />} />
+              <Route path="/infra" element={<OldRoute />} />
+              <Route path="/infra/:tab" element={<OldRoute />} />
               {/* old bookmarks */}
               <Route path="/planning" element={<Navigate to="/action" replace />} />
               <Route path="/history" element={<Navigate to="/team/history" replace />} />

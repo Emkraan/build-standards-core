@@ -27,7 +27,7 @@ export default function FallbackBanner() {
         <AlertBanner
           title={`Enterprise is billing Hermes while Team has headroom: ${a.calls} call${a.calls === 1 ? '' : 's'}, about $${a.est_usd.toFixed(2)} at list`}
           action={
-            <Link className="btn" data-variant="secondary" data-size="sm" to="/infra/spend">
+            <Link className="btn" data-variant="secondary" data-size="sm" to="/operations/cost/spend">
               Spend &rarr;
             </Link>
           }
