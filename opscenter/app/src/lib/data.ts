@@ -2391,6 +2391,8 @@ export interface Badges {
   alerts?: number
   // Core consumption page: approvals I can act on now (consumption.json, no gh call).
   core?: number
+  // The single problem list that builds, scheduled jobs, CI, spend and core read (problems.py).
+  problems?: Problems
 }
 export const useBadges = createLiveStore(() => fetchApi<Badges>('api/badges'), 30_000)
 export const useEngBacklog = createLiveStore(() => fetchApi<EngBacklogData>('api/eng-backlog'), 60_000)
@@ -2542,13 +2544,36 @@ export interface BuildRefusal {
   error?: string | null
   files?: string[] | null
 }
+// One input of a workflow or task, as the server's fixed spec lists it (DESIGN.md 12.49). publishes_when is the value that
+// makes a run publish or change something.
+export interface RunSpecInput {
+  name: string
+  type: 'boolean' | 'choice' | 'string'
+  default: string | boolean
+  options?: string[]
+  pattern?: string
+  required?: boolean
+  help?: string
+  publishes_when?: string | boolean
+}
+// Current state vs history (DESIGN.md 12.50): failed only while the newest finished run on main failed.
+export interface PipelineState {
+  current: string | null
+  failed: boolean
+  last_main: string | null
+  history: number[]
+}
 export interface BuildPipeline {
   key: string
-  product: 'app_e' | 'agent' | 'dev_tier'
+  product: string
   label: string
   workflow: string
   url: string
   runs: BuildRun[]
+  inputs?: RunSpecInput[]
+  ref?: 'main' | 'branch'
+  paused?: boolean
+  state?: PipelineState
 }
 export interface app_eLanded {
   recorded: {
@@ -2599,6 +2624,75 @@ export async function postUpdateFromMain(body: {
   return { result: j.result, files: j.files }
 }
 export const useBuilds = createLiveStore(() => fetchApi<Builds>('api/builds'), 8_000)
+
+// Start one workflow through the run contract (DESIGN.md 12.49): the server checks every input against its fixed spec,
+// refuses a paused or running pipeline (409) and folds a repeated click into the queued run (already).
+export interface RunAnswer {
+  started: boolean
+  already?: boolean
+  publishes?: boolean
+}
+export class RunError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
+async function runPost(path: string, body: Record<string, unknown>): Promise<RunAnswer> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const j = (await res.json().catch(() => ({}))) as { error?: string } & RunAnswer
+  if (!res.ok) throw new RunError(j.error || `${path} -> ${res.status}`, res.status)
+  return j
+}
+export const postBuildDispatch = (pipeline: string, ref: string, inputs: Record<string, string | boolean>) =>
+  runPost('api/builds/dispatch', { pipeline, ref, inputs })
+
+// Maintenance tasks the Infrastructure page may start (INFRA_TASKS), each with its own input spec.
+export interface InfraTask {
+  name: string
+  label: string
+  inputs: RunSpecInput[]
+  running?: boolean
+}
+export const useInfraTasks = createLiveStore(() => fetchApi<{ tasks: InfraTask[] }>('api/infra/tasks'), 30_000)
+// Run now for any scheduled job, same contract: a paused or finished job is refused (409), a running one answers already.
+export const postCronNow = (id: string, note: string) => runPost(`api/cron-pulse/${id}/run`, { note })
+export const postInfraTaskRun = (what: string, inputs: Record<string, string | boolean>) =>
+  runPost('api/infra/tasks/run', { what, inputs })
+
+// The one server-side problem list (DESIGN.md 12.50): the rail badge, the tab counts and the Overview read it, the client never
+// applies a threshold of its own.
+export type ProblemTone = 'needs_me' | 'worth_a_look' | 'healthy'
+export interface ProblemItem {
+  id: string
+  hub: string
+  section: string
+  item: string
+  label: string
+  tone: ProblemTone
+  headline: string
+  details: string[]
+  count: number
+  running: boolean
+  url?: string
+}
+export interface Problems {
+  items: ProblemItem[]
+  counts: {
+    needs_me: number
+    worth_a_look: number
+    healthy: number
+    running: number
+    total: number
+    by_section: Record<string, number>
+    by_item: Record<string, number>
+  }
+}
 
 // ---- Core consumption (standard section 19): consumption.json rendered, approvals by gh ----
 export type CoreCi = 'pass' | 'fail' | 'pending' | 'none'

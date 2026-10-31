@@ -1,4 +1,4 @@
-// Builds (/builds, ): live app_e release and endpoint agent build, release and rollout runs
+// Builds tab of the Operations hub (/operations/builds/<product>): live app_e release and endpoint agent build, release and rollout runs
 // on platform. Each product card shows what is live right now (read from device management, the blob and GitHub,
 // not assumed) and every pipeline's runs: a run in flight expands to its jobs and step bars, a
 // waiting run names the environment it needs and links to the approval card, a failed run shows
@@ -8,14 +8,14 @@
 import { Button, Card, CardHead, EmptyState, IconAlert, IconChevronDown, IconChevronRight, Stat, StatRow } from '@kit'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { HubHeader } from '../components/HubHeader'
-import type { AgentLanded, BuildPipeline, BuildRefusal, BuildRun, Builds as BuildsData, app_eLanded } from '../lib/data'
-import { postUpdateFromMain, relTime, useBuilds } from '../lib/data'
-import { dur, stateLabel, stateTone, useTick } from './infra/data'
-import { JobRow } from './infra/LiveJobs'
-import { FeedPending, StatePill } from './infra/parts'
-import './Infrastructure.css'
+import type { AgentLanded, BuildPipeline, BuildRefusal, BuildRun, Builds as BuildsData, app_eLanded } from '../../lib/data'
+import { postBuildDispatch, postUpdateFromMain, relTime, useBuilds } from '../../lib/data'
+import { dur, stateLabel, stateTone, useTick } from '../infra/data'
+import { JobRow } from '../infra/LiveJobs'
+import { FeedPending, StatePill } from '../infra/parts'
+import '../Infrastructure.css'
 import './Builds.css'
+import { RunButton } from './RunButton'
 
 const ACTIVE = new Set(['in_progress', 'queued', 'requested', 'pending', 'waiting'])
 
@@ -173,11 +173,18 @@ function RunRow({ run: r, now }: { run: BuildRun; now: number }) {
   )
 }
 
-function PipelineBlock({ p, now }: { p: BuildPipeline; now: number }) {
+function PipelineBlock({ p, now, refresh }: { p: BuildPipeline; now: number; refresh: () => void }) {
   const [all, setAll] = useState(false)
+  // Current state vs history (layout rule 5): the server says whether the pipeline is failed now; the runs of its history
+  // stay folded under "older runs" so a fixed failure never reads as current. Runs are newest first.
+  const history = new Set(p.state?.history ?? [])
   const active = p.runs.filter((r) => ACTIVE.has(r.status))
-  const done = p.runs.filter((r) => !ACTIVE.has(r.status))
-  const shown = all ? done : done.slice(0, 3)
+  const finished = p.runs.filter((r) => !ACTIVE.has(r.status))
+  const recent = finished.filter((r) => !history.has(r.id))
+  const older = finished.filter((r) => history.has(r.id))
+  const shown = all ? finished : recent.slice(0, 3)
+  const hidden = all ? 0 : finished.length - shown.length
+  const refusal = p.paused ? { kind: 'paused', reason: 'This pipeline is paused.' } : undefined
   return (
     <section className="bld-pipe" aria-label={p.label}>
       <div className="bld-pipe-head">
@@ -185,6 +192,20 @@ function PipelineBlock({ p, now }: { p: BuildPipeline; now: number }) {
           {p.label}
         </a>
         <span className="infra-muted infra-mono">{p.workflow}</span>
+        {p.state?.failed ? <StatePill tone="danger">failed on main</StatePill> : null}
+        {p.paused ? <StatePill tone="neutral">paused</StatePill> : null}
+        <span className="infra-push">
+          <RunButton
+            label="Run workflow"
+            title={`Run ${p.label}`}
+            subtitle={p.workflow}
+            inputs={p.inputs}
+            ref_={p.ref}
+            refusal={refusal}
+            start={(req) => postBuildDispatch(p.key, req.ref, req.inputs)}
+            onStarted={refresh}
+          />
+        </span>
       </div>
       {p.runs.length === 0 && <p className="infra-muted">No runs yet.</p>}
       <div className="infra-stack">
@@ -195,9 +216,9 @@ function PipelineBlock({ p, now }: { p: BuildPipeline; now: number }) {
           <RunRow key={r.id} run={r} now={now} />
         ))}
       </div>
-      {done.length > 3 && (
+      {(hidden > 0 || (all && older.length > 0)) && (
         <button type="button" className="btn bld-more" data-variant="ghost" data-size="sm" onClick={() => setAll(!all)}>
-          {all ? 'Show fewer' : `Show ${done.length - 3} older`}
+          {all ? 'Show fewer' : `History: ${hidden} older run${hidden === 1 ? '' : 's'}`}
         </button>
       )}
     </section>
@@ -295,12 +316,14 @@ function ProductCard({
   subtitle,
   pipes,
   now,
+  refresh,
   children,
 }: {
   title: string
   subtitle: string
   pipes: BuildPipeline[]
   now: number
+  refresh: () => void
   children: React.ReactNode
 }) {
   const live = pipes.some((p) => p.runs.some((r) => ACTIVE.has(r.status)))
@@ -322,70 +345,35 @@ function ProductCard({
       <div className="infra-stack">
         {children}
         {pipes.map((p) => (
-          <PipelineBlock key={p.key} p={p} now={now} />
+          <PipelineBlock key={p.key} p={p} now={now} refresh={refresh} />
         ))}
       </div>
     </Card>
   )
 }
 
-export default function Builds() {
-  const { data, error } = useBuilds()
+/** One build item of the hub: the pipelines of a product, what is live for it and a start button per workflow. */
+export default function BuildTab({ product }: { product: string }) {
+  const { data, error, refresh } = useBuilds()
   const now = useTick(!!data?.active)
   if (!data) return <FeedPending title="Builds" error={error} what="Build feed" tiles />
-  return <BuildsBody data={data} now={now} />
+  return <BuildsBody data={data} now={now} product={product} refresh={refresh} />
 }
 
-function BuildsBody({ data, now }: { data: BuildsData; now: number }) {
-  const phx = data.pipelines.filter((p) => p.product === 'app_e')
-  const agent = data.pipelines.filter((p) => p.product === 'agent')
-  const dev_tier = data.pipelines.filter((p) => p.product === 'dev_tier')
+function BuildsBody({ data, now, product, refresh }: { data: BuildsData; now: number; product: string; refresh: () => void }) {
+  const pipes = data.pipelines.filter((p) => p.product === product)
   // The newest real rollout by workflow, else the newest dry run (flagged as such).
-  const rolls = agent.find((p) => p.key === 'agent-rollout')?.runs.filter((r) => r.conclusion === 'success' && r.summary) || []
+  const rolls = pipes.find((p) => p.key === 'agent-rollout')?.runs.filter((r) => r.conclusion === 'success' && r.summary) || []
   const rollout = rolls.find((r) => !/dryRun=true/.test(r.summary || '')) || rolls[0]
-  const status = data.active
-    ? `${data.running} running, ${data.waiting} waiting on approval, updating every 8s`
-    : `idle, checked ${relTime(data.generated_utc)}`
+  const title = product === 'agent' ? 'Endpoint agent' : product
   return (
-    <div className="hub builds">
-      <HubHeader
-        eyebrow="Platform"
-        title="Builds"
-        subtitle="app_e, endpoint agent and dev_tier pipelines on platform, and what is live."
-        status={status}
-      />
-      <div className="hub-body">
-        <div className="infra-stack">
-          <Problems items={data.errors} />
-          <ProductCard
-            title="app_e"
-            subtitle="Release app_e: rebuild, encrypt, device management content version, Health scripts, blob"
-            pipes={phx}
-            now={now}
-          >
-            {data.landed.app_e ? <App_eLive l={data.landed.app_e} /> : null}
-          </ProductCard>
-          <ProductCard
-            title="Endpoint agent"
-            subtitle="Build, release (draft registration) and rollout (publish and ring)"
-            pipes={agent}
-            now={now}
-          >
-            {data.landed.agent ? <AgentLive l={data.landed.agent} rollout={rollout} /> : null}
-          </ProductCard>
-          {dev_tier.length > 0 && (
-            <ProductCard
-              title="dev_tier"
-              subtitle="Apply and web deploy to the shared dev_tier tier, refused when a branch is behind main"
-              pipes={dev_tier}
-              now={now}
-            >
-              {null}
-            </ProductCard>
-          )}
-          {data.pipelines.length === 0 && <EmptyState compact pose="idle" title="No pipelines configured." />}
-        </div>
-      </div>
+    <div className="infra-stack">
+      <Problems items={data.errors} />
+      <ProductCard title={title} subtitle={data.active ? `${data.running} running, ${data.waiting} waiting on approval` : `idle, checked ${relTime(data.generated_utc)}`} pipes={pipes} now={now} refresh={refresh}>
+        {product === 'app_e' && data.landed.app_e ? <App_eLive l={data.landed.app_e} /> : null}
+        {product === 'agent' && data.landed.agent ? <AgentLive l={data.landed.agent} rollout={rollout} /> : null}
+      </ProductCard>
+      {pipes.length === 0 && <EmptyState compact pose="idle" title="No pipelines configured." />}
     </div>
   )
 }

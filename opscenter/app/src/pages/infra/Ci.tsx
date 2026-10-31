@@ -1,8 +1,9 @@
 // CI and backup tab: the self-hosted runner fleet on the Lima VM and the nightly state backup.
-import type { StatTone, StatusTone, TableColumn } from '@kit'
+import type { StatusTone, TableColumn } from '@kit'
 import { Badge, Card, CardHead, EmptyState, IconAlert, StatTile, Table, Toolbar } from '@kit'
 import type { ReactNode } from 'react'
-import { relTime } from '../../lib/data'
+import { postInfraTaskRun, relTime, useInfraTasks } from '../../lib/data'
+import { RunButton } from '../operations/RunButton'
 import { latestSnapshot, short, ts, useRunners } from './data'
 import { FeedPending, KeyValues, StatePill } from './parts'
 import type { FleetJob, RunnerFleet } from './types'
@@ -74,33 +75,24 @@ const QUEUE_COLUMNS: TableColumn<QueueRow>[] = [
 
 export default function CiTab() {
   const { data, error, refresh, loading, at } = useRunners()
+  const tasks = useInfraTasks()
   if (!data) return <FeedPending title="CI runners and backup" error={error} what="Runner status" tiles />
   const online = data.runners.filter((r) => r.status === 'online').length
   const busy = data.runners.filter((r) => r.busy).length
   const vmUp = data.vm?.status === 'Running'
   const b = data.backup
   const latest = latestSnapshot(data)
-  const backupAgeH = latest ? (Date.now() - new Date(latest.time).getTime()) / 3_600_000 : null
-  const backupTone: StatusTone = !b
-    ? 'warning'
-    : b.status !== 'ok'
-      ? 'danger'
-      : backupAgeH !== null && backupAgeH > 30
-        ? 'warning'
-        : 'success'
+  // The judgement of whether CI and backup are healthy is the server's (the Overview card and the tab count read the problem
+  // list); this tab only shows facts and the status word the backup itself reported.
+  const backupTone: StatusTone = b?.status === 'ok' ? 'success' : 'neutral'
   const queue: QueueRow[] = [...data.running.map((j) => ({ ...j, running: true })), ...data.queued.map((j) => ({ ...j, running: false }))]
   return (
     <div className="infra-stack">
       <div className="stat-grid">
-        <StatTile
-          value={`${online}/${data.runners.length}`}
-          label="runners online"
-          tone={online === data.runners.length && online > 0 ? 'success' : 'danger'}
-        />
+        <StatTile value={`${online}/${data.runners.length}`} label="runners online" hue="blue" />
         <StatTile value={busy} label="runners busy" hue="blue" />
-        {/* core-exception: EXC-LAYOUT-4 removed when the layout adoption (ops center layout part 4) moves this count to the server list */}
-        <StatTile value={data.queued.length} label="jobs queued" tone={data.queued.length > 3 ? 'warning' : 'success'} />
-        <StatTile value={latest ? relTime(latest.time) : 'never'} label="last state backup" tone={backupTone as StatTone} />
+        <StatTile value={data.queued.length} label="jobs queued" hue="blue" />
+        <StatTile value={latest ? relTime(latest.time) : 'never'} label="last state backup" hue="blue" />
       </div>
       <div className="infra-grid">
         <Card>
@@ -116,7 +108,7 @@ export default function CiTab() {
                   </Badge>
                 )}
                 {data.minutes && (
-                  <Badge tone={data.minutes.hosted_used > data.minutes.included * 0.8 ? 'warning' : 'neutral'}>
+                  <Badge>
                     hosted minutes {data.minutes.hosted_used}/{data.minutes.included}
                   </Badge>
                 )}
@@ -169,7 +161,25 @@ export default function CiTab() {
           )}
         </Card>
         <Card>
-          <CardHead title="State backup (restic to OneDrive)" subtitle="nightly 03:00, encrypted, monthly restore drill" />
+          <CardHead
+            title="State backup"
+            subtitle="the nightly backup and the restore drill"
+            controls={
+              <>
+                {(tasks.data?.tasks ?? []).map((t) => (
+                  <RunButton
+                    key={t.name}
+                    label={t.label}
+                    title={t.label}
+                    inputs={t.inputs}
+                    refusal={t.running ? { kind: 'running', reason: 'This task is already running.' } : undefined}
+                    start={(req) => postInfraTaskRun(t.name, req.inputs)}
+                    onStarted={tasks.refresh}
+                  />
+                ))}
+              </>
+            }
+          />
           {!b ? (
             <EmptyState compact icon={<IconAlert />} hue="amber" title="No backup has run yet." />
           ) : (

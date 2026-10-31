@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-30 (v1.114.0, ops center layout adoption)
+
+The core ops center app adopts the approved layout. Opt in: the app only; consumers sync it with the kit.
+
+- One Operations hub at `/operations/<section>/<item>` replaces the Builds, Infrastructure and Core pages, with the kit's sectioned header, Overview cards and run dialog. Counts come from the server problem list only (the four recorded client thresholds are removed), builds show current state apart from history, every runnable thing has a Run button with safe defaults, and the old routes redirect with their query string (DESIGN.md 12.51).
+
 ## 2026-10-30 (v1.113.0, run with safe defaults dialog)
 
 New opt in kit piece for the ops center layout: `RunDialog`, `RunFields`, `useRunForm` and helpers.

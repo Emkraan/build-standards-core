@@ -112,7 +112,7 @@ export function useFeed(refreshedEt: string | undefined): { health: HealthLine; 
       tone: 'critical',
       title: 'Enterprise is billing Hermes while Team has headroom.',
       body: 'Open LLM spend.',
-      onOpen: () => nav('/infra/spend'),
+      onOpen: () => nav('/operations/cost/spend'),
     })
   }
   if (br?.alert) {

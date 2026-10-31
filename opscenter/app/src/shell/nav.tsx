@@ -9,14 +9,13 @@ import {
   IconKanban,
   IconLink,
   IconMessage,
-  IconPackage,
   IconPullRequest,
   IconServer,
   IconWrench,
   IconZap,
 } from '../components/icons'
 
-export type BadgeKey = 'action' | 'oneonone' | 'reviews' | 'jira' | 'knowledge' | 'debt' | 'infra' | 'builds' | 'core' | 'links'
+export type BadgeKey = 'action' | 'oneonone' | 'reviews' | 'jira' | 'knowledge' | 'debt' | 'operations' | 'links'
 
 export interface NavDef {
   to: string
@@ -119,20 +118,19 @@ export const GROUPS: { label: string; items: NavDef[] }[] = [
   {
     label: 'Platform',
     items: [
-      { to: '/builds', label: 'Builds', icon: <IconPackage />, hue: 'violet', badge: 'builds', key: 'b' },
-      { to: '/core', label: 'Core consumption', icon: <IconPackage />, hue: 'blue', badge: 'core', key: 'c' },
       {
-        to: '/infra',
-        label: 'Infrastructure',
+        to: '/operations',
+        label: 'Operations',
         icon: <IconServer />,
-        badge: 'infra',
+        hue: 'violet',
+        badge: 'operations',
         key: 'i',
         pages: [
-          { to: '/infra/spend', label: 'Infrastructure: LLM spend' },
-          { to: '/infra/jobs', label: 'Infrastructure: Scheduled jobs' },
-          { to: '/infra/live', label: 'Infrastructure: Live jobs' },
-          { to: '/infra/ci', label: 'Infrastructure: CI and backup' },
-          { to: '/infra/github', label: 'Infrastructure: GitHub' },
+          { to: '/operations/builds', label: 'Operations: Builds and releases' },
+          { to: '/operations/automation/jobs', label: 'Operations: Scheduled jobs' },
+          { to: '/operations/automation/ci', label: 'Operations: CI, backup and GitHub' },
+          { to: '/operations/cost/spend', label: 'Operations: LLM spend' },
+          { to: '/operations/cost/core', label: 'Operations: Core consumption' },
         ],
       },
     ],

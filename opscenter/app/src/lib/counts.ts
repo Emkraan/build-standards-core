@@ -3,6 +3,7 @@
 // badge immediately.
 
 import { useAresReviews, useBadges, useLocalStore, useplatformReviews, useRepoReviews } from './data'
+import { problemCount } from '../pages/operations/sections'
 import { aresPrWorking, olyPrWorking } from './ownPrs'
 
 export { aresPrWorking, olyMineNeedsMe, olyPrWorking } from './ownPrs'
@@ -19,13 +20,11 @@ export interface ActionCounts {
   knowledgePending: number
   knowledgeDocs: number
   links: number
-  infra: number
-  infraItems: string[]
+  // Operations: the sum of the problem list's per-section counts (one source for the rail, the tabs and the Overview).
+  operations: number
+  operationsItems: string[]
   // Alerts tab: job runs I have not acknowledged (server truth from /api/badges).
   alerts: number
-  builds: number
-  // Core consumption: sync PRs with passing checks and report items waiting on my approval.
-  core: number
   platform: number
   team: number
   reviews: number
@@ -79,11 +78,9 @@ export function useActionCounts(): ActionCounts {
     knowledgePending,
     knowledgeDocs,
     links: badges?.links || 0,
-    infra: badges?.infra?.count || 0,
-    infraItems: badges?.infra?.items || [],
+    operations: problemCount(badges?.problems),
+    operationsItems: (badges?.problems?.items || []).filter((i) => i.tone !== 'healthy').map((i) => `${i.label}: ${i.headline}`),
     alerts: badges?.alerts || 0,
-    builds: (badges?.builds?.running || 0) + (badges?.builds?.waiting || 0),
-    core: badges?.core || 0,
     platform: oly?.counts.needs_me || 0,
     team: team?.counts.needs_me || 0,
     other: other?.counts.needs_me || 0,
