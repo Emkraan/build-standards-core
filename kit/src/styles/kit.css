@@ -84,6 +84,13 @@ body { font-family: var(--font-sans); color: var(--text-primary); }
 .area-card-detail { margin: var(--space-2) 0 0; padding-left: 18px; color: var(--text-secondary); font-size: 0.9em; }
 .area-card-more { list-style: none; margin-left: -18px; padding-left: 18px; }
 
+/* ---- Hub header: page title, a section row and an item row (HubHeader) ---- */
+.hub-head { margin-bottom: var(--space-5); }
+.hub-head > .page-header { margin-bottom: var(--space-3); }
+.hub-subtabs { margin-top: var(--space-3); }
+.hub-head .tab-badge { gap: 5px; }
+.hub-head .tab-badge .spinner { width: 8px; height: 8px; color: var(--info); }
+
 /* ---- Context panel: the second level of navigation, beside the page (AppShell contextPanel) ---- */
 .shell-split { display: flex; align-items: flex-start; min-width: 0; min-height: 100vh; }
 .shell-split > .shell-main { flex: 1; min-width: 0; }

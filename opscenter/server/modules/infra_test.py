@@ -9,6 +9,7 @@ Run:     python3 infra_test.py
 import os
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -85,7 +86,15 @@ class Infra(unittest.TestCase):
         self.assertEqual(infra.live_jobs()["runs"], [])
         self.assertEqual(infra.cron()["jobs"], [])
         self.assertEqual((infra.spend()["jobs"], infra.spend()["totals"]["d7"]), ([], 0))
-        self.assertEqual(infra.badge_problems(), {"count": 0, "items": []})
+        self.assertEqual(
+            infra.badge_problems(),
+            {
+                "count": 0,
+                "items": [],
+                "areas": {"jobs": [], "spend": [], "ci": []},
+                "looks": {"ci": []},
+            },
+        )
         with self.assertRaises(infra.NotConfigured) as e:
             infra.job_log("runner-1")
         self.assertEqual(e.exception.status, 501)
@@ -121,9 +130,28 @@ class Infra(unittest.TestCase):
         self.assertEqual(log["lines"], ["step ok", "next"])
         items = infra.badge_problems()["items"]
         self.assertIn("nightly: failing", items)
+        self.assertIn("nightly: failing", infra.badge_problems()["areas"]["jobs"])
+        self.assertIn("Model fallback active", infra.badge_problems()["areas"]["spend"])
+        self.assertIn("backup is old", infra.badge_problems()["areas"]["ci"])
         self.assertIn("Model fallback active", items)
         self.assertIn("backup is old", items)
         self.assertTrue(any(i.startswith("Scheduler heartbeat 15 min") for i in items))
+
+    def test_workflows_red_on_main_and_offline_runners_are_worth_a_look_from_the_cache_only(self):
+        swr._mem["infra:runners"] = {
+            "val": {"runners": [{"name": "r1", "status": "offline"}]},
+            "at": time.time(),
+            "has": True,
+        }
+        swr._mem["infra:github"] = {
+            "val": {"red_on_main": [{"repo": "acme/app", "workflow": "build"}]},
+            "at": time.time(),
+            "has": True,
+        }
+        looks = infra.badge_problems()["looks"]["ci"]
+        self.assertEqual(looks, ["Runners offline: r1", "acme/app: build is red on main"])
+        self.assertEqual(infra.badge_problems()["count"], 0)
+        self.assertEqual(CALLS.read_text(), "")
 
     def test_a_bad_runner_name_and_a_bad_provider_are_refused(self):
         os.environ["OPSCENTER_INFRA_PROVIDER"] = f"{PROV}:P"

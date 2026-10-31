@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-30 (v1.110.0, hub Overview area cards)
+## 2026-10-30 (v1.112.0, hub Overview area cards)
 
 New opt in kit piece for the ops center layout: `HubOverview` and `AreaCard`.
 
@@ -11,6 +11,32 @@ New opt in kit piece for the ops center layout: `HubOverview` and `AreaCard`.
   summary line. The tone comes from the app's server list; the card applies no threshold.
 - Standards: "Hub Overview" in the web UI standard. Specimen `hub-overview` with baselines in both
   themes. Tests: 10.
+
+## 2026-10-30 (v1.111.0, sectioned hub header)
+
+New opt in kit piece for the ops center layout: `HubHeader`, `hubPath` and `resolveHubRoute`. A hub
+that keeps using `Tabs` is unchanged.
+
+- `HubHeader`: the page header plus two tab rows, Overview and titled sections on top, one tab per item
+  below once a section is open. Route shape `<base>/<section>/<item>`. Router free (`onNavigate`).
+  Item counts and `live` come from the app; a section tab sums its items; work in progress is a
+  spinner, never red.
+- `hubPath` builds a route from an item or section key. `resolveHubRoute` gives `overview`, `item` or
+  `redirect`, so an old flat link and a bare section never break.
+- Standards: "Sectioned hubs" in the web UI standard. Specimen `hub-header` with baselines in both
+  themes. Tests: 11.
+
+## 2026-10-29 (v1.110.0, ops center problem list)
+
+The single server-side problem list. Opt in: new `server/modules/problems.py`; `GET /api/badges` gains `problems`.
+
+- The rail badge, the tab counts and the Overview cards all read one list of items with a tone, at most four detail lines and a place; builds report current state vs history (failed only while the newest finished run on main failed; running is never red) and are ordered newest first (DESIGN.md 12.50). Tests: 18.
+
+## 2026-10-30 (v1.109.0, ops center layout standard)
+
+A new standard, `standards/ops-center-layout.md`, and its two repo checks, from the layout the owner approved on 2026-10-30. Opt in: nine rules for `local-ops`, listed as applicable to an ops center.
+
+- Group by what is run, sections above about five items with `/<hub>/<section>/<item>` routes, one Overview card per item, one server problem list as the only source of counts, current state apart from history, newest first, run buttons with safe defaults and a fixed server contract, hubs named for the work and old links that never break. Rules 4 and 9 have repo checks in the same release: RC023 fails a client source that decides a tone, badge or severity from a count compared with a number, RC024 fails an ops center app whose routes and `routes.lock.json` disagree (a removed route must stay as a redirect). The core ops center app carries its lock file and records four old client thresholds as exceptions until its layout adoption.
 
 ## 2026-10-29 (v1.108.0, ops center run contract)
 

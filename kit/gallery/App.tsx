@@ -147,8 +147,11 @@ import {
   RecordChip,
   RecordPreviewProvider,
   createRecordRegistry,
+  HubHeader,
+  resolveHubRoute,
   HubOverview,
 } from '../src/index';
+import type { HubSection } from '../src/index';
 import type { AreaCardData } from '../src/index';
 import type { AppAccent, ArtAnchors, BulkRunState, ComboboxFreeEntry, FilterClause, FilterField, HomeTool, LauncherTool, PaletteItem, Recent, ReleaseNote, SortDirection, SortState, TableColumn, ThemeChoice } from '../src/index';
 import { AreaChart, BarChart, ChartLegend, DonutChart, Gauge, LineChart, RingProgress, Sparkline } from '../src/charts';
@@ -537,6 +540,33 @@ function ContextPanelSpecimen() {
         </NavGroup>
       </ContextPanel>
       <p className="gallery-note">Mounted next to the rail with AppShell contextPanel. Below 900px it stacks above the page and folds.</p>
+    </div>
+  );
+}
+
+const HUB_SECTIONS: HubSection[] = [
+  { key: 'builds', label: 'Builds and releases', items: [{ key: 'web', label: 'Web app', count: 1 }, { key: 'agent', label: 'Agent', live: true }, { key: 'api', label: 'API' }] },
+  { key: 'automation', label: 'Automation', items: [{ key: 'jobs', label: 'Scheduled jobs', count: 2 }, { key: 'ci', label: 'CI and backup' }] },
+  { key: 'cost', label: 'Cost and standards', items: [{ key: 'spend', label: 'Spend' }, { key: 'core', label: 'Core' }] },
+];
+
+function HubHeaderSpecimen() {
+  const [path, setPath] = useState('/platform/builds/agent');
+  const [section, item] = path.split('/').slice(2);
+  const route = resolveHubRoute('/platform', HUB_SECTIONS, section, item);
+  return (
+    <div className="gallery-hub-demo">
+      <HubHeader
+        eyebrow="Operate"
+        title="Platform"
+        subtitle="Everything we run, one tab per thing"
+        base="/platform"
+        sections={HUB_SECTIONS}
+        section={route.kind === 'item' ? route.section.key : undefined}
+        item={route.kind === 'item' ? route.item.key : undefined}
+        onNavigate={setPath}
+      />
+      <p className="gallery-note">Route: {path}. Counts come from the server list, the spinner is work in progress. Click a tab to move.</p>
     </div>
   );
 }
@@ -2435,7 +2465,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars', 'hub-overview'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars', 'hub-header', 'hub-overview'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2692,6 +2722,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="timeline" title="Timeline">
           <TimelineSpecimen />
+        </Specimen>
+        <Specimen id="hub-header" title="Sectioned hub header (two tab rows)">
+          <HubHeaderSpecimen />
         </Specimen>
         <Specimen id="hub-overview" title="Hub Overview (area cards under section titles)">
           <HubOverviewSpecimen />

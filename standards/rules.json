@@ -4257,6 +4257,134 @@
         "kind": "test"
       },
       "acceptance": "Switching modules remounts; a same-origin link into another module does not reload; a hidden rail entry still answers 403 from the server."
+    },
+    {
+      "id": "ops-center-layout.1.1",
+      "ref": "ops-center-layout.md 1.1",
+      "title": "Group by what we run, never by data source",
+      "statement": "Group by what we run, never by data source. One hub per domain, with a tab per thing operated. Related operational views are not split across pages by where their data comes from (builds on one page, infrastructure on another).",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "every hub names a domain and each of its tabs is a thing operated in it; no two hubs show the same kind of item."
+    },
+    {
+      "id": "ops-center-layout.1.2",
+      "ref": "ops-center-layout.md 1.2",
+      "title": "Sections when a hub has more than about five items",
+      "statement": "Sections when a hub has more than about five items. The top row is Overview plus titled sections; the second row is one tab per item in the open section. The route shape is `/<hub>/<section>/<item>`. The Overview groups its cards under the same section titles in the same order.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "a hub with more than five items has the two rows and the three-part route, and the Overview section titles and order equal the section tabs."
+    },
+    {
+      "id": "ops-center-layout.1.3",
+      "ref": "ops-center-layout.md 1.3",
+      "title": "The Overview is one card per item",
+      "statement": "The Overview is one card per item. A card shows a tone pill (healthy, worth a look, needs me), a one-line headline, at most four detail lines, and a link to its item.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a UI test renders the Overview for a fixture of items and asserts one card per item, a tone pill on each, no card with more than four detail lines and a link on each card."
+    },
+    {
+      "id": "ops-center-layout.1.4",
+      "ref": "ops-center-layout.md 1.4",
+      "title": "One source of truth for counts",
+      "statement": "One source of truth for counts. The rail badge, the section and item tab counts and the Overview all read one server-side problem list. The client applies no thresholds of its own. Work in progress shows as a spinner, never red.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "repo-check",
+        "id": "RC023"
+      },
+      "acceptance": "repo check RC023 reports a client source that decides a tone, badge or severity from a count compared with a number; a test asserts the badge, tab and Overview counts equal the server list."
+    },
+    {
+      "id": "ops-center-layout.1.5",
+      "ref": "ops-center-layout.md 1.5",
+      "title": "Current state and history are different things",
+      "statement": "Current state and history are different things. A pipeline counts as failed only while its newest finished run on the default branch failed. Older runs fold under History, so a fixed failure never reads as current.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "with a fake code host whose newest finished run succeeded after an earlier failure, the problem list has no item for the pipeline and the page shows the failure only under History."
+    },
+    {
+      "id": "ops-center-layout.1.6",
+      "ref": "ops-center-layout.md 1.6",
+      "title": "Newest first everywhere",
+      "statement": "Newest first everywhere. Cards are ordered by latest activity with running items on top, runs by finish time, scheduled jobs by last run.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a UI or server test with items out of order asserts the order."
+    },
+    {
+      "id": "ops-center-layout.1.7",
+      "ref": "ops-center-layout.md 1.7",
+      "title": "Every runnable thing has a start button in the UI",
+      "statement": "Every runnable thing has a start button in the UI. Pipelines (Run workflow), scheduled jobs (Run now) and maintenance tasks (a backup, a restore drill) can be started from the item. The form opens with safe defaults (dry run on), says plainly when a run will publish, and the primary button then reads \"Run for real\". The contract in section 3 is the server side of the button.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a UI test opens the form and asserts the dry run default and the changed button label; a server test covers each refusal of section 3."
+    },
+    {
+      "id": "ops-center-layout.1.8",
+      "ref": "ops-center-layout.md 1.8",
+      "title": "Name hubs for the work, not the vendor or the tool",
+      "statement": "Name hubs for the work, not the vendor or the tool. \"Work tracking\" instead of the tracker's name, \"Pull requests\" instead of \"Reviews\". The tool name stays in subtitles and links.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "no hub, section or tab title is a vendor or tool name."
+    },
+    {
+      "id": "ops-center-layout.1.9",
+      "ref": "ops-center-layout.md 1.9",
+      "title": "Old links never break",
+      "statement": "Old links never break. Every renamed or moved route redirects to its new home and keeps its tab and query string. The app keeps a lock file listing every route it has ever served.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "repo-check",
+        "id": "RC024"
+      },
+      "acceptance": "repo check RC024 reports a route in the lock file that is no longer routed (a redirect counts) and a routed path missing from the lock file; a test follows each redirect and asserts the tab and query string survive."
     }
   ]
 }
