@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-10-30 (v1.113.0, run with safe defaults dialog)
+
+New opt in kit piece for the ops center layout: `RunDialog`, `RunFields`, `useRunForm` and helpers.
+
+- `RunDialog`: opens with the dry-run defaults of a server spec, says plainly when a run will publish,
+  and the primary button becomes "Run for real". Refusals (paused, running) show with their reason,
+  before the click (`refusal`) or after it (`RunRefusedError`, `runErrorFrom`). A second click while a
+  run is being queued does nothing. The form resets to the safe defaults each time it opens.
+- `RunFields` and `useRunForm` are the body and the state, for a sheet or a page. `runDefaults` and
+  `runPublishes` are the pure rules.
+- The server contract (fixed per-run input spec, unknown inputs refused, same origin or loopback writes,
+  repeated requests folded to `already`, 409 refusals with a reason) is documented in the web UI
+  standard. The kit does no fetching.
+- Standards: "Run with safe defaults" in the web UI standard. Specimen `run-dialog` with baselines in
+  both themes. Tests: 19.
+
 ## 2026-10-30 (v1.112.0, hub Overview area cards)
 
 New opt in kit piece for the ops center layout: `HubOverview` and `AreaCard`.
