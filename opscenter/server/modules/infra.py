@@ -493,35 +493,57 @@ def _health():
     return list(got) if have and got else []
 
 
+def configured():
+    """True when the page has anything to read: a provider, watched repos, a runner repo or maintenance tasks."""
+    return bool(
+        os.environ.get("OPSCENTER_INFRA_PROVIDER", "").strip()
+        or _repos()
+        or _runner_repo()
+        or Path(os.environ.get("INFRA_TASKS") or paths.state_dir() / "infra-tasks.json").is_file()
+    )
+
+
 def badge_problems():
-    """{count, items:[text]} for the Infrastructure nav badge: failing or overdue scheduled jobs and a silent scheduler
-    (from the provider's cron), workflows red on main, an active fallback and the provider's own health checks."""
-    items = []
+    """The Infrastructure part of the single problem list. {count, items, areas, looks}:
+    `areas` are the lines that NEED the owner, by tab: jobs (failing or overdue scheduled jobs, a silent scheduler), spend (an
+    active model fallback) and ci (the provider's failed health checks); `items` is every area's lines in one list and `count` its
+    length. `looks` are lines worth a look, never red: runners offline and workflows red on main in the repos the page watches,
+    read from the cache only so a badge never waits on the code host. Nothing client side decides what counts."""
+    areas = {"jobs": [], "spend": [], "ci": []}
     try:
         c = _cron()
         for j in c.get("jobs") or []:
             if j.get("health") in ("failing", "overdue"):
-                items.append(f"{j.get('name')}: {j.get('health')}")
+                areas["jobs"].append(f"{j.get('name')}: {j.get('health')}")
         hb = c.get("scheduler_heartbeat_age_s")
         if c.get("jobs") and (hb is None or hb > 600):
-            items.append(
+            areas["jobs"].append(
                 "Scheduler heartbeat " + ("unreadable" if hb is None else f"{hb // 60} min old")
             )
     except (OSError, ValueError, KeyError, ProviderRefused) as exc:
-        items.append(f"Scheduled jobs unreadable: {exc}")
+        areas["jobs"].append(f"Scheduled jobs unreadable: {exc}")
     try:
         active, have = _call("fallback_active")
         if have and active:
-            items.append("Model fallback active")
+            areas["spend"].append("Model fallback active")
     except (OSError, ValueError, ProviderRefused) as exc:
-        items.append(f"Fallback state unreadable: {exc}")
+        areas["spend"].append(f"Fallback state unreadable: {exc}")
     try:
         for level, detail in swr.cached("infra:health", 600, _health) or []:
             if level != "OK":
-                items.append(str(detail))
+                areas["ci"].append(str(detail))
     except Exception as exc:  # noqa: BLE001 - a broken check is reported, never hidden
-        items.append(f"Health checks could not run: {exc}")
-    return {"count": len(items), "items": items}
+        areas["ci"].append(f"Health checks could not run: {exc}")
+    looks = {"ci": []}
+    fleet = swr.peek("infra:runners") or {}
+    offline = [r.get("name") for r in fleet.get("runners") or [] if r.get("status") != "online"]
+    if offline:
+        looks["ci"].append("Runners offline: " + ", ".join(str(n) for n in offline[:4]))
+    red = (swr.peek("infra:github") or {}).get("red_on_main") or []
+    for x in red[:4]:
+        looks["ci"].append(f"{x.get('repo')}: {x.get('workflow')} is red on main")
+    items = areas["jobs"] + areas["spend"] + areas["ci"]
+    return {"count": len(items), "items": items, "areas": areas, "looks": looks}
 
 
 def _tasks():

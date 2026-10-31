@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-30 (v1.110.0, sectioned hub header)
+## 2026-10-30 (v1.111.0, sectioned hub header)
 
 New opt in kit piece for the ops center layout: `HubHeader`, `hubPath` and `resolveHubRoute`. A hub
 that keeps using `Tabs` is unchanged.
@@ -13,6 +13,12 @@ that keeps using `Tabs` is unchanged.
   `redirect`, so an old flat link and a bare section never break.
 - Standards: "Sectioned hubs" in the web UI standard. Specimen `hub-header` with baselines in both
   themes. Tests: 11.
+
+## 2026-10-29 (v1.110.0, ops center problem list)
+
+The single server-side problem list. Opt in: new `server/modules/problems.py`; `GET /api/badges` gains `problems`.
+
+- The rail badge, the tab counts and the Overview cards all read one list of items with a tone, at most four detail lines and a place; builds report current state vs history (failed only while the newest finished run on main failed; running is never red) and are ordered newest first (DESIGN.md 12.50). Tests: 18.
 
 ## 2026-10-30 (v1.109.0, ops center layout standard)
 
