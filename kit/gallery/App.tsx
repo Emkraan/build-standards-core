@@ -149,8 +149,10 @@ import {
   createRecordRegistry,
   HubHeader,
   resolveHubRoute,
+  HubOverview,
 } from '../src/index';
 import type { HubSection } from '../src/index';
+import type { AreaCardData } from '../src/index';
 import type { AppAccent, ArtAnchors, BulkRunState, ComboboxFreeEntry, FilterClause, FilterField, HomeTool, LauncherTool, PaletteItem, Recent, ReleaseNote, SortDirection, SortState, TableColumn, ThemeChoice } from '../src/index';
 import { AreaChart, BarChart, ChartLegend, DonutChart, Gauge, LineChart, RingProgress, Sparkline } from '../src/charts';
 import { Graph, graphEdge } from '../src/graph';
@@ -567,6 +569,21 @@ function HubHeaderSpecimen() {
       <p className="gallery-note">Route: {path}. Counts come from the server list, the spinner is work in progress. Click a tab to move.</p>
     </div>
   );
+}
+
+function HubOverviewSpecimen() {
+  const sections = [
+    { key: 'builds', label: 'Builds and releases', items: [{ key: 'web' }, { key: 'agent' }, { key: 'api' }] },
+    { key: 'automation', label: 'Automation', items: [{ key: 'jobs' }, { key: 'ci' }] },
+  ];
+  const areas: AreaCardData[] = [
+    { key: 'web', label: 'Web app', to: '#web', tone: 'alert', headline: 'release 4.2, idle, last run 12 min ago', detail: ['main failed: deploy-web', '1 deploy refused for being behind main, update it from main'] },
+    { key: 'agent', label: 'Agent', to: '#agent', tone: 'good', live: true, headline: 'running now' },
+    { key: 'api', label: 'API', to: '#api', tone: 'good', headline: 'idle, last run 3 h ago' },
+    { key: 'jobs', label: 'Scheduled jobs', to: '#jobs', tone: 'warn', headline: '14 jobs, 1 needs attention', detail: ['nightly-export: last run 2 days ago', 'a', 'b', 'c', 'd'] },
+    { key: 'ci', label: 'CI and backup', to: '#ci', tone: 'good', headline: '4/4 runners online, 0 running, 0 queued, last backup 6 h ago' },
+  ];
+  return <HubOverview sections={sections} areas={areas} summary="1 area needs me: Web app. Red counts are the same list as the badge in the rail." />;
 }
 
 function MonthGridBarsSpecimen() {
@@ -2448,7 +2465,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars', 'hub-header'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars', 'hub-header', 'hub-overview'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2708,6 +2725,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="hub-header" title="Sectioned hub header (two tab rows)">
           <HubHeaderSpecimen />
+        </Specimen>
+        <Specimen id="hub-overview" title="Hub Overview (area cards under section titles)">
+          <HubOverviewSpecimen />
         </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">

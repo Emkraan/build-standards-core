@@ -14,6 +14,8 @@ export { Rail, useNavGlider } from './shell/Rail';
 export type { RailProps } from './shell/Rail';
 export { ContextPanel } from './shell/ContextPanel';
 export type { ContextPanelProps } from './shell/ContextPanel';
+export { AREA_DETAIL_LINES, AreaCard, HubOverview } from './shell/HubOverview';
+export type { AreaCardData, AreaCardProps, AreaTone, HubOverviewProps, OverviewSection } from './shell/HubOverview';
 export { HubHeader, hubPath, resolveHubRoute } from './shell/HubHeader';
 export type { HubHeaderProps, HubItem, HubRoute, HubSection } from './shell/HubHeader';
 export { NavGroup, NavItem } from './shell/nav';
