@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-30 (v1.111.0, sectioned hub header)
+
+New opt in kit piece for the ops center layout: `HubHeader`, `hubPath` and `resolveHubRoute`. A hub
+that keeps using `Tabs` is unchanged.
+
+- `HubHeader`: the page header plus two tab rows, Overview and titled sections on top, one tab per item
+  below once a section is open. Route shape `<base>/<section>/<item>`. Router free (`onNavigate`).
+  Item counts and `live` come from the app; a section tab sums its items; work in progress is a
+  spinner, never red.
+- `hubPath` builds a route from an item or section key. `resolveHubRoute` gives `overview`, `item` or
+  `redirect`, so an old flat link and a bare section never break.
+- Standards: "Sectioned hubs" in the web UI standard. Specimen `hub-header` with baselines in both
+  themes. Tests: 11.
+
 ## 2026-10-29 (v1.110.0, ops center problem list)
 
 The single server-side problem list. Opt in: new `server/modules/problems.py`; `GET /api/badges` gains `problems`.

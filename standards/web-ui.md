@@ -707,6 +707,33 @@ layout mode of `Table`. A page whose data is comparable across columns keeps `Ta
   indicator only, no edge accent. An option may carry a decorative `icon` before its label, and
   `iconOnly` shows the icon alone with the label kept as the accessible name and the tooltip.
 
+### Sectioned hubs (`HubHeader`)
+
+A hub is one page per domain with a tab per thing operated. When it has more than about five items it
+groups them into sections and uses `HubHeader` instead of a flat `Tabs` row. Group by what the hub
+runs, never by the data source or the vendor.
+
+- The header is the page header and two tab rows. The top row is Overview plus one tab per titled
+  section. The second row appears once a section is open and has one tab per item. The route shape is
+  `<base>/<section>/<item>`; a section tab opens the section's first item, so the second row always
+  has a current tab.
+- `HubHeader` is router free. The app passes the current `section` and `item` from its route and goes
+  to a path in `onNavigate`. `hubPath(base, sections, key)` builds a path from an item or section key.
+- Counts and the working state come from the app and are never decided here. An item `count` is the
+  number of things that need attention, read from the one server list the rail badge also reads
+ ; a section tab shows the sum of its items. Work in progress (`live`) is a
+  spinner, never a red count, and a count of zero shows nothing.
+- Old links never break: `resolveHubRoute(base, sections, section, item)` returns `overview`, the
+  `item`, or a `redirect` target. A section the hub does not have is an old flat link (`<base>/<item>`)
+  and redirects to the item's new path; a bare section or an unknown item redirects to the section's
+  first item. The app renders the redirect with its router and carries the query string and hash over.
+- Name hubs and sections for the work ("Work tracking", "Pull requests"), not the tool. The tool name
+  belongs in a subtitle or a link.
+
+**Acceptance:** a component test asserts the two rows, the selected tabs, the summed counts and the
+spinner, the paths each tab goes to, arrow keys, the redirect rules of `resolveHubRoute`, and axe; the
+gallery specimen `hub-header` carries baselines in both themes.
+
 ### Toggle chips (`ChipGroup`)
 
 - `ChipGroup` (`.chip-group`, `.chip-btn`) is for filters where any number of options can be on,
