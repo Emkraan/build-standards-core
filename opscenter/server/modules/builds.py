@@ -729,8 +729,12 @@ def _feed():
         if prev is not None and newest_done != prev:
             refresh.add(p["product"])
         _last_done[p["key"]] = newest_done
+        rv.sort(
+            key=lambda r: (r.get("updated") or r.get("created") or "", r["id"]), reverse=True
+        )  # newest first
         out["pipelines"].append(
             {
+                "state": pipeline_state(rv),
                 "key": p["key"],
                 "product": p["product"],
                 "label": p["label"],
@@ -745,6 +749,14 @@ def _feed():
     for prod in LANDED:
         val, err = infra._safe(_landed, prod, prod in refresh)
         out["landed"][prod] = val or {"errors": [err or "unavailable"]}
+    # Cards by latest activity: a pipeline with a run in flight on top, then the newest run first.
+    out["pipelines"].sort(
+        key=lambda p: (
+            bool(p["state"]["current"]),
+            (p["runs"][0].get("updated") or p["runs"][0].get("created") or "") if p["runs"] else "",
+        ),
+        reverse=True,
+    )
     allruns = [r for p in out["pipelines"] for r in p["runs"]]
     out["running"] = sum(
         1 for r in allruns if r["status"] in ("in_progress", "queued", "requested", "pending")
@@ -762,15 +774,70 @@ def get():
     return _finalize(swr.cached("builds:feed", ttl, _feed))
 
 
+FAILED = ("failure", "timed_out", "startup_failure")
+_IN_FLIGHT = ("in_progress", "queued", "requested", "pending", "waiting")
+
+
+def pipeline_state(runs):
+    """Current state vs history for one pipeline's runs (newest first). `current` is the run in flight (queued, running or
+    waiting), never counted as failed; `failed` is true only while the newest FINISHED run on main failed (a later green
+    run on main clears it, a run on a branch never counts, cancelled is not a failure); `last_main` is that run; `history` is
+    the ids of every older finished run, which the card folds away so a fixed failure never reads as current."""
+    current = next((r for r in runs if r.get("status") in _IN_FLIGHT), None)
+    finished = [r for r in runs if r.get("status") == "completed"]
+    last_main = next((r for r in finished if r.get("branch") == "main"), None)
+    newest = finished[0] if finished else None
+    return {
+        "current": current["id"] if current else None,
+        "failed": bool(last_main and last_main.get("conclusion") in FAILED),
+        "last_main": {"id": last_main["id"], "conclusion": last_main.get("conclusion")}
+        if last_main
+        else None,
+        "history": [r["id"] for r in finished if newest is not None and r["id"] != newest["id"]],
+    }
+
+
+def main_failure_items(feed):
+    """One item per pipeline whose newest finished run on main failed: {key, label, product, run, conclusion, url}."""
+    out = []
+    for p in (feed or {}).get("pipelines") or []:
+        runs = p.get("runs") or []
+        st = pipeline_state(runs)
+        if st["failed"]:
+            r = next(r for r in runs if r["id"] == st["last_main"]["id"])
+            out.append(
+                {
+                    "key": p.get("key"),
+                    "label": p.get("label"),
+                    "product": p.get("product"),
+                    "run": r["id"],
+                    "conclusion": r.get("conclusion"),
+                    "url": r.get("url"),
+                }
+            )
+    return out
+
+
+def main_failures(feed):
+    """The same as text, one line per pipeline (the sidebar and the Overview read the items)."""
+    return [f"{i['label']}: last main run {i['conclusion']}" for i in main_failure_items(feed)]
+
+
 def badge():
-    """Sidebar count. Never blocks the badges call: a cold cache warms in the background and
-    counts 0 until then, a warm one is served stale-while-revalidate."""
+    """Sidebar facts. Never blocks the badges call: a cold cache warms in the background and counts 0 until then, a warm one is
+    served stale-while-revalidate. Running and waiting are a soft count, never a problem; `failed` is the lines of
+    main_failures and `failed_items` the same as items."""
     last = swr.peek("builds:feed")
     if last is None:
         threading.Thread(target=get, daemon=True).start()
-        return {"running": 0, "waiting": 0}
+        return {"running": 0, "waiting": 0, "failed": [], "failed_items": []}
     last = get()
-    return {"running": last.get("running", 0), "waiting": last.get("waiting", 0)}
+    return {
+        "running": last.get("running", 0),
+        "waiting": last.get("waiting", 0),
+        "failed": main_failures(last),
+        "failed_items": main_failure_items(last),
+    }
 
 
 if __name__ == "__main__":

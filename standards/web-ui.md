@@ -707,6 +707,54 @@ layout mode of `Table`. A page whose data is comparable across columns keeps `Ta
   indicator only, no edge accent. An option may carry a decorative `icon` before its label, and
   `iconOnly` shows the icon alone with the label kept as the accessible name and the tooltip.
 
+### Hub Overview (`HubOverview`, `AreaCard`)
+
+The Overview of a sectioned hub has one card per item, grouped under the same section titles in the
+same order as the tabs.
+
+- A card has a tone pill, a one line headline, at most four detail lines, and a link to the item (the
+  title). The pill reads `healthy` (good), `worth a look` (warn) or `needs me` (alert); a card in the
+  alert tone also gets the danger border. A fifth detail line and beyond fold into "and N more".
+- The tone is decided by the server's problem list, the same list that feeds the rail badge and the
+  tab counts of `HubHeader`. A card never judges a number against a threshold of its own, and the
+  Overview, the tabs and the badge never disagree.
+- Work in progress is a spinner. A running item takes the info tone and, when it is otherwise
+  healthy, reads `running`; it is never red for being busy.
+- Order cards by latest activity within a section, running items first, and give the summary line
+  (how many areas need attention) to the `summary` prop. An item with no data yet shows no card.
+- The link goes through the shell's link component, like the rail, and an unsafe target renders
+  without a link.
+
+**Acceptance:** a component test asserts the three tones, the four line limit and the "more" line, the
+running state, the grouping and order under the section titles, and axe; the gallery specimen
+`hub-overview` carries baselines in both themes.
+### Sectioned hubs (`HubHeader`)
+
+A hub is one page per domain with a tab per thing operated. When it has more than about five items it
+groups them into sections and uses `HubHeader` instead of a flat `Tabs` row. Group by what the hub
+runs, never by the data source or the vendor.
+
+- The header is the page header and two tab rows. The top row is Overview plus one tab per titled
+  section. The second row appears once a section is open and has one tab per item. The route shape is
+  `<base>/<section>/<item>`; a section tab opens the section's first item, so the second row always
+  has a current tab.
+- `HubHeader` is router free. The app passes the current `section` and `item` from its route and goes
+  to a path in `onNavigate`. `hubPath(base, sections, key)` builds a path from an item or section key.
+- Counts and the working state come from the app and are never decided here. An item `count` is the
+  number of things that need attention, read from the one server list the rail badge also reads
+ ; a section tab shows the sum of its items. Work in progress (`live`) is a
+  spinner, never a red count, and a count of zero shows nothing.
+- Old links never break: `resolveHubRoute(base, sections, section, item)` returns `overview`, the
+  `item`, or a `redirect` target. A section the hub does not have is an old flat link (`<base>/<item>`)
+  and redirects to the item's new path; a bare section or an unknown item redirects to the section's
+  first item. The app renders the redirect with its router and carries the query string and hash over.
+- Name hubs and sections for the work ("Work tracking", "Pull requests"), not the tool. The tool name
+  belongs in a subtitle or a link.
+
+**Acceptance:** a component test asserts the two rows, the selected tabs, the summed counts and the
+spinner, the paths each tab goes to, arrow keys, the redirect rules of `resolveHubRoute`, and axe; the
+gallery specimen `hub-header` carries baselines in both themes.
+
 ### Toggle chips (`ChipGroup`)
 
 - `ChipGroup` (`.chip-group`, `.chip-btn`) is for filters where any number of options can be on,
