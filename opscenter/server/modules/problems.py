@@ -10,8 +10,21 @@ Purpose: The one server-side problem list. The rail badge, the section and item 
 Date:    2026-10-30
 
 Item: {id, hub, section, item, label, tone, headline, details (at most four lines), count, running, url}
-List: {items, counts: {needs_me, worth_a_look, healthy, running, total, by_section: {section: n}, by_item: {"section/item": n}}}
-      where the counts of a section or item are its needs_me plus worth_a_look items.
+      `count` is the number of problem lines the item has (two failing jobs and a stale heartbeat are 3, not 1), whatever the
+      cap on the detail lines; it is 0 for a healthy item. This is the one unit of every count in the UI.
+List: {items, counts: {needs_me, worth_a_look, healthy, running, total, lines, by_section: {section: n}, by_item: {"section/item": n}}}
+      where `lines` is the sum of every item's count (the rail badge) and the counts of a section or item are the sum of its
+      items' counts, so the tabs add up to the badge.
+
+The provider slot (null default): OPSCENTER_PROBLEMS_PROVIDER, `path/to/file.py:ClassName`, lets a consumer add its own problem
+sources and live facts without forking this file. Every method is optional and returns plain data:
+  headlines()    {key: "one line of live facts"}, the headline of any item by its source key (healthy or not);
+  running()      the keys that have a run in flight (any item, drawn as a spinner, never red);
+  needs_me()     [{key, section, item, label, headline?, details: [lines], running?, url?}] things waiting on the owner (a refused
+                 deploy waiting on a click, a run waiting on an approval); red;
+  worth_a_look() the same shape for amber lines (spend headroom at 70 percent or more, an account that could not be read).
+A source whose key is already an item adds its lines to that item and raises its tone; a new key is a new item. A provider that
+cannot be loaded or raises shows as one needs_me item, never as clear.
 
 Where an item lives is configuration: OPSCENTER_PROBLEM_MAP (a JSON file, default <state>/problem-map.json) may set
 {"hub": "<default hub>", "<source key>": {"hub", "section", "item", "label"}}. The source keys are builds:<product>, jobs, ci,
@@ -19,6 +32,7 @@ spend and core. The defaults are hub "operations" and the sections builds, autom
 """
 
 import importlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -57,15 +71,19 @@ def _place(key, section, item, label):
     }
 
 
-def _item(key, section, item, label, tone, headline, details=(), running=False, url=None):
-    d = [str(x) for x in details][:MAX_DETAILS]
+def _item(
+    key, section, item, label, tone, headline, details=(), running=False, url=None, lines=None
+):
+    """`lines` is how many problem lines the item stands for (default: its detail lines, at least one when not healthy)."""
+    d = [str(x) for x in details]
+    n = 0 if tone == "healthy" else max(1, len(d) if lines is None else int(lines))
     return dict(
         _place(key, section, item, label),
         id=key,
         tone=tone,
         headline=headline,
-        details=d,
-        count=0 if tone == "healthy" else 1,
+        details=d[:MAX_DETAILS],
+        count=n,
         running=bool(running),
         url=url,
     )
@@ -109,6 +127,7 @@ def _builds():
                     lines[1:] + ["A later green run on main clears it"],
                     e["running"],
                     f.get("url"),
+                    lines=len(e["failed"]),
                 )
             )
         else:
@@ -200,9 +219,107 @@ def _core():
                 "Core",
                 "needs_me",
                 f"{_plural(n, 'approval')} waiting on me",
+                lines=n,
             )
         ]
     return [_item("core", "cost", "core", "Core", "healthy", "Nothing waiting")]
+
+
+_provider = {"spec": None, "obj": None}
+
+
+def provider():
+    """The configured problems provider object, or None (the null default). A bad spec raises ValueError."""
+    spec = os.environ.get("OPSCENTER_PROBLEMS_PROVIDER", "").strip()
+    if _provider["spec"] == spec:
+        return _provider["obj"]
+    obj = None
+    if spec:
+        path, _, cls_name = spec.rpartition(":")
+        if not path or not cls_name:
+            raise ValueError("provider must be `path/to/file.py:ClassName`")
+        file = Path(path)
+        if not file.is_file():
+            raise ValueError(f"provider file not found: {file.name}")
+        ms = importlib.util.spec_from_file_location(f"problems_provider_{file.stem}", file)
+        mod = importlib.util.module_from_spec(ms)
+        try:
+            ms.loader.exec_module(mod)
+            obj = getattr(mod, cls_name)()
+        except (OSError, ImportError, AttributeError, TypeError, SyntaxError) as exc:
+            raise ValueError(f"provider could not be loaded: {type(exc).__name__}") from exc
+    _provider.update(spec=spec, obj=obj)
+    return obj
+
+
+_TONE_ORDER = {"needs_me": 0, "worth_a_look": 1, "healthy": 2}
+
+
+def _call(p, name):
+    fn = getattr(p, name, None) if p is not None else None
+    return fn() if callable(fn) else None
+
+
+def _extras(items, sources, tone):
+    """Fold a provider's sources of one tone into the list: a key that is already an item adds its lines and raises its tone."""
+    by = {i["id"]: i for i in items}
+    for src in sources or []:
+        if not isinstance(src, dict) or not src.get("key"):
+            continue
+        key = str(src["key"])
+        lines = [str(x) for x in (src.get("details") or [])]
+        head = str(src.get("headline") or (lines[0] if lines else key))
+        cur = by.get(key)
+        if cur is None:
+            new = _item(
+                key,
+                str(src.get("section") or "other"),
+                str(src.get("item") or key),
+                str(src.get("label") or key),
+                tone,
+                head,
+                lines,
+                bool(src.get("running")),
+                src.get("url"),
+            )
+            items.append(new)
+            by[key] = new
+            continue
+        if _TONE_ORDER[tone] < _TONE_ORDER[cur["tone"]]:
+            cur["tone"] = tone
+            cur["headline"] = head
+        cur["count"] += max(1, len(lines))
+        cur["details"] = (cur["details"] + lines)[:MAX_DETAILS]
+        cur["running"] = cur["running"] or bool(src.get("running"))
+
+
+def _provided(items):
+    """The provider's sources, live headlines and running flags (all optional, all guarded as one needs_me item)."""
+    try:
+        p = provider()
+        if p is None:
+            return
+        _extras(items, _call(p, "needs_me"), "needs_me")
+        _extras(items, _call(p, "worth_a_look"), "worth_a_look")
+        heads = _call(p, "headlines") or {}
+        run = {str(k) for k in (_call(p, "running") or [])}
+        for i in items:
+            if heads.get(i["id"]):
+                i["headline"] = str(heads[i["id"]])
+            if i["id"] in run:
+                i["running"] = True
+    except Exception as e:  # noqa: BLE001 - a broken provider is reported, never read as clear
+        items.append(
+            _item(
+                "provider",
+                "other",
+                "provider",
+                "Problems provider",
+                "needs_me",
+                "Could not read the problems provider",
+                [str(e)[:200]],
+            )
+        )
 
 
 def collect():
@@ -222,15 +339,16 @@ def collect():
                     [str(e)[:200]],
                 )
             )
+    _provided(items)
     # needs_me first, then worth a look, then healthy; a running item stays among its tone
-    order = {"needs_me": 0, "worth_a_look": 1, "healthy": 2}
-    items.sort(key=lambda i: (order[i["tone"]], i["section"], i["item"]))
+    items.sort(key=lambda i: (_TONE_ORDER[i["tone"]], i["section"], i["item"]))
     counts = {
         "needs_me": 0,
         "worth_a_look": 0,
         "healthy": 0,
         "running": 0,
         "total": len(items),
+        "lines": 0,
         "by_section": {},
         "by_item": {},
     }
@@ -238,7 +356,10 @@ def collect():
         counts[i["tone"]] += 1
         counts["running"] += 1 if i["running"] else 0
         if i["count"]:
-            counts["by_section"][i["section"]] = counts["by_section"].get(i["section"], 0) + 1
+            counts["lines"] += i["count"]
+            counts["by_section"][i["section"]] = (
+                counts["by_section"].get(i["section"], 0) + i["count"]
+            )
             k = f"{i['section']}/{i['item']}"
-            counts["by_item"][k] = counts["by_item"].get(k, 0) + 1
+            counts["by_item"][k] = counts["by_item"].get(k, 0) + i["count"]
     return {"items": items, "counts": counts}
