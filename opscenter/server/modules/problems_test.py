@@ -127,8 +127,12 @@ class Problems(unittest.TestCase):
             (c["needs_me"], c["worth_a_look"], c["healthy"], c["running"], c["total"]),
             (3, 1, 2, 1, 6),
         )
-        self.assertEqual(c["by_section"], {"builds": 1, "automation": 2, "cost": 1})
-        self.assertEqual(c["by_item"]["automation/jobs"], 1)
+        # the unit is one per problem line: 7 failing jobs read 7, not 1, and the tabs add up to the badge
+        self.assertEqual(c["by_section"], {"builds": 1, "automation": 8, "cost": 2})
+        self.assertEqual(c["by_item"]["automation/jobs"], 7)
+        self.assertEqual(c["lines"], 11)
+        self.assertEqual(c["lines"], sum(c["by_section"].values()))
+        self.assertEqual((by["jobs"]["count"], len(by["jobs"]["details"])), (7, 4))
         self.assertNotIn("builds/web", c["by_item"])
         self.assertEqual(
             [i["tone"] for i in out["items"]],
@@ -187,6 +191,115 @@ class Problems(unittest.TestCase):
         self.mods["infra"] = types.SimpleNamespace(badge_problems=boom)
         by = {i["id"]: i for i in pb.collect()["items"]}
         self.assertEqual((by["ci"]["tone"], by["ci"]["details"]), ("needs_me", ["down"]))
+
+
+class Provider(unittest.TestCase):
+    """OPSCENTER_PROBLEMS_PROVIDER: live headlines, running on any item and a consumer's own problem sources."""
+
+    PROVIDER = """
+class P:
+    def headlines(self):
+        return {"ci": "2 online, 1 queued, last backup 3 h ago", "builds:app": "v1.2.3 shipped"}
+    def running(self):
+        return ["ci"]
+    def needs_me(self):
+        return [
+            {"key": "builds:app", "details": ["Deploy to dev refused, waiting on a click"]},
+            {"key": "runs", "section": "automation", "item": "runs", "label": "Runs",
+             "details": ["Run 9 waits on an approval"]},
+        ]
+    def worth_a_look(self):
+        return [{"key": "spend", "details": ["Spend at 78 percent of the limit", "Account b could not be read"]}]
+"""
+
+    def setUp(self):
+        self.mods = {}
+        self._mod = pb._mod
+        pb._mod = lambda name: self.mods.get(name)
+        self.tmp = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        pb._mod = self._mod
+        os.environ.pop("OPSCENTER_PROBLEMS_PROVIDER", None)
+        pb._provider.update(spec=None, obj=None)
+        self.tmp.cleanup()
+
+    def use(self, src):
+        f = Path(self.tmp.name) / "prov.py"
+        f.write_text(src, encoding="utf-8")
+        os.environ["OPSCENTER_PROBLEMS_PROVIDER"] = f"{f}:P"
+        pb._provider.update(spec=None, obj=None)
+
+    def world(self):
+        self.mods["builds"] = fake_builds(
+            [
+                {
+                    "key": "a",
+                    "label": "Release app",
+                    "product": "app",
+                    "url": "u",
+                    "state": {"current": None},
+                }
+            ],
+            [],
+        )
+        self.mods["infra"] = types.SimpleNamespace(
+            badge_problems=lambda: {
+                "areas": {"jobs": [], "spend": [], "ci": []},
+                "looks": {"ci": []},
+            }
+        )
+
+    def test_null_default_changes_nothing(self):
+        self.world()
+        out = pb.collect()
+        self.assertEqual({i["id"]: i["headline"] for i in out["items"]}["ci"], "Healthy")
+        self.assertEqual(out["counts"]["lines"], 0)
+
+    def test_headlines_running_and_sources(self):
+        self.world()
+        self.use(self.PROVIDER)
+        out = pb.collect()
+        by = {i["id"]: i for i in out["items"]}
+        self.assertEqual(by["ci"]["headline"], "2 online, 1 queued, last backup 3 h ago")
+        self.assertEqual((by["ci"]["running"], by["ci"]["tone"]), (True, "healthy"))
+        # a source on an existing item raises its tone and adds its lines
+        self.assertEqual((by["builds:app"]["tone"], by["builds:app"]["count"]), ("needs_me", 1))
+        self.assertEqual(by["builds:app"]["headline"], "v1.2.3 shipped")
+        # a new key is a new item; worth a look counts one per line and stays amber
+        self.assertEqual((by["runs"]["tone"], by["runs"]["section"]), ("needs_me", "automation"))
+        self.assertEqual((by["spend"]["tone"], by["spend"]["count"]), ("worth_a_look", 2))
+        c = out["counts"]
+        self.assertEqual(c["lines"], 1 + 1 + 2)
+        self.assertEqual(c["by_item"]["automation/runs"], 1)
+        self.assertEqual(c["running"], 1)
+
+    def test_a_source_never_lowers_a_tone(self):
+        self.world()
+        self.mods["infra"] = types.SimpleNamespace(
+            badge_problems=lambda: {
+                "areas": {"jobs": [], "spend": ["Model fallback active"], "ci": []},
+                "looks": {"ci": []},
+            }
+        )
+        self.use(self.PROVIDER)
+        by = {i["id"]: i for i in pb.collect()["items"]}
+        self.assertEqual((by["spend"]["tone"], by["spend"]["count"]), ("needs_me", 3))
+
+    def test_a_broken_provider_is_one_needs_me_item(self):
+        self.world()
+        for src in (
+            "class P:\n    def needs_me(self):\n        raise RuntimeError('boom')\n",
+            "this is not python",
+        ):
+            self.use(src)
+            by = {i["id"]: i for i in pb.collect()["items"]}
+            self.assertEqual(by["provider"]["tone"], "needs_me")
+        os.environ["OPSCENTER_PROBLEMS_PROVIDER"] = "nope"
+        pb._provider.update(spec=None, obj=None)
+        self.assertEqual(
+            {i["id"]: i for i in pb.collect()["items"]}["provider"]["tone"], "needs_me"
+        )
 
 
 if __name__ == "__main__":

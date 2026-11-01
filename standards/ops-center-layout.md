@@ -1,6 +1,6 @@
 # Ops Center Layout Standard
 
-Version: 1.0 | Last reviewed: 2026-10-30 | Status: current | Scope: local-ops (operator consoles)
+Version: 1.1 | Last reviewed: 2026-11-01 | Status: current | Scope: local-ops (operator consoles)
 
 How an ops center is organised and how it starts work: what a hub is, how its items are grouped, what
 the Overview shows, where every count comes from, and what a Run button promises. The ops center
@@ -23,12 +23,12 @@ Related: [Local Ops App](local-ops-app.md) (the server, the problem list, the po
 2. **Sections when a hub has more than about five items.** The top row is Overview plus titled sections; the second row is one tab per item in the open section. The route shape is `/<hub>/<section>/<item>`. The Overview groups its cards under the same section titles in the same order.
    - Prevents: a single row of fifteen tabs nobody can scan, and an Overview that orders things differently from the tabs.
    - Acceptance (review): a hub with more than five items has the two rows and the three-part route, and the Overview section titles and order equal the section tabs.
-3. **The Overview is one card per item.** A card shows a tone pill (healthy, worth a look, needs me), a one-line headline, at most four detail lines, and a link to its item.
+3. **The Overview is one card per item.** A card shows a tone pill (healthy, worth a look, needs me), a one-line headline that leads with the item's live facts (versions, runners online, spend against the projection, not a bare "Healthy"), at most four detail lines, and a link to its item.
    - Prevents: an Overview that is a second copy of every page.
    - Acceptance (test): a UI test renders the Overview for a fixture of items and asserts one card per item, a tone pill on each, no card with more than four detail lines and a link on each card.
-4. **One source of truth for counts.** The rail badge, the section and item tab counts and the Overview all read one server-side problem list. The client applies no thresholds of its own. Work in progress shows as a spinner, never red.
+4. **One source of truth for counts.** The rail badge, the section and item tab counts and the Overview all read one server-side problem list, counted one per problem line (two failing jobs and a stale heartbeat read 3). The client applies no thresholds of its own. Work in progress shows as a spinner, never red, on any item.
    - Prevents: a badge, a tab and a card that disagree, and a red mark for a job that is simply running.
-   - Acceptance (repo check RC023): no client source decides a tone, badge or severity from a count compared with a number; a test asserts the badge, tab and Overview counts equal the server list.
+   - Acceptance (repo check RC023): no client source decides a tone, badge or severity from a count compared with a number; a test asserts the badge, tab and Overview counts equal the server list, and that an item with three problem lines counts 3.
 5. **Current state and history are different things.** A pipeline counts as failed only while its newest finished run on the default branch failed. Older runs fold under History, so a fixed failure never reads as current.
    - Prevents: a red mark that stays until the operator dismisses a failure that was fixed an hour ago.
    - Acceptance (test): with a fake code host whose newest finished run succeeded after an earlier failure, the problem list has no item for the pipeline and the page shows the failure only under History.
@@ -65,6 +65,8 @@ A Run button queues work; it never decides it. The server side is fixed and the 
 ## 4. The problem list
 
 One server function builds the list: each item has an id, the hub, section and item it belongs to, a tone (healthy, worth a look, needs me), a one-line headline and up to four detail lines. The rail badge, the section and item tab counts and the Overview read it and nothing else, so a number can only be wrong in one place. A pipeline is an item only while its newest finished run on the default branch failed; a running pipeline is an item with a running state and no failure tone. The list is cached on the server's polling budget ([Local Ops App](local-ops-app.md) section 15) and a client never recomputes it.
+
+The count of an item is its number of problem lines, never one per item, and the list carries the total (`lines`, the rail badge) so the badge, the section counts and the item counts always add up. The headline of an item is the live facts of what it runs; the provider of the list fills it. An item may be running whatever its area; the flag draws a spinner and never a tone. A consumer adds its own problem sources through the problems provider slot instead of changing the list: a source for what is waiting on the owner (a refused deploy that needs a click, a run waiting on an approval) and one for what is worth a look (spend headroom at 70 percent or more, an account that could not be read). A source whose item already exists adds its lines to it and can only raise its tone.
 
 ## 5. Checks
 
