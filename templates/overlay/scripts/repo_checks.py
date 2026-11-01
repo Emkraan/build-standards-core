@@ -1405,8 +1405,19 @@ COUNT_COMPARE = re.compile(
     r"(?:\.length|[Cc]ount|[Tt]otal|[Ff]ailed|[Ff]ailing|[Ee]rrors?|[Pp]roblems?)\)?\s*(>=|<=|===|==|>|<)\s*(\d+)\b"
 )
 TONE_WORD = re.compile(
-    r"\b(?:tone|badge|severity|variant|level)\b|['\"`](?:bad|warn|warning|crit|critical|danger|needs[-_ ]?me|worth)"
+    r"\b(?:tone|badge|severity|variant|level)\b|['\"`](?:bad|warn|warning|crit|critical|danger|needs[-_ ]?me|worth|amber|red|yellow|orange)"
 )
+# An age or a duration is a threshold just like a count: a name that says time (age, hours, minutes, seconds, days, ms, elapsed,
+# stale, duration, ago) compared with a number, a clock difference compared with a number, or anything compared with a product of
+# time units (30 * 3600 * 1000).
+AGE_COMPARE = re.compile(
+    r"(?:[Aa]ge\w*|\w*(?:[Hh]ours?|[Hh]rs|[Mm]ins?|[Mm]inutes|[Ss]ecs?|[Ss]econds|[Dd]ays?|Ms|[Mm]illis)\w*|[Ee]lapsed\w*|[Dd]uration\w*|[Ss]tale\w*|[Aa]go)"
+    r"\)?\s*(>=|<=|===|==|>|<)\s*(\d[\d_.]*(?:e\d+)?)\b"
+)
+CLOCK_COMPARE = re.compile(
+    r"(?:Date\.now\(\)|new Date\(\)\.getTime\(\)|performance\.now\(\))[^;{}]*?(>=|<=|>|<)\s*(\d[\d_.]*(?:e\d+)?)\b"
+)
+DURATION_EXPR = re.compile(r"(>=|<=|>|<)\s*\(?\s*\d+(?:\.\d+)?\s*(?:\*\s*\d+(?:\.\d+)?\s*)+\)?")
 
 
 def _is_threshold(op, n):
@@ -1421,6 +1432,14 @@ def _is_threshold(op, n):
     if op == "<" and n == 1:
         return False
     return not (op == "<=" and n == 0)
+
+
+def _is_age_threshold(op, n):
+    """Any age or duration compared with a number other than zero is a threshold (0 asks only whether there is one)."""
+    try:
+        return float(n.replace("_", "")) != 0
+    except ValueError:
+        return True
 
 
 def rc023(repo):
@@ -1438,16 +1457,27 @@ def rc023(repo):
                 else ""
             )
             window = prev + " " + ln
-            for m in COUNT_COMPARE.finditer(ln):
-                if _is_threshold(m.group(1), m.group(2)) and TONE_WORD.search(window):
-                    out.append(
-                        (
-                            p,
-                            i + 1,
-                            "a count is compared with a number to decide a tone or badge; the server problem list decides",
-                        )
-                    )
-                    break
+            if not TONE_WORD.search(window):
+                continue
+            if any(_is_threshold(m.group(1), m.group(2)) for m in COUNT_COMPARE.finditer(ln)):
+                what = "a count"
+            elif (
+                any(_is_age_threshold(m.group(1), m.group(2)) for m in AGE_COMPARE.finditer(ln))
+                or any(
+                    _is_age_threshold(m.group(1), m.group(2)) for m in CLOCK_COMPARE.finditer(ln)
+                )
+                or DURATION_EXPR.search(ln)
+            ):
+                what = "an age or a duration"
+            else:
+                continue
+            out.append(
+                (
+                    p,
+                    i + 1,
+                    f"{what} is compared with a number to decide a tone or badge; the server problem list decides",
+                )
+            )
     return out
 
 
@@ -1531,7 +1561,7 @@ CHECKS = {
     "RC020": ("no inline asset limit", "web-client-runtime.md 4.3", rc020),
     "RC021": ("bearer header built in many files", "web-client-runtime.md 5.1", rc021),
     "RC022": ("permissions compared by hand in many files", "rbac.md 3", rc022),
-    "RC023": ("client-side count threshold", "ops-center-layout.md 1.4", rc023),
+    "RC023": ("client-side count, age or duration threshold", "ops-center-layout.md 1.4", rc023),
     "RC024": ("route removed without a redirect", "ops-center-layout.md 1.9", rc024),
 }
 
