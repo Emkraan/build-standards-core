@@ -75,6 +75,9 @@ Related: [Automation Safety](automation-safety.md), [Docs and Changelog](docs-an
 19. **Every file is plain ASCII.** No tracked text file holds a byte above 127: no em or en dash, curly quote, NBSP, arrow, ellipsis or zero-width character, in code, docs, config and data alike. Binaries, lockfiles and the synced core copies are out of scope (the core checks its own content before release). A repo that already holds non-ASCII files does not narrow the check to pass: it records a time-boxed exception per path (rule `pr-review-and-merge.md 1.19`, a `Scope` that names the path or glob, a `Review by` date) in `standards-local/exceptions.md` and clears the files before that date. A script or XAML file is never covered by such an exception; its own rules (scripting-powershell.md 1.7, wpf-design-system.md 6.1) hold.
     - Prevents: characters that break a parser or a hidden-window launch, render as mojibake in a log, or hide in a diff, and a check quietly narrowed until it proves nothing.
     - Acceptance (overlay-ci): the `core-ci.yml` job `core-ascii` passes; with no ASCII patterns parameter it reads every tracked text file, and each line it excepts names the exception.
+20. **Every PR declares what it does to issues.** The PR body holds exactly one of: `Closes #N` (or `Fixes #N`, `Resolves #N`, one or more issues); `Refs #N` plus a line `Remaining: <what is left>`; or `No issue: <reason>`. A revert (title or body) passes. Dependency bots (Renovate, dependabot) are exempt, and the consumer's parameters name more: exempt authors, app authors exempt on `chore/`, `pin/`, `standards-sync/` or `fold/` branches (`PR issue bot branches` sets the prefixes), and repo name prefixes whose reporters close the issue.
+    - Prevents: finished work left open because the PR said `Refs` or named nothing, and an after-the-fact reconciler closing the wrong issues.
+    - Acceptance (overlay-ci): the `core-ci.yml` job `core-pr-issue` passes.
 
 ## 2. Preparing the PR
 

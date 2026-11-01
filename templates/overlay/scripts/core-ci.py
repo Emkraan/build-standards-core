@@ -5,6 +5,9 @@ Usage (run from the consumer repo root; the overlay may sit in a subfolder):
   python3 scripts/core-ci.py params [--github-output]       parameters the workflow needs, from
                                                              standards-local/parameters.md
   python3 scripts/core-ci.py pr-title [TITLE]                Conventional Commit PR title (PR_TITLE)
+  python3 scripts/core-ci.py pr-issue                        the PR body declares what it does to issues
+                                                             (PR_TITLE, PR_BODY, PR_AUTHOR, PR_BRANCH,
+                                                             GITHUB_REPOSITORY)
   python3 scripts/core-ci.py commitlint BASE HEAD            every commit subject in BASE..HEAD
   python3 scripts/core-ci.py attribution BASE HEAD           no tool attribution in commits, PR title
                                                              and body (PR_TITLE, PR_BODY), plus the
@@ -299,6 +302,99 @@ def cmd_pr_title(argv: list) -> int:
         f"with a type from {', '.join(TYPES)}"
     )
     return 1
+
+
+# A PR body declares exactly one outcome for issues, so finished work does not sit in open issues.
+ISSUE_REF = r"(?:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)?#\d+"
+CLOSING = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+" + ISSUE_REF, re.I)
+REFS = re.compile(r"(?:^|[^\w])(?:refs?|part of)\s*:?\s+" + ISSUE_REF, re.I | re.M)
+REMAINING = re.compile(r"^\s*(?:[-*]\s*)?Remaining:\s*\S", re.I | re.M)
+NO_ISSUE = re.compile(r"^\s*(?:[-*]\s*)?No issue:\s*\S", re.I | re.M)
+DEFAULT_EXEMPT_AUTHORS = ("renovate[bot]", "renovate", "dependabot[bot]")
+DEFAULT_BOT_BRANCHES = ("chore", "pin", "standards-sync", "fold")
+
+
+def pr_issue_config() -> dict:
+    """Exemptions: an env var, else the parameters row, else the default. Names stay with the consumer."""
+
+    def pick(env_name: str, row: str) -> list:
+        return listed(os.environ.get(env_name) or parameter(row))
+
+    return {
+        "authors": [a.lower() for a in pick("PR_ISSUE_EXEMPT_AUTHORS", "PR issue exempt authors")],
+        "app_authors": [a.lower() for a in pick("PR_ISSUE_APP_AUTHORS", "PR issue app authors")],
+        "branches": pick("PR_ISSUE_BOT_BRANCHES", "PR issue bot branches")
+        or list(DEFAULT_BOT_BRANCHES),
+        "repos": [r.lower() for r in pick("PR_ISSUE_EXEMPT_REPOS", "PR issue exempt repos")],
+    }
+
+
+def pr_issue_findings(
+    title: str,
+    body: str,
+    author: str = "",
+    branch: str = "",
+    repo: str = "",
+    cfg: dict | None = None,
+) -> list:
+    """Problems with a PR's issue declaration (empty list when it passes or is exempt).
+
+    Exempt: the always-exempt bots plus cfg authors; an app author (cfg app_authors) on a bot branch;
+    a repo whose name starts with a cfg exempt prefix; a revert (title or body)."""
+    cfg = cfg or {}
+    who = author.strip().lower()
+    if who in DEFAULT_EXEMPT_AUTHORS or who in cfg.get("authors", []):
+        return []
+    prefixes = cfg.get("branches") or list(DEFAULT_BOT_BRANCHES)
+    bot_branch = re.compile(
+        r"^(?:" + "|".join(re.escape(x) for x in prefixes) + r")(?:[/-]|$)", re.I
+    )
+    if who in cfg.get("app_authors", []) and bot_branch.match(branch.strip()):
+        return []
+    name = repo.split("/")[-1].lower()
+    if any(name.startswith(x) for x in cfg.get("repos", [])):
+        return []
+    if re.match(r"\s*revert\b", title or "", re.I) or "this reverts commit" in (body or "").lower():
+        return []
+    text = re.sub(r"<!--.*?-->", "", body or "", flags=re.S)
+    text = re.sub(r"```.*?```", "", text, flags=re.S)
+    forms = []
+    if CLOSING.search(text):
+        forms.append("Closes/Fixes/Resolves #N")
+    refs = bool(REFS.search(text))
+    remaining = bool(REMAINING.search(text))
+    if refs:
+        forms.append("Refs #N")
+    if NO_ISSUE.search(text):
+        forms.append("No issue: <reason>")
+    if not forms:
+        return [
+            "declare what this PR does to issues: Closes #N, or Refs #N with a Remaining: line, "
+            "or No issue: <reason>"
+        ]
+    if len(forms) > 1:
+        return [f"declare exactly one form, found {len(forms)}: " + "; ".join(forms)]
+    if refs and not remaining:
+        return [
+            "Refs #N needs a line 'Remaining: <what is left>' (or use Closes #N when nothing is left)"
+        ]
+    return []
+
+
+def cmd_pr_issue(argv: list) -> int:
+    env = os.environ.get
+    bad = pr_issue_findings(
+        env("PR_TITLE", ""),
+        env("PR_BODY", ""),
+        env("PR_AUTHOR", ""),
+        env("PR_BRANCH", ""),
+        env("GITHUB_REPOSITORY", ""),
+        pr_issue_config(),
+    )
+    for b in bad:
+        say(f"::error::pr-issue: {b}")
+    say(f"pr-issue: {'fail' if bad else 'ok'}")
+    return 1 if bad else 0
 
 
 def commits(base: str, head: str) -> list:
@@ -2258,6 +2354,7 @@ def cmd_powershell(argv: list) -> int:
 COMMANDS = {
     "params": cmd_params,
     "pr-title": cmd_pr_title,
+    "pr-issue": cmd_pr_issue,
     "commitlint": cmd_commitlint,
     "attribution": cmd_attribution,
     "identity": cmd_identity,

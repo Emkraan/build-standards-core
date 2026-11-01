@@ -97,6 +97,7 @@ gate.
 | `core-ci.yml` step `core-ascii` | req | req | req | - |
 | `core-ci.yml` step `core-pr-title`, `core-commitlint` | req | req | req | - |
 | `core-ci.yml` step `core-attribution`, `core-identity` | req | req | req | - |
+| `core-ci.yml` step `core-pr-issue` | req | req | req | - |
 | `core-ci.yml` step `core-changelog` | req | req | req | - |
 | `core-ci.yml` step `core-python`, `core-powershell` | stack | stack | - | - |
 | `core-ci.yml` step `core-node-pin` | req | stack | - | - |
@@ -320,7 +321,7 @@ a merge queue) once all checks pass. The `--squash` flags below stand for the de
   env:
     REQUIRED_CHECKS: >-
       lint-and-build core-secret-scan core-workflow-lint core-ascii core-pr-title core-commitlint
-      core-attribution core-identity core-changelog core-python core-node-pin core-kit-peers
+      core-attribution core-pr-issue core-identity core-changelog core-python core-node-pin core-kit-peers
   ```
 - **Gate:** every check run on the head SHA concluded `success`, `skipped` or `neutral`, nothing is
   still running, and every name in `REQUIRED_CHECKS` is present. The PR must be mergeable and its

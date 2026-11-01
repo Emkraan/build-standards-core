@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-01 (v1.122.0, every PR declares what it does to issues)
+
+New rule pr-review-and-merge 1.20 and the `core-pr-issue` step of `core-ci.yml` (template and reusable workflow). Opt in by sync: a consumer gets the step on its next core sync, and a PR body without a declaration then fails `core-checks`.
+
+- The body holds exactly one of `Closes #N` (or `Fixes`, `Resolves`), `Refs #N` plus a `Remaining: <what is left>` line, or `No issue: <reason>`. Zero forms, two forms, `Refs` without `Remaining` and a lone `Remaining` fail. Comments and fenced blocks are ignored.
+- Passes without a declaration: a revert (title or body), Renovate and dependabot. The consumer names the rest in parameters rows (or `PR_ISSUE_*` env vars): `PR issue exempt authors`, `PR issue app authors` (exempt only on `chore/`, `pin/`, `standards-sync/`, `fold/` branches, prefixes in `PR issue bot branches`) and `PR issue exempt repos` (repo name prefixes).
+- `python3 scripts/core-ci.py pr-issue` reads `PR_TITLE`, `PR_BODY`, `PR_AUTHOR`, `PR_BRANCH` and `GITHUB_REPOSITORY`.
+
 ## 2026-11-01 (v1.121.0, gate override kit pieces)
 
 The kit pieces for rules 10 and 11 of the ops center layout standard. Opt in: a consumer that does not import them sees nothing.
