@@ -94,6 +94,55 @@ class PrHygiene(Overlay):
         self.assertEqual(rc, 1)
         self.assertIn("1 bad subject", out)
 
+    def test_pr_issue_declaration(self):
+        def run(body, title="feat: x", author="rp", branch="feat/x", repo="Emkraan/apps"):
+            return self.ci(
+                "pr-issue",
+                env={
+                    "PR_TITLE": title,
+                    "PR_BODY": body,
+                    "PR_AUTHOR": author,
+                    "PR_BRANCH": branch,
+                    "GITHUB_REPOSITORY": repo,
+                },
+            )
+
+        for ok in (
+            "Closes #12",
+            "fixes: Emkraan/apollo#9 and resolves #3",
+            "Refs #4\nRemaining: the live check",
+            "No issue: typo fix",
+            "Closes #1\n<!-- Refs #2 -->\n```\nNo issue: x\n```",
+        ):
+            self.assertEqual(run(ok)[0], 0, ok)
+        rc, out = run("just a description")
+        self.assertEqual(rc, 1)
+        self.assertIn("declare what this PR does", out)
+        rc, out = run("Closes #1\nNo issue: also")
+        self.assertEqual((rc, "exactly one form" in out), (1, True))
+        rc, out = run("Closes #1\nRefs #2\nRemaining: x")
+        self.assertEqual((rc, "exactly one form" in out), (1, True))
+        rc, out = run("Refs #4")
+        self.assertEqual((rc, "needs a line" in out), (1, True))
+        self.assertEqual(run("Remaining: x")[0], 1)
+
+    def test_pr_issue_exemptions(self):
+        def run(body="", **kw):
+            env = {"PR_TITLE": "feat: x", "PR_BODY": body, "PR_AUTHOR": "rp", "PR_BRANCH": "feat/x"}
+            env["GITHUB_REPOSITORY"] = "Emkraan/apps"
+            env.update({k.upper(): v for k, v in kw.items()})
+            return self.ci("pr-issue", env=env)[0]
+
+        self.assertEqual(run(pr_author="renovate[bot]"), 0)
+        self.assertEqual(run(pr_author="emkraan-deploy-bot"), 0)
+        for br in ("chore/pin-x", "pin/x", "standards-sync/y", "fold/z"):
+            self.assertEqual(run(pr_author="emkraan-claudius[bot]", pr_branch=br), 0, br)
+        self.assertEqual(run(pr_author="emkraan-claudius[bot]", pr_branch="feat/x"), 1)
+        self.assertEqual(run(pr_author="rp", pr_branch="chore/x"), 1)
+        self.assertEqual(run(github_repository="Emkraan/homeassistant-meater"), 0)
+        self.assertEqual(run(pr_title='Revert "feat: x"'), 0)
+        self.assertEqual(run("This reverts commit abc123."), 0)
+
     def test_attribution_commit_title_body(self):
         head = self.commit("feat: one", {"a": "1"})
         self.assertEqual(

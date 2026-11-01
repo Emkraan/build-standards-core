@@ -5,6 +5,9 @@ Usage (run from the consumer repo root; the overlay may sit in a subfolder):
   python3 scripts/core-ci.py params [--github-output]       parameters the workflow needs, from
                                                              standards-local/parameters.md
   python3 scripts/core-ci.py pr-title [TITLE]                Conventional Commit PR title (PR_TITLE)
+  python3 scripts/core-ci.py pr-issue                        the PR body declares what it does to issues
+                                                             (PR_TITLE, PR_BODY, PR_AUTHOR, PR_BRANCH,
+                                                             GITHUB_REPOSITORY)
   python3 scripts/core-ci.py commitlint BASE HEAD            every commit subject in BASE..HEAD
   python3 scripts/core-ci.py attribution BASE HEAD           no tool attribution in commits, PR title
                                                              and body (PR_TITLE, PR_BODY), plus the
@@ -299,6 +302,71 @@ def cmd_pr_title(argv: list) -> int:
         f"with a type from {', '.join(TYPES)}"
     )
     return 1
+
+
+# A PR body declares exactly one outcome for issues, so finished work does not sit in open issues.
+ISSUE_REF = r"(?:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)?#\d+"
+CLOSING = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+" + ISSUE_REF, re.I)
+REFS = re.compile(r"(?:^|[^\w])(?:refs?|part of)\s*:?\s+" + ISSUE_REF, re.I | re.M)
+REMAINING = re.compile(r"^\s*(?:[-*]\s*)?Remaining:\s*\S", re.I | re.M)
+NO_ISSUE = re.compile(r"^\s*(?:[-*]\s*)?No issue:\s*\S", re.I | re.M)
+BOT_AUTHORS = ("renovate[bot]", "renovate", "dependabot[bot]", "emkraan-deploy-bot")
+CLAUDIUS_AUTHORS = ("emkraan-claudius[bot]", "emkraan-claudius", "app/emkraan-claudius")
+BOT_BRANCH = re.compile(r"^(?:chore|pin|standards-sync|fold)(?:[/-]|$)", re.I)
+
+
+def pr_issue_findings(
+    title: str, body: str, author: str = "", branch: str = "", repo: str = ""
+) -> list:
+    """Problems with a PR's issue declaration (empty list when it passes or is exempt)."""
+    who = author.strip().lower()
+    if who in BOT_AUTHORS:
+        return []
+    if who in CLAUDIUS_AUTHORS and BOT_BRANCH.match(branch.strip()):
+        return []
+    if repo.split("/")[-1].lower().startswith("homeassistant-"):
+        return []
+    if re.match(r"\s*revert\b", title or "", re.I) or "this reverts commit" in (body or "").lower():
+        return []
+    text = re.sub(r"<!--.*?-->", "", body or "", flags=re.S)
+    text = re.sub(r"```.*?```", "", text, flags=re.S)
+    forms = []
+    if CLOSING.search(text):
+        forms.append("Closes/Fixes/Resolves #N")
+    refs = bool(REFS.search(text))
+    remaining = bool(REMAINING.search(text))
+    if refs:
+        forms.append("Refs #N")
+    if NO_ISSUE.search(text):
+        forms.append("No issue: <reason>")
+    if not forms:
+        return [
+            "declare what this PR does to issues: Closes #N, or Refs #N with a Remaining: line, or No issue: <reason>"
+        ]
+    if len(forms) > 1:
+        return [f"declare exactly one form, found {len(forms)}: " + "; ".join(forms)]
+    if refs and not remaining:
+        return [
+            "Refs #N needs a line 'Remaining: <what is left>' (or use Closes #N when nothing is left)"
+        ]
+    if remaining and not refs:
+        return ["a 'Remaining:' line goes with Refs #N; this body has no Refs #N"]
+    return []
+
+
+def cmd_pr_issue(argv: list) -> int:
+    env = os.environ.get
+    bad = pr_issue_findings(
+        env("PR_TITLE", ""),
+        env("PR_BODY", ""),
+        env("PR_AUTHOR", ""),
+        env("PR_BRANCH", ""),
+        env("GITHUB_REPOSITORY", ""),
+    )
+    for b in bad:
+        say(f"::error::pr-issue: {b}")
+    say(f"pr-issue: {'fail' if bad else 'ok'}")
+    return 1 if bad else 0
 
 
 def commits(base: str, head: str) -> list:
@@ -2258,6 +2326,7 @@ def cmd_powershell(argv: list) -> int:
 COMMANDS = {
     "params": cmd_params,
     "pr-title": cmd_pr_title,
+    "pr-issue": cmd_pr_issue,
     "commitlint": cmd_commitlint,
     "attribution": cmd_attribution,
     "identity": cmd_identity,

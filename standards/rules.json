@@ -1747,6 +1747,24 @@
       "acceptance": "core-ci.yml job core-ascii passes over every tracked text file, and each excepted line names its exception."
     },
     {
+      "id": "pr-review-and-merge.1.20",
+      "ref": "pr-review-and-merge.md 1.20",
+      "title": "Every PR declares what it does to issues",
+      "statement": "The PR body holds exactly one of: Closes, Fixes or Resolves #N; Refs #N plus a Remaining line; or No issue with a reason. Reverts and bot PRs pass, and homeassistant repos are exempt.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "overlay-ci",
+        "workflow": "core-ci.yml",
+        "jobs": [
+          "core-pr-issue"
+        ]
+      },
+      "acceptance": "core-ci.yml job core-pr-issue passes."
+    },
+    {
       "id": "pr-review-and-merge.3",
       "ref": "pr-review-and-merge.md 3",
       "title": "The review bot is a required check that fails closed",

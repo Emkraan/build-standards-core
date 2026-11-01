@@ -249,6 +249,7 @@ CORE_CI_STEPS = (
     "core-workflow-lint",
     "core-ascii",
     "core-pr-title",
+    "core-pr-issue",
     "core-commitlint",
     "core-attribution",
     "core-identity",
