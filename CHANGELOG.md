@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-01 (v1.115.0, hub Overview and header polish)
+
+Opt in: only the hub pieces change; a consumer that does not use `HubHeader` or `HubOverview` sees nothing.
+
+- `AreaCard` status renders as a pill (`.badge.pill`, `--radius-pill`), not a squared badge. Detail lines keep full text colour; the secondary colour is for the summary and status lines only. `.hub-overview-summary` has a 12px block margin, label size and the secondary colour, and is a block, so a consumer can pass a node without a wrapper.
+- `HubHeader` takes a flat tab list (`tabs`, route `<base>/<item>`) for hubs with a single tab row: no sections, no second row.
+- `AreaCard` renders a provider `headline` (live facts) ahead of the server `status` text, and reads a per-item `running` boolean as the live state (info tone, never red). Both fields are optional, so absence is tolerated.
+
 ## 2026-10-30 (v1.114.0, ops center layout adoption)
 
 The core ops center app adopts the approved layout. Opt in: the app only; consumers sync it with the kit.

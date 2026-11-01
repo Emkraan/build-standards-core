@@ -78,7 +78,7 @@ body { font-family: var(--font-sans); color: var(--text-primary); }
 
 /* ---- Hub Overview: one card per item, grouped under the section titles (HubOverview, AreaCard) ---- */
 .hub-overview-section + .hub-overview-section { margin-top: var(--space-6); }
-.hub-overview-summary { margin: 0 0 var(--space-4); color: var(--text-secondary); }
+.hub-overview-summary { margin: 12px 0; font-size: var(--fs-label); color: var(--text-secondary); }
 .hub-overview-title { margin: 0 0 var(--space-3); font-size: var(--fs-label); font-weight: var(--fw-semibold); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); }
 .hub-overview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: var(--space-4); }
 .area-card[data-tone="alert"] { border-color: var(--danger-border); }
@@ -86,8 +86,9 @@ body { font-family: var(--font-sans); color: var(--text-primary); }
 .area-card-link:hover { text-decoration: underline; }
 .area-card-link svg { width: 14px; height: 14px; opacity: 0.6; }
 .area-card-headline { margin: 0; }
-.area-card-detail { margin: var(--space-2) 0 0; padding-left: 18px; color: var(--text-secondary); font-size: 0.9em; }
-.area-card-more { list-style: none; margin-left: -18px; padding-left: 18px; }
+.area-card-status { margin: var(--space-1) 0 0; font-size: var(--fs-label); color: var(--text-secondary); }
+.area-card-detail { margin: var(--space-2) 0 0; padding-left: 18px; font-size: 0.9em; }
+.area-card-more { color: var(--text-secondary); list-style: none; margin-left: -18px; padding-left: 18px; }
 
 /* ---- Hub header: page title, a section row and an item row (HubHeader) ---- */
 .hub-head { margin-bottom: var(--space-5); }

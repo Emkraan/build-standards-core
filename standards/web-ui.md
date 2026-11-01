@@ -718,7 +718,14 @@ same order as the tabs.
 - The tone is decided by the server's problem list, the same list that feeds the rail badge and the
   tab counts of `HubHeader`. A card never judges a number against a threshold of its own, and the
   Overview, the tabs and the badge never disagree.
-- Work in progress is a spinner. A running item takes the info tone and, when it is otherwise
+- The headline is the provider's live facts (for example `v1.114 payload, 3 runners online`) and comes
+  first; the server's status text (`status`, for example `Healthy`) follows it, or stands alone when the
+  provider sends no headline. Both are optional. The status is a pill, not a squared badge. Detail
+  lines keep full text colour because they are the reasons that need action; the secondary colour is
+  for the summary and the status line. The `summary` takes text or a node and is a block with a 12px
+  block margin.
+- Work in progress is a spinner. Any area sets it with a per-item `running` boolean (`live` is the same
+  flag). A running item takes the info tone and, when it is otherwise
   healthy, reads `running`; it is never red for being busy.
 - Order cards by latest activity within a section, running items first, and give the summary line
   (how many areas need attention) to the `summary` prop. An item with no data yet shows no card.
@@ -738,6 +745,8 @@ runs, never by the data source or the vendor.
   section. The second row appears once a section is open and has one tab per item. The route shape is
   `<base>/<section>/<item>`; a section tab opens the section's first item, so the second row always
   has a current tab.
+- A hub with a single tab row passes `tabs` (a flat item list, route `<base>/<item>`, the current tab
+  is `item`) instead of `sections`: one row, no second row, same counts and spinner.
 - `HubHeader` is router free. The app passes the current `section` and `item` from its route and goes
   to a path in `onNavigate`. `hubPath(base, sections, key)` builds a path from an item or section key.
 - Counts and the working state come from the app and are never decided here. An item `count` is the

@@ -97,6 +97,22 @@ describe('HubHeader', () => {
     expect(result.violations).toEqual([]);
   });
 
+  it('takes a flat tab list: one row, no sections, paths <base>/<item>, counts and spinner kept', () => {
+    const onNavigate = vi.fn();
+    const tabs = [{ key: 'one', label: 'One' }, { key: 'two', label: 'Two', count: 3 }, { key: 'three', label: 'Three', live: true }];
+    render(<HubHeader title="Team" base="/team/" tabs={tabs} item="two" onNavigate={onNavigate} />);
+    expect(screen.getAllByRole('tablist')).toHaveLength(1);
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['One', 'Two3', 'Threeworking']);
+    expect(screen.getByRole('tab', { name: /Two/ }).getAttribute('aria-selected')).toBe('true');
+    fireEvent.click(screen.getByRole('tab', { name: /Three/ }));
+    expect(onNavigate).toHaveBeenCalledWith('/team/three');
+  });
+
+  it('selects the first flat tab when the route has no item', () => {
+    render(<HubHeader title="Team" base="/team" tabs={[{ key: 'one', label: 'One' }, { key: 'two', label: 'Two' }]} onNavigate={vi.fn()} />);
+    expect(screen.getByRole('tab', { name: 'One' }).getAttribute('aria-selected')).toBe('true');
+  });
+
   it('keeps the head spacing and the spinner colour in the stylesheet', () => {
     const css = readFileSync(resolve(__dirname, '../src/styles/kit.css'), 'utf8');
     expect(css).toMatch(/\.hub-head \{[^}]*margin-bottom: var\(--space-5\)/);

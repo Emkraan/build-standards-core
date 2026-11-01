@@ -72,6 +72,40 @@ describe('AreaCard', () => {
   });
 });
 
+describe('AreaCard provider fields', () => {
+  it('renders the pill with the pill radius class', () => {
+    render(<AreaCard label="A" to="/a" tone="warn" headline="h" />);
+    expect(screen.getByText('worth a look').closest('.badge')?.classList.contains('pill')).toBe(true);
+  });
+
+  it('shows the provider headline ahead of the server status text, and the status alone when there is no headline', () => {
+    const { container, rerender } = render(<AreaCard label="A" to="/a" tone="good" headline="v1.114 payload, 3 runners online" status="Healthy" />);
+    const lines = Array.from(container.querySelectorAll('.area-card > p')).map((p) => p.textContent);
+    expect(lines).toEqual(['v1.114 payload, 3 runners online', 'Healthy']);
+    rerender(<AreaCard label="A" to="/a" tone="good" status="Healthy" />);
+    expect(Array.from(container.querySelectorAll('.area-card > p')).map((p) => p.textContent)).toEqual(['Healthy']);
+    rerender(<AreaCard label="A" to="/a" tone="good" />);
+    expect(container.querySelectorAll('.area-card > p')).toHaveLength(0);
+  });
+
+  it('reads running as live on any area, never red, and tolerates its absence', () => {
+    const { rerender } = render(<AreaCard label="A" to="/a" tone="good" running />);
+    expect(screen.getByText('running')).toBeTruthy();
+    rerender(<AreaCard label="A" to="/a" tone="warn" running />);
+    const pill = screen.getByText('worth a look').closest('.badge') as HTMLElement;
+    expect(pill.getAttribute('data-tone')).toBe('info');
+    rerender(<AreaCard label="A" to="/a" tone="good" />);
+    expect(screen.getByText('healthy')).toBeTruthy();
+  });
+
+  it('keeps full text colour for detail lines and the secondary colour for the summary and status', () => {
+    const css = readFileSync(resolve(__dirname, '../src/styles/kit.css'), 'utf8');
+    expect(css).not.toMatch(/\.area-card-detail \{[^}]*color:/);
+    expect(css).toMatch(/\.area-card-status \{[^}]*color: var\(--text-secondary\)/);
+    expect(css).toMatch(/\.hub-overview-summary \{[^}]*margin: 12px 0[^}]*font-size: var\(--fs-label\)[^}]*color: var\(--text-secondary\)/);
+  });
+});
+
 describe('HubOverview', () => {
   it('groups one card per item under the section titles, in section and item order', () => {
     const areas = [card('ci'), card('alpha'), card('jobs'), card('beta')];
@@ -87,6 +121,13 @@ describe('HubOverview', () => {
     render(<HubOverview sections={sections} areas={[card('alpha')]} summary="1 area needs me." />);
     expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(1);
     expect(screen.getByText('1 area needs me.')).toBeTruthy();
+  });
+
+  it('takes a summary node and renders it in a block, not a paragraph', () => {
+    const { container } = render(<HubOverview sections={sections} areas={[]} summary={<><strong>2</strong> need me</>} />);
+    const el = container.querySelector('.hub-overview-summary') as HTMLElement;
+    expect(el.tagName).toBe('DIV');
+    expect(el.querySelector('strong')?.textContent).toBe('2');
   });
 
   it('has no axe violations', async () => {
