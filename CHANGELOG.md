@@ -7,6 +7,7 @@ Opt in: only the hub pieces change; a consumer that does not use `HubHeader` or 
 - `AreaCard` status renders as a pill (`.badge.pill`, `--radius-pill`), not a squared badge. Detail lines keep full text colour; the secondary colour is for the summary and status lines only. `.hub-overview-summary` has a 12px block margin, label size and the secondary colour, and is a block, so a consumer can pass a node without a wrapper.
 - `HubHeader` takes a flat tab list (`tabs`, route `<base>/<item>`) for hubs with a single tab row: no sections, no second row.
 - `AreaCard` renders a provider `headline` (live facts) ahead of the server `status` text, and reads a per-item `running` boolean as the live state (info tone, never red). Both fields are optional, so absence is tolerated.
+
 ## 2026-11-01 (v1.115.0, ops center problem list: headlines, provider slots, count unit)
 
 The server problem list carries what a consumer's own list needs. Opt in: a provider slot, null by default; the count unit changes for everyone.
