@@ -2080,3 +2080,14 @@ button.month-grid-chip { cursor: pointer; }
 .lane-board-drop { height: 3px; margin-bottom: var(--space-2); border-radius: var(--radius-pill); background: var(--accent-fill); }
 .lane-board-empty { padding: var(--space-3); text-align: center; font-size: var(--fs-caption); color: var(--text-muted); border: 1px dashed var(--border-default); border-radius: var(--radius-md); }
 .lane-board-slot[data-picked] .lane-board-card { opacity: 0.5; border-style: dashed; }
+
+/* ---- Gate override: bar, tag, pending next step (layout standard rules 10 and 11) ---- */
+.override-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); padding: var(--space-3) var(--space-4); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background-color: var(--surface-1); }
+.override-bar[data-on] { border-color: var(--warning-border); }
+.override-bar-text { min-width: 0; flex: 1 1 24rem; }
+.override-bar-title { margin: 0; font-size: var(--fs-micro); font-weight: var(--fw-semibold); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-tertiary); }
+.override-bar-line { margin: var(--space-1) 0 0; font-size: var(--fs-label); color: var(--text-secondary); }
+.override-bar-actions { display: flex; align-items: center; gap: var(--space-3); }
+.override-pending, .override-reason { margin: var(--space-2) 0 0; font-size: var(--fs-label); }
+.override-pending { color: var(--warning); }
+.override-reason { color: var(--text-secondary); }
