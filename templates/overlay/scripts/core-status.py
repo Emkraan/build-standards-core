@@ -252,6 +252,7 @@ CORE_CI_STEPS = (
     "core-commitlint",
     "core-attribution",
     "core-identity",
+    "core-repo-checks",
     "core-changelog",
     "core-python",
     "core-powershell",

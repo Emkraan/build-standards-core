@@ -1,12 +1,19 @@
 # Changelog
 
-## 2026-11-01 (v1.118.0, hub Overview and header polish)
+## 2026-11-01 (v1.119.0, hub Overview and header polish)
 
 Opt in: only the hub pieces change; a consumer that does not use `HubHeader` or `HubOverview` sees nothing.
 
 - `AreaCard` status renders as a pill (`.badge.pill`, `--radius-pill`), not a squared badge. Detail lines keep full text colour; the secondary colour is for the summary and status lines only. `.hub-overview-summary` has a 12px block margin, label size and the secondary colour, and is a block, so a consumer can pass a node without a wrapper.
 - `HubHeader` takes a flat tab list (`tabs`, route `<base>/<item>`) for hubs with a single tab row: no sections, no second row.
 - `AreaCard` renders a provider `headline` (live facts) ahead of the server `status` text, and reads a per-item `running` boolean as the live state (info tone, never red). Both fields are optional, so absence is tolerated.
+
+## 2026-11-01 (v1.118.0, core-ci runs the repo checks)
+
+`core-ci.yml` and `core-ci-reusable.yml` gain a `core-repo-checks` step, so a consumer no longer wires the repo checks into its CI by hand. Opt in: nothing changes until the overlay sets the new parameters row.
+
+- New row `Repo checks gate` in `standards-local/parameters.md`: rule ids, doc names (for example `ops-center-layout`) or `all`. `python3 scripts/core-ci.py repo-checks` runs `core-status.py --json` and fails the run when a named repo-check rule fails, prints the file and line of every finding, treats an active exception as excepted and a rule the overlay cannot run as a failure. The row empty (the default) is a clean skip.
+- `core-repo-checks` is one more named step of `core-checks`; it adds no job, so no merge gate changes. A sync refreshes the workflow.
 
 ## 2026-11-01 (v1.117.0, RC023 flags ages and durations)
 
