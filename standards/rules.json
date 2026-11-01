@@ -4385,6 +4385,49 @@
         "id": "RC024"
       },
       "acceptance": "repo check RC024 reports a route in the lock file that is no longer routed (a redirect counts) and a routed path missing from the lock file; a test follows each redirect and asserts the tab and query string survive."
+    },
+    {
+      "id": "ops-center-layout.1.10",
+      "ref": "ops-center-layout.md 1.10",
+      "title": "A gate override is scoped, time-boxed and fails closed",
+      "statement": "A gate override is scoped, time-boxed and fails closed. The expiry is stored with the entry and compared on every read, and a missing, unreadable, foreign-scope or expired store means no override. It lifts only its own gate, covers only the owner's own work, and has one writer and one log, confirmed first.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "repo-check",
+        "id": "RC025"
+      },
+      "acceptance": "repo check RC025 reports an override or bypass reader whose error handler answers yes, and a scheduled job that clears, expires or revokes an override; a test proves a missing, unreadable, foreign-scope and expired store each mean no override, and that only the gate it names is lifted."
+    },
+    {
+      "id": "ops-center-layout.1.11",
+      "ref": "ops-center-layout.md 1.11",
+      "title": "A card never shows a stale reason after an action",
+      "statement": "A card never shows a stale reason after an action. Until the next pass of whatever re-checks it, the card says what happens next (for example \"freeze bypassed, the lane re-checks within 3 minutes\"), never the reason the action just removed.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a UI test acts on a held card and asserts the held reason is gone and the pending next step shown until the next pass replaces it."
+    },
+    {
+      "id": "ops-center-layout.1.12",
+      "ref": "ops-center-layout.md 1.12",
+      "title": "Known transient failures heal themselves and never count as failures",
+      "statement": "Known transient failures heal themselves and never count as failures. Each known transient failure has a defined automatic recovery (a stale saved plan is re-planned at once). Only a failure that was not recovered reaches the owner or a repeat counter; real failures keep the normal path.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a test makes the known failure happen and asserts the recovery ran, a clean result clears the card and closes the repeat alert, a result with changes asks for one review, it never counts toward the repeat alert, and a real failure still takes the normal path."
     }
   ]
 }

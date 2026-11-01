@@ -1,6 +1,6 @@
 # Ops Center Layout Standard
 
-Version: 1.1 | Last reviewed: 2026-11-01 | Status: current | Scope: local-ops (operator consoles)
+Version: 1.2 | Last reviewed: 2026-11-01 | Status: current | Scope: local-ops (operator consoles)
 
 How an ops center is organised and how it starts work: what a hub is, how its items are grouped, what
 the Overview shows, where every count comes from, and what a Run button promises. The ops center
@@ -44,6 +44,15 @@ Related: [Local Ops App](local-ops-app.md) (the server, the problem list, the po
 9. **Old links never break.** Every renamed or moved route redirects to its new home and keeps its tab and query string. The app keeps a lock file listing every route it has ever served.
    - Prevents: a bookmark, a link in a ticket or a notification that lands on a blank page after a reorganisation.
    - Acceptance (repo check RC024): every route in the lock file is still routed (a redirect counts) and every routed path is in the lock file; a test follows each redirect and asserts the tab and query string survive.
+10. **A gate override is scoped, time-boxed and fails closed.** The expiry is stored with the entry and compared on every read, and a missing, unreadable, foreign-scope or expired store means no override. It lifts only its own gate, covers only the owner's own work, and has one writer and one log, confirmed first.
+   - Prevents: an override that outlives its window, one that survives a broken file, or one that lifts more than the gate it was made for.
+   - Acceptance (repo check RC025): no override reader returns a pass from an error handler, and no scheduled job clears an override; a test proves a missing, unreadable, foreign-scope and expired store each mean no override (`override_store.py`, `override_store_test.py`).
+11. **A card never shows a stale reason after an action.** Until the next pass of whatever re-checks it, the card says what happens next (for example "freeze bypassed, the lane re-checks within 3 minutes"), never the reason the action just removed.
+   - Prevents: a card that carries a new tag next to the old held line, so the owner cannot tell whether the action worked.
+   - Acceptance (test): a UI test acts on a card that is held, and asserts the held reason is gone and the pending next step is shown until the next pass replaces it. `pending_line` in `override_store.py` is the server wording.
+12. **Known transient failures heal themselves and never count as failures.** Each known transient failure has a defined automatic recovery (a stale saved plan is re-planned at once). Only a failure that was not recovered reaches the owner or a repeat counter; real failures keep the normal path.
+   - Prevents: an alert and a red card for something the ops center could have fixed itself in a second.
+   - Acceptance (test): a test makes the known failure happen and asserts the recovery ran, a clean result clears the card and closes the repeat alert, a result with changes asks for one review, the failure never counts toward the repeat alert, and a real failure still takes the normal path (`owner_roots_test.py`, `StaleSavedPlan`).
 
 ---
 
@@ -70,4 +79,4 @@ The count of an item is its number of problem lines, never one per item, and the
 
 ## 5. Checks
 
-RC023 fails a client source that decides a tone, badge or severity from a count compared with a number. RC024 fails an app whose routes and its lock file (`routes.lock.json`, next to the file that declares the routes) disagree. Both run on a repo that has an ops center app and are silenced for a line by the exception marker of the other repo checks. The remaining rules are proved by the tests named in their acceptance text and by review.
+RC023 fails a client source that decides a tone, badge or severity from a count compared with a number. RC024 fails an app whose routes and its lock file (`routes.lock.json`, next to the file that declares the routes) disagree. Both run on a repo that has an ops center app and are silenced for a line by the exception marker of the other repo checks. RC025 fails an ops center source in which an override or bypass reader answers yes from an error handler, or a scheduled job clears, expires or revokes an override (rule 10). The remaining rules are proved by the tests named in their acceptance text and by review.

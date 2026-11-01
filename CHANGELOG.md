@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-01 (v1.116.0, ops center rules 10 to 12: overrides, pending next step, self-healing)
+
+Three rules join the ops center layout standard (1.10 to 1.12), with a core helper and a check. Opt in: the helper and the check are used by a consumer's own gate; the stale plan re-plan changes the core owner apply for everyone.
+
+- Rule 10, a gate override is scoped, time-boxed and fails closed: `opscenter/server/modules/override_store.py` (stored expiry compared on every read, scope per entry, a missing, unreadable, foreign-scope or expired store means no override, one writer under a lock with a log, a `qualify` slot for ownership). New repo check RC025 fails an override reader that answers yes from an error handler and a scheduled job that clears an override.
+- Rule 11, a card never shows a stale reason after an action: `pending_line` is the server wording; the kit override bar, override button and pending-next-step card state are not in this release and go to the kit.
+- Rule 12, known transient failures heal themselves: the owner apply re-plans at once on a stale saved plan (clean clears the card and the alert, changes ask for one review, never counts toward the repeat alert; real failures keep the normal path).
+- Where the standard text was ambiguous, the reading is in the pull request.
+
 ## 2026-11-01 (v1.115.0, ops center problem list: headlines, provider slots, count unit)
 
 The server problem list carries what a consumer's own list needs. Opt in: a provider slot, null by default; the count unit changes for everyone.

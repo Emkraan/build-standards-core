@@ -529,6 +529,50 @@ def _apply_failed(key, msg, **extra):
     )
 
 
+# Terraform refuses a saved plan once the state moved after it was made (someone applied the root another way, or main
+# moved under the worktree). Nothing failed, the plan is just old. Matches only the plan_changed kind, so a lock left
+# off or any real error never takes this path (layout standard rule 12).
+STALE_RE = re.compile(r"Saved plan is stale|worktree moved since the plan", re.I)
+STALE_PENDING_MSG = (
+    "The saved plan went stale before the apply (the state changed after it was made), so it was re-planned "
+    "at once. The fresh plan below still has changes: review it and apply it."
+)
+
+
+def _replan_after_stale(name, tier, key, msg):
+    """Re-plan straight after a stale saved plan. True when it handled the failure: a clean plan means nothing is left
+    to apply, so the card clears and the repeat alert closes; a plan with changes keeps one plain line asking for a
+    review of the fresh plan. False (the normal failure path runs) when it is not a stale plan or the re-plan itself
+    fails. A stale plan never counts toward the repeat alert."""
+    if classify_error(msg)[0] != "plan_changed" or not STALE_RE.search(msg or ""):
+        return False
+    try:
+        plan(name, tier)
+    except Exception as e:  # noqa: BLE001 - the normal failure path reports it
+        print(f"re-plan after a stale plan failed for {key}: {e}", file=sys.stderr)
+        return False
+    state = (_load_status().get("items", {}).get(key) or {}).get("state")
+    _log({"decision": "owner_apply_stale_replanned", "root": key, "detail": msg, "state": state})
+    if state == "clean":
+        _update(
+            key,
+            last_apply_error=None,
+            apply_failures=None,
+            stale_replanned={"at": _now(), "state": state},
+        )
+        _close_alert(name, tier, "The saved plan was stale and the re-plan came back clean.")
+        return True
+    if state == "pending":
+        _update(
+            key,
+            last_apply_error={"at": _now(), "message": STALE_PENDING_MSG},
+            apply_failures=None,
+            stale_replanned={"at": _now(), "state": state},
+        )
+        return True
+    return False
+
+
 def apply(name, tier, digest):
     key = _key(name, tier)
     it = _load_status().get("items", {}).get(key) or {}
@@ -590,6 +634,9 @@ def apply(name, tier, digest):
         )
     except Exception as e:  # noqa: BLE001
         msg = str(e)[:600]
+        planfile.unlink(missing_ok=True)
+        if _replan_after_stale(name, tier, key, msg):
+            return
         kind, _ = classify_error(msg)
         prev = it.get("apply_failures") or {}
         same = prev.get("kind") == kind and prev.get("main_sha") == it.get("main_sha")

@@ -1451,6 +1451,63 @@ def rc023(repo):
     return out
 
 
+OVERRIDE_WORD = re.compile(r"override|bypass", re.I)
+OFF_VERB = re.compile(
+    r"\b(?:clear|reset|expire|revoke|disable|turn[_ ]?off|unset|remove|delete|purge|wipe)\w*", re.I
+)
+SCHEDULED = re.compile(
+    r"cron|schedul|timer|midnight|nightly|setInterval|apscheduler|launchd|systemd", re.I
+)
+OPEN_RETURN = re.compile(
+    r"return\s+(?:True|true)\b|return\s*\{[^}]*\b(?:on|active|allowed|bypass\w*)\b[\"']?\s*:\s*(?:True|true)\b"
+)
+ENCLOSING = re.compile(r"(?:def|function)\s+([A-Za-z_]\w*)|(?:const|let)\s+([A-Za-z_]\w*)\s*=")
+
+
+def _enclosing_name(lines, i):
+    for j in range(i, -1, -1):
+        m = ENCLOSING.search(lines[j])
+        if m:
+            return m.group(1) or m.group(2)
+    return ""
+
+
+def rc025(repo):
+    """An override fails closed and nothing turns it off (ops-center-layout.md 1.10): no override or bypass reader answers
+    yes from an error handler, and no scheduled job clears, expires or revokes an override."""
+    if not is_ops_center(repo):
+        return []
+    out = []
+    for p in ops_center_files(repo, (".py", ".ts", ".tsx", ".js", ".jsx")):
+        text = repo.text(p)
+        lines = text.splitlines()
+        scheduled = bool(SCHEDULED.search(p) or SCHEDULED.search(text))
+        for i, ln in enumerate(lines):
+            if is_comment(ln) or skipped(lines, i):
+                continue
+            if scheduled and OVERRIDE_WORD.search(ln) and OFF_VERB.search(ln):
+                out.append(
+                    (
+                        p,
+                        i + 1,
+                        "a scheduled job turns an override off; the stored expiry does that on every read",
+                    )
+                )
+            if re.match(r"\s*(?:except\b|\}?\s*catch\b)", ln) and OVERRIDE_WORD.search(
+                _enclosing_name(lines, i)
+            ):
+                tail = " ".join(lines[i : i + 4])
+                if OPEN_RETURN.search(tail):
+                    out.append(
+                        (
+                            p,
+                            i + 1,
+                            "an override reader answers yes from an error handler; a missing or unreadable store means no override",
+                        )
+                    )
+    return out
+
+
 ROUTE_PATH = re.compile(r"""<Route\b[^>]*?\bpath=["'{`]+([^"'`}]+)""")
 LOCK_NAME = "routes.lock.json"
 
@@ -1533,6 +1590,7 @@ CHECKS = {
     "RC022": ("permissions compared by hand in many files", "rbac.md 3", rc022),
     "RC023": ("client-side count threshold", "ops-center-layout.md 1.4", rc023),
     "RC024": ("route removed without a redirect", "ops-center-layout.md 1.9", rc024),
+    "RC025": ("override fails open or is turned off by a job", "ops-center-layout.md 1.10", rc025),
 }
 
 
