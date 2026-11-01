@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-01 (v1.116.0, ops center rules 10 to 12: overrides, pending next step, self-healing)
+## 2026-11-01 (v1.118.0, ops center rules 10 to 12: overrides, pending next step, self-healing)
 
 Three rules join the ops center layout standard (1.10 to 1.12), with a core helper and a check. Opt in: the helper and the check are used by a consumer's own gate; the stale plan re-plan changes the core owner apply for everyone.
 
@@ -8,6 +8,20 @@ Three rules join the ops center layout standard (1.10 to 1.12), with a core help
 - Rule 11, a card never shows a stale reason after an action: `pending_line` is the server wording; the kit override bar, override button and pending-next-step card state are not in this release and go to the kit.
 - Rule 12, known transient failures heal themselves: the owner apply re-plans at once on a stale saved plan (clean clears the card and the alert, changes ask for one review, never counts toward the repeat alert; real failures keep the normal path).
 - Where the standard text was ambiguous, the reading is in the pull request.
+
+## 2026-11-01 (v1.117.0, RC023 flags ages and durations)
+
+Rule 1.4 of the ops center layout standard covers every threshold that decides a tone, not only counts. Opt in: only a repo with an ops center app (RC023 runs there only).
+
+- RC023 also fails a client source that decides a tone, badge or severity from an age or a duration compared with a number: a name that says time (`ageHours`, `minutesSince`, `elapsed`, `stale_days`, `...Ms`) compared with a number, a clock difference (`Date.now() - t`) compared with a number, or anything compared with a product of time units (`30 * 3600 * 1000`). Comparison with zero is not a threshold; the exception marker works as before. Tone words now include amber, red, yellow and orange.
+- The core app's meeting schedule state is renamed from `tone` to `phase` (it is a schedule label, not a severity); no behaviour changes.
+
+## 2026-11-01 (v1.117.0, RC023 flags ages and durations)
+
+Rule 1.4 of the ops center layout standard covers every threshold that decides a tone, not only counts. Opt in: only a repo with an ops center app (RC023 runs there only).
+
+- RC023 also fails a client source that decides a tone, badge or severity from an age or a duration compared with a number: a name that says time (`ageHours`, `minutesSince`, `elapsed`, `stale_days`, `...Ms`) compared with a number, a clock difference (`Date.now() - t`) compared with a number, or anything compared with a product of time units (`30 * 3600 * 1000`). Comparison with zero is not a threshold; the exception marker works as before. Tone words now include amber, red, yellow and orange.
+- The core app's meeting schedule state is renamed from `tone` to `phase` (it is a schedule label, not a severity); no behaviour changes.
 
 ## 2026-11-01 (v1.115.0, ops center problem list: headlines, provider slots, count unit)
 

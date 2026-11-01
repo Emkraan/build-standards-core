@@ -76,8 +76,8 @@ function shortWhen(iso: string): string {
   return `${d.toLocaleDateString([], { weekday: 'short', month: 'numeric', day: 'numeric' })} ${clock(iso)}`
 }
 
-type MeetTone = 'next' | 'now' | 'done' | 'later' | 'none' | 'gap'
-const MEET_DOT: Record<MeetTone, DotTone> = {
+type MeetPhase = 'next' | 'now' | 'done' | 'later' | 'none' | 'gap'
+const MEET_DOT: Record<MeetPhase, DotTone> = {
   now: 'success',
   next: 'warning',
   gap: 'warning',
@@ -86,19 +86,19 @@ const MEET_DOT: Record<MeetTone, DotTone> = {
   none: 'neutral',
 }
 
-function meetingState(r: Report, now: number): { label: string; tone: MeetTone } {
+function meetingState(r: Report, now: number): { label: string; phase: MeetPhase } {
   const m = r.meeting
   if (!m) {
-    if (r.next_1on1) return { label: `Next 1:1 ${shortWhen(r.next_1on1.start)}`, tone: 'later' }
-    return r.schedule_needed ? { label: 'No 1:1 in 3 weeks', tone: 'gap' } : { label: 'No 1:1 today', tone: 'none' }
+    if (r.next_1on1) return { label: `Next 1:1 ${shortWhen(r.next_1on1.start)}`, phase: 'later' }
+    return r.schedule_needed ? { label: 'No 1:1 in 3 weeks', phase: 'gap' } : { label: 'No 1:1 today', phase: 'none' }
   }
   const s = new Date(m.start).getTime()
   const e = m.end ? new Date(m.end).getTime() : s + 30 * 60000
-  if (now >= e) return { label: `${clock(m.start)} \u00b7 done`, tone: 'done' }
-  if (now >= s) return { label: `Now \u00b7 until ${clock(m.end || m.start)}`, tone: 'now' }
+  if (now >= e) return { label: `${clock(m.start)} \u00b7 done`, phase: 'done' }
+  if (now >= s) return { label: `Now \u00b7 until ${clock(m.end || m.start)}`, phase: 'now' }
   const mins = Math.round((s - now) / 60000)
   const rel = mins < 60 ? `in ${mins}m` : `in ${Math.floor(mins / 60)}h ${mins % 60}m`
-  return { label: `${clock(m.start)} \u00b7 ${rel}`, tone: mins <= 30 ? 'next' : 'later' }
+  return { label: `${clock(m.start)} \u00b7 ${rel}`, phase: mins <= 30 ? 'next' : 'later' }
 }
 
 function pickDefault(people: Report[], now: number): string | null {
@@ -301,12 +301,12 @@ export default function OneOnOnes() {
                     key={p.name}
                     name={p.name}
                     selected={p.name === name}
-                    tone={ms.tone === 'now' ? 'green' : undefined}
-                    dim={ms.tone === 'done'}
+                    tone={ms.phase === 'now' ? 'green' : undefined}
+                    dim={ms.phase === 'done'}
                     onPick={pick}
                     sub={
-                      <span className={`oo-meet is-${ms.tone}`}>
-                        <StatusDot tone={MEET_DOT[ms.tone]} pulse={ms.tone === 'now'} />
+                      <span className={`oo-meet is-${ms.phase}`}>
+                        <StatusDot tone={MEET_DOT[ms.phase]} pulse={ms.phase === 'now'} />
                         {ms.label}
                       </span>
                     }
