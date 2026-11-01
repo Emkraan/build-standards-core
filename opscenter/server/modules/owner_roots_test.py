@@ -321,5 +321,89 @@ class NullDefault(unittest.TestCase):
         self.assertEqual(o.classify_error("something else")[0], "other")
 
 
+class StaleSavedPlan(unittest.TestCase):
+    """Layout standard rule 12: a stale saved plan re-plans at once and is only a failure if changes remain."""
+
+    key = "ident:dev"
+
+    def setUp(self):
+        reset()
+        os.environ["OWNER_ROOTS_PROVIDER"] = f"{PROVIDER}:P"
+        self.saved = (o.plan, o._close_alert, o._log)
+        self.closed, self.logged, self.plans = [], [], []
+        o._close_alert = lambda n, t, reason: self.closed.append((n, t))
+        o._log = lambda rec: self.logged.append(rec)
+        o._update(self.key, name="ident", tier="dev", state="pending", last_apply_error=None)
+
+    def tearDown(self):
+        o.plan, o._close_alert, o._log = self.saved
+
+    def fake_plan(self, state):
+        def run(name, tier, sha=None):
+            self.plans.append((name, tier))
+            o._update(o._key(name, tier), state=state)
+
+        o.plan = run
+
+    def item(self):
+        return o._load_status()["items"][self.key]
+
+    def test_clean_replan_clears_the_card_and_closes_the_alert(self):
+        self.fake_plan("clean")
+        msg = "terraform apply failed: Error: Saved plan is stale"
+        self.assertTrue(o._replan_after_stale("ident", "dev", self.key, msg))
+        it = self.item()
+        self.assertEqual(it["state"], "clean")
+        self.assertIsNone(it["last_apply_error"])
+        self.assertIsNone(it["apply_failures"])
+        self.assertEqual(self.plans, [("ident", "dev")])
+        self.assertEqual(self.closed, [("ident", "dev")])
+        self.assertEqual(self.logged[0]["decision"], "owner_apply_stale_replanned")
+
+    def test_a_replan_with_changes_keeps_one_plain_line_asking_for_a_review(self):
+        self.fake_plan("pending")
+        self.assertTrue(
+            o._replan_after_stale(
+                "ident", "dev", self.key, "the worktree moved since the plan. Re-plan."
+            )
+        )
+        it = self.item()
+        self.assertEqual(it["state"], "pending")
+        self.assertEqual(it["last_apply_error"]["message"], o.STALE_PENDING_MSG)
+        self.assertIsNone(it["apply_failures"])  # a stale plan never counts toward the repeat alert
+        self.assertEqual(self.closed, [])
+
+    def test_real_failures_never_take_the_stale_path(self):
+        self.fake_plan("clean")
+        for msg in (
+            "LOCKS NOT RESTORED, check them now (apply: Saved plan is stale)",
+            "Error: AuthorizationFailed",
+            "The saved plan file does not match what the owner reviewed. Re-plan.",
+        ):
+            self.assertFalse(o._replan_after_stale("ident", "dev", self.key, msg), msg)
+        self.assertEqual(self.plans, [])
+
+    def test_a_failed_replan_falls_back_to_the_normal_failure(self):
+        self.fake_plan("error")
+        self.assertFalse(
+            o._replan_after_stale("ident", "dev", self.key, "Error: Saved plan is stale")
+        )
+
+    def test_an_apply_that_hits_a_stale_plan_heals_without_a_failure(self):
+        o.plan, o._close_alert, o._log = self.saved
+        o._close_alert = lambda n, t, reason: self.closed.append((n, t))
+        o.plan_all()
+        digest = self.item()["plan_sha256"]
+        Path(str(STATE) + ".fail").write_text("Saved plan is stale")
+        try:
+            o.apply("ident", "dev", digest)
+        finally:
+            Path(str(STATE) + ".fail").unlink(missing_ok=True)
+        it = self.item()
+        self.assertIsNone(it.get("apply_failures"))
+        self.assertIn(it["state"], ("pending", "clean"))
+        self.assertNotEqual(it["state"], "error")
+
+
 if __name__ == "__main__":
     unittest.main()

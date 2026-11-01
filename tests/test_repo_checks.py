@@ -136,6 +136,41 @@ class TestChecks(Tree):
             },
         )
 
+    def test_rc025_an_override_reader_that_fails_open(self):
+        py = (
+            "def freeze_bypass_active(pr):\n"
+            "    try:\n        return load(STORE)[pr]\n"
+            "    except OSError:\n        return True\n"
+        )
+        js = "function bypassOn(pr) {\n  try { return read(pr) }\n  catch (e) { return true }\n}\n"
+        self.fails("RC025", {"opscenter/server/bypass.py": py})
+        self.fails("RC025", {"opscenter/app/src/bypass.ts": js})
+
+    def test_rc025_a_scheduled_job_that_turns_an_override_off(self):
+        self.fails(
+            "RC025",
+            {"opscenter/server/jobs/nightly.py": "def run():\n    store.clear_overrides()\n"},
+        )
+        self.fails(
+            "RC025",
+            {
+                "opscenter/server/tick.py": "import cron\n\ndef at_midnight():\n    revoke_bypass('all')\n"
+            },
+        )
+
+    def test_rc025_clean(self):
+        self.passes(
+            "RC025",
+            {
+                "opscenter/server/bypass.py": "def freeze_bypass_active(pr):\n"
+                "    try:\n        return load(STORE)[pr]\n    except OSError:\n        return False\n"
+                "def other_read():\n    try:\n        return 1\n    except OSError:\n        return True\n",
+                "opscenter/server/routes.py": "def post_clear_override(req):\n    store.clear(req.key)\n",
+                "opscenter/server/jobs/nightly.py": "def run():\n    sweep_logs()  # core-exception: EXC-004\n",
+                "web/app/x.py": "def bypass_on():\n    try:\n        return 1\n    except OSError:\n        return True\n",
+            },
+        )
+
     def test_rc002_gh_merge_without_sha(self):
         self.fails(
             "RC002",
