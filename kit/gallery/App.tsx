@@ -582,12 +582,12 @@ function HubOverviewSpecimen() {
   ];
   const areas: AreaCardData[] = [
     { key: 'web', label: 'Web app', to: '#web', tone: 'alert', headline: 'release 4.2, idle, last run 12 min ago', detail: ['main failed: deploy-web', '1 deploy refused for being behind main, update it from main'] },
-    { key: 'agent', label: 'Agent', to: '#agent', tone: 'good', live: true, headline: 'running now' },
-    { key: 'api', label: 'API', to: '#api', tone: 'good', headline: 'idle, last run 3 h ago' },
+    { key: 'agent', label: 'Agent', to: '#agent', tone: 'good', running: true, headline: 'v1.114 payload, 2 runs in progress', status: 'Healthy' },
+    { key: 'api', label: 'API', to: '#api', tone: 'good', headline: 'idle, last run 3 h ago', status: 'Healthy' },
     { key: 'jobs', label: 'Scheduled jobs', to: '#jobs', tone: 'warn', headline: '14 jobs, 1 needs attention', detail: ['nightly-export: last run 2 days ago', 'a', 'b', 'c', 'd'] },
     { key: 'ci', label: 'CI and backup', to: '#ci', tone: 'good', headline: '4/4 runners online, 0 running, 0 queued, last backup 6 h ago' },
   ];
-  return <HubOverview sections={sections} areas={areas} summary="1 area needs me: Web app. Red counts are the same list as the badge in the rail." />;
+  return <HubOverview sections={sections} areas={areas} summary={<>1 area needs me: Web app. Red counts are the same list as the badge in the rail.</>} />;
 }
 
 const RUN_SPEC: RunSpec = {
@@ -608,6 +608,17 @@ function RunPane({ title, spec, refusal }: { title: string; spec: RunSpec; refus
       <div className="gallery-run-foot">
         <Button variant="primary" disabledReason={form.disabledReason}>{form.primaryLabel}</Button>
       </div>
+    </div>
+  );
+}
+
+function HubHeaderFlatSpecimen() {
+  const [item, setItem] = useState('actions');
+  const tabs = [{ key: 'actions', label: 'Actions', count: 2 }, { key: 'reviews', label: 'Reviews', live: true }, { key: 'team', label: 'Team' }];
+  return (
+    <div className="gallery-hub-demo">
+      <HubHeader title="Work" subtitle="A hub with one tab row" base="/work" tabs={tabs} item={item} onNavigate={(path) => setItem(path.split('/').pop() ?? 'actions')} />
+      <p className="gallery-note">Flat tab list: no sections, no second row.</p>
     </div>
   );
 }
@@ -2516,7 +2527,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars', 'hub-header', 'hub-overview', 'run-dialog'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars', 'hub-header', 'hub-overview', 'run-dialog', 'hub-header-flat'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2782,6 +2793,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="run-dialog" title="Run with safe defaults">
           <RunDialogSpecimen />
+        </Specimen>
+        <Specimen id="hub-header-flat" title="Hub header, flat tab list">
+          <HubHeaderFlatSpecimen />
         </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">

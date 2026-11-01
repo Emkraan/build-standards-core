@@ -74,7 +74,9 @@ export interface HubHeaderProps {
   status?: ReactNode;
   /** The route the hub lives at, for example `/platform`. */
   base: string;
-  sections: readonly HubSection[];
+  sections?: readonly HubSection[] | undefined;
+  /** A flat hub with a single tab row: one tab per item, route `<base>/<item>`, no sections and no second row. Used instead of `sections`; the current tab is `item`. */
+  tabs?: readonly HubItem[] | undefined;
   /** Current section segment from the route. Omit on the Overview. */
   section?: string | undefined;
   /** Current item segment from the route. */
@@ -105,18 +107,32 @@ function sum(items: readonly HubItem[]): number | undefined {
   return n > 0 ? n : undefined;
 }
 
+function FlatHubHeader({ title, subtitle, eyebrow, status, base, tabs, item, onNavigate }: Pick<HubHeaderProps, 'title' | 'subtitle' | 'eyebrow' | 'status' | 'base' | 'item' | 'onNavigate'> & { tabs: readonly HubItem[] }) {
+  const root = base.replace(/\/+$/, '');
+  const items: TabItem[] = tabs.map((t) => ({ id: `${root}/${t.key}`, label: t.label, badge: badge(t.count, t.live) }));
+  const value = tabs.some((t) => t.key === item) ? `${root}/${item}` : (items[0]?.id ?? '');
+  return (
+    <div className="hub-head">
+      <PageHeader eyebrow={eyebrow} title={title} subtitle={subtitle} status={status} />
+      <Tabs label={`${title} tabs`} items={items} value={value} onChange={onNavigate} />
+    </div>
+  );
+}
+
 export function HubHeader({
   title,
   subtitle,
   eyebrow,
   status,
   base,
-  sections,
+  sections = [],
+  tabs,
   section,
   item,
   onNavigate,
   overviewLabel = 'Overview',
 }: HubHeaderProps) {
+  if (tabs) return <FlatHubHeader {...{ title, subtitle, eyebrow, status, base, tabs, item, onNavigate }} />;
   const root = base.replace(/\/+$/, '') || '/';
   const open = sections.find((s) => s.key === section);
   const top: TabItem[] = [
