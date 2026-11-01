@@ -4304,7 +4304,7 @@
       "id": "ops-center-layout.1.4",
       "ref": "ops-center-layout.md 1.4",
       "title": "One source of truth for counts",
-      "statement": "One source of truth for counts. The rail badge, the section and item tab counts and the Overview all read one server-side problem list, counted one per problem line (two failing jobs and a stale heartbeat read 3). The client applies no thresholds of its own. Work in progress shows as a spinner, never red, on any item.",
+      "statement": "One source of truth for counts. The rail badge, the section and item tab counts and the Overview all read one server-side problem list, counted one per problem line (two failing jobs and a stale heartbeat read 3). The client applies no thresholds of its own: none on a count, an age or a duration. Work in progress shows as a spinner, never red, on any item.",
       "level": "must",
       "applies_to": [
         "local-ops"
@@ -4313,7 +4313,7 @@
         "kind": "repo-check",
         "id": "RC023"
       },
-      "acceptance": "repo check RC023 reports a client source that decides a tone, badge or severity from a count compared with a number; a test asserts the badge, tab and Overview counts equal the server list, and that an item with three problem lines counts 3."
+      "acceptance": "repo check RC023 reports a client source that decides a tone, badge or severity from a count, an age or a duration compared with a number; a test asserts the badge, tab and Overview counts equal the server list, and that an item with three problem lines counts 3."
     },
     {
       "id": "ops-center-layout.1.5",
