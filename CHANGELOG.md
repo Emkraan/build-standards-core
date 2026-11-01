@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-11-01 (v1.117.0, RC023 flags ages and durations)
+
+Rule 1.4 of the ops center layout standard covers every threshold that decides a tone, not only counts. Opt in: only a repo with an ops center app (RC023 runs there only).
+
+- RC023 also fails a client source that decides a tone, badge or severity from an age or a duration compared with a number: a name that says time (`ageHours`, `minutesSince`, `elapsed`, `stale_days`, `...Ms`) compared with a number, a clock difference (`Date.now() - t`) compared with a number, or anything compared with a product of time units (`30 * 3600 * 1000`). Comparison with zero is not a threshold; the exception marker works as before. Tone words now include amber, red, yellow and orange.
+- The core app's meeting schedule state is renamed from `tone` to `phase` (it is a schedule label, not a severity); no behaviour changes.
+
+## 2026-11-01 (v1.117.0, RC023 flags ages and durations)
+
+Rule 1.4 of the ops center layout standard covers every threshold that decides a tone, not only counts. Opt in: only a repo with an ops center app (RC023 runs there only).
+
+- RC023 also fails a client source that decides a tone, badge or severity from an age or a duration compared with a number: a name that says time (`ageHours`, `minutesSince`, `elapsed`, `stale_days`, `...Ms`) compared with a number, a clock difference (`Date.now() - t`) compared with a number, or anything compared with a product of time units (`30 * 3600 * 1000`). Comparison with zero is not a threshold; the exception marker works as before. Tone words now include amber, red, yellow and orange.
+- The core app's meeting schedule state is renamed from `tone` to `phase` (it is a schedule label, not a severity); no behaviour changes.
+
 ## 2026-11-01 (v1.115.0, ops center problem list: headlines, provider slots, count unit)
 
 The server problem list carries what a consumer's own list needs. Opt in: a provider slot, null by default; the count unit changes for everyone.
