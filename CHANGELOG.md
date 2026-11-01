@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-01 (v1.116.0, core-ci runs the repo checks)
+
+`core-ci.yml` and `core-ci-reusable.yml` gain a `core-repo-checks` step, so a consumer no longer wires the repo checks into its CI by hand. Opt in: nothing changes until the overlay sets the new parameters row.
+
+- New row `Repo checks gate` in `standards-local/parameters.md`: rule ids, doc names (for example `ops-center-layout`) or `all`. `python3 scripts/core-ci.py repo-checks` runs `core-status.py --json` and fails the run when a named repo-check rule fails, prints the file and line of every finding, treats an active exception as excepted and a rule the overlay cannot run as a failure. The row empty (the default) is a clean skip.
+- `core-repo-checks` is one more named step of `core-checks`; it adds no job, so no merge gate changes. A sync refreshes the workflow.
+
 ## 2026-10-30 (v1.114.0, ops center layout adoption)
 
 The core ops center app adopts the approved layout. Opt in: the app only; consumers sync it with the kit.

@@ -373,6 +373,62 @@ class AsciiNodePython(Overlay):
 @unittest.skipUnless(
     shutil.which("gitleaks") or os.environ.get("GITLEAKS"), "gitleaks not installed"
 )
+class RepoChecksGate(Overlay):
+    """core-ci.py repo-checks: the repo checks of the rules the Repo checks gate row opts into fail the run."""
+
+    ROW = "| Repo checks gate | {} | x |\n"
+
+    def setUp(self):
+        super().setUp()
+        shutil.copyfile(SCRIPTS / "repo_checks.py", self.repo / "scripts" / "repo_checks.py")
+        rules = [
+            r
+            for r in json.loads((ROOT / "standards" / "rules.json").read_text())["rules"]
+            if r["id"] in ("ops-center-layout.1.4", "ops-center-layout.1.9")
+        ]
+        (self.repo / "standards-core").mkdir()
+        (self.repo / "standards-core" / "rules.json").write_text(json.dumps({"rules": rules}))
+        (self.repo / "standards.lock").write_text("ref=v0.0.0\ncommit=abc\n")
+        self.commit(
+            "chore: ops center",
+            {
+                "opscenter/app/src/Badge.tsx": "const tone = ageHours > 30 ? 'warn' : 'ok'\n",
+                "opscenter/app/src/App.tsx": "const x = 1\n",
+            },
+        )
+
+    def gate(self, value, extra=""):
+        self.params("", self.ROW.format(value) + extra)
+        return self.ci("repo-checks")
+
+    def test_off_by_default_is_a_clean_skip(self):
+        rc, out = self.ci("repo-checks")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("skip repo-checks", out)
+
+    def test_an_opted_in_rule_with_a_finding_fails_with_the_place(self):
+        rc, out = self.gate("ops-center-layout")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("file=opscenter/app/src/Badge.tsx,line=1", out)
+        self.assertIn("RC023", out)
+
+    def test_a_rule_not_opted_in_is_not_gated(self):
+        rc, out = self.gate("ops-center-layout.1.9")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("1 gated rule(s), 0 not passing", out)
+
+    def test_all_and_an_unknown_name(self):
+        self.assertEqual(self.gate("all")[0], 1)
+        rc, out = self.gate("ops-center-layout.1.9, nonsense")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("nonsense names no repo-check rule", out)
+
+    def test_clean_repo_passes(self):
+        self.commit("fix: client", {"opscenter/app/src/Badge.tsx": "const tone = problems.tone\n"})
+        rc, out = self.gate("all")
+        self.assertEqual(rc, 0, out)
+
+
 class KitPeers(Overlay):
     def kit(self, extra=None):
         files = {

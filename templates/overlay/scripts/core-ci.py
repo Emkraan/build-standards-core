@@ -21,6 +21,12 @@ Usage (run from the consumer repo root; the overlay may sit in a subfolder):
                                                              frozen installs (default .github/workflows);
                                                              warns when a workflow_run trigger lists
                                                              workflows but not core-ci
+  python3 scripts/core-ci.py repo-checks                     the repo checks (scripts/repo_checks.py, RC0nn)
+                                                             of the rules the Repo checks gate parameter
+                                                             opts into (rule ids, doc names or `all`;
+                                                             empty: off) fail the run on a finding, as
+                                                             core-status.py reads it (an active exception
+                                                             excepts a rule)
   python3 scripts/core-ci.py ascii                           no byte above 127 in any tracked text file
                                                              (binaries, synced copies and lockfiles
                                                              skipped); the ASCII patterns parameter
@@ -952,6 +958,73 @@ def cmd_ascii(argv: list) -> int:
         f"{n} line(s) with a byte above 127, {excused} excepted"
     )
     return 1 if n else 0
+
+
+def gated(rule: dict, wanted: list) -> bool:
+    """Does the Repo checks gate parameter opt this rule in: `all`, the rule id, a prefix of it, or its doc name."""
+    rid = rule.get("id", "")
+    return any(
+        w == "all" or rid == w or rid.startswith(w + ".") or rid.split(".")[0] == w for w in wanted
+    )
+
+
+def cmd_repo_checks(argv: list) -> int:
+    """The repo checks of the rules a consumer opted into fail the run (the parameters row "Repo checks gate").
+    Nothing opted in is a clean skip, so an overlay that has not set the row is unchanged. The status of each rule
+    is core-status.py's (an active exception makes it excepted), so the gate and the report never disagree."""
+    wanted = listed(parameter("Repo checks gate"))
+    if not wanted:
+        say("skip repo-checks: the Repo checks gate parameter is empty")
+        return 0
+    # The caller's own copies when there are (the reusable workflow runs the core's pinned scripts against the
+    # caller's repo, and core-status reads the overlay it sits in).
+    scripts = ROOT / "scripts" if (ROOT / "scripts" / "core-status.py").is_file() else HERE
+    status = scripts / "core-status.py"
+    top = git("rev-parse", "--show-toplevel").strip()
+    if not status.is_file():
+        say("::error::repo-checks: scripts/core-status.py is not in this overlay")
+        return 2
+    r = subprocess.run(
+        [sys.executable, str(status), "--json"],
+        cwd=top,
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+    try:
+        report = json.loads(r.stdout)
+    except ValueError:
+        raise RuntimeError(
+            "core-status.py --json did not answer: " + (r.stderr or r.stdout)[-300:]
+        ) from None
+    rules = [x for x in report.get("rules", []) if x.get("kind") == "repo-check"]
+    chosen = [x for x in rules if gated(x, wanted)]
+    unknown = [w for w in wanted if w != "all" and not any(gated(x, [w]) for x in rules)]
+    for w in unknown:
+        say(f"::warning::repo-checks: {w} names no repo-check rule in this core release")
+    bad = 0
+    try:
+        sys.path.insert(0, str(scripts))
+        import repo_checks  # noqa: PLC0415 - only when the gate is on
+    except ImportError:
+        repo_checks = None
+    for x in chosen:
+        if x["status"] == "pass":
+            continue
+        if x["status"] == "excepted":
+            say(f"::warning::repo-checks: {x['ref']} excepted ({x['title']})")
+            continue
+        bad += 1
+        say(
+            f"::error::repo-checks: {x['ref']} {x['title']}: {x['status']}, {x.get('findings', 0)} finding(s). {x.get('note', '')}"
+        )
+        if repo_checks is not None and x["status"] == "fail":
+            for cid2, (_, ref, _) in repo_checks.CHECKS.items():
+                if ref == x["ref"]:
+                    for path, line, msg in repo_checks.run(cid2, pathlib.Path(top)):
+                        say(f"::error file={path},line={line}::{cid2} {msg}")
+    say(f"repo-checks: {len(chosen)} gated rule(s), {bad} not passing")
+    return 1 if bad else 0
 
 
 def major(v: str) -> str | None:
@@ -2203,6 +2276,7 @@ COMMANDS = {
     "required-checks": cmd_required_checks,
     "required-names": cmd_required_names,
     "wait-checks": cmd_wait_checks,
+    "repo-checks": cmd_repo_checks,
 }
 
 
