@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-01 (v1.118.0, ops center rules 10 to 12: overrides, pending next step, self-healing)
+## 2026-11-01 (v1.119.0, ops center rules 10 to 12: overrides, pending next step, self-healing)
 
 Three rules join the ops center layout standard (1.10 to 1.12), with a core helper and a check. Opt in: the helper and the check are used by a consumer's own gate; the stale plan re-plan changes the core owner apply for everyone.
 
@@ -8,6 +8,13 @@ Three rules join the ops center layout standard (1.10 to 1.12), with a core help
 - Rule 11, a card never shows a stale reason after an action: `pending_line` is the server wording; the kit override bar, override button and pending-next-step card state are not in this release and go to the kit.
 - Rule 12, known transient failures heal themselves: the owner apply re-plans at once on a stale saved plan (clean clears the card and the alert, changes ask for one review, never counts toward the repeat alert; real failures keep the normal path).
 - Where the standard text was ambiguous, the reading is in the pull request.
+
+## 2026-11-01 (v1.118.0, core-ci runs the repo checks)
+
+`core-ci.yml` and `core-ci-reusable.yml` gain a `core-repo-checks` step, so a consumer no longer wires the repo checks into its CI by hand. Opt in: nothing changes until the overlay sets the new parameters row.
+
+- New row `Repo checks gate` in `standards-local/parameters.md`: rule ids, doc names (for example `ops-center-layout`) or `all`. `python3 scripts/core-ci.py repo-checks` runs `core-status.py --json` and fails the run when a named repo-check rule fails, prints the file and line of every finding, treats an active exception as excepted and a rule the overlay cannot run as a failure. The row empty (the default) is a clean skip.
+- `core-repo-checks` is one more named step of `core-checks`; it adds no job, so no merge gate changes. A sync refreshes the workflow.
 
 ## 2026-11-01 (v1.117.0, RC023 flags ages and durations)
 

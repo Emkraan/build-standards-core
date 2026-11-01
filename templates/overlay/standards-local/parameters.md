@@ -28,6 +28,7 @@ Fill in per business. Keep secrets, hostnames and tenant ids out of any repo tha
 | ASCII check patterns, comma-separated globs that narrow the ASCII check (empty: every tracked text file, the default and the rule; for existing non-ASCII files record a time-boxed exception instead of narrowing) | | pr-review-and-merge.md 1.19, scripting-powershell.md 1.7, wpf-design-system.md 6.1 |
 | UI adoption stage (`none`, `partial` or `adopted`: with `none` or `partial` the drift workflow's UI adoption gate reports N/A instead of failing, until the UI series lands; empty keeps the gate on, the default) | | web-ui.md 0.11, scripts/core-status.py --require-ui-adopted |
 | Node major version (web; empty takes the first pin found) | | ci-cd-release.md 1 |
+| Repo checks gate (the repo checks `core-ci.yml` fails the run on: rule ids, doc names or `all`, comma-separated, for example `ops-center-layout`; empty: off, the checks only report through core-status) | | scripts/core-ci.py repo-checks, repo_checks.py |
 
 ## ascii_ignore
 

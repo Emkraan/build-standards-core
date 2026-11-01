@@ -99,6 +99,10 @@ jobs:
         if: ${{ !cancelled() && env.COMMITS == 'true' }}
         run: python3 "$OVERLAY/scripts/core-ci.py" identity "$BASE" "$HEAD"
 
+      - name: core-repo-checks
+        if: ${{ !cancelled() && env.FULL == 'true' }}
+        run: python3 "$OVERLAY/scripts/core-ci.py" repo-checks
+
       # One entry per pull request, append-only, when the parameters row "Changelog entries" is per-pr.
       - name: core-changelog
         if: ${{ !cancelled() && env.COMMITS == 'true' }}
