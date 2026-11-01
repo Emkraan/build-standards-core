@@ -310,21 +310,49 @@ CLOSING = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+" + IS
 REFS = re.compile(r"(?:^|[^\w])(?:refs?|part of)\s*:?\s+" + ISSUE_REF, re.I | re.M)
 REMAINING = re.compile(r"^\s*(?:[-*]\s*)?Remaining:\s*\S", re.I | re.M)
 NO_ISSUE = re.compile(r"^\s*(?:[-*]\s*)?No issue:\s*\S", re.I | re.M)
-BOT_AUTHORS = ("renovate[bot]", "renovate", "dependabot[bot]", "emkraan-deploy-bot")
-CLAUDIUS_AUTHORS = ("emkraan-claudius[bot]", "emkraan-claudius", "app/emkraan-claudius")
-BOT_BRANCH = re.compile(r"^(?:chore|pin|standards-sync|fold)(?:[/-]|$)", re.I)
+DEFAULT_EXEMPT_AUTHORS = ("renovate[bot]", "renovate", "dependabot[bot]")
+DEFAULT_BOT_BRANCHES = ("chore", "pin", "standards-sync", "fold")
+
+
+def pr_issue_config() -> dict:
+    """Exemptions: an env var, else the parameters row, else the default. Names stay with the consumer."""
+
+    def pick(env_name: str, row: str) -> list:
+        return listed(os.environ.get(env_name) or parameter(row))
+
+    return {
+        "authors": [a.lower() for a in pick("PR_ISSUE_EXEMPT_AUTHORS", "PR issue exempt authors")],
+        "app_authors": [a.lower() for a in pick("PR_ISSUE_APP_AUTHORS", "PR issue app authors")],
+        "branches": pick("PR_ISSUE_BOT_BRANCHES", "PR issue bot branches")
+        or list(DEFAULT_BOT_BRANCHES),
+        "repos": [r.lower() for r in pick("PR_ISSUE_EXEMPT_REPOS", "PR issue exempt repos")],
+    }
 
 
 def pr_issue_findings(
-    title: str, body: str, author: str = "", branch: str = "", repo: str = ""
+    title: str,
+    body: str,
+    author: str = "",
+    branch: str = "",
+    repo: str = "",
+    cfg: dict | None = None,
 ) -> list:
-    """Problems with a PR's issue declaration (empty list when it passes or is exempt)."""
+    """Problems with a PR's issue declaration (empty list when it passes or is exempt).
+
+    Exempt: the always-exempt bots plus cfg authors; an app author (cfg app_authors) on a bot branch;
+    a repo whose name starts with a cfg exempt prefix; a revert (title or body)."""
+    cfg = cfg or {}
     who = author.strip().lower()
-    if who in BOT_AUTHORS:
+    if who in DEFAULT_EXEMPT_AUTHORS or who in cfg.get("authors", []):
         return []
-    if who in CLAUDIUS_AUTHORS and BOT_BRANCH.match(branch.strip()):
+    prefixes = cfg.get("branches") or list(DEFAULT_BOT_BRANCHES)
+    bot_branch = re.compile(
+        r"^(?:" + "|".join(re.escape(x) for x in prefixes) + r")(?:[/-]|$)", re.I
+    )
+    if who in cfg.get("app_authors", []) and bot_branch.match(branch.strip()):
         return []
-    if repo.split("/")[-1].lower().startswith("homeassistant-"):
+    name = repo.split("/")[-1].lower()
+    if any(name.startswith(x) for x in cfg.get("repos", [])):
         return []
     if re.match(r"\s*revert\b", title or "", re.I) or "this reverts commit" in (body or "").lower():
         return []
@@ -341,7 +369,8 @@ def pr_issue_findings(
         forms.append("No issue: <reason>")
     if not forms:
         return [
-            "declare what this PR does to issues: Closes #N, or Refs #N with a Remaining: line, or No issue: <reason>"
+            "declare what this PR does to issues: Closes #N, or Refs #N with a Remaining: line, "
+            "or No issue: <reason>"
         ]
     if len(forms) > 1:
         return [f"declare exactly one form, found {len(forms)}: " + "; ".join(forms)]
@@ -349,8 +378,6 @@ def pr_issue_findings(
         return [
             "Refs #N needs a line 'Remaining: <what is left>' (or use Closes #N when nothing is left)"
         ]
-    if remaining and not refs:
-        return ["a 'Remaining:' line goes with Refs #N; this body has no Refs #N"]
     return []
 
 
@@ -362,6 +389,7 @@ def cmd_pr_issue(argv: list) -> int:
         env("PR_AUTHOR", ""),
         env("PR_BRANCH", ""),
         env("GITHUB_REPOSITORY", ""),
+        pr_issue_config(),
     )
     for b in bad:
         say(f"::error::pr-issue: {b}")

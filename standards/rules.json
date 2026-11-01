@@ -1750,7 +1750,7 @@
       "id": "pr-review-and-merge.1.20",
       "ref": "pr-review-and-merge.md 1.20",
       "title": "Every PR declares what it does to issues",
-      "statement": "The PR body holds exactly one of: Closes, Fixes or Resolves #N; Refs #N plus a Remaining line; or No issue with a reason. Reverts and bot PRs pass, and homeassistant repos are exempt.",
+      "statement": "The PR body holds exactly one of: Closes, Fixes or Resolves #N; Refs #N plus a Remaining line; or No issue with a reason. Reverts and dependency bots pass, and the consumer parameters name further exempt authors, app authors and repo prefixes.",
       "level": "must",
       "applies_to": [
         "all"

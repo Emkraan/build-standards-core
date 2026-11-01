@@ -95,7 +95,7 @@ class PrHygiene(Overlay):
         self.assertIn("1 bad subject", out)
 
     def test_pr_issue_declaration(self):
-        def run(body, title="feat: x", author="rp", branch="feat/x", repo="Emkraan/apps"):
+        def run(body, title="feat: x", author="rp", branch="feat/x", repo="acme/apps"):
             return self.ci(
                 "pr-issue",
                 env={
@@ -109,7 +109,7 @@ class PrHygiene(Overlay):
 
         for ok in (
             "Closes #12",
-            "fixes: Emkraan/apollo#9 and resolves #3",
+            "fixes: acme/docs#9 and resolves #3",
             "Refs #4\nRemaining: the live check",
             "No issue: typo fix",
             "Closes #1\n<!-- Refs #2 -->\n```\nNo issue: x\n```",
@@ -129,19 +129,44 @@ class PrHygiene(Overlay):
     def test_pr_issue_exemptions(self):
         def run(body="", **kw):
             env = {"PR_TITLE": "feat: x", "PR_BODY": body, "PR_AUTHOR": "rp", "PR_BRANCH": "feat/x"}
-            env["GITHUB_REPOSITORY"] = "Emkraan/apps"
+            env["GITHUB_REPOSITORY"] = "acme/apps"
             env.update({k.upper(): v for k, v in kw.items()})
             return self.ci("pr-issue", env=env)[0]
 
         self.assertEqual(run(pr_author="renovate[bot]"), 0)
-        self.assertEqual(run(pr_author="emkraan-deploy-bot"), 0)
+        self.assertEqual(run(pr_author="acme-deploy-bot"), 1)
+        self.assertEqual(
+            run(pr_author="acme-deploy-bot", pr_issue_exempt_authors="acme-deploy-bot"), 0
+        )
+        app = {"pr_issue_app_authors": "acme-app[bot]"}
         for br in ("chore/pin-x", "pin/x", "standards-sync/y", "fold/z"):
-            self.assertEqual(run(pr_author="emkraan-claudius[bot]", pr_branch=br), 0, br)
-        self.assertEqual(run(pr_author="emkraan-claudius[bot]", pr_branch="feat/x"), 1)
-        self.assertEqual(run(pr_author="rp", pr_branch="chore/x"), 1)
-        self.assertEqual(run(github_repository="Emkraan/homeassistant-meater"), 0)
+            self.assertEqual(run(pr_author="acme-app[bot]", pr_branch=br, **app), 0, br)
+        self.assertEqual(run(pr_author="acme-app[bot]", pr_branch="feat/x", **app), 1)
+        self.assertEqual(run(pr_author="rp", pr_branch="chore/x", **app), 1)
+        self.assertEqual(run(github_repository="acme/ha-meter", pr_issue_exempt_repos="ha-"), 0)
+        self.assertEqual(run(github_repository="acme/ha-meter"), 1)
         self.assertEqual(run(pr_title='Revert "feat: x"'), 0)
         self.assertEqual(run("This reverts commit abc123."), 0)
+
+    def test_pr_issue_exemptions_from_parameters(self):
+        self.params(
+            "",
+            "| PR issue exempt authors | acme-deploy-bot | x |\n"
+            "| PR issue app authors | acme-app[bot] | x |\n"
+            "| PR issue exempt repos | ha- | x |\n",
+        )
+        env = {
+            "PR_TITLE": "feat: x",
+            "PR_BODY": "",
+            "PR_AUTHOR": "acme-deploy-bot",
+            "PR_BRANCH": "b",
+        }
+        env["GITHUB_REPOSITORY"] = "acme/apps"
+        self.assertEqual(self.ci("pr-issue", env=env)[0], 0)
+        env.update(PR_AUTHOR="acme-app[bot]", PR_BRANCH="pin/x")
+        self.assertEqual(self.ci("pr-issue", env=env)[0], 0)
+        env.update(PR_AUTHOR="rp", PR_BRANCH="x", GITHUB_REPOSITORY="acme/ha-one")
+        self.assertEqual(self.ci("pr-issue", env=env)[0], 0)
 
     def test_attribution_commit_title_body(self):
         head = self.commit("feat: one", {"a": "1"})
