@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-01 (v1.115.0, ops center problem list: headlines, provider slots, count unit)
+
+The server problem list carries what a consumer's own list needs. Opt in: a provider slot, null by default; the count unit changes for everyone.
+
+- `OPSCENTER_PROBLEMS_PROVIDER` (`path/to/file.py:ClassName`, optional methods) fills the live headline of any item (`headlines()`), marks any item running (`running()`, a spinner, never red) and adds a consumer's own sources: `needs_me()` for what waits on the owner (a refused deploy waiting on a click, a run waiting on an approval) and `worth_a_look()` for amber lines (spend headroom, an account read error). A source on an existing item adds its lines and only raises its tone. A provider that cannot be read is one needs_me item.
+- Count unit: an item's `count` is its number of problem lines (two failing jobs and a stale heartbeat read 3), and `counts.lines` is the total for the rail badge. Section and item counts are sums of lines, so the tabs add up to the badge. The app needs no change.
+- Standard `ops-center-layout.md` 1.1 rules 3 and 4 and section 4 state both; DESIGN 12.50 documents the slot.
+
 ## 2026-10-30 (v1.114.0, ops center layout adoption)
 
 The core ops center app adopts the approved layout. Opt in: the app only; consumers sync it with the kit.
