@@ -1,12 +1,19 @@
 # Changelog
 
-## 2026-11-01 (v1.115.0, hub Overview and header polish)
+## 2026-11-01 (v1.116.0, hub Overview and header polish)
 
 Opt in: only the hub pieces change; a consumer that does not use `HubHeader` or `HubOverview` sees nothing.
 
 - `AreaCard` status renders as a pill (`.badge.pill`, `--radius-pill`), not a squared badge. Detail lines keep full text colour; the secondary colour is for the summary and status lines only. `.hub-overview-summary` has a 12px block margin, label size and the secondary colour, and is a block, so a consumer can pass a node without a wrapper.
 - `HubHeader` takes a flat tab list (`tabs`, route `<base>/<item>`) for hubs with a single tab row: no sections, no second row.
 - `AreaCard` renders a provider `headline` (live facts) ahead of the server `status` text, and reads a per-item `running` boolean as the live state (info tone, never red). Both fields are optional, so absence is tolerated.
+## 2026-11-01 (v1.115.0, ops center problem list: headlines, provider slots, count unit)
+
+The server problem list carries what a consumer's own list needs. Opt in: a provider slot, null by default; the count unit changes for everyone.
+
+- `OPSCENTER_PROBLEMS_PROVIDER` (`path/to/file.py:ClassName`, optional methods) fills the live headline of any item (`headlines()`), marks any item running (`running()`, a spinner, never red) and adds a consumer's own sources: `needs_me()` for what waits on the owner (a refused deploy waiting on a click, a run waiting on an approval) and `worth_a_look()` for amber lines (spend headroom, an account read error). A source on an existing item adds its lines and only raises its tone. A provider that cannot be read is one needs_me item.
+- Count unit: an item's `count` is its number of problem lines (two failing jobs and a stale heartbeat read 3), and `counts.lines` is the total for the rail badge. Section and item counts are sums of lines, so the tabs add up to the badge. The app needs no change.
+- Standard `ops-center-layout.md` 1.1 rules 3 and 4 and section 4 state both; DESIGN 12.50 documents the slot.
 
 ## 2026-10-30 (v1.114.0, ops center layout adoption)
 
