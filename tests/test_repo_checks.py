@@ -69,6 +69,34 @@ class TestChecks(Tree):
             },
         )
 
+    def test_rc023_age_and_duration_thresholds(self):
+        for i, line in enumerate(
+            [
+                "const tone = ageHours > 30 ? 'warn' : 'ok'",
+                "const amber = (Date.now() - last.getTime()) > 30 * 3600 * 1000",
+                "const tone = snapshotAgeMs >= 108000000 ? 'bad' : 'ok'",
+                "const badge = minutesSince > 10 ? 'needs-me' : undefined",
+                "const tone = elapsed > 90 ? 'bad' : 'ok'",
+                "const tone = lastRun < 6 * 60 * 60 * 1000 ? 'ok' : 'warn'",
+                "const level = stale_days >= 2 ? 'warn' : 'ok'",
+            ]
+        ):
+            with self.subTest(line=line):
+                self.fails("RC023", {f"opscenter/app/src/Age{i}.tsx": line + "\n"})
+
+    def test_rc023_age_clean(self):
+        self.passes(
+            "RC023",
+            {
+                "opscenter/app/src/Age.tsx": "const tone = problems.tone\n"
+                "const text = ageHours > 30 ? 'old' : 'recent'\n"
+                "const wait = Date.now() - t > 5000\nsetTimeout(tick, 60 * 1000)\n"
+                "const none = minutes > 0 ? minutes + ' min' : ''\n"
+                "const tone = ageHours > 30 ? 'warn' : 'ok' // core-exception: EXC-003\n",
+                "web/app/src/Age.tsx": "const tone = ageHours > 30 ? 'warn' : 'ok'\n",
+            },
+        )
+
     def test_rc023_clean(self):
         self.passes(
             "RC023",
