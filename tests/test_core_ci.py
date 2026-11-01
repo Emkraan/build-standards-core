@@ -392,7 +392,7 @@ class RepoChecksGate(Overlay):
         self.commit(
             "chore: ops center",
             {
-                "opscenter/app/src/Badge.tsx": "const tone = ageHours > 30 ? 'warn' : 'ok'\n",
+                "opscenter/app/src/Badge.tsx": "const tone = failedCount > 3 ? 'warn' : 'ok'\n",
                 "opscenter/app/src/App.tsx": "const x = 1\n",
             },
         )
