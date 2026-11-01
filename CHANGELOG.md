@@ -1,12 +1,26 @@
 # Changelog
 
-## 2026-11-01 (v1.116.0, hub Overview and header polish)
+## 2026-11-01 (v1.118.0, hub Overview and header polish)
 
 Opt in: only the hub pieces change; a consumer that does not use `HubHeader` or `HubOverview` sees nothing.
 
 - `AreaCard` status renders as a pill (`.badge.pill`, `--radius-pill`), not a squared badge. Detail lines keep full text colour; the secondary colour is for the summary and status lines only. `.hub-overview-summary` has a 12px block margin, label size and the secondary colour, and is a block, so a consumer can pass a node without a wrapper.
 - `HubHeader` takes a flat tab list (`tabs`, route `<base>/<item>`) for hubs with a single tab row: no sections, no second row.
 - `AreaCard` renders a provider `headline` (live facts) ahead of the server `status` text, and reads a per-item `running` boolean as the live state (info tone, never red). Both fields are optional, so absence is tolerated.
+
+## 2026-11-01 (v1.117.0, RC023 flags ages and durations)
+
+Rule 1.4 of the ops center layout standard covers every threshold that decides a tone, not only counts. Opt in: only a repo with an ops center app (RC023 runs there only).
+
+- RC023 also fails a client source that decides a tone, badge or severity from an age or a duration compared with a number: a name that says time (`ageHours`, `minutesSince`, `elapsed`, `stale_days`, `...Ms`) compared with a number, a clock difference (`Date.now() - t`) compared with a number, or anything compared with a product of time units (`30 * 3600 * 1000`). Comparison with zero is not a threshold; the exception marker works as before. Tone words now include amber, red, yellow and orange.
+- The core app's meeting schedule state is renamed from `tone` to `phase` (it is a schedule label, not a severity); no behaviour changes.
+
+## 2026-11-01 (v1.117.0, RC023 flags ages and durations)
+
+Rule 1.4 of the ops center layout standard covers every threshold that decides a tone, not only counts. Opt in: only a repo with an ops center app (RC023 runs there only).
+
+- RC023 also fails a client source that decides a tone, badge or severity from an age or a duration compared with a number: a name that says time (`ageHours`, `minutesSince`, `elapsed`, `stale_days`, `...Ms`) compared with a number, a clock difference (`Date.now() - t`) compared with a number, or anything compared with a product of time units (`30 * 3600 * 1000`). Comparison with zero is not a threshold; the exception marker works as before. Tone words now include amber, red, yellow and orange.
+- The core app's meeting schedule state is renamed from `tone` to `phase` (it is a schedule label, not a severity); no behaviour changes.
 
 ## 2026-11-01 (v1.115.0, ops center problem list: headlines, provider slots, count unit)
 
