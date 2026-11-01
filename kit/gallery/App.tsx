@@ -148,6 +148,10 @@ import {
   RecordPreviewProvider,
   createRecordRegistry,
   HubHeader,
+  OverrideBar,
+  OverrideButton,
+  OverrideTag,
+  PendingReason,
   resolveHubRoute,
   HubOverview,
   RunDialog,
@@ -619,6 +623,34 @@ function HubHeaderFlatSpecimen() {
     <div className="gallery-hub-demo">
       <HubHeader title="Work" subtitle="A hub with one tab row" base="/work" tabs={tabs} item={item} onNavigate={(path) => setItem(path.split('/').pop() ?? 'actions')} />
       <p className="gallery-note">Flat tab list: no sections, no second row.</p>
+    </div>
+  );
+}
+
+function OverrideSpecimen() {
+  const [all, setAll] = useState(false);
+  const [mine, setMine] = useState(false);
+  const cover = all ? 'all' : mine ? 'item' : null;
+  const pending = all || mine ? 'freeze bypassed, re-checked within 3 minutes' : null;
+  return (
+    <div className="gallery-hub-demo">
+      <OverrideBar
+        title="Change freeze"
+        gate={<><b>Q4 freeze</b> is on until Mon, Nov 2, 11:59 PM.</>}
+        detail={all ? 'Bypassed for all my PRs until midnight.' : 'My PRs wait for it to end.'}
+        on={all}
+        switchLabel="Bypass for all my PRs"
+        switchHint="Turns itself off at midnight"
+        onLabel="bypass on"
+        confirm={{ title: 'Bypass the freeze for all my PRs?', body: 'Each one merges once everything else passes. A merge to main deploys.', confirmLabel: 'Bypass for all my PRs' }}
+        onToggle={(next) => setAll(next)}
+      />
+      <article className="card">
+        <h3>PR 412, Release notes</h3>
+        <OverrideTag cover={cover} itemLabel="freeze bypassed" allLabel="freeze bypassed (all)" />
+        <PendingReason pending={pending} reason="Held by the Q4 freeze." />
+        <OverrideButton held cover={cover} label="Bypass freeze" undoLabel="Undo freeze bypass" confirm={{ title: 'Bypass the freeze for PR 412?', body: 'It merges once everything else passes.' }} onSet={(next) => setMine(next)} />
+      </article>
     </div>
   );
 }
@@ -2527,7 +2559,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars', 'hub-header', 'hub-overview', 'run-dialog', 'hub-header-flat'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars', 'hub-header', 'hub-overview', 'run-dialog', 'hub-header-flat', 'override'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2796,6 +2828,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="hub-header-flat" title="Hub header, flat tab list">
           <HubHeaderFlatSpecimen />
+        </Specimen>
+        <Specimen id="override" title="Gate override (bar, button, tag, pending next step)">
+          <OverrideSpecimen />
         </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">

@@ -1811,3 +1811,30 @@ is provisional: the core assigns the final numbers when it merges.
 checked in design review of each page. The kit tests `help-tips`, `help-time`, `help-drawer`,
 `help-process` and `tooltip-shell` prove the parts, and `a11y.test.tsx` runs axe with the Help drawer
 open.
+
+### Gate overrides (`OverrideBar`, `OverrideButton`, `OverrideTag`, `PendingReason`)
+
+An override lifts one gate for the owner's own work for a limited time (ops center layout standard,
+rules 10 and 11). The kit draws the controls; the gate, who may override, the expiry and the wording
+come from the app and its server (`pending_line` of the core override store). The kit decides none of
+it, and each piece renders nothing, or the plain reason, when the app has not given it data yet.
+
+- `OverrideBar` is a bar above the list the gate holds: a small title, one line naming the gate that
+  is holding things, a switch for the all-items override and, while it is on, a warning tag. It
+  renders nothing without a `gate`. Turning the switch on opens a danger confirm that says what stops
+  being held, what still applies and when it ends, and writes inside the dialog, so a refused write
+  shows its message there and the switch stays off. Turning it off needs no confirm.
+- `OverrideButton` sits on each item the gate holds: the turn-on label (confirm first) on a held item,
+  the undo label on an item overridden one by one, and nothing when the all-items override already
+  covers it (the bar turns that off) or nothing holds the item.
+- `OverrideTag` marks an item whose gate is lifted (`item` or `all`), so a merge or run inside the
+  gate is never a surprise.
+- `PendingReason` is rule 11: between the action and the next pass of whatever re-checks the item it
+  shows the server's pending line (`role="status"`) and never the reason the action removed; with no
+  pending line it shows the reason; with neither it shows nothing.
+- Writes stay with the app: same-origin or loopback only, one writer, one log, the owner's own work
+  only. The kit never reads or stores an override.
+
+**Acceptance:** a component test asserts the confirm before turning on, no write on cancel, no confirm
+on turning off, the refused-write message, the three states of the button, the tag, the pending line
+replacing the reason, and axe; the gallery specimen `override` carries baselines in both themes.

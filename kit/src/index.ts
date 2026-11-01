@@ -328,3 +328,5 @@ export type {
   ModuleRailEntry,
   RegistryEntry,
 } from './shell/module';
+export { OverrideBar, OverrideButton, OverrideTag, PendingReason } from './shell/Override';
+export type { OverrideBarProps, OverrideButtonProps, OverrideConfirm, OverrideCover, PendingReasonProps } from './shell/Override';

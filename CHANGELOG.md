@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-01 (v1.121.0, gate override kit pieces)
+
+The kit pieces for rules 10 and 11 of the ops center layout standard. Opt in: a consumer that does not import them sees nothing.
+
+- `OverrideBar` (gate line, all-items switch, confirm before turning on), `OverrideButton` (per item: turn on with confirm, undo, hidden when the all-items override covers the item), `OverrideTag` and `PendingReason` (after an action the card shows the server's pending line, never the reason the action removed). Each renders nothing, or the plain reason, when the app gives it no data; the gate, expiry and wording stay with the app and the core override store.
+
 ## 2026-11-01 (v1.120.0, hub Overview and header polish)
 
 Opt in: only the hub pieces change; a consumer that does not use `HubHeader` or `HubOverview` sees nothing.
