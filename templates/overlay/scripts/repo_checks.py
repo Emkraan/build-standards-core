@@ -1404,9 +1404,13 @@ def ops_center_files(repo, exts):
 COUNT_COMPARE = re.compile(
     r"(?:\.length|[Cc]ount|[Tt]otal|[Ff]ailed|[Ff]ailing|[Ee]rrors?|[Pp]roblems?)\)?\s*(>=|<=|===|==|>|<)\s*(\d+)\b"
 )
+# A tone that reports a problem: the badge and severity paths, or a quoted problem value (bad, warn, danger, needs-me, amber, red).
+# A display-only label (a meeting chip that reads "next" or "later") is not a problem tone and is not matched; a threshold that
+# only styles such a label may also carry the marker `display-only: <why>` in a comment on its line or the line above.
 TONE_WORD = re.compile(
-    r"\b(?:tone|badge|severity|variant|level)\b|['\"`](?:bad|warn|warning|crit|critical|danger|needs[-_ ]?me|worth|amber|red|yellow|orange)"
+    r"\b(?:badge|severity)\b|['\"`](?:bad|warn|warning|alert|error|fail|failed|failing|crit|critical|danger|needs[-_ ]?me|worth|amber|red|yellow|orange)\b"
 )
+DISPLAY_ONLY = "display-only"
 # An age or a duration is a threshold just like a count: a name that says time (age, hours, minutes, seconds, days, ms, elapsed,
 # stale, duration, ago) compared with a number, a clock difference compared with a number, or anything compared with a product of
 # time units (30 * 3600 * 1000).
@@ -1434,6 +1438,11 @@ def _is_threshold(op, n):
     return not (op == "<=" and n == 0)
 
 
+def _display_only(lines, i):
+    """True when line i or the line above carries the marker `display-only: <why>` (a threshold that only styles a label)."""
+    return DISPLAY_ONLY + ":" in lines[i] or (i > 0 and DISPLAY_ONLY + ":" in lines[i - 1])
+
+
 def _is_age_threshold(op, n):
     """Any age or duration compared with a number other than zero is a threshold (0 asks only whether there is one)."""
     try:
@@ -1449,7 +1458,7 @@ def rc023(repo):
     for p in ops_center_files(repo, (".ts", ".tsx", ".js", ".jsx")):
         lines = repo.text(p).splitlines()
         for i, ln in enumerate(lines):
-            if is_comment(ln) or skipped(lines, i):
+            if is_comment(ln) or skipped(lines, i) or _display_only(lines, i):
                 continue
             prev = (
                 lines[i - 1]
@@ -1485,9 +1494,22 @@ OVERRIDE_WORD = re.compile(r"override|bypass", re.I)
 OFF_VERB = re.compile(
     r"\b(?:clear|reset|expire|revoke|disable|turn[_ ]?off|unset|remove|delete|purge|wipe)\w*", re.I
 )
+# A file that schedules work: by its path, or by code that does (a cron entry, a timer, a scheduled call). Words in a string
+# literal or in JSX text (help text such as "turns itself off at midnight") are never code and never match.
+SCHEDULED_PATH = re.compile(r"cron|schedul|timer|nightly|midnight", re.I)
 SCHEDULED = re.compile(
-    r"cron|schedul|timer|midnight|nightly|setInterval|apscheduler|launchd|systemd", re.I
+    r"\bcron\b|crontab|setInterval|setTimeout|apscheduler|\bsched\.|schedule\.|@scheduled|launchd|systemd|\.every\(|\bTimer\(|add_job\(",
+    re.I,
 )
+STRING_LITERAL = re.compile(r"\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`")
+JSX_TEXT = re.compile(r">[^<>{}]*[A-Za-z][^<>{}]*<|^\s*[A-Za-z][^<>{}=;()]*$")
+
+
+def _code(line):
+    """The line without its string literals and JSX text, which carry words and no behaviour."""
+    return JSX_TEXT.sub("><", STRING_LITERAL.sub('""', line))
+
+
 OPEN_RETURN = re.compile(
     r"return\s+(?:True|true)\b|return\s*\{[^}]*\b(?:on|active|allowed|bypass\w*)\b[\"']?\s*:\s*(?:True|true)\b"
 )
@@ -1511,11 +1533,15 @@ def rc025(repo):
     for p in ops_center_files(repo, (".py", ".ts", ".tsx", ".js", ".jsx")):
         text = repo.text(p)
         lines = text.splitlines()
-        scheduled = bool(SCHEDULED.search(p) or SCHEDULED.search(text))
+        code = [_code(ln) for ln in lines]
+        scheduled = bool(
+            SCHEDULED_PATH.search(p)
+            or any(SCHEDULED.search(c) for ln, c in zip(lines, code) if not is_comment(ln))
+        )
         for i, ln in enumerate(lines):
             if is_comment(ln) or skipped(lines, i):
                 continue
-            if scheduled and OVERRIDE_WORD.search(ln) and OFF_VERB.search(ln):
+            if scheduled and OVERRIDE_WORD.search(code[i]) and OFF_VERB.search(code[i]):
                 out.append(
                     (
                         p,
