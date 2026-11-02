@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-02 (v1.124.0, the core sync pull request declares no issue and runs a consumer changelog hook)
+
+The core sync pull request passes rule 1.20 and a consumer can meet its own changelog rule. Opt in for the hook: nothing changes until `changelog_cmd` or `CORE_UPDATE_CHANGELOG_CMD` is set; the body change applies to every sync.
+
+- The sync pull request body (`hermes/ops_center.py`, both pull request paths, and `core-update.yml`) carries `No issue: core release sync to vX`, so `core-pr-issue` (pr-review-and-merge.md 1.20) passes with no exempt-author row. Before, a sync PR had no declaration and the sync rolled back.
+- New consumer setting `ui_consumers[].changelog_cmd` (ops-center, `apply_via` pr) and repository variable `CORE_UPDATE_CHANGELOG_CMD` (the workflow): a command run after the pull request opened, with `{pr}` and `{version}` filled in; what it changes is committed as one new commit on the sync branch before the checks are awaited, so a repo that wants a changelog entry per PR number can meet it. A failing command closes the pull request like any failed step.
+- The contract (the body declares `No issue: <reason>`; a changelog step runs once the number is known) is in CONSUMING.md for any other tool that opens a sync pull request.
+
 ## 2026-11-02 (v1.123.0, RC023 and RC025 false hits)
 
 Two false hits of the ops center repo checks reported by a consumer are fixed. Opt in: only a repo with an ops center app.

@@ -425,6 +425,53 @@ def apply_via(c: dict, clone: Path, branch: str, sh: Sh) -> str:
     return "direct"
 
 
+def sync_body(latest: str, tail: str, notes: str = "") -> str:
+    """The sync pull request body. It declares what the PR does to issues, so the core's own rule (pr-review-and-merge.md
+    1.20, core-pr-issue) passes with no exempt-author row: a sync closes nothing."""
+    return (
+        f"Automated sync to core release {latest}. {tail}\n\nNo issue: core release sync to {latest}"
+        + (f"\n\n```\n{notes}\n```" if notes else "")
+    )
+
+
+def run_changelog_cmd(
+    c: dict, wt: Path, clone: Path, remote: str, pr_branch: str, number: str, latest: str, sh: Sh
+) -> tuple[str, str]:
+    """The consumer's `changelog_cmd`, run after the pull request opened (its number is only known then) from the worktree,
+    with {pr} and {version} filled in. What it changed is committed as one new commit on the sync branch and pushed.
+    Returns ("", new head or "") or (kind, reason). No command: nothing happens."""
+    cmd = c.get("changelog_cmd")
+    if not cmd:
+        return "", ""
+    argv = [a.replace("{pr}", number).replace("{version}", latest) for a in shlex.split(cmd)]
+    rc, out = sh(argv, cwd=wt)
+    if rc != 0:
+        return "pr-changelog", f"changelog_cmd failed on #{number}: {out[-200:]}"
+    if not sh(["git", "-C", str(wt), "status", "--porcelain"])[1].strip():
+        return "", ""
+    sh(["git", "-C", str(wt), "add", "-A"])
+    extra = [os.environ.get("CORE_COMMIT_ARGS", "")] if os.environ.get("CORE_COMMIT_ARGS") else []
+    rc, out = sh(
+        [
+            "git",
+            "-C",
+            str(wt),
+            *extra,
+            "commit",
+            "--quiet",
+            "-m",
+            f"docs(changelog): sync core {latest} (#{number})",
+        ]
+    )
+    if rc != 0:
+        return "pr-changelog", f"changelog commit on #{number} failed: {out[-200:]}"
+    head = sh(["git", "-C", str(wt), "rev-parse", "HEAD"])[1]
+    rc, out = push(sh, clone, "--quiet", remote, f"{head}:refs/heads/{pr_branch}")
+    if rc != 0:
+        return "pr-changelog", f"push of the changelog commit on #{number} failed: {out[-200:]}"
+    return "", head
+
+
 def land_pr(
     c: dict,
     clone: Path,
@@ -468,9 +515,12 @@ def land_pr(
             "--title",
             f"chore(standards): sync core {latest}",
             "--body",
-            f"Automated sync to core release {latest}. The local gate passed before and after the sync; "
-            f"this pull request merges as soon as the repo's own checks pass."
-            + (f"\n\n```\n{notes}\n```" if notes else ""),
+            sync_body(
+                latest,
+                "The local gate passed before and after the sync; this pull request merges as soon as "
+                "the repo's own checks pass.",
+                notes,
+            ),
         ],
         cwd=wt,
     )
@@ -497,6 +547,11 @@ def land_pr(
             "pr-open",
             f"pull request for {pr_branch} not readable or not on {new[:12]}: {out[-150:]}",
         )
+    kind, extra_head = run_changelog_cmd(c, wt, clone, remote, pr_branch, number, latest, sh)
+    if kind:
+        return rollback(kind, extra_head)
+    if extra_head:
+        new = extra_head
     ci = base / "scripts" / "core-ci.py"
     merge = base / "scripts" / "merge-pr.py"
     if not ci.is_file() or not merge.is_file():
@@ -633,7 +688,7 @@ def land(clone: Path, wt: Path, branch: str, new: str, latest: str, repo: str, s
                     "--title",
                     f"chore(standards): sync core {latest}",
                     "--body",
-                    f"Automated sync to core release {latest}. The local gate passed before and after the sync.",
+                    sync_body(latest, "The local gate passed before and after the sync."),
                 ],
                 cwd=wt,
             )

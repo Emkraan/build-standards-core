@@ -384,6 +384,7 @@ Version 2 is the current shape:
 | `ui_consumers[].apply` | `false`: report only, a local job of this machine applies the core (`setup.py --report-only`); missing means on | v0.58.0 |
 | `ui_consumers[].sync_head` | the head-branch prefix of the repo's sync pull request, for the consumption feed (default `chore/core-`; a vendoring tool names its own) | v0.59.0 |
 | `ui_consumers[].apply_via` | `ops-center` only: `pr` lands each release as a pull request through the repo's own CI gate and merges it at once; `direct` commits to the default branch; missing: detected (a remote whose default branch requires status checks, or the repo's own pre-push guard, means `pr`) | v0.64.0 |
+| `ui_consumers[].changelog_cmd` | `ops-center` with `apply_via` `pr`: a command run from the worktree after the sync pull request opened, with `{pr}` and `{version}` filled in (split like a shell would, no shell); what it changes is committed as one new commit on the sync branch, so a repo that wants a `CHANGELOG.md` entry per PR number can meet it; a failing command closes the pull request like any failed step. Missing: nothing runs. A `workflow` consumer sets the repository variable `CORE_UPDATE_CHANGELOG_CMD` instead (run with `bash -c`) | v1.124.0 |
 | `ui_consumers[].pr_timeout_min` | `ops-center` with `apply_via` `pr`: minutes to wait for the repo's own checks before the pull request is closed (default 60) | v0.64.0 |
 | `report_issue` | number of the open `consumer-report` issue in the intake that the nightly updates (also `CORE_REPORT_ISSUE`); when set and open it is used before any search, so a search lag or a changed label never opens a second issue; unset: the open `consumer-report` issues of this account are searched, by the search index and then by the REST listing | v1.27.6 |
 | `report_repo` | `OWNER/REPO` of the private intake that receives this account's consumer report (section 7); set it with `hermes/setup.py --report-repo OWNER/REPO` | v0.102.0 |
@@ -789,6 +790,7 @@ This is the flow for a repo on its own GitHub account, with no access to anythin
    with `merge-pr.py --match-head-commit`) or `gate` (the repo's own merge gate merges it once the required
    checks pass). A red check or the `CORE_UPDATE_WAIT_MINUTES` timeout (default 60) leaves the pull request
    open. GitHub's auto-merge is never used.
+   The pull request body always carries `No issue: core release sync to vX`, so the sync passes rule 1.20 (`core-pr-issue`) without an exempt-author row. A repo that needs a changelog entry per PR number sets `CORE_UPDATE_CHANGELOG_CMD` (a command with `{pr}` and `{version}`, run after the pull request opened; what it changes is pushed as one new commit on the sync branch). Any other tool that opens a sync pull request, such as a vendoring tool or a consumer's own sync, follows the same contract: the body declares `No issue: <reason>`, and a changelog step runs after the number is known.
 7. Read the `CHANGELOG.md` entries since the old pin, list any rule your apps now violate, land the
    standards first and the code fixes after.
 
