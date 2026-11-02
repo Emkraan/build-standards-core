@@ -123,6 +123,11 @@ describe('HubOverview', () => {
     expect(screen.getByText('1 area needs me.')).toBeTruthy();
   });
 
+  it('is a grid with a gap so the summary margin does not collapse into the first section', () => {
+    const css = readFileSync(resolve(__dirname, '../src/styles/kit.css'), 'utf8');
+    expect(css).toMatch(/\.hub-overview \{[^}]*display: grid[^}]*gap: var\(--space-4\)/);
+  });
+
   it('takes a summary node and renders it in a block, not a paragraph', () => {
     const { container } = render(<HubOverview sections={sections} areas={[]} summary={<><strong>2</strong> need me</>} />);
     const el = container.querySelector('.hub-overview-summary') as HTMLElement;

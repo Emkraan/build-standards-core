@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-02 (v1.125.0, hub and override polish from the ops center adoption)
+
+Opt in: hub and override pieces, and one new spinner form; nothing changes unless a consumer uses them.
+
+- `.hub-overview` is a grid with `gap: var(--space-4)`, so the 12px summary margin no longer collapses into the first section (the extra gap between sections is taken out of their top margin, so section spacing is unchanged).
+- `Spinner` takes `arc`: an open arc with no track ring. The hub tab working marker uses it.
+- `OverrideBar` and `OverrideButton`: the confirm closes first, then the write runs; a failed write shows the returned message on the bar (beside the button for the button) and never leaves a dialog open. `OverrideButton` reads "Working..." while the write runs (`busyLabel`).
+- `PendingReason` takes `inline` and renders a span.
+- `HubHeader` takes `headerOnly`: the page header with no tabs and no Overview; `base` and `onNavigate` become optional.
+
 ## 2026-11-02 (v1.124.0, the core sync pull request declares no issue and runs a consumer changelog hook)
 
 The core sync pull request passes rule 1.20 and a consumer can meet its own changelog rule. Opt in for the hook: nothing changes until `changelog_cmd` or `CORE_UPDATE_CHANGELOG_CMD` is set; the body change applies to every sync.

@@ -747,6 +747,8 @@ runs, never by the data source or the vendor.
   has a current tab.
 - A hub with a single tab row passes `tabs` (a flat item list, route `<base>/<item>`, the current tab
   is `item`) instead of `sections`: one row, no second row, same counts and spinner.
+- `headerOnly` gives the page header with no tabs and no Overview, for a page in the hub's header
+  style with nothing to switch between; `base` and `onNavigate` are then not needed.
 - `HubHeader` is router free. The app passes the current `section` and `item` from its route and goes
   to a path in `onNavigate`. `hubPath(base, sections, key)` builds a path from an item or section key.
 - Counts and the working state come from the app and are never decided here. An item `count` is the
@@ -1822,16 +1824,19 @@ it, and each piece renders nothing, or the plain reason, when the app has not gi
 - `OverrideBar` is a bar above the list the gate holds: a small title, one line naming the gate that
   is holding things, a switch for the all-items override and, while it is on, a warning tag. It
   renders nothing without a `gate`. Turning the switch on opens a danger confirm that says what stops
-  being held, what still applies and when it ends, and writes inside the dialog, so a refused write
-  shows its message there and the switch stays off. Turning it off needs no confirm.
+  being held, what still applies and when it ends. The confirm closes first and the write runs after
+  it; a refused write shows the server's returned message on the bar (`role="alert"`) and the switch
+  stays off, and no dialog is left open. Turning it off needs no confirm.
 - `OverrideButton` sits on each item the gate holds: the turn-on label (confirm first) on a held item,
   the undo label on an item overridden one by one, and nothing when the all-items override already
-  covers it (the bar turns that off) or nothing holds the item.
+  covers it (the bar turns that off) or nothing holds the item. It reads `Working...` while the write
+  runs (`busyLabel`), and a failure shows beside it.
 - `OverrideTag` marks an item whose gate is lifted (`item` or `all`), so a merge or run inside the
   gate is never a surprise.
 - `PendingReason` is rule 11: between the action and the next pass of whatever re-checks the item it
   shows the server's pending line (`role="status"`) and never the reason the action removed; with no
-  pending line it shows the reason; with neither it shows nothing.
+  pending line it shows the reason; with neither it shows nothing. `inline` renders a span for a line
+  inside the card's own reason text.
 - Writes stay with the app: same-origin or loopback only, one writer, one log, the owner's own work
   only. The kit never reads or stores an override.
 
