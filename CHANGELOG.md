@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-02 (v1.123.0, RC023 and RC025 false hits)
+
+Two false hits of the ops center repo checks reported by a consumer are fixed. Opt in: only a repo with an ops center app.
+
+- RC023 scopes to tones that report a problem: the badge and severity paths and a quoted bad, warn, alert, danger, needs-me, amber or red value. A display-only label (a meeting chip `next` or `later`) no longer matches, and a one-line comment `display-only: <why>` marks a threshold that only styles such a label. `ageHours > 30 ? 'warn'` and the count cases still fail. Rule 1.4 says so.
+- RC025 reads code only: help text in string literals and JSX text ("Turns itself off at midnight") never matches; a cron entry, a timer or a scheduled call that clears an override still does.
+
 ## 2026-11-01 (v1.122.0, every PR declares what it does to issues)
 
 New rule pr-review-and-merge 1.20 and the `core-pr-issue` step of `core-ci.yml` (template and reusable workflow). Opt in by sync: a consumer gets the step on its next core sync, and a PR body without a declaration then fails `core-checks`.
