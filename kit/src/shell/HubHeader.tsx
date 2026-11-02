@@ -72,8 +72,8 @@ export interface HubHeaderProps {
   eyebrow?: string | undefined;
   /** Status badges only. */
   status?: ReactNode;
-  /** The route the hub lives at, for example `/platform`. */
-  base: string;
+  /** The route the hub lives at, for example `/platform`. Not needed with `headerOnly`. */
+  base?: string | undefined;
   sections?: readonly HubSection[] | undefined;
   /** A flat hub with a single tab row: one tab per item, route `<base>/<item>`, no sections and no second row. Used instead of `sections`; the current tab is `item`. */
   tabs?: readonly HubItem[] | undefined;
@@ -82,7 +82,9 @@ export interface HubHeaderProps {
   /** Current item segment from the route. */
   item?: string | undefined;
   /** Goes to a path. Called with `<base>`, `<base>/<section>/<item>`. */
-  onNavigate: (path: string) => void;
+  onNavigate?: ((path: string) => void) | undefined;
+  /** The page header only: no tabs and no Overview. For a page that sits in the hub's header style but has nothing to switch between. */
+  headerOnly?: boolean | undefined;
   /** Label of the first tab. Default "Overview". */
   overviewLabel?: string | undefined;
 }
@@ -93,7 +95,7 @@ function badge(count: number | undefined, live: boolean | undefined): ReactNode 
     <>
       {live ? (
         <>
-          <Spinner size="xs" />
+          <Spinner size="xs" arc />
           <span className="kit-sr-only">working</span>
         </>
       ) : null}
@@ -107,7 +109,7 @@ function sum(items: readonly HubItem[]): number | undefined {
   return n > 0 ? n : undefined;
 }
 
-function FlatHubHeader({ title, subtitle, eyebrow, status, base, tabs, item, onNavigate }: Pick<HubHeaderProps, 'title' | 'subtitle' | 'eyebrow' | 'status' | 'base' | 'item' | 'onNavigate'> & { tabs: readonly HubItem[] }) {
+function FlatHubHeader({ title, subtitle, eyebrow, status, base, tabs, item, onNavigate }: Pick<HubHeaderProps, 'title' | 'subtitle' | 'eyebrow' | 'status' | 'item'> & { base: string; onNavigate: (path: string) => void; tabs: readonly HubItem[] }) {
   const root = base.replace(/\/+$/, '');
   const items: TabItem[] = tabs.map((t) => ({ id: `${root}/${t.key}`, label: t.label, badge: badge(t.count, t.live) }));
   const value = tabs.some((t) => t.key === item) ? `${root}/${item}` : (items[0]?.id ?? '');
@@ -119,19 +121,29 @@ function FlatHubHeader({ title, subtitle, eyebrow, status, base, tabs, item, onN
   );
 }
 
+const noop = () => {};
+
 export function HubHeader({
   title,
   subtitle,
   eyebrow,
   status,
-  base,
+  base = '/',
   sections = [],
   tabs,
   section,
   item,
-  onNavigate,
+  onNavigate = noop,
+  headerOnly,
   overviewLabel = 'Overview',
 }: HubHeaderProps) {
+  if (headerOnly) {
+    return (
+      <div className="hub-head">
+        <PageHeader eyebrow={eyebrow} title={title} subtitle={subtitle} status={status} />
+      </div>
+    );
+  }
   if (tabs) return <FlatHubHeader {...{ title, subtitle, eyebrow, status, base, tabs, item, onNavigate }} />;
   const root = base.replace(/\/+$/, '') || '/';
   const open = sections.find((s) => s.key === section);

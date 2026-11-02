@@ -39,6 +39,17 @@ async function violations(root: Element): Promise<string[]> {
   return result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
 }
 
+describe('Spinner open arc', () => {
+  it('marks the arc form and drops the track ring in the stylesheet', () => {
+    const { container, rerender } = render(<Spinner arc />);
+    expect(container.querySelector('.spinner')?.getAttribute('data-arc')).toBe('true');
+    rerender(<Spinner />);
+    expect(container.querySelector('.spinner')?.hasAttribute('data-arc')).toBe(false);
+    const css = readFileSync(resolve(__dirname, '../src/styles/kit.css'), 'utf8');
+    expect(css).toMatch(/\.spinner\[data-arc\]::before \{ display: none; \}/);
+  });
+});
+
 describe('Spinner and live Pill', () => {
   it('is hidden from screen readers by default and a status with a label', () => {
     const { container, rerender } = render(<Spinner />);

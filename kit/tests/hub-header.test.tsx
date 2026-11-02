@@ -113,6 +113,19 @@ describe('HubHeader', () => {
     expect(screen.getByRole('tab', { name: 'One' }).getAttribute('aria-selected')).toBe('true');
   });
 
+  it('renders the header only, with no tabs and no Overview, and needs no base or onNavigate', () => {
+    const { container } = render(<HubHeader title="Plans" subtitle="All plans" headerOnly />);
+    expect(screen.getByRole('heading', { name: 'Plans' })).toBeTruthy();
+    expect(screen.queryAllByRole('tab')).toHaveLength(0);
+    expect(screen.queryByText('Overview')).toBeNull();
+    expect(container.querySelector('.hub-head')).toBeTruthy();
+  });
+
+  it('uses the open-arc spinner for the working marker on every tab row', () => {
+    const { container } = render(<HubHeader title="Team" base="/t" tabs={[{ key: 'a', label: 'A', live: true }]} onNavigate={vi.fn()} />);
+    expect(container.querySelector('.spinner[data-arc]')).toBeTruthy();
+  });
+
   it('keeps the head spacing and the spinner colour in the stylesheet', () => {
     const css = readFileSync(resolve(__dirname, '../src/styles/kit.css'), 'utf8');
     expect(css).toMatch(/\.hub-head \{[^}]*margin-bottom: var\(--space-5\)/);

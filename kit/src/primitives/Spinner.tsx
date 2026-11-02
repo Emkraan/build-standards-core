@@ -13,11 +13,13 @@ export interface SpinnerProps {
   size?: SpinnerSize | undefined;
   /** Screen reader text, for example "Syncing". Omit when nearby text already says it is working. */
   label?: string | undefined;
+  /** Open-arc form: one turning arc with no track ring, for a small working marker such as a tab badge. */
+  arc?: boolean | undefined;
   className?: string | undefined;
 }
 
-export function Spinner({ size = 'sm', label, className }: SpinnerProps) {
-  const ring = <span className={cx('spinner', className)} data-size={size} aria-hidden="true" />;
+export function Spinner({ size = 'sm', label, arc, className }: SpinnerProps) {
+  const ring = <span className={cx('spinner', className)} data-size={size} data-arc={arc || undefined} aria-hidden="true" />;
   if (!label) return ring;
   return (
     <span className="spinner-wrap" role="status">

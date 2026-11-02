@@ -77,7 +77,8 @@ body { font-family: var(--font-sans); color: var(--text-primary); }
 .run-alert { margin: 0; padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); }
 
 /* ---- Hub Overview: one card per item, grouped under the section titles (HubOverview, AreaCard) ---- */
-.hub-overview-section + .hub-overview-section { margin-top: var(--space-6); }
+.hub-overview { display: grid; gap: var(--space-4); }
+.hub-overview-section + .hub-overview-section { margin-top: var(--space-2); }
 .hub-overview-summary { margin: 12px 0; font-size: var(--fs-label); color: var(--text-secondary); }
 .hub-overview-title { margin: 0 0 var(--space-3); font-size: var(--fs-label); font-weight: var(--fw-semibold); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); }
 .hub-overview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: var(--space-4); }
@@ -379,6 +380,8 @@ body { font-family: var(--font-sans); color: var(--text-primary); }
 .spinner[data-size="lg"]::before, .spinner[data-size="lg"]::after { border-width: 3px; }
 .spinner::before { opacity: 0.25; }
 .spinner::after { border-color: currentColor currentColor transparent transparent; animation: kit-spin var(--dur-spin) linear infinite; }
+.spinner[data-arc]::before { display: none; }
+.spinner[data-arc]::after { border-color: currentColor currentColor currentColor transparent; }
 .spinner-wrap { display: inline-flex; align-items: center; }
 
 .status-dot { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: var(--radius-pill); background: var(--text-quaternary); }
@@ -2089,5 +2092,8 @@ button.month-grid-chip { cursor: pointer; }
 .override-bar-line { margin: var(--space-1) 0 0; font-size: var(--fs-label); color: var(--text-secondary); }
 .override-bar-actions { display: flex; align-items: center; gap: var(--space-3); }
 .override-pending, .override-reason { margin: var(--space-2) 0 0; font-size: var(--fs-label); }
+.override-pending[data-inline], .override-reason[data-inline] { margin: 0; font-size: inherit; }
+.override-error { margin: var(--space-1) 0 0; font-size: var(--fs-label); color: var(--danger); }
+.override-bar-line + .override-error { margin-top: var(--space-1); }
 .override-pending { color: var(--warning); }
 .override-reason { color: var(--text-secondary); }

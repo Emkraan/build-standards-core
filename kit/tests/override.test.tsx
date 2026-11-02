@@ -52,11 +52,23 @@ describe('OverrideBar', () => {
     expect(screen.queryByText('Bypass the freeze?')).toBeNull();
   });
 
-  it('shows a refused write in the dialog and keeps the dialog open', async () => {
-    bar({ onToggle: vi.fn().mockRejectedValue(new Error('not your PR')) });
+  it('closes the confirm first, then writes, and shows the returned message on the bar when the write fails', async () => {
+    const onToggle = vi.fn().mockRejectedValue(new Error('not your PR'));
+    bar({ onToggle });
     fireEvent.click(screen.getByRole('switch'));
     fireEvent.click(screen.getByRole('button', { name: 'Bypass for all' }));
-    await waitFor(() => expect(screen.getByText('not your PR')).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('not your PR'));
+    expect(screen.queryByText('Bypass the freeze?')).toBeNull();
+    expect(screen.getByRole('switch').getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('clears the message on the next try and falls back to a plain message', async () => {
+    const onToggle = vi.fn().mockRejectedValueOnce('').mockResolvedValueOnce(undefined);
+    bar({ onToggle, on: true });
+    fireEvent.click(screen.getByRole('switch'));
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('That did not work. Try again.'));
+    fireEvent.click(screen.getByRole('switch'));
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
   });
 
   it('has no axe violations', async () => {
@@ -77,6 +89,26 @@ describe('OverrideButton', () => {
     const buttons = screen.getAllByRole('button', { name: 'Bypass freeze' });
     fireEvent.click(buttons[buttons.length - 1] as HTMLElement);
     await waitFor(() => expect(onSet).toHaveBeenCalledWith(true));
+  });
+
+  it('closes the confirm, shows the busy label while the write runs, then shows a failure beside the button', async () => {
+    let fail: (e: Error) => void = () => {};
+    const onSet = vi.fn().mockReturnValue(new Promise((_, rej) => (fail = rej)));
+    button({ onSet });
+    fireEvent.click(screen.getByRole('button', { name: 'Bypass freeze' }));
+    const buttons = screen.getAllByRole('button', { name: 'Bypass freeze' });
+    fireEvent.click(buttons[buttons.length - 1] as HTMLElement);
+    await waitFor(() => expect(screen.getByRole('button', { name: /Working/ })).toBeTruthy());
+    expect(screen.queryByText('Bypass for PR 7?')).toBeNull();
+    fail(new Error('conflict'));
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('conflict'));
+    expect(screen.getByRole('button', { name: 'Bypass freeze' })).toBeTruthy();
+  });
+
+  it('takes a custom busy label', async () => {
+    button({ held: false, cover: 'item', busyLabel: 'Undoing...', onSet: vi.fn().mockReturnValue(new Promise(() => {})) });
+    fireEvent.click(screen.getByRole('button', { name: 'Undo freeze bypass' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /Undoing/ })).toBeTruthy());
   });
 
   it('shows Undo on an item bypassed one by one and takes it back with no confirm', async () => {
@@ -122,6 +154,15 @@ describe('PendingReason (rule 11)', () => {
     render(<PendingReason pending="freeze bypassed, re-checked within 3 minutes" reason="Held by the freeze." />);
     expect(screen.getByRole('status').textContent).toBe('freeze bypassed, re-checked within 3 minutes');
     expect(screen.queryByText('Held by the freeze.')).toBeNull();
+  });
+
+  it('renders a span, not a paragraph, with inline', () => {
+    const { container, rerender } = render(<PendingReason inline pending="p" reason="r" />);
+    expect(container.querySelector('span[data-state="pending"]')).toBeTruthy();
+    expect(container.querySelector('p')).toBeNull();
+    rerender(<PendingReason inline reason="r" />);
+    expect(container.querySelector('span[data-state="held"]')).toBeTruthy();
+    expect(container.querySelector('p')).toBeNull();
   });
 
   it('goes back to the reason once the pending line is gone, and renders nothing with neither', () => {
