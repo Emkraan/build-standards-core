@@ -677,6 +677,19 @@ class RequiredChecks(Overlay):
             self.mod.wait_loop(lambda: next(reads), [], 600, 1, 2, sleep=lambda s: None), 1
         )
 
+    def test_update_workflow_declares_no_issue_and_runs_the_changelog_hook_before_the_wait(self):
+        text = (ROOT / "templates/overlay/.github/workflows/core-update.yml").read_text()
+        self.assertIn("No issue: core release sync to $TAG", text)
+        self.assertIn("CHANGELOG_CMD: ${{ vars.CORE_UPDATE_CHANGELOG_CMD }}", text)
+        self.assertLess(text.index('if [ -n "$CHANGELOG_CMD" ]'), text.rindex("wait-checks"))
+        # the placeholder substitution, run as the workflow runs it
+        snippet = (
+            'CHANGELOG_CMD="echo pr {pr} v {version}"; PR_NUMBER=7; TAG=v9\n'
+            'CMD="${CHANGELOG_CMD//\\{pr\\}/$PR_NUMBER}"\nCMD="${CMD//\\{version\\}/$TAG}"\nbash -c "$CMD"\n'
+        )
+        rc, out = sh(["bash", "-c", snippet])
+        self.assertEqual((rc, out), (0, "pr 7 v v9"))
+
     def test_update_workflow_never_auto_merges(self):
         text = (ROOT / "templates/overlay/.github/workflows/core-update.yml").read_text()
         code = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))

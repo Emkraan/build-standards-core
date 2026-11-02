@@ -216,6 +216,8 @@ failed at most every 5 minutes, `--progress MIN` to change it) and then squash m
 workflow file changed in v0.59.0 (the `approve` default); a sync refreshes it. `targets.map` keeps generated files in your code equal to
 the synced copies. See the core README, "Staying in lockstep".
 
+The sync pull request body carries `No issue: core release sync to vX` (rule 1.20, `core-pr-issue`). The optional repository variable `CORE_UPDATE_CHANGELOG_CMD` is a command run once the pull request has a number, with `{pr}` and `{version}` filled in; what it changes is pushed as one new commit on the sync branch.
+
 ## Updating
 
 1. `python3 scripts/sync-core.py` on a branch. When the core's template parameters sheet has rows
