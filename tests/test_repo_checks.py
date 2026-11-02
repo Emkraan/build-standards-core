@@ -136,6 +136,52 @@ class TestChecks(Tree):
             },
         )
 
+    def test_rc023_a_display_only_chip_is_not_a_problem_tone(self):
+        self.passes(
+            "RC023",
+            {
+                "opscenter/app/src/Meet.tsx": "return { label, tone: mins <= 30 ? 'next' : 'later' }\n"
+                "const phase = ageMinutes > 5 ? 'soon' : 'later'\n"
+                "const chip = hours > 2 ? 'dim' : 'plain' // display-only: a time chip, not a problem\n"
+                "// display-only: the next meeting chip\nconst x = minutes >= 10 ? 'amber' : 'plain'\n",
+            },
+        )
+
+    def test_rc023_problem_tones_still_fail(self):
+        for i, line in enumerate(
+            [
+                "const tone = ageHours > 30 ? 'warn' : 'ok'",
+                "const tone = ageHours > 30 ? 'danger' : 'ok'",
+                "const sev = failedCount > 3 ? 'alert' : 'ok'",
+                "const badge = elapsed > 90",
+                "const c = minutesSince > 10 ? 'amber' : 'ok'",
+            ]
+        ):
+            with self.subTest(line=line):
+                self.fails("RC023", {f"opscenter/app/src/Prob{i}.tsx": line + "\n"})
+
+    def test_rc025_help_text_is_not_a_scheduled_turn_off(self):
+        self.passes(
+            "RC025",
+            {
+                "opscenter/app/src/FreezeBypass.tsx": "export function Switch() {\n"
+                "  const note = 'Turns itself off at midnight. The bypass is cleared by its expiry.'\n"
+                "  return (\n    <label>\n      <span>Turns itself off at midnight</span>\n"
+                "      <small>The bypass expires and is cleared at midnight, no timer runs</small>\n"
+                "    </label>\n  )\n}\n",
+            },
+        )
+
+    def test_rc025_a_timer_in_code_still_fails(self):
+        self.fails(
+            "RC025",
+            {
+                "opscenter/app/src/Switch.tsx": "const note = 'help text'\n"
+                "setInterval(() => clearBypass('all'), 60000)\n",
+                "opscenter/server/tick.py": "import schedule\nschedule.every().day.at('00:00').do(revoke_override)\n",
+            },
+        )
+
     def test_rc025_an_override_reader_that_fails_open(self):
         py = (
             "def freeze_bypass_active(pr):\n"
