@@ -1,11 +1,34 @@
 # Changelog
 
-## 2026-11-06 (v1.127.0, shell server rules)
+## 2026-11-06 (v1.130.0, shell server rules)
 
 New `standards/web-shell-server.md`: the server rules a multi-module shell meets beyond the shared runtime, from the consumer inventory. Text only; each rule carries the proof a shell owns, and no rule is registered for enforcement yet.
 
 - Rights: the removal ceiling, a module opening on its own permission, every route gated or explained, group ids from role assignments only. Relays: a closed target list, forward the caller's token and status unchanged under an allowlist. Stores: sealed console secrets, a keyed audit chain, plain-text announcements, validated display-only external tools, per-user state keyed by lowercased identity. Health and boot: health never invented, paint from the persisted identity. Data and config: additive idempotent migrations, an unset environment is production, settings and vault references, per-item bulk results, one-process background jobs.
 - `rbac.md` section 6 and `web-api-runtime.md` section 7 gain a pointer line each. Code for the stores, the job leader and the scheduler follows in separate releases. Not run: the consumer's platform tree has no axe or live-action browser tests.
+
+## 2026-11-06 (v1.129.0, the layout merge carries unknown manifest keys)
+
+`shell-packages/console-modules`: `effectiveLayout` no longer drops a manifest key the contract does not name.
+
+- A consumer's own field (a `jobs` list) on a module, group, page, link or tile comes through as a deep copy on the matching output entry. Before, it vanished with no error and no test failing. `validateManifest` still ignores unknown keys.
+- A carried key never shadows a computed field (`enabled`, `account`, `basePath`); a module with no extra keys gets an identical result. `EffectiveModule` gains an index signature. Tests: 3, two of which fail on the old code. Not run: the consumer's platform tree has no axe or live-action browser tests.
+
+## 2026-11-06 (v1.128.0, rules: smoke retries, route contracts, installs, codemods)
+
+Four rules from the consumers' inventories, with two repo checks. Opt in: the rules are reported by core-status; RC026 and RC027 run on the local-ops stack only and fail a PR only where a consumer sets the `Repo checks gate` row.
+
+- ci-cd-release 6.1: the post-deploy smoke retries for a bounded window (default 5 minutes), then fails; a deploy that stays red raises one alert.
+- web-api-runtime 9.1: every route has a contract, the reference is generated and checked, and the exemption list only shrinks (`core-ci.py list-shrinks`).
+- automation-safety 1.11 and RC026: an installer replaces a script by renaming a new file into place, never overwrites one that may be running.
+- automation-safety 1.12 and RC027: an unattended lint fix comes from an AST codemod or a vetted rule list; a codemod that rewrites by regular expression, or an autofix script that edits files in place with sed, is flagged.
+
+## 2026-11-06 (v1.126.0, override store window and extra, problems provider healthy items)
+
+Two consumer-requested extensions. Opt in: both are optional arguments and methods; nothing that runs changes.
+
+- `override_store.py`: `set(..., window=, extra=)` stores the window id the entry was made in (its scope when none is given) and a JSON map; `entry(key, scope)` reads a live entry back, failing closed like `allowed`; `expires_at_local_midnight(tz)` gives the end of the owner's day in an IANA zone. One file, still copyable verbatim.
+- Problems provider: `headlines()` values may be a map `{headline, details, label, url}`, a new `healthy()` method adds items that are fine but carry live facts, and a source may carry `count`. This is what moving a consumer's browser-clock and accounts-feed headlines onto the server needs.
 
 ## 2026-11-02 (v1.125.0, hub and override polish from the ops center adoption)
 
