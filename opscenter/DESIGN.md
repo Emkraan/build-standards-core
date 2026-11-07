@@ -1936,6 +1936,17 @@ The app adopts the ops center layout standard (`standards/ops-center-layout.md`)
 **Page renderer** (`engine/doc_render.py`). Repo markdown to docs home HTML (the shallowest heading becomes the top heading, code byte-exact, ASCII normalized, no prose semicolons), `stamp()` for the verified-against footer and `sanitize_check()` with configured internal terms (`DOC_RENDER_INTERNAL_TERMS`). Ordered lists render as bullets, as in the reference.
 
 **Compared and unchanged.** The resolved card that returns when a new message lands under the same key is already in `engine/handled.py` (module and tests identical to the reference apart from wording); nothing to lift.
+### 12.58 The optional reports module, parts two to five (dates, definitions, grants, preview)
+
+All of it sits under `server/modules/reports/`, is imported only when `OPSCENTER_REPORTS` is set, and has no import side effect (12.57).
+
+**Dates** (`dateranges.py`, R4 and R7). `parse_between("start,end")`, `whole_day_range(start, end, tz)` and `between(ts, start, end, tz)` take whole days in a named zone with the end day counted in full: the range is half open in UTC, from the local midnight of the start day to the local midnight after the end day, so a 23 or 25 hour day across a clock change is still one day. A bad range, day or zone is refused. `split_future(rows, now)` separates rows dated more than a day ahead (a device with a wrong clock) from every time panel without dropping them, a row with no readable date stays, and `future_note(count)` is the note the panel shows with the count.
+
+**Definitions** (`definitions.py`, R2). Dashboards and reports are JSON definitions `{key, title, panels: [{title, stream, measure}]}` in a store. `seed(defaults, version)` adds a missing key, replaces an unedited copy at a lower version, and never overwrites an edited one; `reset` puts an edit back to the shipped copy; `export` and `import_` round trip a definition by key and a bad definition is refused whole.
+
+**Grants** (`grants.py`, P1 and P4). `effective(roles, user_grants, role_grants)` is the union of every matched role and the user's own grants; reports and dashboards have separate global rights (`reports.view`, `dashboards.view`) and per-object rights named by key (`report:<key>`, `dashboard:<key>`); `GrantStore.on_delete` and `sweep` remove a grant whose object is gone, so a recreated key never inherits an old role's access.
+
+**Preview** (`view_as.py`, P3). `ViewAs(allowed_posts).check(method, path)` refuses every write with "Preview is read-only." except a pinned allowlist of read-only query POSTs (an exact path or a `*` segment); reads always pass.
 ### 12.57 The optional reports module (R9, the CSV formula guard)
 
 The reports module is optional and never mandatory (`opscenter/plans/hub-reports-plan.md`): nothing under `server/modules/reports/` is imported by the server unless a consumer sets `OPSCENTER_REPORTS`, and a consumer that does not use it loads, pays for and sees none of it. `reports/export_csv.py` is the first part, and it is a plain helper usable with no module at all: `guard`, `cell` and `to_csv` neutralise a text value that starts with `=`, `+`, `-`, `@`, a tab or a carriage return with a leading apostrophe (inside the quotes when the cell is quoted), leave numbers, booleans and None alone, quote commas, quotes and line breaks with the quotes doubled, and end lines with CRLF. Every CSV download goes through it (web-api-runtime 9.2).
