@@ -217,6 +217,43 @@ class TestChecks(Tree):
             },
         )
 
+    def test_rc026_a_script_written_in_place_by_an_installer(self):
+        self.fails(
+            "RC026", {"ops/install.sh": "#!/bin/sh\ncp ./worker.sh /usr/local/bin/worker.sh\n"}
+        )
+        self.fails("RC026", {"ops/deploy.sh": "cat > /opt/app/run.sh <<'EOF'\necho hi\nEOF\n"})
+        self.fails("RC026", {"scripts/update.sh": "install -m 755 new.py /opt/app/tool.py\n"})
+
+    def test_rc026_clean(self):
+        self.passes(
+            "RC026",
+            {
+                "ops/install.sh": "#!/bin/sh\ncp ./worker.sh /usr/local/bin/worker.sh.new\nmv -f /usr/local/bin/worker.sh.new /usr/local/bin/worker.sh\n",
+                "ops/setup.sh": 'cp ./worker.sh "$tmp/worker.sh"\nmv "$tmp/worker.sh" /opt/worker.sh\n',
+                "ops/run.sh": "cp ./worker.sh /usr/local/bin/worker.sh\n",
+                "ops/update.sh": "cp ./config.json /etc/app/config.json\n",
+                "ops/deploy.sh": "cp ./x.sh /opt/x.sh  # core-exception: EXC-005\n",
+            },
+        )
+
+    def test_rc027_a_codemod_that_rewrites_by_regular_expression(self):
+        self.fails(
+            "RC027", {"tools/codemod_imports.py": "import re\nnew = re.sub(r'foo', 'bar', src)\n"}
+        )
+        self.fails("RC027", {"tools/autofix.sh": "sed -i 's/a/b/' src/*.ts\n"})
+        self.fails("RC027", {"tools/codemod.mjs": "const out = src.replace(/foo/g, 'bar')\n"})
+
+    def test_rc027_clean(self):
+        self.passes(
+            "RC027",
+            {
+                "tools/codemod_imports.py": "import ast\ntree = ast.parse(src)\n",
+                "tools/format.py": "import re\nname = re.sub(r'x', 'y', name)\n",
+                "tools/autofix.py": "import re\nkey = re.sub(r'\\W+', ' ', line)\n",  # a text key, not a code rewrite
+                "tools/codemod_x.py": "import re\nx = re.sub(r'a', 'b', s)  # core-exception: EXC-006\n",
+            },
+        )
+
     def test_rc002_gh_merge_without_sha(self):
         self.fails(
             "RC002",

@@ -1,12 +1,21 @@
 # Changelog
 
-## 2026-11-06 (v1.127.0, hub routing, run dialog and override defects)
+## 2026-11-06 (v1.129.0, hub routing, run dialog and override defects)
 
 Fixes from the consumer review of v1.125.0. Opt in pieces only; a look that worked before is unchanged.
 
 - Hub routing: a section with no items no longer loops (it resolves to the Overview and gets no tab); `hubSectionProblems` reports a section or item key used twice and the first one wins; route segments are decoded when read and encoded when written; an item the section does not have selects the first tab.
 - `RunDialog`: `RunInput.publishesWhen` and `RunSpec.publishes` decide what publishes ahead of the `dry_run` and `mode` name rule; inputs that arrive after the form opened take their defaults and keep what was typed; submit honours the same guards as the button; a refusal from the last attempt no longer locks Run (only the `refusal` prop does) and clears when an input changes; a branch name is checked for plausible characters; `onClose` is not called when the app closed the dialog first.
 - `AreaCard` sends its link through the guarded link, so an unsafe `to` never reaches the app's link component; duplicate detail lines, section keys and item keys no longer collide as React keys. `OverrideBar` and `OverrideButton` send one write at a time from the click on.
+
+## 2026-11-06 (v1.128.0, rules: smoke retries, route contracts, installs, codemods)
+
+Four rules from the consumers' inventories, with two repo checks. Opt in: the rules are reported by core-status; RC026 and RC027 run on the local-ops stack only and fail a PR only where a consumer sets the `Repo checks gate` row.
+
+- ci-cd-release 6.1: the post-deploy smoke retries for a bounded window (default 5 minutes), then fails; a deploy that stays red raises one alert.
+- web-api-runtime 9.1: every route has a contract, the reference is generated and checked, and the exemption list only shrinks (`core-ci.py list-shrinks`).
+- automation-safety 1.11 and RC026: an installer replaces a script by renaming a new file into place, never overwrites one that may be running.
+- automation-safety 1.12 and RC027: an unattended lint fix comes from an AST codemod or a vetted rule list; a codemod that rewrites by regular expression, or an autofix script that edits files in place with sed, is flagged.
 
 ## 2026-11-06 (v1.126.0, override store window and extra, problems provider healthy items)
 
