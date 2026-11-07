@@ -1,12 +1,21 @@
 # Changelog
 
-## 2026-11-07 (v1.154.0, the optional reports module: the report engine, the source slot and dashboard runs)
+## 2026-11-07 (v1.155.0, the optional reports module: the report engine, the source slot and dashboard runs)
 
 Opt in: `server/modules/reports/{query,sources,dashboards}.py`, imported only when a consumer uses them or sets `OPSCENTER_REPORTS`; no import side effect, no file or database touched until a function that needs it runs.
 
 - `query.py`: a report is a spec, never SQL. Fields are checked against the stream, values are bound parameters, and the SQL is assembled from fixed fragments, so a spec cannot reach another stream or run anything. Filters (17 operators), grouping, 8 metrics, time buckets (local day, Monday week, month), looked-up fields joined from the lookups cache, sort, limit and a truncation flag. The time zone is `OPSCENTER_REPORTS_TZ` (default UTC).
 - `sources.py`: the source slot. A panel names a stream and a measure; a source (`get_stream`, `run`, optional `options`) turns that into columns and rows. `LocalSource` reads the log intake tables.
 - `dashboards.py`: `check_dashboard` and `run_dashboard` with the range, dropdowns that narrow only panels whose stream has the field, stat panels with a comparison against the period before or a share, future-dated events kept off time panels and reported with the rows behind them, and one broken panel never taking the page down.
+
+## 2026-11-07 (v1.154.0, the reports entry: dashboards with click to cross-filter and deep links)
+
+A new optional entry, `kit-core/reports`, the client side of the reports module (R1, R4, and the dashboard half of R5). It reads the kit charts (recharts, an optional peer), so an app that shows no dashboard never loads it. Lifted from the hub tool features and made generic: a panel names a stream and a measure, never a store.
+
+- `Dashboard`, `DashboardFilterBar`, `PanelView`: a dashboard that opens populated with one slim filter bar (dashboard, range, one choice per filter, removable chips) and no Run button; panels on a twelve column grid drawn with the kit charts and tiles; a failed panel says so in its own card; a click on a panel sets its filter, a second click clears it, and each chart offers the same choice to the keyboard.
+- Deep links: `?d=<key>&range=<preset>&f.<filter>=<value>` read and written without losing other parameters, and a `drill` link that carries the rows behind a panel.
+- `dashboardSheets`: a Summary tab and a tab per panel for `kit-core/export`.
+- `BarChart` and `DonutChart` take `onSelect` (click a bar or slice); nothing changes without it.
 
 ## 2026-11-07 (v1.153.0, the optional reports module: directory and catalog lookups)
 

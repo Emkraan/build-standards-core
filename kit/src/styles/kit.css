@@ -1335,6 +1335,32 @@ button.md-link { padding: 0; border: 0; background: transparent; font: inherit; 
 /* art-mark end */
 
 @media (prefers-reduced-motion: reduce) { .busy-sweep { animation: none; left: 0; width: 100%; opacity: 0.7; } .busy-dock { animation: none; } }
+/* ---- Dashboards (the `reports` entry): one slim filter bar, a twelve column panel grid, click to cross-filter ---- */
+.dash { display: grid; gap: var(--space-4); }
+.dash-bar { display: grid; gap: var(--space-2); padding: var(--space-3) var(--space-4); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background-color: var(--surface-1); }
+.dash-bar-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.dash-bar-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); margin-left: auto; }
+.dash-bar-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.dash-updated, .dash-desc { font-size: var(--fs-label); color: var(--text-secondary); }
+.dash-desc { margin: 0; }
+.dash-grid { display: grid; gap: var(--space-4); }
+.dash-panel { height: 100%; overflow: hidden; }
+.dash-empty { margin: 0; padding: var(--space-6) 0; text-align: center; font-size: var(--fs-label); color: var(--text-secondary); }
+.dash-error { margin: 0; font-size: var(--fs-label); color: var(--danger); }
+.dash-note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); font-size: var(--fs-label); }
+.dash-table-wrap { overflow: auto; }
+.dash-table { width: 100%; border-collapse: collapse; font-size: var(--fs-label); font-variant-numeric: tabular-nums; }
+.dash-table th { text-align: left; padding: var(--space-1) var(--space-3); font-weight: var(--fw-semibold); color: var(--text-secondary); border-bottom: 1px solid var(--border-subtle); }
+.dash-table td { padding: var(--space-1) var(--space-3); border-bottom: 1px solid var(--border-subtle); }
+.dash-table tr[data-picked] td { background: var(--surface-3); }
+.dash-cell-btn, .dash-pick-btn { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
+.dash-cell-btn:hover, .dash-pick-btn:hover { text-decoration: underline; }
+.dash-cell-btn[aria-pressed="true"], .dash-pick-btn[aria-pressed="true"] { font-weight: var(--fw-semibold); }
+.dash-cell-btn:focus-visible, .dash-pick-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
+/* The keyboard twin of a chart click: out of sight until it takes focus. */
+.dash-pick { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.dash-pick:focus-within { position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal; display: flex; flex-wrap: wrap; gap: var(--space-2); padding-top: var(--space-2); font-size: var(--fs-label); }
+
 @media (prefers-reduced-motion: reduce) {
   .modal[data-state="closing"], .modal-backdrop[data-state="closing"], .popover, .tooltip,
   .skeleton-line::after, .skeleton-block::after, .spinner::after, .selection-bar { animation: none !important; }

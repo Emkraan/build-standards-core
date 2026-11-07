@@ -1438,6 +1438,7 @@ def cmd_secret_scan(argv: list) -> int:
 # entry is added here in the same change that adds it to the kit.
 OPTIONAL_ENTRIES = {
     "charts": ("recharts",),
+    "reports": ("recharts",),
     "graph": ("@xyflow/react",),
     "api-reference": ("@scalar/api-reference-react",),
 }

@@ -378,6 +378,8 @@ export interface BarChartProps<T> extends CartesianProps<T> {
   layout?: 'horizontal' | 'vertical' | undefined;
   /** Width of the category axis for a vertical layout, in px. Default 96. */
   categoryWidth?: number | undefined;
+  /** Makes the bars clickable: called with the category of the bar clicked (the value of `x`). Mouse only, so the app offers the same choice another way. */
+  onSelect?: ((category: string) => void) | undefined;
 }
 
 /** Comparisons across categories, grouped or stacked. */
@@ -415,6 +417,15 @@ export function BarChart<T extends object>(props: BarChartProps<T>) {
               radius={radius(i)}
               maxBarSize={32}
               {...(props.stacked ? { stackId: 'stack' } : {})}
+              {...(props.onSelect
+                ? {
+                    cursor: 'pointer',
+                    onClick: (d: { payload?: Record<string, unknown> }) => {
+                      const v = d.payload?.[props.x as string];
+                      if (v !== undefined && v !== null) props.onSelect?.(String(v));
+                    },
+                  }
+                : {})}
               isAnimationActive={c.animate}
             />
           ))}
@@ -487,11 +498,13 @@ export interface DonutChartProps {
   formatValue?: ChartFormat | undefined;
   /** Shows the legend beside the ring with each value. Default true. */
   legend?: boolean | undefined;
+  /** Makes the slices clickable: called with the label of the slice clicked. Mouse only, so the app offers the same choice another way. */
+  onSelect?: ((label: string) => void) | undefined;
   className?: string | undefined;
 }
 
 /** Parts of a whole, as a ring with an optional figure in the hole. */
-export function DonutChart({ data, label, center, centerLabel, size = 180, formatValue, legend = true, className }: DonutChartProps) {
+export function DonutChart({ data, label, center, centerLabel, size = 180, formatValue, legend = true, onSelect, className }: DonutChartProps) {
   const theme = useChartTheme();
   const reduced = useMediaQuery(REDUCED_MOTION);
   const format = formatValue ?? plain;
@@ -518,6 +531,7 @@ export function DonutChart({ data, label, center, centerLabel, size = 180, forma
             cornerRadius={3}
             stroke="none"
             isAnimationActive={!reduced}
+            {...(onSelect ? { cursor: 'pointer', onClick: (d: { name?: unknown }) => d.name !== undefined && onSelect(String(d.name)) } : {})}
           >
             {data.map((d, i) => (
               <Cell key={d.label} fill={colors(i)} />
