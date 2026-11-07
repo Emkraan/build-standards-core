@@ -1,10 +1,36 @@
 # Changelog
 
-## 2026-11-06 (v1.134.0, the manifest client folder may be spa)
+## 2026-11-06 (v1.137.0, the manifest client folder may be spa)
 
 Additive. `console.module.json` `client` accepts `apps/<dir>/spa` as well as `apps/<dir>/client`.
 
 - `validateManifest`, the JSON schema and `web-shell-manifest.md` take either folder name, for an app that already names its client folder `spa`. Nothing that validated before stops validating. The generator reads the field as plain data and needed no change. Tests: accepted for both names, rejected for another folder name and for a trailing path, in the TypeScript and the Python schema suites.
+
+## 2026-11-06 (v1.136.0, an OIDC sign-in beside MSAL in the client package)
+
+`shell-packages/app-client`: `createOidcAuth(manager, options)` and `createOidcClient(manager)`. Opt in; `createAuth` and the MSAL path are unchanged.
+
+- The same `createAuth` (boot, return target in state, loop guard, config-error and silent-only answers, shell and module modes, bounce, bypass) over an OIDC manager the app builds (oidc-client-ts or anything with its few methods), for a fleet that signs in through an identity broker. No OIDC dependency in the package; refresh-token renewal only, never a hidden frame; the provider callback parameters are stripped after boot; an end-session fallback for a provider without one; other-tab sign-out and user changes are seen.
+- `web-shell-auth.md` 2.1 documents it as the second sign-in shape and keeps the rule that no app in a brokered fleet wires straight to the upstream directory. Tests: 17 over a fake manager. Not run: a live provider and browser sign-in.
+
+## 2026-11-06 (v1.135.0, owner roots ahead of main, the owner apply guard, the draft gate grammar)
+
+Gating and owner roots from rpmm23's inventory (OC-4, OC-5, OC-6, OC-19). Opt in: the hold needs the consumer's PR apply flow to record it and provider hooks to read a PR; with none, nothing changes.
+
+- OC-6, `owner_roots.py`: `set_pr_hold` records a root a PR applied from its branch; main's plan that would destroy it is marked "ahead of main, waiting on #N" and Apply is refused by the server and the worker; the hold clears when main contains the merge commit or the PR closes; an unreadable PR keeps it. Hooks `pr_state`, `contains`, `pr_url`, `owner_name`.
+- OC-5, the owner apply guard: `guard_refusal` and `owner_roots.py guard <name> <tier>` (exit 3) refuse a saved plan that deletes an address an open PR applied, whether or not the card was marked.
+- OC-19, `ahead_items`: an Action Center item for a PR left ahead of main for more than two days (`OWNER_ROOTS_AHEAD_CARD_S`).
+- OC-8 and OC-9, `lanes/run_watches.py`: a main watch (the newest completed run of a deploy or apply workflow on main raises one item with the failed job, its first error line and the run link; a later success closes it; cancelled and skipped runs count neither way) and a drift watch (the newest N scheduled runs all failed: one item naming each failing job; manual and branch runs never count). A watch that cannot be read is an item, never clear.
+- RL-1 and RL-2, `server/modules/status_source.py`: a missing, stale, unreadable or malformed status file reads as unknown, never in sync; a collector that loses its sign-in keeps its last reading marked stale and exits non-zero after the lapse limit (240 minutes).
+- OC-4, `lanes/pr_gate.py`: the draft gate block grammar the own-PR lane's gate plug-in loads, with two built-in kinds and a consumer kinds file. Written from the inventory text and test names, not from reference code; the branch-apply flow and the detection of an unrecorded branch apply are not lifted.
+
+## 2026-11-06 (v1.134.0, hub routing, run dialog and override defects)
+
+Fixes from the consumer review of v1.125.0. Opt in pieces only; a look that worked before is unchanged.
+
+- Hub routing: a section with no items no longer loops (it resolves to the Overview and gets no tab); `hubSectionProblems` reports a section or item key used twice and the first one wins; route segments are decoded when read and encoded when written; an item the section does not have selects the first tab.
+- `RunDialog`: `RunInput.publishesWhen` and `RunSpec.publishes` decide what publishes ahead of the `dry_run` and `mode` name rule; inputs that arrive after the form opened take their defaults and keep what was typed; submit honours the same guards as the button; a refusal from the last attempt no longer locks Run (only the `refusal` prop does) and clears when an input changes; a branch name is checked for plausible characters; `onClose` is not called when the app closed the dialog first.
+- `AreaCard` sends its link through the guarded link, so an unsafe `to` never reaches the app's link component; duplicate detail lines, section keys and item keys no longer collide as React keys. `OverrideBar` and `OverrideButton` send one write at a time from the click on.
 
 ## 2026-11-06 (v1.133.0, roles and gate rules from the hub review)
 

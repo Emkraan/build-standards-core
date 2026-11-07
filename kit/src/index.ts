@@ -16,7 +16,7 @@ export { ContextPanel } from './shell/ContextPanel';
 export type { ContextPanelProps } from './shell/ContextPanel';
 export { AREA_DETAIL_LINES, AreaCard, HubOverview } from './shell/HubOverview';
 export type { AreaCardData, AreaCardProps, AreaTone, HubOverviewProps, OverviewSection } from './shell/HubOverview';
-export { HubHeader, hubPath, resolveHubRoute } from './shell/HubHeader';
+export { HubHeader, hubPath, hubSectionProblems, resolveHubRoute } from './shell/HubHeader';
 export type { HubHeaderProps, HubItem, HubRoute, HubSection } from './shell/HubHeader';
 export { NavGroup, NavItem } from './shell/nav';
 export type { NavGroupProps, NavItemProps } from './shell/nav';
