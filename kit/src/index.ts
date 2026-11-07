@@ -332,3 +332,7 @@ export type {
 } from './shell/module';
 export { OverrideBar, OverrideButton, OverrideTag, PendingReason } from './shell/Override';
 export type { OverrideBarProps, OverrideButtonProps, OverrideConfirm, OverrideCover, PendingReasonProps } from './shell/Override';
+export { BusyIndicator } from './shell/BusyIndicator';
+export type { BusyIndicatorProps } from './shell/BusyIndicator';
+export { getBusyState, installBusyTracking, quietly, trackBusy, useBusy } from './lib/busy';
+export type { BusyState, BusyTrackingOptions } from './lib/busy';

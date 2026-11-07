@@ -1859,3 +1859,50 @@ it, and each piece renders nothing, or the plain reason, when the app has not gi
 **Acceptance:** a component test asserts the confirm before turning on, no write on cancel, no confirm
 on turning off, the refused-write message, the three states of the button, the tag, the pending line
 replacing the reason, and axe; the gallery specimen `override` carries baselines in both themes.
+
+### One processing indicator (`BusyIndicator`, `trackBusy`, `quietly`, `installBusyTracking`)
+
+An app shows one processing indicator, not a spinner per page. Opt in: nothing is patched unless the
+app asks.
+
+- `BusyIndicator` is a slim sweeping bar along the bottom edge of the window, mounted once in the
+  shell. It reads the busy store, never covers the page or takes input, appears only after the work
+  has lasted 350 ms (so a quick call never flashes), says Loading, or Saving while anything in flight
+  changes data, to a screen reader, and holds 450 ms after the last request so chained calls do not
+  blink it off. Under reduced motion it holds still.
+- Feed the store with `trackBusy(promise, { write })` around the app's own client, or call
+  `installBusyTracking()` once at startup: `window.fetch` then reports same-origin `/api/` calls (set
+  `match` for another rule, and `readOnlyPosts` for POSTs that only read, such as a search). It
+  observes only; the request, its signal and its result stay the caller's, and the function it
+  returns puts the original back.
+- Background work (a refresh timer, a poll) runs inside `quietly(...)` and does not raise the bar.
+- Cancelling a read, or stopping a long run on the server, is the app's own: the kit store never
+  aborts a request.
+
+**Acceptance:** a component test asserts the delay, the label, the hold, quiet work, the opt-in
+install and uninstall, and that the result reaches the caller unchanged.
+
+### Action buttons by purpose (`data-act`)
+
+Page and toolbar buttons carry `data-act` so the action hierarchy colours them: `create` (teal),
+`link` (blue), `transfer` (violet) on a secondary `Button`, and a firmer weight on a primary one. It
+is opt in by the attribute itself: a button without it is unchanged, and a button inside a form or a
+dialog keeps the plain look. `data-act="none"` opts a button that is not a page action out of the
+check.
+
+`node scripts/check-action-buttons.mjs [dir ...]` fails when a primary or secondary `Button` (or a
+`<button>` with the kit's button class) whose label starts with an action verb (add, new, create,
+invite, import, export, link, assign, manage, edit, open, view and the rest listed in the script) has
+no `data-act`. Run it in the app's CI beside its other checks.
+
+**Acceptance:** a test runs the scan on tagged and untagged buttons, and the stylesheet carries the
+three hues and the form and dialog exclusion; the gallery specimen `action-buttons` carries baselines
+in both themes.
+
+### Chart colours follow the theme (`useChartTheme`)
+
+A chart reads its colours from the live tokens through `useChartTheme()`, never from fixed values, so
+it recolours when the theme or the accent changes and the accent never becomes a data series (the
+hue the accent withholds is dropped from `series`). A test sets the tokens and the theme attribute and
+asserts the colours follow.
+
