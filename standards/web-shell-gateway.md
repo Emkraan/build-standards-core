@@ -21,7 +21,8 @@ same `{ roles, permissions }` answer shape, one call per module with the caller'
 answer left out rather than invented). It has no admin API, no layout store and no RBAC admin of its own; the console
 manifest sets `rbac.shape` to `console` and may name another module as its `permissionSource` when that module owns
 the roles. This is an allowed shape and needs no change in the packages. A module with no permission read at all (a
-public site) is not covered: the manifest requires `rbac` for every module.
+public site) declares `"public": true` and no `rbac` ([web-shell-manifest.md](web-shell-manifest.md) section 2.3), so a
+consumer is not forced to fake an answer.
 
 Boot order: preflight, then migrations, then the RBAC bootstrap, then listen. A migration or seed failure is
 logged and does not exit, so the health route reports it ([ci-cd-release.md](ci-cd-release.md) section 6 gates

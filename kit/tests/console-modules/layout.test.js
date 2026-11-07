@@ -388,3 +388,75 @@ test("a carried key never shadows a field the layout computes", () => {
   assert.equal(mod.basePath, "/demo");
   assert.ok(Array.isArray(mod.account));
 });
+
+// --- A public module (public: true) may omit rbac; every other module is unchanged ---
+
+/** A public module: no rbac, pages open to every caller. */
+const publicMod = () => {
+  const m = base();
+  m.id = "site";
+  m.client = "apps/site/spa";
+  m.public = true;
+  delete m.rbac;
+  for (const p of m.pages) p.requires = [];
+  m.tiles = [];
+  return m;
+};
+
+test("a module that declares public: true needs no rbac and its pages may list no requires", () => {
+  assert.deepEqual(validateManifest(publicMod()), []);
+});
+
+test("every other module still needs rbac and requires, with the same messages", () => {
+  const noRbac = base();
+  delete noRbac.rbac;
+  assert.match(validateManifest(noRbac).join("\n"), /rbac needs shape, base and me/);
+  const falsePublic = { ...noRbac, public: false };
+  assert.match(validateManifest(falsePublic).join("\n"), /rbac needs shape, base and me/);
+  const noRequires = base();
+  noRequires.pages[0].requires = [];
+  assert.match(validateManifest(noRequires).join("\n"), /requires must list at least one tab or action id$/m);
+  const publicEmpty = publicMod();
+  publicEmpty.public = false;
+  assert.match(validateManifest(publicEmpty).join("\n"), /rbac needs/);
+});
+
+test("public must be a boolean, a bad requires id is still refused, and a declared rbac is still checked", () => {
+  const text = publicMod();
+  text.public = "yes";
+  assert.match(validateManifest(text).join("\n"), /public must be true or false/);
+  const badId = publicMod();
+  badId.pages[0].requires = ["dashboard"];
+  assert.match(validateManifest(badId).join("\n"), /requires must list at least one tab or action id \(or none, for a public module\)/);
+  const withRbac = publicMod();
+  withRbac.rbac = { shape: "hub", base: "/admin", me: "/me" };
+  assert.deepEqual(validateManifest(withRbac), []);
+  withRbac.rbac = { shape: "pink", base: "/admin", me: "/me" };
+  assert.match(validateManifest(withRbac).join("\n"), /rbac needs shape, base and me/);
+});
+
+test("effectiveLayout: a public module carries public true, a null rbac, and shows every page to a caller who holds nothing", () => {
+  const mod = effectiveLayout([publicMod(), consoleMod()]).modules.find((/** @type {any} */ x) => x.id === "site");
+  assert.equal(mod.public, true);
+  assert.equal(mod.rbac, null);
+  const nav = visibleNav(mod, () => false);
+  assert.deepEqual(nav.groups.flatMap((/** @type {any} */ g) => g.items.filter((/** @type {any} */ i) => i.kind === "page").map((/** @type {any} */ i) => i.key)).sort(), ["admin", "dashboard", "users"]);
+});
+
+test("effectiveLayout: a module that is not public gains no public key and keeps its rbac object", () => {
+  const mod = effectiveLayout([base(), consoleMod()]).modules.find((/** @type {any} */ x) => x.id === "demo");
+  assert.equal("public" in mod, false);
+  assert.deepEqual(mod.rbac, { shape: "hub", base: "/admin", me: "/admin/my-permissions" });
+  const explicit = base();
+  explicit.public = false;
+  assert.equal("public" in effectiveLayout([explicit, consoleMod()]).modules.find((/** @type {any} */ x) => x.id === "demo"), false);
+});
+
+test("validateRegistry: a public module declares no permission read, so no module can borrow or peer on it", () => {
+  const site = publicMod();
+  const borrower = { ...consoleMod(), id: "other", client: "apps/other/client", rbac: { shape: "console", base: "/admin", me: "/me", permissionSource: "site" } };
+  assert.match(validateRegistry([consoleMod(), site, borrower]).join("\n"), /rbac\.permissionSource site has no permission read/);
+  const peer = peerPage(["site/tab:x"]);
+  assert.match(validateRegistry([consoleMod(), site, peer]).join("\n"), /peer permission module site has no permission read/);
+  assert.deepEqual(validateRegistry([consoleMod(), site]), []);
+});
