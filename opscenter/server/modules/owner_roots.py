@@ -9,6 +9,7 @@ Purpose: Owner-applied Terraform roots (a root whose spec says applied_by owner:
            owner_roots.py plan-all
            owner_roots.py plan <name> <tier>
            owner_roots.py apply <name> <tier> <plan_sha256>
+           owner_roots.py guard <name> <tier>   (read only: exit 3 when the saved plan would undo what a PR applied)
          Status: <cache>/status.json (OWNER_ROOTS_CACHE). Decisions: OWNER_ROOTS_DECISIONS (decision owner_apply_*).
 
          Nothing about a cloud is in this module. The roots spec is a JSON file in the clone (OWNER_ROOTS_SPEC, default
@@ -347,6 +348,7 @@ def plan(name, tier, sha=None):
                 resources=[],
                 plan_sha256=None,
                 apply_failures=None,
+                ahead_of_main=_hold_check(name, tier, [], sha),
                 error=None,
             )
             _close_alert(name, tier, "The root re-planned clean, nothing is left to apply.")
@@ -366,6 +368,7 @@ def plan(name, tier, sha=None):
             resources=resources,
             plan_sha256=digest,
             planned_at=_now(),
+            ahead_of_main=_hold_check(name, tier, resources, sha),
             error=None,
         )
         if not it.get("pending_since"):
@@ -421,6 +424,240 @@ def _plan_deletes(show):
 def log_event(rec):
     """A decision-log line a provider hook can write (same file and shape as the module's own)."""
     _log(rec)
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Ahead of main. A pull request can apply a root from its own branch before it merges (the consumer's PR apply flow records
+# the hold with set_pr_hold). While it is ahead of main, main's plan of that root would destroy what the PR applied, so the
+# card says "ahead of main, waiting on #N" and Apply is refused by the server and by the worker; the hold clears when main
+# contains the PR merge commit or the PR closes unmerged. A PR left ahead of main for more than AHEAD_CARD_S becomes an
+# Action Center item. Provider hooks (all optional, the null default keeps every hold):
+#   pr_state(pr)        -> (state, merge_commit): "open", "merged", "closed" or "unknown"
+#   contains(oid, sha)  -> True when commit oid is in sha's history
+#   pr_url(pr)          -> the link of a pull request;  owner_name() -> who the item is for
+# ---------------------------------------------------------------------------------------------------------------------
+AHEAD_CARD_S = int(os.environ.get("OWNER_ROOTS_AHEAD_CARD_S", str(2 * 86400)))
+AHEAD_PREFIX = "ahead-"
+HOLD_TTL_S = int(os.environ.get("OWNER_ROOTS_HOLD_TTL_S", "120"))
+_HOLD_CHECKED = {"at": 0.0}
+
+
+def _holds():
+    return _load_status().get("pr_applied") or {}
+
+
+def _set_hold(key, rec):
+    CACHE.mkdir(parents=True, exist_ok=True)
+    with open(STATUS_LOCK, "w") as lk:
+        fcntl.flock(lk, fcntl.LOCK_EX)
+        st = _load_status()
+        d = st.setdefault("pr_applied", {})
+        if rec is None:
+            d.pop(key, None)
+        else:
+            d[key] = rec
+        tmp = STATUS.with_suffix(".tmp")
+        tmp.write_text(json.dumps(st, indent=1))
+        os.replace(tmp, STATUS)
+
+
+def set_pr_hold(name, tier, pr, head, digest, resources, applied_at=None, source=None):
+    """Record that pull request `pr` applied this root from its branch at `head`: main's plan must not destroy what it applied
+    until the PR merges. `resources` are the applied plan's resources ({address, action}); only add, change, replace and
+    import addresses are held."""
+    addrs = sorted(
+        {
+            r["address"]
+            for r in resources
+            if r.get("address") and r.get("action") in ("add", "change", "replace", "import")
+        }
+    )
+    rec = {
+        "pr": int(pr),
+        "head": head,
+        "plan_sha256": digest,
+        "applied_at": applied_at or _now(),
+        "addresses": addrs,
+        "pr_state": "open",
+        "merge_commit": None,
+    }
+    if source:
+        rec["source"] = source
+    _set_hold(_key(name, tier), rec)
+    _log(
+        {
+            "decision": "owner_apply_pr_hold",
+            "root": _key(name, tier),
+            "pr": int(pr),
+            "head": head,
+            "resources": len(addrs),
+        }
+    )
+    return rec
+
+
+def _pr_state(pr):
+    """(open|merged|closed|unknown, merge commit sha). An unreadable or unconfigured read is unknown, which keeps a hold."""
+    try:
+        d = _hook("pr_state", int(pr), default=None)
+    except Exception:  # noqa: BLE001 - an unreadable PR keeps its hold
+        return "unknown", None
+    if not d:
+        return "unknown", None
+    state, oid = (list(d) + [None])[:2]
+    return (str(state or "").lower() or "unknown"), oid
+
+
+def _contains(oid, sha):
+    if not oid or not sha:
+        return False
+    try:
+        return bool(_hook("contains", oid, sha, default=False))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _hold_check(name, tier, resources, sha):
+    """Main-side safety. While a root a PR applied is ahead of main, the main plan that would destroy what the PR applied is
+    marked ahead of main (its Apply is refused). The hold clears once main contains the PR merge commit, or when the PR closes
+    unmerged. Returns the ahead-of-main record or None."""
+    key = _key(name, tier)
+    rec = _holds().get(key)
+    if not rec:
+        return None
+    state, oid = _pr_state(rec["pr"])
+    if (state == "merged" and _contains(oid, sha)) or state == "closed":
+        _set_hold(key, None)
+        _log(
+            {
+                "decision": "owner_apply_pr_released",
+                "root": key,
+                "pr": rec["pr"],
+                "pr_state": state,
+                "main": sha,
+            }
+        )
+        return None
+    applied = set(rec.get("addresses") or [])
+    hit = sorted(
+        {
+            r["address"]
+            for r in resources
+            if r.get("action") in ("destroy", "replace") and r.get("address") in applied
+        }
+    )
+    if not hit:
+        return None
+    _log(
+        {
+            "decision": "owner_apply_pr_ahead",
+            "root": key,
+            "pr": rec["pr"],
+            "head": rec["head"],
+            "destroys": hit,
+        }
+    )
+    return {"pr": rec["pr"], "head": rec["head"], "addresses": hit}
+
+
+def _ahead_text(ahead):
+    addrs = ahead.get("addresses") or []
+    first = f", for example {addrs[0]}" if addrs else ""
+    return (
+        f"Ahead of main, waiting on #{ahead.get('pr')}. This plan would destroy {len(addrs)} resource(s) that PR "
+        f"#{ahead.get('pr')} applied from its head {str(ahead.get('head') or '')[:8]}{first}. Apply is refused until main "
+        "contains the PR merge commit; the root is re-planned by itself then."
+    )
+
+
+def guard_refusal(name, tier, it):
+    """The owner apply guard: why this saved plan may not be applied, or None. It refuses when any resource the plan deletes
+    (a destroy or a replace) is an address a pull request that is still open (or unreadable) already applied from its branch,
+    whether or not the card was marked, so a stale mark never lets a delete through. The apply on main then cannot undo a
+    branch apply."""
+    rec = _holds().get(_key(name, tier))
+    if not rec or rec.get("pr_state") in ("merged", "closed"):
+        return None
+    applied = set(rec.get("addresses") or [])
+    hit = sorted(
+        {
+            r["address"]
+            for r in it.get("resources") or []
+            if r.get("action") in ("destroy", "replace") and r.get("address") in applied
+        }
+    )
+    if not hit:
+        return None
+    return _ahead_text({"pr": rec["pr"], "head": rec.get("head"), "addresses": hit})
+
+
+def _ahead_refusal(name, tier, it):
+    ahead = it.get("ahead_of_main")
+    if ahead and _holds().get(_key(name, tier)):
+        return _ahead_text(ahead)
+    return guard_refusal(name, tier, it)
+
+
+def ahead_items(now=None):
+    """Action Center items for roots an open PR holds ahead of main for more than AHEAD_CARD_S. The age runs from the apply
+    (applied_at) or, for a hold found without a record, from when it was detected. A merged PR is skipped (the next main plan
+    releases it); a hold with no time yet counts from now, so it shows up later instead of never."""
+    now = time.time() if now is None else now
+    out = []
+    for key, rec in sorted(_holds().items()):
+        if rec.get("pr_state") not in ("open", "unknown", None):
+            continue
+        since = rec.get("applied_at") or rec.get("detected_at")
+        if not _epoch(since):
+            _set_hold(key, dict(rec, detected_at=_now()))
+            continue
+        age = now - _epoch(since)
+        if age < AHEAD_CARD_S:
+            continue
+        pr, days = int(rec["pr"]), int(age // 86400)
+        n = len(rec.get("addresses") or [])
+        how = "applied from its branch" if rec.get("applied_at") else "found live ahead of main"
+        url = _hook("pr_url", pr, default=None)
+        out.append(
+            {
+                "key": f"{AHEAD_PREFIX}{key.replace(':', '-')}-pr{pr}",
+                "priority": "medium",
+                "title": f"PR #{pr} has been live ahead of main for {days} days ({key})",
+                "why": (
+                    f"{n} resource(s) in {key} were {how} {days} days ago and PR #{pr} is still not merged. Main cannot "
+                    "apply this root until the PR merges, and the cloud holds changes main does not describe."
+                ),
+                "action": f"Merge PR #{pr}, or close it and remove what it applied from {key}.",
+                "owner": str(_hook("owner_name", default="") or ""),
+                "refs": [f"PR #{pr}"],
+                "sources": ["Owner roots"],
+                "links": [{"label": f"PR #{pr}", "url": url}] if url else [],
+            }
+        )
+    return out
+
+
+def refresh_holds(force=False):
+    """Re-read each held PR (every HOLD_TTL_S). A PR closed unmerged releases its hold and the ahead mark on main's item. A
+    merged one is recorded and clears when main is planned at or past its merge commit."""
+    if not force and time.time() - _HOLD_CHECKED["at"] < HOLD_TTL_S:
+        return
+    _HOLD_CHECKED["at"] = time.time()
+    for key, rec in list(_holds().items()):
+        state, oid = _pr_state(rec["pr"])
+        if state == "closed":
+            _set_hold(key, None)
+            _update(key, ahead_of_main=None)
+            _log(
+                {
+                    "decision": "owner_apply_pr_released",
+                    "root": key,
+                    "pr": rec["pr"],
+                    "pr_state": state,
+                }
+            )
+        elif state in ("open", "merged"):
+            _set_hold(key, dict(rec, pr_state=state, merge_commit=oid, checked=_now()))
 
 
 def _apply_with_hooks(key, root, planfile, deletes, lock_state, log):
@@ -583,6 +820,11 @@ def apply(name, tier, digest):
         return
     if hashlib.sha256(planfile.read_bytes()).hexdigest() != digest:
         _apply_failed(key, "The saved plan file does not match what the owner reviewed. Re-plan.")
+        return
+    refusal = _ahead_refusal(name, tier, it)
+    if refusal:
+        _apply_failed(key, refusal)
+        planfile.unlink(missing_ok=True)
         return
     _update(key, state="applying", started=_now(), error=None)
     _log(
@@ -961,9 +1203,12 @@ def get():
         else:
             phase = "idle"
         kind, step = classify_error(it.get("error")) if state in ("error", "auth") else (None, None)
+        ahead = it.get("ahead_of_main") if state == "pending" and _holds().get(k) else None
         items.append(
             dict(
                 it,
+                ahead_of_main=ahead,
+                ahead_text=_ahead_text(ahead) if ahead else None,
                 key=k,
                 stale=bool(age and age > STALE_S),
                 plan_file=None,
@@ -997,6 +1242,7 @@ def maybe_refresh():
     older than REFRESH_S. Called by the server thread every minute and on every GET."""
     if not configured():
         return
+    refresh_holds()
     st = _load_status()
     items = [i for i in st.get("items", {}).values() if i.get("state") != "gone"]
     newest = max((_epoch(i.get("finished")) for i in items if i.get("finished")), default=0)
@@ -1061,6 +1307,9 @@ def request(payload, act):
             return 409, {
                 "error": "The plan changed since you loaded it. Refresh and review it again."
             }
+        ahead = _ahead_refusal(name, tier, it)
+        if ahead:
+            return 409, {"error": ahead}
         if str(payload.get("confirm") or "").strip() != name:
             return 400, {"error": f"Type {name} to confirm."}
         if time.time() - _epoch(it.get("planned_at")) > STALE_S:
@@ -1080,6 +1329,14 @@ def main(argv):
     CACHE.mkdir(parents=True, exist_ok=True)
     if argv[:1] == ["signin"]:
         return signin_worker()  # takes the operation lock itself, only after the sign-in lands
+    if (
+        argv[:1] == ["guard"] and len(argv) == 3
+    ):  # read only: exit 3 when the saved plan would undo a PR's branch apply
+        why = guard_refusal(
+            argv[1], argv[2], _load_status().get("items", {}).get(_key(argv[1], argv[2])) or {}
+        )
+        print(why or "ok")
+        return 3 if why else 0
     with open(LOCK, "a") as lk:
         try:
             fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)

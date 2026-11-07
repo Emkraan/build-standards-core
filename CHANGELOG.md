@@ -1,11 +1,22 @@
 # Changelog
 
-## 2026-11-06 (v1.135.0, hub tab working marker and inline pending note colour)
+## 2026-11-06 (v1.136.0, hub tab working marker and inline pending note colour)
 
 Two look details from the ops center adoption, both inside the hub pieces; the plain `Spinner` and every other badge are unchanged.
 
 - The hub tab working marker is 9px with a 1.6px arc turning on 900ms (was 8px, 1.5px, 800ms). It is scoped to `.hub-head .tab-badge`, so no other spinner changes. The existing 5px gap between the marker and the count stays on its right.
 - `PendingReason inline` follows the text colour of the line it sits in (it is a next step, not a warning); the block form keeps the warning colour.
+
+## 2026-11-06 (v1.135.0, owner roots ahead of main, the owner apply guard, the draft gate grammar)
+
+Gating and owner roots from rpmm23's inventory (OC-4, OC-5, OC-6, OC-19). Opt in: the hold needs the consumer's PR apply flow to record it and provider hooks to read a PR; with none, nothing changes.
+
+- OC-6, `owner_roots.py`: `set_pr_hold` records a root a PR applied from its branch; main's plan that would destroy it is marked "ahead of main, waiting on #N" and Apply is refused by the server and the worker; the hold clears when main contains the merge commit or the PR closes; an unreadable PR keeps it. Hooks `pr_state`, `contains`, `pr_url`, `owner_name`.
+- OC-5, the owner apply guard: `guard_refusal` and `owner_roots.py guard <name> <tier>` (exit 3) refuse a saved plan that deletes an address an open PR applied, whether or not the card was marked.
+- OC-19, `ahead_items`: an Action Center item for a PR left ahead of main for more than two days (`OWNER_ROOTS_AHEAD_CARD_S`).
+- OC-8 and OC-9, `lanes/run_watches.py`: a main watch (the newest completed run of a deploy or apply workflow on main raises one item with the failed job, its first error line and the run link; a later success closes it; cancelled and skipped runs count neither way) and a drift watch (the newest N scheduled runs all failed: one item naming each failing job; manual and branch runs never count). A watch that cannot be read is an item, never clear.
+- RL-1 and RL-2, `server/modules/status_source.py`: a missing, stale, unreadable or malformed status file reads as unknown, never in sync; a collector that loses its sign-in keeps its last reading marked stale and exits non-zero after the lapse limit (240 minutes).
+- OC-4, `lanes/pr_gate.py`: the draft gate block grammar the own-PR lane's gate plug-in loads, with two built-in kinds and a consumer kinds file. Written from the inventory text and test names, not from reference code; the branch-apply flow and the detection of an unrecorded branch apply are not lifted.
 
 ## 2026-11-06 (v1.134.0, hub routing, run dialog and override defects)
 
