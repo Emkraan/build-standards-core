@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-07 (v1.161.0, the jobs package and the job leader)
+
+Opt in, two new pieces from the Olympus shell source: `shell-packages/jobs` (`createScheduler`, `jobRoutes`, the cron and Automation Account schedule helpers) and `createJobLeader` plus `jobLockKey` in `app-server`. Documented in `web-shell-packages.md` section 5.4.
+
+- `createScheduler`: daily jobs in Eastern time with a live on/off switch in the tool's own `scheduled_jobs` table, a run claimed with one `UPDATE` so instances never double run, a three hour catch-up window, `GET /jobs` and an audited `PUT /jobs/:id`. The environment variable that stops a runner is the `offEnv` option (default `JOBS`; the source hard coded its own name).
+- `createJobLeader`: one process runs the background jobs at a time through a Postgres session advisory lock. The key prefix is the `lockPrefix` option (default `jobs`; the source hard coded its own prefix, so a consumer that already runs a leader passes that prefix to keep its lock key).
+- Both are new exports with no effect on an existing consumer. Typings added.
+- Tests: 25 for the jobs package (the source's own tests, plus the `offEnv` one) and 8 for the leader (the source's, plus the prefix one), added to `test:server`.
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117, SH-15).
+
 ## 2026-11-07 (v1.160.0, the reports client reads the server's export and import answers)
 
 Opt in, `kit-core/reports`. The client reads an export as a list of definitions or as `{ dashboards }`, and an import answer whose `errors` are `{ index, key, message }` objects (each definition is stored or refused on its own) as well as plain strings; `importProblemText` turns one into a line.
