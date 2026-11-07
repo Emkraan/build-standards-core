@@ -1,11 +1,19 @@
 # Changelog
 
-## 2026-11-07 (v1.162.0, the run watches read a failed run once and pick the real error line)
+## 2026-11-07 (v1.163.0, the run watches read a failed run once and pick the real error line)
 
 `lanes/run_watches.py` (OC-8 drift watch, OC-9 main watch). Two changes to what runs today:
 - Error lines: the first `Error:` line of the failed job's log is preferred (colour codes, timestamps and a box drawing prefix dropped), else the first `##[error]` annotation; the runner's `Process completed with exit code N.` line is never returned (a log with only that line gives no error line), and the word failed in ordinary output, `FATAL` and `Traceback` no longer match. The drift item now shows every error line of each failing job (up to 3), the main item the first.
 - API budget: a failed run's jobs and logs are read once and cached by repo, run id and attempt (newest 20 kept), so a run that stays red costs one runs list per collect instead of a jobs and log read each time. A log that could not be read is not cached and is read again. The cache lives in the process by default; the optional `cache_file` config key keeps it between runs of the `items` CLI. Job logs are read with `--allow-escape-sequences` (a gh without that flag is asked again without it).
 - `collect`, `main_item` and `drift_item` take an optional `cache`; the runs list asks for `attempt`. Tests port the scenarios of the reference main and drift watch tests onto `collect()`.
+
+## 2026-11-07 (v1.162.0, the processing indicator can stop reads)
+
+Closes the gap against the hub's handoff tag (the busy bar spec): the indicator's Cancel request, the stop on leaving the page and the server run stop. A second opt in on top of `installBusyTracking`; with `cancel` off nothing changes.
+
+- `installBusyTracking({ cancel: true, keepAcrossRoutes, runs })`: a counted read carries a signal of its own joined with the caller's. `cancelBusyReads()` stops every stoppable read with `Request cancelled`; `abortStaleReads(route)` stops reads that outlived their route after 1.5 s of grace (`The page was left before the request finished`); a hidden page stops them all. Writes are never stopped. `runs` tags the server's stoppable runs with an id header and tells the server on every stop (a beacon, then a keepalive POST).
+- `BusyIndicator`: a chip with the elapsed seconds after 5 s and, while a stoppable read is in flight, a Cancel request button; the bar itself still takes no input. `route`, `cancelAfterMs`, `cancelLabel` and `onCancel` are props.
+- `BusyState` gains `cancellable`; `CANCELLED_MESSAGE`, `LEFT_PAGE_MESSAGE` and `NAV_GRACE_MS` are exported.
 
 ## 2026-11-07 (v1.161.0, a consumer can validate the manifest keys it adds)
 

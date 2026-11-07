@@ -1876,11 +1876,23 @@ app asks.
   observes only; the request, its signal and its result stay the caller's, and the function it
   returns puts the original back.
 - Background work (a refresh timer, a poll) runs inside `quietly(...)` and does not raise the bar.
-- Cancelling a read, or stopping a long run on the server, is the app's own: the kit store never
-  aborts a request.
+- Stopping reads is a second opt in, `installBusyTracking({ cancel: true })`: a counted read then
+  carries a signal of its own (joined with the caller's), so `cancelBusyReads()` can stop it. The
+  indicator shows a chip with the elapsed seconds after 5 s and, while a stoppable read is in flight,
+  a Cancel request button (the bar itself still takes no input, only the chip does). A stopped read
+  rejects with `Request cancelled`, or `The page was left before the request finished` when the page
+  or route was left first (an app can drop that one from its toasts). Pass the current `route` to
+  `BusyIndicator` and a read that outlived its page is stopped after 1.5 s of grace; a path can be kept
+  across routes (`keepAcrossRoutes`). `runs` names the requests the server can stop: each carries an id
+  header and every stop also tells the server (a beacon, so it survives the page unloading), because
+  aborting the browser request alone does not reliably reach a server behind a front end that keeps the
+  connection open. Writes are never stopped: stopping one half way leaves an outcome nobody can see.
 
 **Acceptance:** a component test asserts the delay, the label, the hold, quiet work, the opt-in
-install and uninstall, and that the result reaches the caller unchanged.
+install and uninstall, that the result reaches the caller unchanged, and, with `cancel`, that Cancel
+and a route change and a hidden page stop reads (never writes, never a young read or a kept path),
+the caller's own signal still works, a run carries its id and the server is told on every stop, and
+the chip shows after 5 s with Cancel only for reads that can be stopped.
 
 ### Action buttons by purpose (`data-act`)
 
