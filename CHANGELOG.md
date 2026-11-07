@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-07 (v1.163.0, the audit chain and the sealed settings, with tests)
+## 2026-11-07 (v1.167.0, the audit chain and the sealed settings, with tests)
 
 Opt in, two new packages from the Olympus shell source (SH-4 and SH-5, K-source-refresh). Documented in `web-shell-packages.md` section 5.5.
 
@@ -11,6 +11,17 @@ Opt in, two new packages from the Olympus shell source (SH-4 and SH-5, K-source-
 - New exports only, nothing existing changes. Typings added.
 
 No issue: requested by the core consolidation session (build-standards-core-intake#117).
+
+## 2026-11-07 (v1.166.0, the owner apply guard fails closed and covers open PRs)
+
+`opscenter/server/modules/owner_roots.py`.
+
+- Behaviour change: `owner_roots.py guard <name> <tier>` fails closed. A corrupt or unreadable status file refuses (exit 3, the cause printed), and so does a missing one unless `--allow-missing-status` is given. An install that runs the guard but never recorded a hold, and so has no status file, must add that flag or plan once first.
+- `guard ... --allow-pr N` (repeatable) skips a PR meant to lose its objects. Bad guard arguments exit 2.
+- An address matches with or without an index suffix on either side: a hold of `x.a` covers a delete of `x.a["k"]` and a hold of `x.a["k"]` covers a delete of `x.a`. Two different instances never match. This applies to the ahead of main mark and the guard.
+- Opt in provider hooks, null by default: `open_pr_addresses(root)` (the guard and the Apply refusal also refuse a delete of an address an open PR declares, and refuse when that read fails), `detect_ahead(root)` (a root with no hold record whose main plan destroys what an open PR holds gets a detected hold), `is_protection(id)` (a lock the plan itself deletes is left out of the deletes handed to the lift), `retry_kinds()` (the apply is retried after a lift when the failure is one of the provider's own error kinds, not only when the output says retry), and a third `before_apply` parameter, a private directory to record the lift in before the first lift. An exception from `before_apply` that carries a `state` attribute reaches `after_apply`, so a partial lift is restored.
+- Behaviour change: the lift lag retry needs a non empty state from `before_apply` (it used to be any state that is not None), so nothing lifted means no retry.
+- Terminal apply logging: `owner_roots.py --log-start --root <name>:<tier> --sha <sha> [--by <account>]` and `--log-done ... [--result <text>]` append `owner_apply_started` and `owner_apply_done` in the module's own record shape. `--by` defaults to the provider's expected identity.
 
 ## 2026-11-07 (v1.162.0, script rule U6: the cause is Windows PowerShell 5.1)
 
