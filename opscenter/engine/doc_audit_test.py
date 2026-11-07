@@ -470,5 +470,254 @@ class Runs(Base):
         self.assertFalse((self.dash / "doc-gaps.json").exists())
 
 
+BANNER = '<div data-type="panel-note"><p><strong>Retired.</strong> X was retired and this page is kept for history.</p></div>'
+LIVE_BADGE = '<p>Status: <span data-type="status" data-color="green">LIVE</span></p>'
+RETIRED_BADGE = '<p>Status: <span data-type="status" data-color="neutral">RETIRED</span></p>'
+LIVE_ROW = "<table><tbody><tr><th><p>Status</p></th><td><p>Live in production</p></td></tr></tbody></table>"
+
+
+class RetiredRules(Base):
+    """R13 (a retired page that still says Live) and R15 (a retired page outside the Archive), against the fake docs home driver."""
+
+    def hit(self, root, pid, title, html, parent=None):
+        self.home["pages"][pid] = page(title, parent or root, body=html)
+        self.home["children"].setdefault(root, []).append({"content": {"id": pid, "title": title}})
+
+    def setUp(self):
+        super().setUp()
+        self.cfg["dup_roots"] = {"50": "Docs"}
+
+    def r13(self, registry=None):
+        self.save()
+        return [
+            g["id"]
+            for g in self.da.retired_live_gaps(self.da.DocsHome(), registry or {"things": []})
+        ]
+
+    def test_a_banner_with_a_live_badge_is_flagged_low(self):
+        self.hit("50", "1", "Old tool", BANNER + LIVE_BADGE)
+        self.assertEqual(self.r13(), ["R13:1"])
+        self.save()
+        gaps = self.da.retired_live_gaps(self.da.DocsHome(), {"things": []})
+        self.assertEqual(gaps[0]["severity"], "low")
+
+    def test_a_banner_with_a_retired_badge_is_clean(self):
+        self.hit("50", "1", "Old tool", BANNER + RETIRED_BADGE)
+        self.assertEqual(self.r13(), [])
+
+    def test_a_live_page_that_only_mentions_a_retired_host_is_clean(self):
+        self.hit(
+            "50", "2", "Tool overview", LIVE_ROW + "<p>The old host was retired on 2026-10-17.</p>"
+        )
+        self.assertEqual(self.r13(), [])
+
+    def test_a_retired_registry_home_with_a_live_row_is_flagged(self):
+        self.cfg.pop("dup_roots")
+        self.home["pages"]["3"] = page("Old console", "1", body=LIVE_ROW)
+        reg = {"things": [{"id": "old", "status": "retired", "confluence_home": "3"}]}
+        self.assertEqual(self.r13(reg), ["R13:3"])
+
+    def test_a_title_that_says_retired_counts_and_the_rule_is_off_without_roots_or_retired_things(
+        self,
+    ):
+        self.hit("50", "4", "Retired: old tool", LIVE_BADGE)
+        self.assertEqual(self.r13(), ["R13:4"])
+        self.save()
+        self.assertTrue(self.da.retired_live_enabled({"things": []}))
+        self.cfg.pop("dup_roots")
+        self.save()
+        self.assertFalse(self.da.retired_live_enabled({"things": [{"id": "x", "status": "live"}]}))
+        self.assertTrue(
+            self.da.retired_live_enabled({"things": [{"id": "x", "status": "retired"}]})
+        )
+
+    def test_a_truncated_search_fails_closed(self):
+        self.hit("50", "1", "Old tool", BANNER)
+        self.save()
+        conf = self.da.DocsHome()
+        real = conf._call
+        conf._call = lambda tool, args: (
+            dict(real(tool, args), totalSize=999)
+            if tool != "getConfluencePage"
+            else real(tool, args)
+        )
+        with self.assertRaises(self.da.AuditError):
+            self.da.retired_live_gaps(conf, {"things": []})
+
+    def test_r15_is_silent_without_an_archive_page(self):
+        self.save()
+        self.assertEqual(self.da.archive_gaps(self.da.DocsHome(), {"things": []}), [])
+        self.assertFalse(self.da.archive_enabled({"things": []}))
+        self.assertTrue(self.da.archive_enabled({"archive_page": "99"}))
+
+    def test_r15_lists_retired_tops_outside_the_archive_only(self):
+        # 1 is a retired top, 2 its retired child, 3 already in the archive, 4 live, 5 moved into the archive but CQL has not caught up
+        self.hit("50", "1", "Old tool overview", BANNER, parent="dd")
+        self.hit("50", "2", "Old tool changelog", BANNER, parent="1")
+        self.hit("50", "3", "Already archived", BANNER, parent="99")
+        self.hit("50", "4", "Live page", LIVE_ROW, parent="dd")
+        self.hit("50", "5", "Moved child", BANNER, parent="6")
+        self.home["pages"]["6"] = page("Moved parent", "99")
+        self.home["pages"]["dd"] = page("Some folder", "50")
+        self.home["tree"]["99"] = [
+            {"content": {"id": "3", "title": "Already archived", "history": {}}}
+        ]
+        self.save()
+        gaps = self.da.archive_gaps(self.da.DocsHome(), {"archive_page": "99"})
+        self.assertEqual(
+            [g["id"] for g in gaps],
+            ["R15:1"],
+            "child 2 rides with 1, 3 and 5 are archived, 4 is live",
+        )
+        self.assertIn("outside the Archive", gaps[0]["text"])
+
+    def test_the_pseudo_things_appear_only_when_their_rule_is_on(self):
+        self.home["pages"]["10"] = page("Svc home")
+        self.home["pages"]["900"] = page(
+            "RACI", body="| Domain / Responsibility | Ann |\n|---|---|\n"
+        )
+        self.cfg.pop("dup_roots")
+        self.save()
+        thing = {
+            "id": "t",
+            "name": "Svc",
+            "tier": "B",
+            "status": "live",
+            "repo": "r",
+            "confluence_home": "10",
+        }
+        self.registry([thing])
+        sys.argv = ["doc_audit.py"]
+        self.assertEqual(self.da.main(), 0)
+        things = json.loads((self.dash / "doc-gaps.json").read_text())["things"]
+        self.assertFalse({"_backup", "_retired_live", "_archive"} & set(things))
+        self.cfg["dup_roots"] = {"50": "Docs"}
+        self.save()
+        self.registry([thing], archive_page="99")
+        self.assertEqual(self.da.main(), 0)
+        things = json.loads((self.dash / "doc-gaps.json").read_text())["things"]
+        self.assertTrue({"_retired_live", "_archive"} <= set(things))
+        self.assertNotIn("_backup", things)
+
+
+class BackupDrift(Base):
+    """R16: live files a backup mirror is behind on, by git blob sha, with a grace window and a stuck sync pull request check."""
+
+    def setUp(self):
+        super().setUp()
+        self.live = self.d / "live"
+        self.live.mkdir()
+        (self.live / "same.py").write_text("x = 1\n")
+        (self.live / "old.py").write_text("x = 2\n")
+        (self.live / "fresh.py").write_text("x = 3\n")
+        old = 1_000_000.0
+        for n in ("same.py", "old.py"):
+            os.utime(self.live / n, (old, old))
+        self.now = old + 40 * 3600
+        os.utime(self.live / "fresh.py", (self.now, self.now))
+        blob = self.da.git_blob_sha
+        self.tree = "\n".join(
+            f"100644 blob {sha}\tdash/{n}"
+            for n, sha in (
+                ("same.py", blob(b"x = 1\n")),
+                ("old.py", blob(b"x = 9\n")),
+                ("fresh.py", blob(b"x = 9\n")),
+            )
+        )
+        self.cfg_m = {
+            "repo": str(self.d / "backup"),
+            "repo_slug": "owner/backup",
+            "map": [{"repo_prefix": "dash/", "live_dir": str(self.live)}],
+        }
+
+    def fake(self, prs, ls_code=0, gh_code=0):
+        def run(cmd, **kw):
+            if "ls-tree" in cmd:
+                return subprocess.CompletedProcess(
+                    cmd, ls_code, self.tree if ls_code == 0 else "", ""
+                )
+            if cmd[0] == "gh":
+                return subprocess.CompletedProcess(cmd, gh_code, json.dumps(prs), "")
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+
+        return run
+
+    def drift(self, prs, **kw):
+        return self.da.backup_drift(now=self.now, run=self.fake(prs, **kw), cfg=self.cfg_m)
+
+    def test_only_stale_differing_files_and_old_sync_prs(self):
+        prs = [
+            {
+                "number": 133,
+                "createdAt": "1970-01-12T00:00:00Z",
+                "headRefName": "sync/2026-10-28",
+                "url": "https://git.example.com/p/133",
+            },
+            {
+                "number": 9,
+                "createdAt": "1970-01-12T00:00:00Z",
+                "headRefName": "feature/x",
+                "url": "u",
+            },
+            {
+                "number": 10,
+                "createdAt": "1970-01-12T00:00:00Z",
+                "headRefName": "sync/new",
+                "url": "u",
+            },
+        ]
+        prs[2]["createdAt"] = "1970-01-14T04:00:00Z"
+        out = self.drift(prs)
+        self.assertEqual(len(out), 2)
+        self.assertIn("1 live file(s) unchanged for 30h", out[0])
+        self.assertIn("dash/old.py", out[0])
+        self.assertNotIn(
+            "fresh.py", out[0], "edited inside the grace window, the next sync carries it"
+        )
+        self.assertIn("#133", out[1])
+        self.assertIn("https://git.example.com/p/133", out[1])
+
+    def test_clean_when_the_live_copy_matches_the_mirror(self):
+        (self.live / "old.py").write_text("x = 9\n")
+        os.utime(self.live / "old.py", (1_000_000.0, 1_000_000.0))
+        self.assertEqual(self.drift([]), [])
+
+    def test_a_missing_live_file_is_not_drift(self):
+        (self.live / "old.py").unlink()
+        self.assertEqual(self.drift([]), [])
+
+    def test_an_unreadable_mirror_is_one_line_never_a_pass(self):
+        out = self.drift([], ls_code=128)
+        self.assertEqual(len(out), 1)
+        self.assertIn("Could not read the backup repo", out[0])
+
+    def test_a_pull_request_listing_failure_is_named(self):
+        out = self.drift([], gh_code=1)
+        self.assertIn("Could not list open sync pull requests", out[-1])
+
+    def test_more_than_five_files_are_cut_with_and_more(self):
+        for i in range(7):
+            (self.live / f"n{i}.py").write_text("a")
+            os.utime(self.live / f"n{i}.py", (1_000_000.0, 1_000_000.0))
+        self.tree += "\n" + "\n".join(f"100644 blob {'0' * 40}\tdash/n{i}.py" for i in range(7))
+        out = self.drift([])
+        self.assertIn("8 live file(s)", out[0])
+        self.assertTrue(out[0].endswith("and more."))
+
+    def test_not_configured_is_off(self):
+        self.assertEqual(self.da.backup_drift(now=self.now, run=self.fake([]), cfg=None), [])
+        self.cfg["mirror"] = {"repo": "x"}
+        self.save()
+        self.assertIsNone(self.da.mirror_config())
+        self.cfg["mirror"] = self.cfg_m
+        self.save()
+        self.assertEqual(self.da.mirror_config()["repo_slug"], "owner/backup")
+
+    def test_the_blob_sha_is_gits(self):
+        self.assertEqual(
+            self.da.git_blob_sha(b"hello\n"), "ce013625030ba8dba906f756967f9e9ca394464a"
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
