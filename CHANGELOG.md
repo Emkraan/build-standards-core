@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-07 (v1.153.0, the optional reports module: directory and catalog lookups)
+
+Opt in: `server/modules/reports/{directory,catalog,lookup_db}.py`, imported only when a consumer uses them or sets `OPSCENTER_REPORTS`; no import side effect (the database `OPSCENTER_REPORTS_DB` is created on first use).
+
+- `directory.py`: account names to directory people at ingest, behind a `lookup(kind, value)` slot. One lookup per name, cached 30 days found, 1 day miss, 1 hour error; computer and service accounts and the posting device are "not a person"; two matches are not found, never guessed; an outage pauses lookups for 10 minutes and never fails the caller; at most 200 per run.
+- `catalog.py`: ids (for example extensions) resolved once behind a `fetch(id)` slot, cached 30 days found and 7 days miss; an outage caches nothing and pauses for an hour; a publisher a person typed is never overwritten and never expires; at most 100 per run; the id pattern is configuration.
+
 ## 2026-11-07 (v1.152.0, the optional log intake module: receiver, streams, snapshots, buffer, sink checks)
 
 Opt in: `server/modules/log_intake/`, imported only when a consumer sets `OPSCENTER_LOG_INTAKE`; no import side effect, no database until first use, no route or task registered by this change.
