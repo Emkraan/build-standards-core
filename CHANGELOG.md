@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-07 (v1.166.0, health reads: the stale-while-revalidate reader and the liveness route)
+
+Opt in, SH-11 from the Olympus shell source (K-source-refresh), the generic part. New package `shell-packages/health`. Documented in `web-shell-packages.md` section 5.11.
+
+- `createSwrReader` (answer from the last reading, one refresh at a time, keep the last good reading through a failed refresh, report its age) and `healthRoute` (public per-subsystem liveness, 503 only when a critical one is down, no raw error text in production). The source's estate page reads Azure Resource Graph and probes the owner's own apps (a subscription id and product names in its code), its tools directory reads that estate, and its health route is bound to its own database and secret box; those are the owner's product code and are not lifted. The read pattern all three share is.
+- Tests: 9 (the source's estate and tools tests exercise the owner's own probes, so these were written for the two primitives).
+- New package only, nothing existing changes. Typings added.
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
+
 ## 2026-11-07 (v1.165.0, the run watches read a failed run once and pick the real error line)
 
 `lanes/run_watches.py` (OC-8 drift watch, OC-9 main watch). Two changes to what runs today:
