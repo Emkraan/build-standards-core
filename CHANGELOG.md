@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-07 (v1.151.0, the optional log intake module: receiver, streams, snapshots, buffer, sink checks)
+
+Opt in: `server/modules/log_intake/`, imported only when a consumer sets `OPSCENTER_LOG_INTAKE`; no import side effect, no database until first use, no route or task registered by this change.
+
+- Streams as data (E1 to E3): the pure rules (namespace for sink tables, field validation, a schema plan that never reuses a column, record cleaning with a capped Extra), the stream store (audited, destructive edits confirmed, a synced table never deleted, the table name typed to delete), and the receiver (`ingest.handle`: 404, 401, 413, 400, 503, 429, 202; the key check is a slot with a null default that refuses every key).
+- The latest snapshot per device or every post for an events stream (E5), the local buffer and the forwarder to a sink slot (E2, E6), and the sink access test with a marked test row (E6): a missing right is reported with the role and scope that would grant it.
+- Ported from the reference implementation; the table prefix and suffix, the sink and its reserved names, and the key check are configuration or slots. The reference's workspace retention default is 180 days in its code (its inventory said 90); the code value is used.
+- Not in this change: the routes that register the module, the sink providers, the settings page (the kit's), directory and publisher lookups (R6).
+
 ## 2026-11-07 (v1.150.0, one processing indicator, action buttons by purpose, chart theme test)
 
 Lifts from the consumer inventory. All opt in: `installBusyTracking` is never called for you, and `data-act` only affects a button that carries it.
