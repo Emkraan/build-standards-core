@@ -56,9 +56,9 @@ function makeProcess(db, counters) {
 }
 
 test("jobLockKey is a stable signed 64-bit decimal", () => {
-  const k = jobLockKey("xerox-automations");
-  assert.equal(k, jobLockKey("xerox-automations"));
-  assert.notEqual(k, jobLockKey("dialpad-license-alerts"));
+  const k = jobLockKey("job-a");
+  assert.equal(k, jobLockKey("job-a"));
+  assert.notEqual(k, jobLockKey("job-b"));
   assert.match(k, /^-?\d+$/);
   const n = BigInt(k);
   assert.ok(n >= -(2n ** 63n) && n < 2n ** 63n);
