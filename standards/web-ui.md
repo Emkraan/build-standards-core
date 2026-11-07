@@ -758,7 +758,7 @@ runs, never by the data source or the vendor.
 - Counts and the working state come from the app and are never decided here. An item `count` is the
   number of things that need attention, read from the one server list the rail badge also reads
  ; a section tab shows the sum of its items. Work in progress (`live`) is a
-  9px open-arc spinner (1.6px, 900ms) with a 5px gap before the count, never a red count, and a count of zero shows nothing.
+  9px open-arc spinner (1.6px, 9/8 of --dur-spin, 900ms) with a 5px gap before the count, never a red count, and a count of zero shows nothing.
 - Old links never break: `resolveHubRoute(base, sections, section, item)` returns `overview`, the
   `item`, or a `redirect` target. A section the hub does not have is an old flat link (`<base>/<item>`)
   and redirects to the item's new path; a bare section or an unknown item redirects to the section's

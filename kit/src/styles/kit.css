@@ -97,7 +97,7 @@ body { font-family: var(--font-sans); color: var(--text-primary); }
 .hub-subtabs { margin-top: var(--space-3); }
 .hub-head .tab-badge { gap: 5px; }
 .hub-head .tab-badge .spinner { width: 9px; height: 9px; color: var(--info); }
-.hub-head .tab-badge .spinner::after { border-width: 1.6px; animation-duration: 900ms; }
+.hub-head .tab-badge .spinner::after { border-width: 1.6px; animation-duration: calc(var(--dur-spin) * 9 / 8); }
 
 /* ---- Context panel: the second level of navigation, beside the page (AppShell contextPanel) ---- */
 .shell-split { display: flex; align-items: flex-start; min-width: 0; min-height: 100vh; }

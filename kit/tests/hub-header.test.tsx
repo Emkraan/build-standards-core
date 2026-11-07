@@ -180,6 +180,6 @@ describe('HubHeader', () => {
     expect(css).toMatch(/\.hub-head \{[^}]*margin-bottom: var\(--space-5\)/);
     expect(css).toMatch(/\.hub-head \.tab-badge \.spinner \{[^}]*color: var\(--info\)/);
     expect(css).toMatch(/\.hub-head \.tab-badge \.spinner \{[^}]*width: 9px; height: 9px/);
-    expect(css).toMatch(/\.hub-head \.tab-badge \.spinner::after \{[^}]*border-width: 1\.6px[^}]*animation-duration: 900ms/);
+    expect(css).toMatch(/\.hub-head \.tab-badge \.spinner::after \{[^}]*border-width: 1\.6px[^}]*animation-duration: calc\(var\(--dur-spin\) \* 9 \/ 8\)/);
   });
 });
