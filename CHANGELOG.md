@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-07 (v1.171.0, the jobs package and the job leader)
+## 2026-11-07 (v1.172.0, the jobs package and the job leader)
 
 Opt in, two new pieces from the Olympus shell source: `shell-packages/jobs` (`createScheduler`, `jobRoutes`, the cron and Automation Account schedule helpers) and `createJobLeader` plus `jobLockKey` in `app-server`. Documented in `web-shell-packages.md` section 5.4.
 
@@ -10,6 +10,14 @@ Opt in, two new pieces from the Olympus shell source: `shell-packages/jobs` (`cr
 - Tests: 17 for the jobs package (the source's 16, plus the `offEnv` one) and 10 for the leader (the source's 9, plus the prefix one), added to `test:server`.
 
 No issue: requested by the core consolidation session (build-standards-core-intake#117, SH-15).
+
+## 2026-11-07 (v1.171.0, the documentation drift feed, a provider slot)
+
+Opt in: `OPSCENTER_DOCS_DRIFT_PROVIDER` (`path/to/file.py:ClassName`). Without it there is no route and nothing is imported (a null slot hides the tab).
+
+- `server/modules/docs_drift.py`: the core owns the summary shape (counts by status and basis, the 40 pages most behind, the pages with no verdict, per app README and changelog facts, the write preview filtered and trimmed), the status vocabulary (closed sets, an unknown value is kept), the cache (900 s), the one background refresh a GET starts (a GET never waits on the source) and the three routes.
+- The consumer owns where the report comes from: `docs_drift_source(now)`, optional `docs_drift_latest_run()` (the same run id means no second fetch) and `docs_drift_dispatch()` (absent: Run now answers 501; a refusal answers 409 with its reason). A failed fetch keeps the last good data and names the error.
+- `authorize(headers, action, key)` gates all three routes (`docs-drift.read`, `docs-drift.run`) and refuses everything until a provider supplies it.
 
 ## 2026-11-07 (v1.170.0, the sprint trend and the closed sprint view)
 
