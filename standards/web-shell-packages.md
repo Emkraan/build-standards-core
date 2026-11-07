@@ -67,6 +67,7 @@ registry and its own role, assignment and override tables; the package decides w
 | Function | Side | Purpose |
 |---|---|---|
 | `permissionsBeyond` | server | Grant ceiling: ids a write would confer that the caller does not hold. The wildcard only from a genuine wildcard holder; an id the registry no longer defines is not dropped (fail closed) |
+| `removalBeyond`, `removalCeilingMessage` | server | The removal ceiling ([rbac.md](rbac.md) section 3): deleting a role, an assignment or an override takes away the permissions it confers, so the caller must hold every one of them, and only a genuine wildcard holder removes the wildcard. Pass the permissions of the thing being removed (the role's for a role delete or the assignment of that role, the stored list for an override). Same answer as `permissionsBeyond`, with its own message |
 | `annotateRoles`, `assignableRoleIds` | server | Per-role `assignable` and `unknownPermissions` (registry drift) |
 | `grantableIds` | server | Registry ids the caller may grant |
 | `accessibleTabs` | server | Tabs a permission set opens, computed from the registry, so a client never infers access from id strings |
