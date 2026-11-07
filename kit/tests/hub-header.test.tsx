@@ -157,6 +157,19 @@ describe('HubHeader', () => {
     expect(onNavigate).toHaveBeenCalledWith('/team/three');
   });
 
+  it('routes a flat hubs index tab to <base> itself and selects it when the route has no item', () => {
+    const onNavigate = vi.fn();
+    const tabs = [{ key: 'home', label: 'Home' }, { key: 'two', label: 'Two' }];
+    const { rerender } = render(<HubHeader title="Team" base="/team" tabs={tabs} indexKey="home" onNavigate={onNavigate} />);
+    expect(screen.getByRole('tab', { name: 'Home' }).getAttribute('aria-selected')).toBe('true');
+    fireEvent.click(screen.getByRole('tab', { name: 'Two' }));
+    expect(onNavigate).toHaveBeenLastCalledWith('/team/two');
+    rerender(<HubHeader title="Team" base="/team" tabs={tabs} indexKey="home" item="two" onNavigate={onNavigate} />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Home' }));
+    expect(onNavigate).toHaveBeenLastCalledWith('/team');
+    expect(screen.getByRole('tab', { name: 'Two' }).getAttribute('aria-selected')).toBe('true');
+  });
+
   it('selects the first flat tab when the route has no item', () => {
     render(<HubHeader title="Team" base="/team" tabs={[{ key: 'one', label: 'One' }, { key: 'two', label: 'Two' }]} onNavigate={vi.fn()} />);
     expect(screen.getByRole('tab', { name: 'One' }).getAttribute('aria-selected')).toBe('true');

@@ -17,6 +17,8 @@ export type { ContextPanelProps } from './shell/ContextPanel';
 export { AREA_DETAIL_LINES, AreaCard, HubOverview } from './shell/HubOverview';
 export type { AreaCardData, AreaCardProps, AreaTone, HubOverviewProps, OverviewSection } from './shell/HubOverview';
 export { HubHeader, hubPath, hubSectionProblems, resolveHubRoute } from './shell/HubHeader';
+export { KeepRedirect, redirectTarget } from './shell/KeepRedirect';
+export type { KeepRedirectProps, RedirectCarry } from './shell/KeepRedirect';
 export type { HubHeaderProps, HubItem, HubRoute, HubSection } from './shell/HubHeader';
 export { NavGroup, NavItem } from './shell/nav';
 export type { NavGroupProps, NavItemProps } from './shell/nav';

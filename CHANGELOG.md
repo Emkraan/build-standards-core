@@ -1,12 +1,44 @@
 # Changelog
 
-## 2026-11-07 (v1.144.0, one processing indicator, action buttons by purpose, chart theme test)
+## 2026-11-07 (v1.147.0, one processing indicator, action buttons by purpose, chart theme test)
 
 Lifts from the consumer inventory. All opt in: `installBusyTracking` is never called for you, and `data-act` only affects a button that carries it.
 
 - `BusyIndicator`, `trackBusy`, `quietly`, `useBusy` and `installBusyTracking`: one slim bar that appears after 350 ms, says Loading or Saving, never blocks input, and holds 450 ms. `installBusyTracking()` is explicit and reversible. Cancelling a request stays with the app.
 - `data-act` on a `Button` (create, link, transfer) colours page actions by purpose, with `scripts/check-action-buttons.mjs` to fail an untagged action button.
 - `useChartTheme` already existed; it now has a test that the colours follow the tokens and the theme attribute.
+
+## 2026-11-07 (v1.146.0, KeepRedirect and the flat hub index tab)
+
+Opt in: a consumer that does not import them sees nothing.
+
+- `KeepRedirect` and `redirectTarget`: a redirect for a moved route that keeps the query string and hash (layout standard rule 9). Router free (`onRedirect`), same-site paths only, so a redirect built from data cannot leave the site.
+- `HubHeader` with `tabs` takes `indexKey`: the index tab's route is `<base>` itself (not `<base>/<key>`) and it is the tab selected when the route has no item.
+
+## 2026-11-06 (v1.145.0, build plan for the optional hub modules and the items not lifted)
+
+Documentation only: `opscenter/plans/` holds the build plan for two optional core modules the owner decided to build (a log intake module and a reports module, never mandatory, absent when off) with the opt-in contract, a module layout, and per entry whether the hub's text and tests specify it or the source is still needed; and a note of the ops center and shell items the core did not lift, with what each needs. Nothing is built by this change.
+
+## 2026-11-06 (v1.144.0, rules from the consumers' inventories: freeze lane, sign-offs, review threads, evidence, ticket comments, ahead of main, status files, watches)
+
+Rule text for what the ops center lifts, so the standard states what the code does. Opt in: reported by core-status; each is a `test` rule a consumer proves with its own tests, and the ops center layout rules apply to an ops center app only.
+
+- automation-safety 1.13 to 1.19: a change freeze holds what can deploy (a CI-only PR is not held); who applied a label is read from the newest timeline events; a green PR the lane never merged is re-run once, then reported once; a sign-off covers every rule hit, is bound to the head and never covers a destroy or a replace; a reply or resolve from a card fails closed and never tags an automated reviewer; approval evidence comes from system data, never a model; an automatic ticket comment runs only when its inputs changed.
+- iac-governance 1.12: an owner apply never undoes what an open pull request applied from its branch.
+- ops-center-layout 1.13 to 1.16: a status card shows unknown when its source is missing, stale or unreadable; a lapsed sign-in is never silent; a job that stays red is raised on the board; a change that takes minutes to reach its destination shows its in-flight rollout. Rule 1.5 now also says a running build is never red and a cancelled or superseded run never counts.
+- Already in core and now stated: the sign-off fingerprint and the destroy and replace exclusion (`signoff_store`, `own_pr_merge`), the fail-closed review conversations (`review_threads`).
+
+## 2026-11-06 (v1.143.0, sessions and cards: session on it, curation, inbound files, CI test runner, page renderer)
+
+Sessions and cards from rpmm23's inventory (OC-11, OC-12, OC-13, OC-14, OC-15, OC-21, OC-23). Opt in: every module is called by a consumer or configured by environment; `eng_backlog.py` gains behaviour for every consumer of the debt page (below).
+
+- OC-11 `server/modules/pr_sessions.py`: find a live session working a pull request (a running delegated task, a session dedicated by title, a session working the branch worktree); reading a PR is never working it. Title patterns, state database and repo clones are configuration.
+- OC-12 `server/modules/tackle_session.py`: bind a launch from a card to the session whose first user message is its staged prompt, not the session a desktop plugin reports.
+- OC-13 `server/modules/eng_curate.py`: the curation front door (`add`, `similar`) and the scheduled pass (`run`): auto-close, fold into the clear best match, hints, all logged and undoable. `eng_backlog.py` now reads the common status words ("DONE 10/24", "Superseded by TD-075", "In review"), links folded rows to their parent, and has the fold, ship, withdraw and undo acts; a status the old reader dropped into "Needs decision" may now land in a different bucket.
+- OC-14 `people/inbound_files.py`: files a report sends (chat attachment, mail attachment, document share) become Action Center items. Written for the core's roster and feeds from the reference, with a test suite (the reference had none).
+- OC-15 `tools/ci_tests.py`: one process per test file, a live-state skip list printed every run, listed proofs that must exist.
+- OC-21 `engine/doc_render.py`: repo markdown to docs home HTML with ASCII and prose rules, a verified-against footer and a configurable internal-terms check. Written with tests (the reference had none).
+- OC-23: compared, already in `engine/handled.py` (identical module and tests apart from wording); nothing lifted.
 
 ## 2026-11-06 (v1.142.0, hub tab working marker and inline pending note colour)
 

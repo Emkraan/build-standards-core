@@ -751,6 +751,11 @@ runs, never by the data source or the vendor.
   the first one wins), decoded when read from the route and encoded when written. A section with no
   items has no tab and resolves to the Overview, and an item the section does not have selects the
   first tab.
+- A flat hub whose first tab is its index passes `indexKey`: that tab's route is `<base>` itself, not
+  `<base>/<key>`, and it is selected when the route has no item.
+- A moved route redirects with `KeepRedirect` (or `redirectTarget` in a loader), which carries the
+  query string and the hash, lets a parameter the new path already has win, and refuses a target that
+  is not a path on this site.
 - `headerOnly` gives the page header with no tabs and no Overview, for a page in the hub's header
   style with nothing to switch between; `base` and `onNavigate` are then not needed.
 - `HubHeader` is router free. The app passes the current `section` and `item` from its route and goes
