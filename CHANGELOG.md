@@ -1,11 +1,20 @@
 # Changelog
 
-## 2026-11-06 (v1.137.0, hub tab working marker and inline pending note colour)
+## 2026-11-06 (v1.139.0, hub tab working marker and inline pending note colour)
 
 Two look details from the ops center adoption, both inside the hub pieces; the plain `Spinner` and every other badge are unchanged.
 
 - The hub tab working marker is 9px with a 1.6px arc turning on 900ms (was 8px, 1.5px, 800ms). It is scoped to `.hub-head .tab-badge`, so no other spinner changes. The existing 5px gap between the marker and the count stays on its right.
 - `PendingReason inline` follows the text colour of the line it sits in (it is a next step, not a warning); the block form keeps the warning colour.
+
+## 2026-11-06 (v1.138.0, a consumer can refresh its own visual baselines)
+
+`kit/scripts/visual-update.mjs` takes a project root. Default behaviour for the core kit is unchanged.
+
+- New options: `--root` (the consumer's Playwright project), `--baselines`, `--build`, `--workflow` and `--artifact`, so a consumer refreshes its own baselines against the kit it syncs with the same pinned image, the same full-set replacement and the same CI-first rule. A typo or a missing value now stops with a usage error before any CI run or container starts. The Docker run for another root mounts the repository, works inside the root and keeps `node_modules` in a volume of its own. Documented in the README beside the kit's gate.
+- `parseArgs` and `dockerArgs` are exported with typings; the Docker command for the kit itself is asserted identical to the old one. Tests: 9. Not run: a real CI or Docker baseline refresh on a consumer.
+
+## 2026-11-06 (v1.134.0, the manifest client folder may be spa)
 
 ## 2026-11-06 (v1.137.0, the manifest client folder may be spa)
 
@@ -13,6 +22,8 @@ Additive. `console.module.json` `client` accepts `apps/<dir>/spa` as well as `ap
 
 - `validateManifest`, the JSON schema and `web-shell-manifest.md` take either folder name, for an app that already names its client folder `spa`. Nothing that validated before stops validating. The generator reads the field as plain data and needed no change. Tests: accepted for both names, rejected for another folder name and for a trailing path, in the TypeScript and the Python schema suites.
 
+<<<<<<< HEAD
+=======
 ## 2026-11-06 (v1.136.0, an OIDC sign-in beside MSAL in the client package)
 
 `shell-packages/app-client`: `createOidcAuth(manager, options)` and `createOidcClient(manager)`. Opt in; `createAuth` and the MSAL path are unchanged.
@@ -39,6 +50,7 @@ Fixes from the consumer review of v1.125.0. Opt in pieces only; a look that work
 - `RunDialog`: `RunInput.publishesWhen` and `RunSpec.publishes` decide what publishes ahead of the `dry_run` and `mode` name rule; inputs that arrive after the form opened take their defaults and keep what was typed; submit honours the same guards as the button; a refusal from the last attempt no longer locks Run (only the `refusal` prop does) and clears when an input changes; a branch name is checked for plausible characters; `onClose` is not called when the app closed the dialog first.
 - `AreaCard` sends its link through the guarded link, so an unsafe `to` never reaches the app's link component; duplicate detail lines, section keys and item keys no longer collide as React keys. `OverrideBar` and `OverrideButton` send one write at a time from the click on.
 
+>>>>>>> origin/main
 ## 2026-11-06 (v1.133.0, roles and gate rules from the hub review)
 
 Text only, from the hub consumer's inventory. Standards: `rbac.md`, `ci-cd-release.md`, `scripting-powershell.md`.
