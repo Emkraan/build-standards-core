@@ -307,3 +307,53 @@ export function canGrantPermission(id, registryResponse, impersonating) {
   const list = activeGrantable(registryResponse, impersonating);
   return list ? list.includes(id) : true;
 }
+
+// -- Who a stored user row binds ---------------------------------------------------------------
+// A grant to a person is bound to their directory object id, which never changes. The email is kept as
+// a label (it is the UPN the person signs in with today) and is the match only for older rows that
+// have no object id yet. An email or UPN change, or a different person later given the same UPN,
+// therefore never moves or loses a grant that carries an object id.
+
+const OID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The lower-cased object id when `value` is a GUID, else null.
+ * @param {unknown} value
+ * @returns {string | null}
+ */
+export function cleanOid(value) {
+  const s = typeof value === "string" ? value.trim().toLowerCase() : "";
+  return OID_RE.test(s) ? s : null;
+}
+
+/**
+ * Does one stored user row (a role assignment or a permission override) bind this person?
+ * A row with an object id matches that id only. A row without one matches the email, as it always did.
+ * A caller whose token has no object id can only match rows that have none (fail closed).
+ * @param {{ user_oid?: unknown, userOid?: unknown, user_email?: unknown, userEmail?: unknown }} row
+ * @param {{ email?: unknown, oid?: unknown }} who
+ * @returns {boolean}
+ */
+export function userRowMatches(row, who) {
+  const rowOid = cleanOid(row?.user_oid ?? row?.userOid);
+  if (rowOid) {
+    const oid = cleanOid(who?.oid);
+    return oid !== null && oid === rowOid;
+  }
+  const rowEmail = String(row?.user_email ?? row?.userEmail ?? "").trim().toLowerCase();
+  const email = String(who?.email ?? "").trim().toLowerCase();
+  return rowEmail !== "" && rowEmail === email;
+}
+
+/**
+ * The one row that stands for a person: the row bound to their object id wins, else a legacy row on
+ * their email. Never depends on the order of the rows.
+ * @template {Record<string, any>} R
+ * @param {R[]} rows @param {{ email?: unknown, oid?: unknown }} who
+ * @returns {R | undefined}
+ */
+export function pickUserRow(rows, who) {
+  const oid = cleanOid(who?.oid);
+  const bound = oid ? rows.find((r) => cleanOid(r?.user_oid ?? r?.userOid) === oid) : undefined;
+  return bound || rows.find((r) => !cleanOid(r?.user_oid ?? r?.userOid) && userRowMatches(r, who));
+}
