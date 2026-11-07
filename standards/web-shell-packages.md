@@ -12,6 +12,7 @@ core already states the rule.
 | Module contract (`console-modules`) | The per-module manifest ([web-shell-manifest.md](web-shell-manifest.md)): the validator, the registry checks, the permission source and peer helpers, the layout merge with its typed contracts, the generated registry and its staleness check | Code: `shell-packages/console-modules/`. The generator is `kit/scripts/build-registry.mjs` ([web-shell.md](web-shell.md) section 3) |
 | RBAC core (`rbac`) | What permission data means: accessible tabs, the grant ceiling, assignable roles, view-as, client access helpers | Code: `shell-packages/rbac/` |
 | Client package (`app-client`) | One sign-in boot, token renewal, the API client and its cache, resource hooks, the live feed strip | Code: `shell-packages/app-client/` (TypeScript source). Rules: [web-client-runtime.md](web-client-runtime.md) sections 1 to 3, 5 and 6, [web-shell.md](web-shell.md) section 8 |
+| External tools package (`external-tools`) | Tools that live outside the shell's repository, kept in data and shown in the launcher: validation, who may see a tool, the audited admin routes | Code: `shell-packages/external-tools/`. Opt in. Rules: section 5.7 |
 | Server package (`app-server`) | Group cache, directory token, CORS and origin guard, Server-Timing, gateway token check, request telemetry with its export retry, What's new handler | Code: `shell-packages/app-server/`. Rules: [web-api-runtime.md](web-api-runtime.md) sections 1 to 7 |
 
 The code is plain ESM with hand-written `.d.ts` files, no runtime dependency and no build step, so a CommonJS
@@ -239,6 +240,20 @@ export * from '@example/core-app-server';
    `TEST_CONSUMER_PRESET` set to a JSON file (or inline JSON) in the preset's shape; the suite reads every name it needs
    from the preset in force, so the same assertions hold under any naming. The core runs it in CI against
    `kit/tests/app-server/consumer-preset.example.json`; a consumer points it at its own preset file.
+
+### 5.7 External tools
+
+Opt in. `shell-packages/external-tools` lets an admin add a tool the shell does not host (a dashboard first) as data, and
+the launcher show it after the modules. The consumer creates the `console_external_tools` table (the schema is at the
+top of the file), mounts `externalToolRoutes` and wires four things: `manage` (the permission check for its manage
+action, seeded to no role), `permissions` (the registry an audience may name), `callerGroups` and
+`callerHasPermission`.
+
+- Visibility is display only. The external tool keeps enforcing its own access, so hiding a tool from someone never grants or removes anything there.
+- Every tool names an audience and there is no "everyone": a console permission (the console RBAC, wildcard included) or a directory group (the caller's token groups first, then the consumer's group resolver). Any failure of the permission read, the group lookup or the database fails closed: the tool is not shown. A failed read of the table answers 503 with no tools.
+- `GET /mine` (signed in) answers only the tools this caller may see, as `{ id, name, url, icon, hue, tagline, description, order }`; no audience, group id or audit field leaves the server. The other routes are behind `manage`: `GET /` (every tool with its audience and the permission list), `POST /`, `PUT /order` (those tools first, in that order), `PUT /:id` and `DELETE /:id`, at most 50 tools.
+- `validateTool` refuses unknown fields and checks each one: the id a lowercase slug, text plain printable ASCII without `<` or `>`, the url https only with no user name or password, an icon name, a hue from `HUES` (the same list as `console-modules`; pass `hues` to change it), a whole number order, and an audience whose permission is one of the `permissionIds` it is given. Each refusal answers 400 with the field the editor highlights.
+- Every write runs in `audit.transaction` (section 5.5) with the before and after snapshot, so an audit failure rolls the change back and answers 503. A duplicate id is a 409.
 
 ## 6. Tests
 
