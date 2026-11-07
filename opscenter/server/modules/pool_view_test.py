@@ -11,6 +11,7 @@ import json
 import os
 import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
@@ -67,8 +68,17 @@ def vm(n, action="delete"):
     return {"address": f'module.p.vm["host-eu-{n}"]', "type": "x_virtual_machine", "action": action}
 
 
+def settle_background_reads():
+    """A cold read starts a background refresh (swr threads). One still running when the next test clears the cache writes its
+    answer back into it and the next test reads a stale value, so every test starts and ends with none running."""
+    for t in threading.enumerate():
+        if t.name.startswith("swr-"):
+            t.join(10)
+
+
 class PoolView(unittest.TestCase):
     def setUp(self):
+        settle_background_reads()
         swr._mem.clear()
         CALLS.write_text("")
         (TMP / "rc").write_text("0")
@@ -77,6 +87,7 @@ class PoolView(unittest.TestCase):
         os.environ["POOL_VIEW_CONFIG"] = str(self.cfg)
 
     def tearDown(self):
+        settle_background_reads()
         os.environ.pop("POOL_VIEW_CONFIG", None)
 
     def test_off_by_default(self):
