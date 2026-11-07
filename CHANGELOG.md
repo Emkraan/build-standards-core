@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-06 (v1.132.0, the freeze lane: human bypass, CI-only exemption, GraphQL labeler, stale green)
+
+Four own-PR lane additions from rpmm23's inventory (OC-1, OC-2, OC-3, OC-16). Opt in: the bypass needs a store and a PR read (null default, the freeze holds), the CI-only exemption is off by default (`freeze_ci_only`); the labeler and stale-green changes take effect for every lane.
+
+- `lanes/freeze_bypass.py` (OC-1): one PR for this window only, or all own PRs until the next midnight in the owner's zone, on the override store: window-scoped, expiry read on every read, fail closed, own open PRs only, every change logged, a bypass logged once per head by the lane.
+- `lanes/freeze_ci_only.py` (OC-2): a PR that only changes how CI checks pull requests is not held by a freeze; both sides of each changed workflow, every workflow that names a changed script (also through another script), anything unreadable held. Written from the inventory description, not from reference code.
+- `override_by_me` (OC-3) reads the newest labeler from the GraphQL timeline; the REST events list truncates at about 300 entries. A read error is not an override.
+- `unstick` (OC-16): a ready PR the lane never merged gets its CI run re-run once per head after `stale_ready_min` minutes, then one alert.
+
 ## 2026-11-06 (v1.131.0, delivery: cancelled runs, pre-push, pr-watch, release notes, shrink-only lists)
 
 Delivery steps from the hub's gaps D2, D3, U4, U5 and the route exemption list. Opt in: new `core-ci.py` subcommands and a parameters row; the merge gate template is copied once, so only a repo that copies it again changes.
