@@ -57,6 +57,7 @@ System python3 is 3.9: no 3.10+ syntax.
 import datetime as dt
 import hashlib
 import importlib.util
+import inspect
 import json
 import os
 import re
@@ -116,6 +117,11 @@ DEFAULTS = {
     "max_high": 0,
     "respect_freeze": True,
     "freeze_ci_only": False,  # true: a PR that only changes CI (freeze_ci_only.py) is not held by a freeze
+    # the deployment environments a CI-only workflow may name; null: freeze_ci_only.DEFAULT_CI_ENVIRONMENTS (plan only)
+    "freeze_ci_environments": None,
+    # the draft gate's `applied: <PR>` kind: the apply workflow and the branch it applies on; null: the kind is never met
+    "gate_apply_workflow": None,
+    "gate_apply_branch": None,
     "stale_ready_min": 20,  # a green PR the lane never merged is re-run once after this many minutes, then reported once
     "notify_on_merge": False,
 }
@@ -256,21 +262,38 @@ def freeze_bypassed(pr, window):
         return None
 
 
-def freeze_exempt(pol, pr, rec, window):
+CI_ONLY_RULES = 2  # bumped when the classifier's rules change, so a decision cached under older rules is made again
+
+
+def freeze_exempt(pol, pr, rec, window, cfg=None):
     """A PR that only changes CI (freeze_ci_only.classify) deploys nothing, so a change freeze does not hold it. Decided once
-    per head and logged; anything unreadable stays held."""
+    per head (and per classifier rules and environment allowlist) and logged; anything unreadable stays held."""
     head = pr["headRefOid"]
+    envs = (cfg or config(pol)).get("freeze_ci_environments")
+    envs = None if envs is None else [str(e) for e in envs]
     cached = rec.get("ci_only") or {}
-    if cached.get("head") != head:
+    if (
+        cached.get("head") != head
+        or cached.get("rules") != CI_ONLY_RULES
+        or cached.get("envs") != envs
+    ):
         import freeze_ci_only
 
         base = pr.get("baseRefOid") or ""
         ok, why = (
             (False, "no base sha")
             if not base
-            else freeze_ci_only.fetch_and_classify(eng.gh, pol["repo"], pr["number"], head, base)
+            else freeze_ci_only.fetch_and_classify(
+                eng.gh,
+                pol["repo"],
+                pr["number"],
+                head,
+                base,
+                freeze_ci_only.DEFAULT_CI_PATHS,
+                envs,
+            )
         )
-        cached = {"head": head, "ok": bool(ok), "why": why}
+        cached = {"head": head, "ok": bool(ok), "why": why, "rules": CI_ONLY_RULES, "envs": envs}
         rec["ci_only"] = cached
         log(
             {
@@ -879,6 +902,23 @@ def _gate_module():
     return mod
 
 
+def _gate_evaluate(gatemod, gate, pol):
+    """Evaluate a gate through the plug-in, handing it the lane's gate settings (the `applied` kind's apply workflow and
+    branch) when its evaluate takes a `config`. A plug-in written before that keeps its old call."""
+    cfg = config(pol)
+    gate_cfg = {
+        "apply_workflow": cfg.get("gate_apply_workflow"),
+        "apply_branch": cfg.get("gate_apply_branch"),
+    }
+    try:
+        takes_config = "config" in inspect.signature(gatemod.evaluate).parameters
+    except (TypeError, ValueError):
+        takes_config = False
+    if takes_config:
+        return gatemod.evaluate(gate, pol["repo"], gh=eng.GH, config=gate_cfg)
+    return gatemod.evaluate(gate, pol["repo"], gh=eng.GH)
+
+
 def draft_gate(pr, rec, pol, gatemod=None, now=None):
     """(status, reason) for one of the owner's drafts. A draft that declares a gate block is
     checked against live data and, once every check passes, marked ready for review with the evidence
@@ -899,7 +939,7 @@ def draft_gate(pr, rec, pol, gatemod=None, now=None):
     if g.get("key") == key and now.timestamp() - float(g.get("at_epoch") or 0) < GATE_EVERY_S:
         results = g.get("results") or []
     else:
-        results = gatemod.evaluate(gate, pol["repo"], gh=eng.GH)
+        results = _gate_evaluate(gatemod, gate, pol)
         g = {
             "key": key,
             "at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -1180,7 +1220,7 @@ def evaluate(pr, cfg, pol, rec, force=False, mine=None):
             by = freeze_bypassed(pr, w)
             if by:
                 _freeze_bypass_mod().note_once(rec, pr["number"], pr["headRefOid"], w, by, log)
-            elif not (cfg.get("freeze_ci_only") and freeze_exempt(pol, pr, rec, w)):
+            elif not (cfg.get("freeze_ci_only") and freeze_exempt(pol, pr, rec, w, cfg)):
                 return "held", f"change freeze {w.get('id', '')} until {w.get('end', '')}", None
     head = pr["headRefOid"]
     # A held head is re-checked every 30 min, or at once when the PR changes

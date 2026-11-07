@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-07 (v1.164.0, the owner apply guard fails closed and covers open PRs)
+## 2026-11-07 (v1.165.0, the owner apply guard fails closed and covers open PRs)
 
 `opscenter/server/modules/owner_roots.py`.
 
@@ -10,6 +10,10 @@
 - Opt in provider hooks, null by default: `open_pr_addresses(root)` (the guard and the Apply refusal also refuse a delete of an address an open PR declares, and refuse when that read fails), `detect_ahead(root)` (a root with no hold record whose main plan destroys what an open PR holds gets a detected hold), `is_protection(id)` (a lock the plan itself deletes is left out of the deletes handed to the lift), `retry_kinds()` (the apply is retried after a lift when the failure is one of the provider's own error kinds, not only when the output says retry), and a third `before_apply` parameter, a private directory to record the lift in before the first lift. An exception from `before_apply` that carries a `state` attribute reaches `after_apply`, so a partial lift is restored.
 - Behaviour change: the lift lag retry needs a non empty state from `before_apply` (it used to be any state that is not None), so nothing lifted means no retry.
 - Terminal apply logging: `owner_roots.py --log-start --root <name>:<tier> --sha <sha> [--by <account>]` and `--log-done ... [--result <text>]` append `owner_apply_started` and `owner_apply_done` in the module's own record shape. `--by` defaults to the provider's expected identity.
+
+## 2026-11-07 (v1.164.0, the CI-only freeze exemption holds more, and the draft gate checks an apply)
+
+Ops center lanes. `lanes/freeze_ci_only.py` (opt in, policy `freeze_ci_only`) now holds four kinds of pull request it used to exempt from a change freeze: a workflow on `pull_request_target` (it runs with the base branch's permissions and secrets), a reusable workflow whose file name starts with `_`, a workflow that names a deployment environment outside an allowlist (policy `own_pr_merge.freeze_ci_environments`, null: only `terraform-plan`; an environment block or an unreadable expression is held), and a workflow whose `on:` block is malformed (the reader has no YAML library, so it is now strict and fails closed). Changed behaviour: a consumer that relied on any of these being exempt sees them held during a freeze; set `freeze_ci_environments` to admit its own CI environments. Decisions cached under the old rules are made again. `lanes/pr_gate.py` gains a built-in `applied: <number>` kind: met only when that pull request is merged and a run of the apply workflow on the apply branch that started at or after the merge succeeded; a failed run after the merge is named. The workflow and branch come from policy `own_pr_merge.gate_apply_workflow` and `gate_apply_branch` (passed by the own-PR lane to a gate plug-in whose `evaluate` takes `config`) or from `OPSCENTER_GATE_APPLY_WORKFLOW` and `OPSCENTER_GATE_APPLY_BRANCH`; null by default, and the kind is then never met and says so.
 
 ## 2026-11-07 (v1.163.0, rbac matches a stored user row by directory object id)
 
