@@ -159,6 +159,10 @@ action covers the caller's own records, `.others` covers everyone else's (for ex
   A caller may grant a role, change or revoke a grant, or create, edit or delete a role only if
   they hold every permission involved (the new role, and the subject's current role). `*` is
   delegable only by a `*` holder. **[enforced]**
+- **Removal ceiling.** The no-escalation rule covers removal too: a delegated admin does not delete an assignment of a
+  role that holds permissions they do not hold, and never deletes the Super Admin assignment; they can still delete
+  inside their own access ([web-shell-server.md](web-shell-server.md) section 1). **Acceptance (test):** a delegate
+  deleting the Super Admin assignment, or an assignment above their access, gets 403 and the assignment stays.
 - **Preview ceiling.** A preview of a role or an access package (View-As or a package preview) never
   shows more than the viewer holds: the server intersects the previewed permissions with the
   viewer's own effective permissions, refuses a preview above that ceiling with 403 and writes an

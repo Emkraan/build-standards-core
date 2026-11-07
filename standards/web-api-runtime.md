@@ -124,6 +124,9 @@ the platform the rule came from.
 - **Dev identity.** A development identity (a bypass user) is allowed only when the environment is
   exactly `development` or `test`. Staging, an unset environment or any other value never mints it.
 
+- **Unset means production.** An unset environment is production, and a production start aborts on a missing critical
+  secret or an enabled bypass ([web-shell-server.md](web-shell-server.md) section 5).
+
 **Acceptance (test):** a token signed with another algorithm, a wrong audience and an unknown key id
 flood each fail; the dev identity is refused when the environment is unset or `staging`.
 
