@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-07 (v1.166.0, Postgres with a directory token, the user directory and the user binding)
+
+Opt in, `app-server`, from the Olympus shell source (the code the owner's main gained after the earlier snapshot, K-source-refresh). Documented in `web-shell-packages.md` section 5.10.
+
+- `pgPoolConfig`, `pgEntraPassword`, `usesPgEntraAuth`, `pgUserForToken`, `entraPgClient`, `PG_ENTRA_SCOPE`; `createUserDirectory`; `createUserBinding`. The comments that named the source's own standard are reworded; no behaviour changed.
+- The internal `appServiceToken` gains an optional `timeoutMs` argument (default 5000, the old value), which `pgEntraPassword` needs; existing callers are unchanged.
+- Tests: the source's 31 (13 pool and token, 4 directory, 14 binding), with synthetic names. Two of the source's binding tests scan the consumer's own route files for the 503 and 409 call-site pattern; they stay with the consumer, since they read a tree the core does not have.
+- New exports only, nothing existing changes. Typings added.
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
+
 ## 2026-11-07 (v1.165.0, the run watches read a failed run once and pick the real error line)
 
 `lanes/run_watches.py` (OC-8 drift watch, OC-9 main watch). Two changes to what runs today:
