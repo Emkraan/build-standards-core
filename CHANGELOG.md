@@ -1,12 +1,20 @@
 # Changelog
 
-## 2026-11-07 (v1.149.0, one processing indicator, action buttons by purpose, chart theme test)
+## 2026-11-07 (v1.150.0, one processing indicator, action buttons by purpose, chart theme test)
 
 Lifts from the consumer inventory. All opt in: `installBusyTracking` is never called for you, and `data-act` only affects a button that carries it.
 
 - `BusyIndicator`, `trackBusy`, `quietly`, `useBusy` and `installBusyTracking`: one slim bar that appears after 350 ms, says Loading or Saving, never blocks input, and holds 450 ms. `installBusyTracking()` is explicit and reversible. Cancelling a request stays with the app.
 - `data-act` on a `Button` (create, link, transfer) colours page actions by purpose, with `scripts/check-action-buttons.mjs` to fail an untagged action button.
 - `useChartTheme` already existed; it now has a test that the colours follow the tokens and the theme attribute.
+
+## 2026-11-07 (v1.149.0, the optional reports module: the workbook export)
+
+Opt in: `server/modules/reports/export_xlsx.py`, imported only when a consumer uses it or sets `OPSCENTER_REPORTS`; standard library only, no import side effect.
+
+- One workbook: a Summary tab and one tab per panel, each a real table (a header, a matching ref, unique column names). Text is always an inline string and never a formula. Sheet and table names are made valid and unique. Deterministic output.
+- Pre-built pivot tables stay off (`PREBUILT_PIVOTS = False`, with a test): hand-written pivot parts crash the spreadsheet application for Mac on open, so nothing beyond these parts ships until a generated file was opened on Mac and Windows without a repair prompt or a crash.
+- Not verified here: the workbook was read back with a standard zip and XML reader, not opened in the desktop spreadsheet application. Open one generated file on Mac and Windows before relying on it (this is the hub's own rule for any new workbook part).
 
 ## 2026-11-07 (v1.148.0, the optional reports module: dates, definitions, grants, preview)
 
