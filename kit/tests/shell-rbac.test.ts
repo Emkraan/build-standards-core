@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   accessibleTabs, activeGrantable, annotateRoles, assignableRoleIds, canAssignRole, canGrantPermission, createAccess,
-  filterRegistry, findPermissionLiterals, grantableIds, permissionsBeyond, stripRetiredPermissions, toPermissionList, viewAsPreview,
+  filterRegistry, findPermissionLiterals, grantableIds, permissionsBeyond, removalBeyond, removalCeilingMessage, stripRetiredPermissions, toPermissionList, viewAsPreview,
 } from '../../shell-packages/rbac/index.js';
 
 const registry = {
@@ -108,5 +108,40 @@ describe('client helpers', () => {
     expect(canAssignRole({ id: 1, assignable: false }, null)).toBe(false);
     expect(canAssignRole({ id: 1, assignable: false }, { assignableRoleIds: ['1'] })).toBe(true);
     expect(canAssignRole({ id: 1 }, null)).toBe(true);
+  });
+});
+
+describe('the removal ceiling', () => {
+  const delegate = caller(['tab:people', 'action:people:edit', 'tab:audit']);
+
+  it('lets a delegate remove access inside their own and refuses access above it', () => {
+    // a role delete, or the assignment of that role: the role's permissions are what goes away
+    expect(removalBeyond({ removed: ['tab:people', 'action:people:edit'], ...delegate })).toEqual([]);
+    expect(removalBeyond({ removed: ['tab:people', 'action:people:delete'], ...delegate })).toEqual(['action:people:delete']);
+    // an override delete: the stored list
+    expect(removalBeyond({ removed: '["tab:audit","action:audit:export"]', ...delegate })).toEqual(['action:audit:export']);
+  });
+
+  it('never lets a delegate remove the wildcard grant, and lets a genuine wildcard holder remove anything', () => {
+    expect(removalBeyond({ removed: ['*'], ...delegate })).toEqual(['*']);
+    expect(removalBeyond({ removed: ['*'], ...caller([], true) })).toEqual([]);
+    expect(removalBeyond({ removed: ['*', 'tab:people'], ...caller(['tab:people']) })).toEqual(['*']);
+  });
+
+  it('fails closed on a stale id and on unreadable text, and allows an empty removal', () => {
+    expect(removalBeyond({ removed: ['tab:gone'], ...delegate })).toEqual(['tab:gone']);
+    expect(removalBeyond({ removed: 'not json', ...delegate })).toEqual(['*']);
+    expect(removalBeyond({ removed: [], ...delegate })).toEqual([]);
+    expect(removalBeyond({ removed: undefined, ...delegate })).toEqual([]);
+  });
+
+  it('answers the same ids as the grant ceiling, and its message says removal', () => {
+    for (const removed of [['tab:audit'], ['action:people:delete', '*'], ['tab:gone']]) {
+      expect(removalBeyond({ removed, ...delegate })).toEqual(permissionsBeyond({ requested: removed, ...delegate }));
+    }
+    const msg = removalCeilingMessage(['a', 'b']);
+    expect(msg).toContain('cannot remove access');
+    expect(msg).toContain('a, b');
+    expect(removalCeilingMessage(Array.from({ length: 12 }, (_, i) => `p${i}`))).toContain('(+2 more)');
   });
 });

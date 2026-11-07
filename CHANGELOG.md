@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-07 (v1.173.0, rbac names the removal ceiling)
+
+Opt in, `rbac`. New exports `removalBeyond` and `removalCeilingMessage` (SH-3, K-source-refresh): deleting a role, an assignment or an override takes away the permissions it confers, so the caller must hold every one of them, and only a genuine wildcard holder removes the wildcard. It answers what `permissionsBeyond` answers (stale ids and unreadable text fail closed) with a message that says removal. Documented in `web-shell-packages.md` section 3; the rule itself is `rbac.md` section 3.
+
+- The source applies the ceiling in its admin routes and resolves a sign-in claim role to the system role row (its F4); both are the consumer's route code and stay there. Only the pure rule is lifted.
+- Tests: 4 in `kit/tests/shell-rbac.test.ts` (inside and above the caller's access, the wildcard, stale ids and unreadable text, parity with the grant ceiling).
+
 ## 2026-11-07 (v1.172.0, the jobs package and the job leader)
 
 Opt in, two new pieces from the Olympus shell source: `shell-packages/jobs` (`createScheduler`, `jobRoutes`, the cron and Automation Account schedule helpers) and `createJobLeader` plus `jobLockKey` in `app-server`. Documented in `web-shell-packages.md` section 5.4.
@@ -38,6 +45,8 @@ Opt in, two new packages from the Olympus shell source (SH-4 and SH-5, K-source-
 
 No issue: requested by the core consolidation session (build-standards-core-intake#117).
 
+<<<<<<< HEAD
+=======
 ## 2026-11-07 (v1.168.0, shell gaps from the console redesign against Olympus)
 
 Three default compatible kit changes from the redesign's measurements (the screenshots and `measurements.json` in the private handoff repo). Nothing changes for a consumer that does not use them, except the floors, which only act where the control was too small.
@@ -83,6 +92,7 @@ Opt in, each off until configured: with none of them set the audit writes the sa
 - API budget: a failed run's jobs and logs are read once and cached by repo, run id and attempt (newest 20 kept), so a run that stays red costs one runs list per collect instead of a jobs and log read each time. A log that could not be read is not cached and is read again. The cache lives in the process by default; the optional `cache_file` config key keeps it between runs of the `items` CLI. Job logs are read with `--allow-escape-sequences` (a gh without that flag is asked again without it).
 - `collect`, `main_item` and `drift_item` take an optional `cache`; the runs list asks for `attempt`. Tests port the scenarios of the reference main and drift watch tests onto `collect()`.
 
+>>>>>>> origin/main
 ## 2026-11-07 (v1.164.0, the CI-only freeze exemption holds more, and the draft gate checks an apply)
 
 Ops center lanes. `lanes/freeze_ci_only.py` (opt in, policy `freeze_ci_only`) now holds four kinds of pull request it used to exempt from a change freeze: a workflow on `pull_request_target` (it runs with the base branch's permissions and secrets), a reusable workflow whose file name starts with `_`, a workflow that names a deployment environment outside an allowlist (policy `own_pr_merge.freeze_ci_environments`, null: only `terraform-plan`; an environment block or an unreadable expression is held), and a workflow whose `on:` block is malformed (the reader has no YAML library, so it is now strict and fails closed). Changed behaviour: a consumer that relied on any of these being exempt sees them held during a freeze; set `freeze_ci_environments` to admit its own CI environments. Decisions cached under the old rules are made again. `lanes/pr_gate.py` gains a built-in `applied: <number>` kind: met only when that pull request is merged and a run of the apply workflow on the apply branch that started at or after the merge succeeded; a failed run after the merge is named. The workflow and branch come from policy `own_pr_merge.gate_apply_workflow` and `gate_apply_branch` (passed by the own-PR lane to a gate plug-in whose `evaluate` takes `config`) or from `OPSCENTER_GATE_APPLY_WORKFLOW` and `OPSCENTER_GATE_APPLY_BRANCH`; null by default, and the kind is then never met and says so.
