@@ -163,6 +163,8 @@ import type { AreaCardData } from '../src/index';
 import type { RunRefusal, RunSpec } from '../src/index';
 import type { AppAccent, ArtAnchors, BulkRunState, ComboboxFreeEntry, FilterClause, FilterField, HomeTool, LauncherTool, PaletteItem, Recent, ReleaseNote, SortDirection, SortState, TableColumn, ThemeChoice } from '../src/index';
 import { AreaChart, BarChart, ChartLegend, DonutChart, Gauge, LineChart, RingProgress, Sparkline } from '../src/charts';
+import { Dashboard } from '../src/reports';
+import type { DashboardDefinition, DashboardRun, Picks } from '../src/reports';
 import { Graph, graphEdge } from '../src/graph';
 import type { Edge, GraphCardNode } from '../src/graph';
 
@@ -639,6 +641,50 @@ function ActionButtonsSpecimen() {
       </div>
       <p className="gallery-note">data-act colours page actions by purpose: create teal, link blue, transfer violet. A button without it keeps the plain look.</p>
     </div>
+  );
+}
+
+const DASH_DEF: DashboardDefinition = {
+  key: 'ops',
+  title: 'Operations',
+  filters: [{ id: 'team', label: 'Team' }],
+  panels: [
+    { id: 'open', title: 'Open items', type: 'stat', stream: 'work', measure: 'open', w: 3, stat: { warnAt: 20, badAt: 40 } },
+    { id: 'done', title: 'Closed this month', type: 'stat', stream: 'work', measure: 'closed', w: 3, stat: { hue: 'green' } },
+    { id: 'rank', title: 'Items by team', type: 'bar', stream: 'work', measure: 'by_team', w: 6, h: 3, drill: 'team' },
+    { id: 'trend', title: 'Items per week', type: 'line', stream: 'work', measure: 'weekly', w: 8, h: 3 },
+    { id: 'list', title: 'Largest queues', type: 'table', stream: 'work', measure: 'queues', w: 4, h: 3, drill: 'team' },
+  ],
+};
+function dashRun(team: string): DashboardRun {
+  const k = team ? 0.5 : 1;
+  return {
+    generatedAt: '2026-11-07T10:00:00Z',
+    range: '30',
+    options: { team: ['Platform', 'Support', 'Data'] },
+    panels: {
+      open: { columns: [{ name: 'Open' }], rows: [], stat: { value: Math.round(24 * k), previous: 31, change: -12 } },
+      done: { columns: [{ name: 'Closed' }], rows: [], stat: { value: Math.round(58 * k), previous: 50, change: 16 } },
+      rank: { columns: [{ name: 'Team' }, { name: 'Items' }], rows: [['Platform', 12], ['Support', 8], ['Data', 4]].filter((r) => !team || r[0] === team) },
+      trend: { columns: [{ name: 'Week' }, { name: 'Items' }], rows: [['W1', 14], ['W2', 18], ['W3', 11], ['W4', 24]].map((r) => [r[0], Math.round((r[1] as number) * k)]) },
+      list: { columns: [{ name: 'Team' }, { name: 'Items' }], rows: [['Platform', 12], ['Support', 8], ['Data', 4]].filter((r) => !team || r[0] === team) },
+    },
+  };
+}
+function DashboardSpecimen() {
+  const [picks, setPicks] = useState<Picks>({});
+  const [range, setRange] = useState('30');
+  return (
+    <Dashboard
+      definition={DASH_DEF}
+      run={dashRun(picks['team'] ?? '')}
+      range={range}
+      ranges={[{ value: '7', label: '7 days' }, { value: '30', label: '30 days' }, { value: '90', label: '90 days' }]}
+      onRange={setRange}
+      picks={picks}
+      onPicks={(next) => setPicks(next)}
+      onExportPanel={() => undefined}
+    />
   );
 }
 
@@ -2574,7 +2620,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars', 'hub-header', 'hub-overview', 'run-dialog', 'hub-header-flat', 'override', 'action-buttons'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars', 'hub-header', 'hub-overview', 'run-dialog', 'hub-header-flat', 'override', 'action-buttons', 'dashboard'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2849,6 +2895,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="action-buttons" title="Action buttons by purpose (data-act)">
           <ActionButtonsSpecimen />
+        </Specimen>
+        <Specimen id="dashboard" title="Dashboard (filter bar, panels, click to cross-filter)">
+          <DashboardSpecimen />
         </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">
