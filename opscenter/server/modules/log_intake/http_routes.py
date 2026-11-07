@@ -1,5 +1,5 @@
 """
-routes.py
+http_routes.py
 Purpose: The log intake HTTP routes, registered only when a consumer turns the module on (`OPSCENTER_LOG_INTAKE`). Importing this file registers
          nothing and touches nothing; `register(registry, provider)` adds the routes, the sink and the two background tasks.
 Date:    2026-11-07

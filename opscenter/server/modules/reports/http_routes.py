@@ -1,5 +1,5 @@
 """
-routes.py
+http_routes.py
 Purpose: The reports HTTP routes, registered only when a consumer turns the module on (`OPSCENTER_REPORTS`). Importing this file registers nothing
          and touches nothing; `register(registry, provider)` adds the routes and seeds the shipped dashboards.
 Date:    2026-11-07

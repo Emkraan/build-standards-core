@@ -6,7 +6,7 @@ Date:    2026-11-07
 
 Settings: OPSCENTER_LOG_INTAKE   any non empty value other than 0, false or off turns the log intake routes on
           OPSCENTER_REPORTS      the same for the reports routes
-Providers: OPSCENTER_LOG_INTAKE_PROVIDER and OPSCENTER_REPORTS_PROVIDER (`path/to/file.py:ClassName`), see each module's routes.py.
+Providers: OPSCENTER_LOG_INTAKE_PROVIDER and OPSCENTER_REPORTS_PROVIDER (`path/to/file.py:ClassName`), see each module's http_routes.py.
 API:      enabled(name) -> bool     register(registry) -> [names of the modules registered]
 """
 
@@ -29,13 +29,13 @@ def register(r):
             sys.path.insert(0, str(MODULES))
         import optional_provider as op
     if enabled("OPSCENTER_LOG_INTAKE"):
-        from log_intake import routes
+        from log_intake import http_routes
 
-        routes.register(r, op.load("OPSCENTER_LOG_INTAKE_PROVIDER"))
+        http_routes.register(r, op.load("OPSCENTER_LOG_INTAKE_PROVIDER"))
         on.append("log_intake")
     if enabled("OPSCENTER_REPORTS"):
-        from reports import routes
+        from reports import http_routes
 
-        routes.register(r, op.load("OPSCENTER_REPORTS_PROVIDER"))
+        http_routes.register(r, op.load("OPSCENTER_REPORTS_PROVIDER"))
         on.append("reports")
     return on
