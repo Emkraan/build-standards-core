@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-06 (v1.127.0, the freeze lane: human bypass, CI-only exemption, GraphQL labeler, stale green)
+## 2026-11-06 (v1.129.0, the freeze lane: human bypass, CI-only exemption, GraphQL labeler, stale green)
 
 Four own-PR lane additions from rpmm23's inventory (OC-1, OC-2, OC-3, OC-16). Opt in: the bypass needs a store and a PR read (null default, the freeze holds), the CI-only exemption is off by default (`freeze_ci_only`); the labeler and stale-green changes take effect for every lane.
 
@@ -8,6 +8,15 @@ Four own-PR lane additions from rpmm23's inventory (OC-1, OC-2, OC-3, OC-16). Op
 - `lanes/freeze_ci_only.py` (OC-2): a PR that only changes how CI checks pull requests is not held by a freeze; both sides of each changed workflow, every workflow that names a changed script (also through another script), anything unreadable held. Written from the inventory description, not from reference code.
 - `override_by_me` (OC-3) reads the newest labeler from the GraphQL timeline; the REST events list truncates at about 300 entries. A read error is not an override.
 - `unstick` (OC-16): a ready PR the lane never merged gets its CI run re-run once per head after `stale_ready_min` minutes, then one alert.
+
+## 2026-11-06 (v1.128.0, rules: smoke retries, route contracts, installs, codemods)
+
+Four rules from the consumers' inventories, with two repo checks. Opt in: the rules are reported by core-status; RC026 and RC027 run on the local-ops stack only and fail a PR only where a consumer sets the `Repo checks gate` row.
+
+- ci-cd-release 6.1: the post-deploy smoke retries for a bounded window (default 5 minutes), then fails; a deploy that stays red raises one alert.
+- web-api-runtime 9.1: every route has a contract, the reference is generated and checked, and the exemption list only shrinks (`core-ci.py list-shrinks`).
+- automation-safety 1.11 and RC026: an installer replaces a script by renaming a new file into place, never overwrites one that may be running.
+- automation-safety 1.12 and RC027: an unattended lint fix comes from an AST codemod or a vetted rule list; a codemod that rewrites by regular expression, or an autofix script that edits files in place with sed, is flagged.
 
 ## 2026-11-06 (v1.126.0, override store window and extra, problems provider healthy items)
 
