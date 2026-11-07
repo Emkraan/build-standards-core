@@ -1,12 +1,21 @@
 # Changelog
 
-## 2026-11-06 (v1.132.0, hub routing, run dialog and override defects)
+## 2026-11-06 (v1.133.0, hub routing, run dialog and override defects)
 
 Fixes from the consumer review of v1.125.0. Opt in pieces only; a look that worked before is unchanged.
 
 - Hub routing: a section with no items no longer loops (it resolves to the Overview and gets no tab); `hubSectionProblems` reports a section or item key used twice and the first one wins; route segments are decoded when read and encoded when written; an item the section does not have selects the first tab.
 - `RunDialog`: `RunInput.publishesWhen` and `RunSpec.publishes` decide what publishes ahead of the `dry_run` and `mode` name rule; inputs that arrive after the form opened take their defaults and keep what was typed; submit honours the same guards as the button; a refusal from the last attempt no longer locks Run (only the `refusal` prop does) and clears when an input changes; a branch name is checked for plausible characters; `onClose` is not called when the app closed the dialog first.
 - `AreaCard` sends its link through the guarded link, so an unsafe `to` never reaches the app's link component; duplicate detail lines, section keys and item keys no longer collide as React keys. `OverrideBar` and `OverrideButton` send one write at a time from the click on.
+
+## 2026-11-06 (v1.132.0, the freeze lane: human bypass, CI-only exemption, GraphQL labeler, stale green)
+
+Four own-PR lane additions from rpmm23's inventory (OC-1, OC-2, OC-3, OC-16). Opt in: the bypass needs a store and a PR read (null default, the freeze holds), the CI-only exemption is off by default (`freeze_ci_only`); the labeler and stale-green changes take effect for every lane.
+
+- `lanes/freeze_bypass.py` (OC-1): one PR for this window only, or all own PRs until the next midnight in the owner's zone, on the override store: window-scoped, expiry read on every read, fail closed, own open PRs only, every change logged, a bypass logged once per head by the lane.
+- `lanes/freeze_ci_only.py` (OC-2): a PR that only changes how CI checks pull requests is not held by a freeze; both sides of each changed workflow, every workflow that names a changed script (also through another script), anything unreadable held. Written from the inventory description, not from reference code.
+- `override_by_me` (OC-3) reads the newest labeler from the GraphQL timeline; the REST events list truncates at about 300 entries. A read error is not an override.
+- `unstick` (OC-16): a ready PR the lane never merged gets its CI run re-run once per head after `stale_ready_min` minutes, then one alert.
 
 ## 2026-11-06 (v1.131.0, delivery: cancelled runs, pre-push, pr-watch, release notes, shrink-only lists)
 
