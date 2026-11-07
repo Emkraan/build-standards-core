@@ -1,8 +1,15 @@
 # Changelog
 
-## 2026-11-07 (v1.139.0, a test race fix)
+## 2026-11-07 (v1.140.0, a test race fix)
 
 Test only: `pool_view_test` no longer races the background refresh threads of the previous test, which wrote a stale answer into the cache after it was cleared and failed `test_a_failed_read_is_unknown_never_a_pass` now and then in CI.
+
+## 2026-11-06 (v1.139.0, the Kong gateway option and the minimal console module)
+
+Text only, `standards/web-shell-gateway.md`, from a consumer's shell move.
+
+- New 4.1 documents a gateway that mints no token (Kong): routing by path prefix, who may reach an API, the bearer token validated by the API itself, what `scopeEnv` and the scope value are, and exactly what `gatewayGuard` does and does not enforce (it checks the gateway token only; under Kong mount it with `enforce: false` or leave it out).
+- Section 1 records the shell-owned console module (launcher, Home and one `/me` aggregation answering `rbac.me`) as an allowed pattern for a consumer with no console API. It needs no code in the packages. A module with no `rbac` at all is not covered: the manifest still requires it.
 
 ## 2026-11-06 (v1.138.0, a consumer can refresh its own visual baselines)
 
