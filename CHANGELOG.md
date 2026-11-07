@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-07 (v1.172.0, the jobs package and the job leader)
+
+Opt in, two new pieces from the Olympus shell source: `shell-packages/jobs` (`createScheduler`, `jobRoutes`, the cron and Automation Account schedule helpers) and `createJobLeader` plus `jobLockKey` in `app-server`. Documented in `web-shell-packages.md` section 5.4.
+
+- `createScheduler`: daily jobs in Eastern time with a live on/off switch in the tool's own `scheduled_jobs` table, a run claimed with one `UPDATE` so instances never double run, a three hour catch-up window, `GET /jobs` and an audited `PUT /jobs/:id`. The environment variable that stops a runner is the `offEnv` option (default `JOBS`; the source hard coded its own name).
+- `createJobLeader`: one process runs the background jobs at a time through a Postgres session advisory lock. The key prefix is the `lockPrefix` option (default `jobs`; the source hard coded its own prefix, so a consumer that already runs a leader passes that prefix to keep its lock key).
+- Both are new exports with no effect on an existing consumer. Typings added.
+- Tests: 17 for the jobs package (the source's 16, plus the `offEnv` one) and 10 for the leader (the source's 9, plus the prefix one), added to `test:server`.
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117, SH-15).
+
 ## 2026-11-07 (v1.171.0, the documentation drift feed, a provider slot)
 
 Opt in: `OPSCENTER_DOCS_DRIFT_PROVIDER` (`path/to/file.py:ClassName`). Without it there is no route and nothing is imported (a null slot hides the tab).

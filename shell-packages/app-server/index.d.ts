@@ -322,3 +322,35 @@ export interface GatewayGuardOptions {
 export declare function gatewayGuard(
   options?: GatewayGuardOptions,
 ): (req: any, res: any, next: (err?: unknown) => void) => void;
+
+export interface JobLeaderOptions {
+  /** Unique per job set within the database, e.g. "xerox-automations". */
+  name: string;
+  /** A dedicated pg client (pool.connect()). It is held while this process leads. */
+  getClient: () => Promise<any>;
+  /** Starts the jobs. Called once each time this process takes the lock. A throw or rejection gives the lock up. */
+  start: () => unknown;
+  /** Stops the jobs. Called when this process loses or gives up the lock. */
+  stop: () => unknown;
+  /** How often a process without the lock asks again. Default 15000. */
+  retryMs?: number;
+  /** How often the holder pings its connection. Default 30000. */
+  checkMs?: number;
+  /** A lock request, check or release that takes longer than this counts as a lost connection (default 10000). */
+  pingTimeoutMs?: number;
+  log?: Pick<Console, "log" | "warn" | "error">;
+  /** Namespaces the advisory lock key (default "jobs"). Keep it fixed once chosen. */
+  lockPrefix?: string;
+}
+
+export interface JobLeader {
+  begin(): void;
+  end(): Promise<void>;
+  isLeader(): boolean;
+}
+
+/** The 64-bit advisory lock key for a job name, as a decimal string. */
+export function jobLockKey(name: string, prefix?: string): string;
+
+/** Runs an app's background jobs in one process at a time (Postgres session advisory lock). */
+export function createJobLeader(options: JobLeaderOptions): JobLeader;

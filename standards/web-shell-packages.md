@@ -12,6 +12,7 @@ core already states the rule.
 | Module contract (`console-modules`) | The per-module manifest ([web-shell-manifest.md](web-shell-manifest.md)): the validator, the registry checks, the permission source and peer helpers, the layout merge with its typed contracts, the generated registry and its staleness check | Code: `shell-packages/console-modules/`. The generator is `kit/scripts/build-registry.mjs` ([web-shell.md](web-shell.md) section 3) |
 | RBAC core (`rbac`) | What permission data means: accessible tabs, the grant ceiling, assignable roles, view-as, client access helpers | Code: `shell-packages/rbac/` |
 | Client package (`app-client`) | One sign-in boot, token renewal, the API client and its cache, resource hooks, the live feed strip | Code: `shell-packages/app-client/` (TypeScript source). Rules: [web-client-runtime.md](web-client-runtime.md) sections 1 to 3, 5 and 6, [web-shell.md](web-shell.md) section 8 |
+| Jobs package (`jobs`) | Scheduled jobs inside a tool's API: a daily runner in Eastern time with a live on/off switch per job, and the `GET /jobs` contract the console Scheduled jobs tab reads | Code: `shell-packages/jobs/`. Opt in. Rules: section 5.4 |
 | Audit package (`audit`) | A Postgres audit log with a tamper-evident hash chain: write, transaction, reads, `verify` | Code: `shell-packages/audit/`. Opt in. Rules: section 5.5 |
 | Settings package (`settings`) | A sealed secret box and plain application settings the console edits at runtime | Code: `shell-packages/settings/`. Opt in. Rules: section 5.5 |
 | Server package (`app-server`) | Group cache, directory token, CORS and origin guard, Server-Timing, gateway token check, request telemetry with its export retry, What's new handler | Code: `shell-packages/app-server/`. Rules: [web-api-runtime.md](web-api-runtime.md) sections 1 to 7 |
@@ -142,6 +143,7 @@ Express style stack (`req`, `res`, `next`) and the CommonJS servers `require` it
 | `whatsNewHandler`, `whatsNewNotes` | A module's release notes behind the module's own access check; labels from a fixed list, versions `x.y.z`, an https changelog link |
 | `gatewayGuard`, `verifyGatewayToken`, `createSigningKeyCache` | Accept a request only when it carries the gateway's token ([web-shell-gateway.md](web-shell-gateway.md) section 4): signature against the tenant signing keys (cached, refetched at most once a minute), issuer, tenant, audience, expiry, not before, the gateway identity and the gateway role. No secret. Log only until enforcement is on; `/health` style paths stay open. The header name, the role and the request property are options (section 5.2) |
 | `safeMessage` | An error message with bearer tokens and key values removed, short enough to log |
+| `createJobLeader`, `jobLockKey` | Run an app's background jobs in one process at a time across every instance and deploy slot (a Postgres session advisory lock on a dedicated connection); section 5.4 |
 
 The gateway guard reads `GATEWAY_ENFORCE`, `GATEWAY_PRINCIPAL_ID`, `GATEWAY_AUDIENCE` and `TENANT_ID` from the
 environment (the names are the core's defaults; the consumer preset in 5.2 renames them). With none set and enforcement off it only removes the header; some but not all set logs a
@@ -242,6 +244,40 @@ export * from '@example/core-app-server';
    from the preset in force, so the same assertions hold under any naming. The core runs it in CI against
    `kit/tests/app-server/consumer-preset.example.json`; a consumer points it at its own preset file.
 
+### 5.4 Scheduled jobs and the job leader
+
+Opt in. A tool that runs background work in its own API registers it with `createScheduler` (`shell-packages/jobs`)
+and serves the contract with `jobRoutes`:
+
+```js
+const scheduler = createScheduler({ db, tool: 'demo', offEnv: 'DEMO_JOBS' });
+scheduler.register({
+  id: 'orphan-cleanup', name: 'Remove orphans', description: '...',
+  at: '03:30', source: 'apps/demo/server/lib/scheduled-jobs.js', defaultEnabled: false,
+  run: async () => ({ deleted: 0 }),
+});
+scheduler.start();
+jobRoutes(router, { scheduler, read, manage, canManage, caller, audit });
+```
+
+- `at` is `HH:MM` Eastern time, every day, and lives in code, so a timing change is a pull request. The on/off switch and the last run live in the tool's own `scheduled_jobs` table, created on start.
+- A run is claimed with one `UPDATE`, so two instances never run the same occurrence and a restart never repeats one. A run missed by more than three hours waits for the next day. Turning a job on after its time today skips that occurrence.
+- A job that can change something outside the tool ships with `defaultEnabled: false`. `run()` returns a small summary; a non-zero `failed` marks the run a failure. Never return secrets.
+- `GET /jobs` answers `{ tool, canManage, jobs }`; `PUT /jobs/:id` with `{ enabled }` turns a job on or off and is audited, and a switch whose audit write fails is put back. The tool names the path in its manifest as `"jobs": { "path": "/admin/jobs" }`; the core carries that key through and a consumer checks it with the `keys` option of `validateManifest` (web-shell-manifest.md section 2).
+- The environment variable named by `offEnv` (default `JOBS`) set to `off` stops the runner on an instance.
+- The package also parses the schedules of work outside an API for the same tab: `nextCron`, `describeCron` (UTC cron, five fields or six with a zero seconds field), `nextAutomation`, `describeAutomation` and `nextScheduled`.
+
+A scheduler's state is in the database, but a job that keeps its dedupe state in memory (a status snapshot to diff, a
+last fired value) fires twice while two processes run it, which happens in a slot swap and when a plan scales past one
+instance. `createJobLeader({ name, getClient, start, stop })` makes the jobs run in exactly one process: each process
+asks Postgres for a session advisory lock on a dedicated connection (`pool.connect()`), the holder calls `start`,
+every other process keeps asking every `retryMs` (15 s). The lock belongs to the connection, so a holder whose process
+exits or whose connection drops frees it. The holder pings its connection every `checkMs` (30 s) and calls `stop` at
+once when the ping fails; a lock request, check or release that takes longer than `pingTimeoutMs` (10 s) counts as a
+lost connection; a `start` that throws gives the lock up. `begin()` starts asking, `end()` stops the jobs and frees the
+lock, `isLeader()` reads the state. It needs a direct Postgres connection (session pooling), never a transaction-mode
+pooler. `lockPrefix` (default `jobs`) namespaces the 64-bit key `jobLockKey(name, prefix)`; keep it fixed once chosen,
+since a process on a different prefix does not see the lock.
 ### 5.5 Audit log and settings
 
 Opt in. Three small factories a tool's API takes when it keeps its own audit log or lets the console edit its settings.
@@ -273,6 +309,7 @@ environment from an `env` option that defaults to `process.env`.
 | `kit/tests/shell-rbac.test.ts` | The ceiling, fail-closed stale ids, the wildcard rule, view-as, tab computation and the client helpers |
 | `tests/test_console_module_schema.py` | The same manifest fixtures against the JSON schema ([web-shell-manifest.md](web-shell-manifest.md)) |
 | `kit/tests/app-client/*.test.ts` | The OIDC sign-in over a fake manager (callback and state routing, parameter stripping, refresh-only renewal, granted scopes, end-session fallback, account changes), and the sign-in boot (silent, redirect, loop guard, return target, module bounce, configuration errors), the API client (token, errors, single flight, cache, 401 handling, persistence), the store, `useResource` and the feed strip, with a fake MSAL client |
+| `kit/tests/jobs/*.test.js`, `kit/tests/app-server/job-leader.test.js` | The scheduler on an in-memory table (occurrence on Eastern time across a daylight change, run once across instances, the catch-up window, on and off, the switch audited and undone when the audit fails), the cron and automation helpers, and the job leader (one leader of two processes, ping loss, start failure, the lock prefix) |
 | `kit/tests/audit/*.test.js` | The chain on an in-memory log: links off the genesis hash, intact verifies, an edited entry, a removed one, a reordered pair and a deleted head each break it, the key mode, concurrent writes never fork, a failed write is non-fatal and the queue survives, transactions commit and roll back, `csvCell`, the caller address |
 | `kit/tests/settings/*.test.js` | The secret box round trip, no master, wrong master, wrong `info`, tampered and malformed values, and the settings cache (ttl, write clears, fallback) |
 | `kit/tests/app-server/*.test.js` | The group cache (TTL, bound, single flight, fail closed, scoped lists), CORS and the origin guard, Server-Timing and route naming on real Express apps, the request telemetry (settings, record mapping, flush and close) and its export retry, the release notes handler, and the gateway token check against a local signing key, including a custom header, role and request property and the consumer preset. Run by `npm run test:server` inside `kit`, and again under a consumer preset by `npm run test:server:consumer` |
