@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-07 (v1.175.0, the external tools store and routes)
+
+Opt in, new package `shell-packages/external-tools` from the Olympus shell source (SH-10, K-source-refresh). Documented in `web-shell-packages.md` section 5.7.
+
+- `validateTool`, `toTool`, `publicTool`, `auditShape`, `visibleTools`, `externalToolRoutes`, `Invalid`, `HUES`, `MAX_TOOLS`, `ID_RE`. The source was CommonJS bound to the shell's pool, audit, RBAC registry and group resolver; here the registry (`permissions`), the gate (`manage`), the group lookup (`callerGroups`) and the permission read (`callerHasPermission`) are options. `HUES` is a local copy of the `console-modules` list (a test holds them equal) so the package copies on its own.
+- The launcher client, the Console admin page and the permission id stay in the consumer.
+- Tests: 60 (the source's 16 route tests and its 41 field cases, adapted, plus 4 for the pure parts and the hue list); the source's registry, seed and migration tests stay with the consumer. `test:server` now runs `tests/*/*.test.js`, so a new test folder needs no `package.json` edit.
+
 ## 2026-11-07 (v1.174.0, the announcements store and routes)
 
 Opt in, new package `shell-packages/announcements` from the Olympus shell source (SH-9, K-source-refresh). Documented in `web-shell-packages.md` section 5.6.
@@ -11,6 +19,8 @@ Opt in, new package `shell-packages/announcements` from the Olympus shell source
 
 No issue: requested by the core consolidation session (build-standards-core-intake#117).
 
+<<<<<<< HEAD
+=======
 ## 2026-11-07 (v1.173.0, rbac names the removal ceiling)
 
 Opt in, `rbac`. New exports `removalBeyond` and `removalCeilingMessage` (SH-3, K-source-refresh): deleting a role, an assignment or an override takes away the permissions it confers, so the caller must hold every one of them, and only a genuine wildcard holder removes the wildcard. It answers what `permissionsBeyond` answers (stale ids and unreadable text fail closed) with a message that says removal. Documented in `web-shell-packages.md` section 3; the rule itself is `rbac.md` section 3.
@@ -108,6 +118,7 @@ Opt in, each off until configured: with none of them set the audit writes the sa
 
 Ops center lanes. `lanes/freeze_ci_only.py` (opt in, policy `freeze_ci_only`) now holds four kinds of pull request it used to exempt from a change freeze: a workflow on `pull_request_target` (it runs with the base branch's permissions and secrets), a reusable workflow whose file name starts with `_`, a workflow that names a deployment environment outside an allowlist (policy `own_pr_merge.freeze_ci_environments`, null: only `terraform-plan`; an environment block or an unreadable expression is held), and a workflow whose `on:` block is malformed (the reader has no YAML library, so it is now strict and fails closed). Changed behaviour: a consumer that relied on any of these being exempt sees them held during a freeze; set `freeze_ci_environments` to admit its own CI environments. Decisions cached under the old rules are made again. `lanes/pr_gate.py` gains a built-in `applied: <number>` kind: met only when that pull request is merged and a run of the apply workflow on the apply branch that started at or after the merge succeeded; a failed run after the merge is named. The workflow and branch come from policy `own_pr_merge.gate_apply_workflow` and `gate_apply_branch` (passed by the own-PR lane to a gate plug-in whose `evaluate` takes `config`) or from `OPSCENTER_GATE_APPLY_WORKFLOW` and `OPSCENTER_GATE_APPLY_BRANCH`; null by default, and the kind is then never met and says so.
 
+>>>>>>> origin/main
 ## 2026-11-07 (v1.163.0, rbac matches a stored user row by directory object id)
 
 Opt in, `rbac`. New exports `cleanOid`, `userRowMatches` and `pickUserRow` from the Olympus shell source (SH-3 family, K-source-refresh): a grant to a person binds to their directory object id, the email stays a label and is the match only for rows with no object id. A caller whose token has no object id matches only rows that have none (fail closed); `pickUserRow` prefers the row bound to the id whatever the row order. Documented in `web-shell-packages.md` section 3.
