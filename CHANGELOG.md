@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-07 (v1.167.0, the documentation audit gains rules R13, R15 and R16)
+
+Opt in, each off until configured: with none of them set the audit writes the same store as before (no extra internal thing appears).
+
+- R13 (retired but still marked Live): a page whose banner, status row or title says retired while a status badge or Status line still says Live, plus the home of every registry thing with `status: retired`. Runs when `dup_roots` is set or the registry has a retired thing. A truncated or malformed search fails closed.
+- R15 (retired or merged page outside the Archive): runs only when the registry sets `archive_page`; walks the real parent chain (the search lags a move), skips children that move with their parent.
+- R16 (backup mirror behind live code): config `mirror` (`repo`, `repo_slug`, `map` of `{repo_prefix, live_dir}`, `grace_hours` 30, `sync_pr_hours` 24). A file is drift only once unchanged for the grace window and its git blob sha differs from the mirror's main; a sync pull request open too long is named; an unreadable mirror is one line, never a pass.
+- The three surface on the Knowledge page only (low severity, pseudo things `_retired_live`, `_archive`, `_backup`), never on the Action Center. The consumer-only moved-page rule (R14) stays out.
+
 ## 2026-11-07 (v1.166.0, the owner apply guard fails closed and covers open PRs)
 
 `opscenter/server/modules/owner_roots.py`.
