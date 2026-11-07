@@ -1,12 +1,20 @@
 # Changelog
 
-## 2026-11-06 (v1.133.0, hub routing, run dialog and override defects)
+## 2026-11-06 (v1.134.0, hub routing, run dialog and override defects)
 
 Fixes from the consumer review of v1.125.0. Opt in pieces only; a look that worked before is unchanged.
 
 - Hub routing: a section with no items no longer loops (it resolves to the Overview and gets no tab); `hubSectionProblems` reports a section or item key used twice and the first one wins; route segments are decoded when read and encoded when written; an item the section does not have selects the first tab.
 - `RunDialog`: `RunInput.publishesWhen` and `RunSpec.publishes` decide what publishes ahead of the `dry_run` and `mode` name rule; inputs that arrive after the form opened take their defaults and keep what was typed; submit honours the same guards as the button; a refusal from the last attempt no longer locks Run (only the `refusal` prop does) and clears when an input changes; a branch name is checked for plausible characters; `onClose` is not called when the app closed the dialog first.
 - `AreaCard` sends its link through the guarded link, so an unsafe `to` never reaches the app's link component; duplicate detail lines, section keys and item keys no longer collide as React keys. `OverrideBar` and `OverrideButton` send one write at a time from the click on.
+
+## 2026-11-06 (v1.133.0, roles and gate rules from the hub review)
+
+Text only, from the hub consumer's inventory. Standards: `rbac.md`, `ci-cd-release.md`, `scripting-powershell.md`.
+
+- `rbac.md`: grants follow their report or dashboard (removed on delete, swept after seeding); the View-As preview allows a pinned list of read-only query POSTs only; the Roles page gives a tool with its own area its own heading and lists every tool.
+- `ci-cd-release.md` 2.2: the local gate merges `origin/main` and runs every CI check, including the CI-only scripts, from one command.
+- `scripting-powershell.md`: do not wrap `ConvertFrom-Json` output in `@(...)` in the same expression. Already in core and recorded as such: the additive union of grants, route contracts, changelog lines from PR bodies, and the kit action-button styling.
 
 ## 2026-11-06 (v1.132.0, the freeze lane: human bypass, CI-only exemption, GraphQL labeler, stale green)
 

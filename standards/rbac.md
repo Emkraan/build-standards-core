@@ -142,6 +142,11 @@ action covers the caller's own records, `.others` covers everyone else's (for ex
   as `WEBSITE_AUTH_ENABLED`. **[enforced]** The hub runs with `ENFORCE_EASY_AUTH=true` since
   2026-10-05; every deploy's smoke check reports `confirmed via WEBSITE_AUTH_ENABLED=True;
   fail-closed ON`. A deploy that reports anything else is a finding.
+- **Grants follow their report or dashboard.** A per-report or per-dashboard right is a role grant named by the
+  report's or dashboard's key. It is removed when the report or dashboard is deleted or retired, and a sweep removes
+  grants whose target no longer exists after seeding, so a deleted report never leaves a live right behind.
+  **Acceptance (test):** deleting a report drops its rights and keeps those of a live report; a grant seeded for a
+  missing target is swept.
 - **Expiry:** any grant may carry `expires_at` (UTC; NULL = never). Expired grants are ignored at
   resolution. Omitting `expiresAt` when updating a grant keeps its current expiry. **[enforced]**
 - **Scoped grants** live in `scoped_grants` (subject + role + scope + optional expiry); a subject
@@ -180,7 +185,8 @@ action covers the caller's own records, `.others` covers everyone else's (for ex
   Tool administration gets a tool permission (`tools.integrations.manage`), not `hub.admin`. **[enforced]**
 - **View-As / impersonation** runs on the server. `POST /api/admin/impersonate` returns a token the
   client sends as `X-Hub-View-As`; it is valid only for the admin who started it, for 60 minutes,
-  and every request under it is read-only (non-GET returns 403). `/api/admin/impersonate` is exempt
+  and every request under it is read-only (non-GET returns 403), except a pinned allowlist of read-only query POSTs
+  (a route is added to it only if it writes nothing; everything else answers 403 "Preview is read-only."). `/api/admin/impersonate` is exempt
   so a preview can always be ended. The audit log keeps the admin's email. **[target]** (phase 3, in review)
 - **No ownership exceptions during View-As.** Any rule that grants access because the caller
   created or owns a record (for example the Systems Architecture draft creator exception in
@@ -215,6 +221,9 @@ action covers the caller's own records, `.others` covers everyone else's (for ex
    Any check made inside a handler gets a `declarePermissionCheck` next to it, so it shows on the
    Roles page.
 5. Gate the client route, nav item and buttons with the same permissions.
+6. Give a tool that has its own permission area its own heading inside the shared Tools group of the Roles page, and
+   make sure every tool appears in that list. **Acceptance (test):** a tool with its own area gets its own group, and
+   the list contains every registered tool.
 6. Add tests: allowed, denied, and (for owned records) own vs others.
 7. `pnpm run test` and `pnpm run check:rbac` (route guards, and catalog in sync with enforcement) pass.
 8. If you changed any rule here, update this doc and the CHANGELOG in the same piece of work.
