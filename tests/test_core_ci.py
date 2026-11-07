@@ -622,9 +622,7 @@ class DeliverySteps(Overlay):
 
     def test_pre_push_runs_the_attribution_and_identity_scripts(self):
         self.commit("feat: ok", {"a.txt": "1\n"})
-        self.commit(
-            "fix: by %s\n\nCo-Authored-By: %s <x@example.com>" % (WORD, WORD), {"b.txt": "1\n"}
-        )
+        self.commit(f"fix: by {WORD}\n\nCo-Authored-By: {WORD} <x@example.com>", {"b.txt": "1\n"})
         rc, out = self.ci("pre-push", "--base", self.base, "--skip-fetch")
         self.assertEqual(rc, 1, out)
         self.assertIn("failed: attribution", out)
