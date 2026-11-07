@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-06 (v1.137.0, the manifest client folder may be spa)
+
+Additive. `console.module.json` `client` accepts `apps/<dir>/spa` as well as `apps/<dir>/client`.
+
+- `validateManifest`, the JSON schema and `web-shell-manifest.md` take either folder name, for an app that already names its client folder `spa`. Nothing that validated before stops validating. The generator reads the field as plain data and needed no change. Tests: accepted for both names, rejected for another folder name and for a trailing path, in the TypeScript and the Python schema suites.
+
 ## 2026-11-06 (v1.136.0, an OIDC sign-in beside MSAL in the client package)
 
 `shell-packages/app-client`: `createOidcAuth(manager, options)` and `createOidcClient(manager)`. Opt in; `createAuth` and the MSAL path are unchanged.

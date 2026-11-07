@@ -71,7 +71,7 @@ export function validateManifest(input) {
   if (m.description !== undefined && !isDescription(m.description)) err(`description must be plain ASCII text up to ${DESCRIPTION_MAX} chars`);
   if (!isStr(m.icon) || !ICON_RE.test(m.icon)) err("icon must be an icon name");
   if (!isOrder(m.order)) err("order must be a whole number 0..100000");
-  if (!isStr(m.client) || !/^apps\/[a-z0-9-]+\/client$/.test(m.client)) err("client must be apps/<dir>/client");
+  if (!isStr(m.client) || !/^apps\/[a-z0-9-]+\/(client|spa)$/.test(m.client)) err("client must be apps/<dir>/client or apps/<dir>/spa");
   if (!m.api || !isStr(m.api.gateway) || !KEY_RE.test(m.api.gateway) || !isStr(m.api.prefix) || !PATH_RE.test(m.api.prefix)
       || !isStr(m.api.scopeEnv) || !SCOPE_ENV_RE.test(m.api.scopeEnv)) err("api needs gateway, prefix and scopeEnv");
   if (m.api && m.api.estateKey !== undefined && (!isStr(m.api.estateKey) || !KEY_RE.test(m.api.estateKey))) err("api.estateKey must be an estate app key");
