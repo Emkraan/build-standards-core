@@ -8,6 +8,14 @@ Lifts from the consumer inventory. All opt in: `installBusyTracking` is never ca
 - `data-act` on a `Button` (create, link, transfer) colours page actions by purpose, with `scripts/check-action-buttons.mjs` to fail an untagged action button.
 - `useChartTheme` already existed; it now has a test that the colours follow the tokens and the theme attribute.
 
+## 2026-11-07 (v1.147.0, the CSV formula guard, the first part of the optional reports module)
+
+Opt in: the helper is used by a consumer's own export; the reports module itself stays off and unloaded until `OPSCENTER_REPORTS` is set.
+
+- `opscenter/server/modules/reports/export_csv.py`: `guard`, `cell` and `to_csv`. A text value starting with `=`, `+`, `-`, `@`, a tab or a carriage return gets a leading apostrophe; numbers, booleans and None are written as they are; commas, quotes and line breaks are quoted; CRLF line ends. No import side effect.
+- New rule web-api-runtime 9.2: every CSV or spreadsheet export goes through one formula guard.
+- The reports folder joins the unit test discovery.
+
 ## 2026-11-07 (v1.146.0, KeepRedirect and the flat hub index tab)
 
 Opt in: a consumer that does not import them sees nothing.
