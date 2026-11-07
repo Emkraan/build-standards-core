@@ -41,15 +41,15 @@ def problems(versions, tags):
     seen = set()
     for v in versions:
         if v in seen:
-            out.append("v%d.%d.%d has more than one heading" % v)
+            out.append("v{}.{}.{} has more than one heading".format(*v))
         seen.add(v)
     newest = max(tags) if tags else None
     for v in sorted(seen):
         if v not in tags and newest is not None and v <= newest:
-            out.append("v%d.%d.%d has a heading but no tag (a number at or below the newest tag is not an unreleased entry)" % v)
+            out.append("v{}.{}.{} has a heading but no tag (a number at or below the newest tag is not an unreleased entry)".format(*v))
     for t in sorted(tags):
         if t not in seen:
-            out.append("v%d.%d.%d is a tag with no heading" % t)
+            out.append("v{}.{}.{} is a tag with no heading".format(*t))
     return out
 
 
@@ -74,14 +74,14 @@ def main():
     if not tags:
         msg = "no release tags visible"
         if in_ci:
-            print("check-changelog-versions: %s; failing closed in CI (fetch with fetch-depth 0)" % msg)
+            print(f"check-changelog-versions: {msg}; failing closed in CI (fetch with fetch-depth 0)")
             return 1
-        print("check-changelog-versions: %s; skipped (local run)" % msg)
+        print(f"check-changelog-versions: {msg}; skipped (local run)")
         return 0
     bad = problems(versions, tags)
     for p in bad:
         print("::error file=CHANGELOG.md::" + p)
-    print("check-changelog-versions: %d heading(s), %d tag(s), %d problem(s)" % (len(versions), len(tags), len(bad)))
+    print(f"check-changelog-versions: {len(versions)} heading(s), {len(tags)} tag(s), {len(bad)} problem(s)")
     return 1 if bad else 0
 
 
