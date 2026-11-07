@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-07 (v1.162.0, the owner apply guard fails closed and covers open PRs)
+## 2026-11-07 (v1.163.0, the owner apply guard fails closed and covers open PRs)
 
 `opscenter/server/modules/owner_roots.py`.
 
@@ -10,6 +10,14 @@
 - Opt in provider hooks, null by default: `open_pr_addresses(root)` (the guard and the Apply refusal also refuse a delete of an address an open PR declares, and refuse when that read fails), `detect_ahead(root)` (a root with no hold record whose main plan destroys what an open PR holds gets a detected hold), `is_protection(id)` (a lock the plan itself deletes is left out of the deletes handed to the lift), `retry_kinds()` (the apply is retried after a lift when the failure is one of the provider's own error kinds, not only when the output says retry), and a third `before_apply` parameter, a private directory to record the lift in before the first lift. An exception from `before_apply` that carries a `state` attribute reaches `after_apply`, so a partial lift is restored.
 - Behaviour change: the lift lag retry needs a non empty state from `before_apply` (it used to be any state that is not None), so nothing lifted means no retry.
 - Terminal apply logging: `owner_roots.py --log-start --root <name>:<tier> --sha <sha> [--by <account>]` and `--log-done ... [--result <text>]` append `owner_apply_started` and `owner_apply_done` in the module's own record shape. `--by` defaults to the provider's expected identity.
+
+## 2026-11-07 (v1.162.0, the processing indicator can stop reads)
+
+Closes the gap against the hub's handoff tag (the busy bar spec): the indicator's Cancel request, the stop on leaving the page and the server run stop. A second opt in on top of `installBusyTracking`; with `cancel` off nothing changes.
+
+- `installBusyTracking({ cancel: true, keepAcrossRoutes, runs })`: a counted read carries a signal of its own joined with the caller's. `cancelBusyReads()` stops every stoppable read with `Request cancelled`; `abortStaleReads(route)` stops reads that outlived their route after 1.5 s of grace (`The page was left before the request finished`); a hidden page stops them all. Writes are never stopped. `runs` tags the server's stoppable runs with an id header and tells the server on every stop (a beacon, then a keepalive POST).
+- `BusyIndicator`: a chip with the elapsed seconds after 5 s and, while a stoppable read is in flight, a Cancel request button; the bar itself still takes no input. `route`, `cancelAfterMs`, `cancelLabel` and `onCancel` are props.
+- `BusyState` gains `cancellable`; `CANCELLED_MESSAGE`, `LEFT_PAGE_MESSAGE` and `NAV_GRACE_MS` are exported.
 
 ## 2026-11-07 (v1.161.0, a consumer can validate the manifest keys it adds)
 
