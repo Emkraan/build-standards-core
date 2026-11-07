@@ -1,8 +1,25 @@
 # Changelog
 
-## 2026-11-07 (v1.161.0, the CI-only freeze exemption holds more, and the draft gate checks an apply)
+## 2026-11-07 (v1.163.0, the CI-only freeze exemption holds more, and the draft gate checks an apply)
 
 Ops center lanes. `lanes/freeze_ci_only.py` (opt in, policy `freeze_ci_only`) now holds four kinds of pull request it used to exempt from a change freeze: a workflow on `pull_request_target` (it runs with the base branch's permissions and secrets), a reusable workflow whose file name starts with `_`, a workflow that names a deployment environment outside an allowlist (policy `own_pr_merge.freeze_ci_environments`, null: only `terraform-plan`; an environment block or an unreadable expression is held), and a workflow whose `on:` block is malformed (the reader has no YAML library, so it is now strict and fails closed). Changed behaviour: a consumer that relied on any of these being exempt sees them held during a freeze; set `freeze_ci_environments` to admit its own CI environments. Decisions cached under the old rules are made again. `lanes/pr_gate.py` gains a built-in `applied: <number>` kind: met only when that pull request is merged and a run of the apply workflow on the apply branch that started at or after the merge succeeded; a failed run after the merge is named. The workflow and branch come from policy `own_pr_merge.gate_apply_workflow` and `gate_apply_branch` (passed by the own-PR lane to a gate plug-in whose `evaluate` takes `config`) or from `OPSCENTER_GATE_APPLY_WORKFLOW` and `OPSCENTER_GATE_APPLY_BRANCH`; null by default, and the kind is then never met and says so.
+
+## 2026-11-07 (v1.162.0, the processing indicator can stop reads)
+
+Closes the gap against the hub's handoff tag (the busy bar spec): the indicator's Cancel request, the stop on leaving the page and the server run stop. A second opt in on top of `installBusyTracking`; with `cancel` off nothing changes.
+
+- `installBusyTracking({ cancel: true, keepAcrossRoutes, runs })`: a counted read carries a signal of its own joined with the caller's. `cancelBusyReads()` stops every stoppable read with `Request cancelled`; `abortStaleReads(route)` stops reads that outlived their route after 1.5 s of grace (`The page was left before the request finished`); a hidden page stops them all. Writes are never stopped. `runs` tags the server's stoppable runs with an id header and tells the server on every stop (a beacon, then a keepalive POST).
+- `BusyIndicator`: a chip with the elapsed seconds after 5 s and, while a stoppable read is in flight, a Cancel request button; the bar itself still takes no input. `route`, `cancelAfterMs`, `cancelLabel` and `onCancel` are props.
+- `BusyState` gains `cancellable`; `CANCELLED_MESSAGE`, `LEFT_PAGE_MESSAGE` and `NAV_GRACE_MS` are exported.
+
+## 2026-11-07 (v1.161.0, a consumer can validate the manifest keys it adds)
+
+Opt in, `console-modules`. `validateManifest` and `validateRegistry` take a second argument: `keys` maps a key to a validator `(value, manifest)` that returns a problem string, a list, or nothing, and runs only when the manifest carries the key; `strictKeys: true` rejects a top-level key that is neither a core key nor registered. Closes the gap where a malformed consumer key (a jobs path) passed core validation because unknown keys are carried untouched.
+
+- Default is unchanged: with no options both functions behave as before. Typings and `web-shell-manifest.md` section 2.1 updated.
+- Tests: 3 in `kit/tests/console-modules/layout.test.js` (registered validator, strict keys, registry passes the options).
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
 
 ## 2026-11-07 (v1.160.0, the reports client reads the server's export and import answers)
 

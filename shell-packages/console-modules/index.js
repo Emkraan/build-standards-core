@@ -57,7 +57,7 @@ const isHttps = (v) => {
  * @param {unknown} input
  * @returns {string[]}
  */
-export function validateManifest(input) {
+export function validateManifest(input, options = {}) {
   /** @type {string[]} */
   const errs = [];
   if (!input || typeof input !== "object" || Array.isArray(input)) return ["manifest must be an object"];
@@ -201,20 +201,34 @@ export function validateManifest(input) {
   if (m.landing !== undefined) {
     if (!Array.isArray(m.landing) || !m.landing.every((/** @type {unknown} */ r) => isStr(r) && routes.has(r))) err("landing must list declared page routes");
   }
+
+  // Consumer keys: effectiveLayout carries unknown keys through untouched, so a consumer that adds a key
+  // (a jobs path, say) registers a validator for it here. strictKeys rejects any key that is neither a
+  // core key nor registered, which catches a misspelled key.
+  const extra = options.keys || {};
+  for (const [key, check] of Object.entries(extra)) {
+    if (m[key] === undefined || typeof check !== "function") continue;
+    const res = check(m[key], m);
+    for (const msg of Array.isArray(res) ? res : res ? [res] : []) err(String(msg));
+  }
+  if (options.strictKeys === true) {
+    for (const key of Object.keys(m)) if (!MANIFEST_KEYS.has(key) && !(key in extra)) err(`unknown key ${key}`);
+  }
   return errs;
 }
 
 /**
  * Validate a whole registry (a list of manifests): every manifest valid, ids unique, client unique.
  * @param {unknown[]} manifests
+ * @param {{ keys?: Record<string, (value: any, manifest: any) => string | string[] | void>, strictKeys?: boolean }} [options] passed to validateManifest
  * @returns {string[]}
  */
-export function validateRegistry(manifests) {
+export function validateRegistry(manifests, options = {}) {
   /** @type {string[]} */
   const errs = [];
   const ids = new Set();
   for (const m of manifests) {
-    errs.push(...validateManifest(m));
+    errs.push(...validateManifest(m, options));
     const id = /** @type {any} */ (m)?.id;
     if (ids.has(id)) errs.push(`duplicate module id ${id}`);
     ids.add(id);
