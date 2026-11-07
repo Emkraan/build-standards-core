@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-07 (v1.144.0, one processing indicator, action buttons by purpose, chart theme test)
+
+Lifts from the consumer inventory. All opt in: `installBusyTracking` is never called for you, and `data-act` only affects a button that carries it.
+
+- `BusyIndicator`, `trackBusy`, `quietly`, `useBusy` and `installBusyTracking`: one slim bar that appears after 350 ms, says Loading or Saving, never blocks input, and holds 450 ms. `installBusyTracking()` is explicit and reversible. Cancelling a request stays with the app.
+- `data-act` on a `Button` (create, link, transfer) colours page actions by purpose, with `scripts/check-action-buttons.mjs` to fail an untagged action button.
+- `useChartTheme` already existed; it now has a test that the colours follow the tokens and the theme attribute.
+
 ## 2026-11-06 (v1.142.0, hub tab working marker and inline pending note colour)
 
 Two look details from the ops center adoption, both inside the hub pieces; the plain `Spinner` and every other badge are unchanged.

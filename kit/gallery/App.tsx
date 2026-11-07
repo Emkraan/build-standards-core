@@ -627,6 +627,21 @@ function HubHeaderFlatSpecimen() {
   );
 }
 
+function ActionButtonsSpecimen() {
+  return (
+    <div className="gallery-hub-demo">
+      <div className="gallery-row">
+        <Button variant="primary" data-act="create">Add user</Button>
+        <Button data-act="create">New report</Button>
+        <Button data-act="link">Link account</Button>
+        <Button data-act="transfer">Export CSV</Button>
+        <Button>Plain secondary</Button>
+      </div>
+      <p className="gallery-note">data-act colours page actions by purpose: create teal, link blue, transfer violet. A button without it keeps the plain look.</p>
+    </div>
+  );
+}
+
 function OverrideSpecimen() {
   const [all, setAll] = useState(false);
   const [mine, setMine] = useState(false);
@@ -2559,7 +2574,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars', 'hub-header', 'hub-overview', 'run-dialog', 'hub-header-flat', 'override'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars', 'hub-header', 'hub-overview', 'run-dialog', 'hub-header-flat', 'override', 'action-buttons'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2831,6 +2846,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="override" title="Gate override (bar, button, tag, pending next step)">
           <OverrideSpecimen />
+        </Specimen>
+        <Specimen id="action-buttons" title="Action buttons by purpose (data-act)">
+          <ActionButtonsSpecimen />
         </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">
