@@ -24,7 +24,8 @@ carries. The proof is a test the shell owns unless the rule says review.
    are gated on their own permissions.
    - Prevents: a new route shipping open because nobody had to decide.
    - Proof (test): the test walks the router, fails on a route with neither a gate nor a listed reason, and fails when
-     a reason is listed for a route that no longer exists.
+     a reason is listed for a route that no longer exists. `shell-packages/route-conformance` is that test's engine
+     ([web-shell-packages.md](web-shell-packages.md) section 5.9).
 4. **Group ids come from role assignments only.** A shell server MUST NOT read a directory group id from the
    environment and MUST resolve caller groups only through role assignments.
    - Prevents: a group id baked into one environment's settings that grants access the role table does not show.

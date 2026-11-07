@@ -21,7 +21,7 @@
 //   gatewayGuard         accept a request only when it carries the gateway token the tier's API
 //                        gateway adds, log only until enforcement is on
 
-import { createPublicKey, verify as cryptoVerify } from "node:crypto";
+import { createHash, createPublicKey, verify as cryptoVerify } from "node:crypto";
 
 // --- Group resolver ---
 
@@ -1154,9 +1154,10 @@ export function parseSettingString(raw) {
  * IDENTITY_HEADER, the pattern every API on the platform uses), or null.
  * @param {string} resource
  * @param {string} [clientId] user-assigned identity client id
+ * @param {number} [timeoutMs] how long one request may take (default 5000)
  * @returns {Promise<{ token: string, expiresAt: number } | null>}
  */
-async function appServiceToken(resource, clientId) {
+async function appServiceToken(resource, clientId, timeoutMs = 5000) {
   const endpoint = process.env.IDENTITY_ENDPOINT;
   const header = process.env.IDENTITY_HEADER;
   if (!endpoint || !header) return null;
@@ -1164,7 +1165,7 @@ async function appServiceToken(resource, clientId) {
   url.searchParams.set("resource", resource);
   url.searchParams.set("api-version", "2019-08-01");
   if (clientId) url.searchParams.set("client_id", clientId);
-  const res = await fetch(url.toString(), { headers: { "X-IDENTITY-HEADER": header }, signal: AbortSignal.timeout(5000) });
+  const res = await fetch(url.toString(), { headers: { "X-IDENTITY-HEADER": header }, signal: AbortSignal.timeout(timeoutMs) });
   if (!res.ok) return null;
   const body = /** @type {{ access_token?: string, expires_on?: string | number }} */ (await res.json());
   return body.access_token ? { token: body.access_token, expiresAt: parseExpiresOn(body.expires_on) } : null;
@@ -1182,6 +1183,471 @@ export function safeMessage(err) {
     .replace(/eyJ[A-Za-z0-9._-]{20,}/g, "[redacted]")
     .replace(/(InstrumentationKey|ClientId)=[^;\s]+/gi, "$1=[redacted]")
     .slice(0, 200);
+}
+
+// --- Postgres connection (Entra auth, no database password) ---
+
+export const PG_ENTRA_SCOPE = "https://ossrdbms-aad.database.windows.net/.default";
+// One managed identity request for the Postgres token, and the waits between the asks after a miss
+// (3 asks, 10 s each, at most 33 s). The pool allows the whole sequence before it calls a connect late.
+const PG_MSI_TIMEOUT_MS = 10_000;
+const PG_MSI_RETRY_DELAYS_MS = [1000, 2000];
+const PG_ENTRA_CONNECT_TIMEOUT_MS = 40_000;
+
+/**
+ * True when the process should sign in to Postgres with its Entra token: DATABASE_URL is empty and
+ * PGHOST, PGDATABASE and PGUSER are set (the standard for a shell API that has no database password).
+ * A DATABASE_URL (local dev, tests) always wins.
+ * @param {NodeJS.ProcessEnv} [env]
+ */
+export function usesPgEntraAuth(env = process.env) {
+  return !String(env.DATABASE_URL || "").trim() && !!(env.PGHOST && env.PGDATABASE && env.PGUSER);
+}
+
+/**
+ * The async password function for pg: an Entra access token for Postgres, cached until 5 minutes
+ * before expiry with one request in flight for concurrent callers. A failure is never cached. The token
+ * comes from the App Service managed identity unless options.getToken(scope) supplies it
+ * (returning { token, expiresAt | expiresOnTimestamp } or null).
+ * @param {{ getToken?: (scope: string) => Promise<{ token: string, expiresAt?: number, expiresOnTimestamp?: number } | null | undefined>, msiTimeoutMs?: number, msiRetryDelaysMs?: number[] }} [options]
+ * @returns {() => Promise<string>}
+ */
+export function pgEntraPassword(options = {}) {
+  const cache = createTokenCache({
+    fetchToken: async () => {
+      if (typeof options.getToken === "function") {
+        const t = await options.getToken(PG_ENTRA_SCOPE);
+        return t && t.token ? { token: t.token, expiresAt: Number(t.expiresAt ?? t.expiresOnTimestamp) } : null;
+      }
+      // Right after an App Service start the managed identity endpoint can take longer than one
+      // short request to answer, and a boot that signs in to Postgres first would exit on that
+      // single miss. Ask again a few times before giving up. No identity endpoint (local) is
+      // not a miss, it answers null at once.
+      const timeoutMs = Number(options.msiTimeoutMs) > 0 ? Number(options.msiTimeoutMs) : PG_MSI_TIMEOUT_MS;
+      const delays = Array.isArray(options.msiRetryDelaysMs) ? options.msiRetryDelaysMs : PG_MSI_RETRY_DELAYS_MS;
+      /** @type {unknown} */
+      let lastError = null;
+      for (let attempt = 0; attempt <= delays.length; attempt++) {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, delays[attempt - 1]));
+        try {
+          const t = await appServiceToken("https://ossrdbms-aad.database.windows.net", undefined, timeoutMs);
+          if (t || !process.env.IDENTITY_ENDPOINT) return t;
+        } catch (e) {
+          lastError = e;
+        }
+      }
+      if (lastError) throw lastError;
+      return null;
+    },
+  });
+  return async () => {
+    const token = await cache.get();
+    if (!token) throw new Error("No Entra access token for Postgres (no managed identity in this process).");
+    return token;
+  };
+}
+
+/**
+ * The Postgres login that belongs to the identity a token was issued for. App Service warms the incoming
+ * instance of a slot swap with the target slot's settings, so for a minute or two the staging instance holds
+ * production's PGUSER but still signs in with its own slot identity, and Postgres refuses it ("oid mismatch").
+ * The token says who the process really is: its xms_mirid claim names the web app and slot, and the login for
+ * that identity is the app name, plus "/slots/<slot>" for a slot (the login convention). The configured user is
+ * kept unless the token names the same web app, so a wrong PGUSER for another app still fails loudly.
+ * @param {string} token a JWT
+ * @param {string} configuredUser PGUSER
+ * @returns {string} the login to use
+ */
+export function pgUserForToken(token, configuredUser) {
+  try {
+    const part = String(token).split(".")[1] || "";
+    const claims = JSON.parse(Buffer.from(part.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"));
+    const m = /\/providers\/Microsoft\.Web\/sites\/([^/]+)(?:\/slots\/([^/]+))?$/i.exec(String(claims.xms_mirid || ""));
+    const siteName = m && m[1];
+    if (!m || !siteName) return configuredUser;
+    const site = siteName.toLowerCase();
+    const slotName = m[2];
+    const login = slotName ? `${site}/slots/${slotName.toLowerCase()}` : site;
+    return String(configuredUser).split("/slots/")[0]?.toLowerCase() === site ? login : configuredUser;
+  } catch {
+    return configuredUser;
+  }
+}
+
+/**
+ * A pg Client class that asks for the token before it connects and signs in as the login that token belongs to
+ * (pgUserForToken). The pool password stays the cached token function. pg is passed in, this package has no
+ * runtime dependencies.
+ * @param {any} BaseClient pg.Client
+ */
+export function entraPgClient(BaseClient) {
+  const pgUserWarned = new Set();
+  return class EntraClient extends BaseClient {
+    /** @param {any} [callback] */
+    connect(callback) {
+      const source = this.connectionParameters && this.connectionParameters.password;
+      if (typeof source !== "function") return super.connect(callback);
+      const prepare = async () => {
+        const token = await source();
+        /** @type {any} */
+        const self = this;
+        /** @type {string} */
+        const configured = String(self.user);
+        /** @type {string} */
+        const user = pgUserForToken(token, configured);
+        if (user !== configured) {
+          if (!pgUserWarned.has(user)) {
+            pgUserWarned.add(user);
+            console.warn(`[pg] signing in as ${user} (the token's identity), PGUSER says ${configured}`);
+          }
+          self.user = user;
+          self.connectionParameters.user = user;
+        }
+        self.password = token;
+        self.connectionParameters.password = token;
+      };
+      if (typeof callback === "function") {
+        prepare().then(() => super.connect(callback), (err) => callback(err));
+        return undefined;
+      }
+      return prepare().then(() => super.connect());
+    }
+  };
+}
+
+/**
+ * The pg Pool config a shell API uses. Entra mode reads PGHOST, PGDATABASE, PGUSER (and PGPORT),
+ * TLS on. Otherwise DATABASE_URL, with TLS unless the URL is local or says sslmode=disable.
+ * @param {NodeJS.ProcessEnv} [env]
+ * @param {{ pg?: { Client: any }, getToken?: (scope: string) => Promise<{ token: string, expiresAt?: number, expiresOnTimestamp?: number } | null | undefined>, msiTimeoutMs?: number, msiRetryDelaysMs?: number[] }} [options]
+ */
+export function pgPoolConfig(env = process.env, options = {}) {
+  const base = { max: Number(env.PG_POOL_MAX) || 10, idleTimeoutMillis: 30_000, connectionTimeoutMillis: 10_000 };
+  if (usesPgEntraAuth(env)) {
+    return { ...base, connectionTimeoutMillis: PG_ENTRA_CONNECT_TIMEOUT_MS, host: env.PGHOST, database: env.PGDATABASE, user: env.PGUSER, port: Number(env.PGPORT) || 5432, password: pgEntraPassword(options), ssl: { rejectUnauthorized: false }, ...(options.pg && options.pg.Client ? { Client: entraPgClient(options.pg.Client) } : {}) };
+  }
+  const connectionString = env.DATABASE_URL || "";
+  let ssl = true;
+  if (/sslmode=disable/i.test(connectionString)) ssl = false;
+  else if (/sslmode=require/i.test(connectionString)) ssl = true;
+  else if (env.NODE_ENV === "production") ssl = true;
+  else ssl = !/@localhost|@127\.0\.0\.1/i.test(connectionString);
+  return { ...base, connectionString, ssl: ssl ? { rejectUnauthorized: false } : false };
+}
+
+// -- User directory: object id <-> name -------------------------------------------------------------
+// Tools bind a person's grants to their Entra object id (see rbac userRowMatches). This is the
+// one small Graph reader every tool uses to turn an email or UPN into that object id, and an object id
+// back into a full name for the Access lists. Reads only, cached, never throws.
+
+const GRAPH_USERS_GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** @param {string} s */
+const odataQuote = (s) => String(s).replace(/'/g, "''");
+
+/**
+ * @param {{ getToken: () => Promise<string | null>, ttlMs?: number, maxEntries?: number, timeoutMs?: number,
+ *   now?: () => number, fetchImpl?: typeof fetch, log?: (m: string) => void }} options
+ */
+export function createUserDirectory(options) {
+  const { getToken } = options || {};
+  if (typeof getToken !== "function") throw new TypeError("createUserDirectory: getToken must be a function");
+  const ttlMs = options.ttlMs ?? 10 * 60 * 1000;
+  const maxEntries = options.maxEntries ?? 2000;
+  const timeoutMs = options.timeoutMs ?? 10000;
+  const now = options.now || Date.now;
+  const doFetch = options.fetchImpl || fetch;
+  const log = options.log || (() => {});
+  /** @type {Map<string, { at: number, value: { oid: string, name: string | null, upn: string | null, mail: string | null, created?: string | null } }>} */
+  const byOid = new Map();
+
+  /** @param {string} oid @param {{ oid: string, name: string | null, upn: string | null, mail: string | null, created?: string | null }} value */
+  function remember(oid, value) {
+    byOid.delete(oid);
+    byOid.set(oid, { at: now(), value });
+    while (byOid.size > maxEntries) byOid.delete(/** @type {string} */ (byOid.keys().next().value));
+  }
+
+  /** @param {string} url @param {RequestInit} [init] */
+  async function graph(url, init) {
+    const token = await getToken();
+    if (!token) return null;
+    const res = await doFetch(url, {
+      ...init,
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...(init && init.headers) },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) { log(`user directory: Graph answered ${res.status}`); return null; }
+    return res.json();
+  }
+
+  return {
+    /**
+     * The person behind an email or sign-in name (mail or UPN, exact). When one account's UPN equals
+     * what was typed it wins, otherwise a single match is used, and two different people answer null.
+     * @param {unknown} emailOrUpn
+     */
+    async resolve(emailOrUpn) {
+      const q = String(emailOrUpn || "").trim().toLowerCase();
+      if (!q || q.length > 254) return null;
+      try {
+        const filter = `userPrincipalName eq '${odataQuote(q)}' or mail eq '${odataQuote(q)}'`;
+        const data = await graph(`https://graph.microsoft.com/v1.0/users?$filter=${encodeURIComponent(filter)}&$select=id,displayName,mail,userPrincipalName,createdDateTime&$top=5`);
+        /** @type {any[]} */
+        const list = (data && Array.isArray(data.value)) ? data.value : [];
+        const pick = list.find((/** @type {any} */ u) => String(u.userPrincipalName || "").toLowerCase() === q) || (list.length === 1 ? list[0] : null);
+        if (!pick || !GRAPH_USERS_GUID.test(String(pick.id))) return null;
+        const value = { oid: String(pick.id).toLowerCase(), name: pick.displayName || null, upn: pick.userPrincipalName ? String(pick.userPrincipalName).toLowerCase() : null, mail: pick.mail ? String(pick.mail).toLowerCase() : null , created: pick.createdDateTime || null};
+        remember(value.oid, value);
+        return value;
+      } catch (e) {
+        log(`user directory resolve failed: ${e instanceof Error ? e.message : String(e)}`);
+        return null;
+      }
+    },
+
+    /**
+     * Full names (and current sign-in names) for object ids, one batched read for the ids not cached.
+     * Ids Graph does not know are left out. Never throws: a failed read returns what is cached.
+     * @param {unknown[]} oids
+     * @returns {Promise<Map<string, { oid: string, name: string | null, upn: string | null, mail: string | null }>>}
+     */
+    async names(oids) {
+      /** @type {Map<string, { oid: string, name: string | null, upn: string | null, mail: string | null }>} */
+      const out = new Map();
+      const need = [];
+      for (const raw of new Set((Array.isArray(oids) ? oids : []).map((o) => String(o || "").trim().toLowerCase()))) {
+        if (!GRAPH_USERS_GUID.test(raw)) continue;
+        const hit = byOid.get(raw);
+        if (hit && now() - hit.at < ttlMs) out.set(raw, hit.value); else need.push(raw);
+      }
+      for (let i = 0; i < need.length; i += 100) {
+        const chunk = need.slice(i, i + 100);
+        try {
+          const data = await graph("https://graph.microsoft.com/v1.0/directoryObjects/getByIds", { method: "POST", body: JSON.stringify({ ids: chunk, types: ["user"] }) });
+          for (const u of (data && Array.isArray(data.value)) ? data.value : []) {
+            const oid = String(u.id || "").toLowerCase();
+            if (!GRAPH_USERS_GUID.test(oid)) continue;
+            const value = { oid, name: u.displayName || null, upn: u.userPrincipalName ? String(u.userPrincipalName).toLowerCase() : null, mail: u.mail ? String(u.mail).toLowerCase() : null };
+            remember(oid, value);
+            out.set(oid, value);
+          }
+        } catch (e) {
+          log(`user directory names failed: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+      return out;
+    },
+  };
+}
+
+// -- User binding: grants follow the object id -------------------------------------------------------
+// Writes store a person's Entra object id beside the sign-in name. Reads match on the object id
+// (see rbac userRowMatches), so a rename, a UPN change or a directory mail that differs from
+// the sign-in name (the CA and admin twins) never orphans a grant. Rows written before this carry no
+// object id and keep matching by email until backfill() stamps them. Every Graph call is best effort.
+// The tables are the ones every tool keeps: role_assignments and permission_overrides, each with
+// user_email and user_oid.
+
+/**
+ * @param {{
+ *   db: { query: (text: string, params?: unknown[]) => Promise<{ rows: any[] }> },
+ *   mutate?: (text: string, params?: unknown[]) => Promise<{ rows: any[] }>,
+ *   getToken: () => Promise<string | null>,
+ *   directory?: ReturnType<typeof createUserDirectory>,
+ *   log?: (m: string) => void,
+ * }} options  `mutate` is the tool's own write path when it has one that drops a cached snapshot.
+ */
+export function createUserBinding(options) {
+  const { db } = options;
+  const mutate = options.mutate || ((text, params) => db.query(text, params));
+  const log = options.log || ((m) => console.log(`[user-binding] ${m}`));
+  const directory = options.directory || createUserDirectory({ getToken: options.getToken, log });
+
+  /**
+   * A sign-in name can be reused by a different person (a leaver's UPN handed to a new hire). The email
+   * column is unique, so a row still labelled with that name but bound to ANOTHER object id is
+   * relabelled `<email>#<its oid>` first. It keeps matching its own person by object id, and the new
+   * person's row can take the name. Rows with no object id are left alone (they match by email).
+   * Run only by a route AFTER its authorization and grant-ceiling checks pass, never by bind itself.
+   * @param {{ email: string, oid: string }} who
+   */
+  async function release(who) {
+    if (!who.email) return;
+    for (const table of ["role_assignments", "permission_overrides"]) {
+      await mutate(
+        `UPDATE ${table} SET user_email = lower(user_email) || '#' || lower(user_oid)
+          WHERE lower(user_email) = $1 AND user_oid IS NOT NULL AND lower(user_oid) <> $2`,
+        [who.email.toLowerCase(), who.oid]);
+    }
+  }
+
+  /** @param {{ email: string, oid: string, name: string | null, bound: boolean }} who */
+  function withRelease(who) {
+    return { ...who, release: () => release(who) };
+  }
+
+  return {
+    directory,
+
+    /** What an override edit answers (HTTP 409) when the new sign-in name is held by another row of the same person. */
+    mergeMessage: "That sign-in name already has its own row for this person. Merge the two rows by hand, then save again.",
+
+    /**
+     * Does another row of this person (no object id, or the same one) already hold the sign-in name? A rename
+     * UPDATE would then hit the unique email key. Read only, a route answers 409 and nothing is deleted.
+     * @param {"role_assignments" | "permission_overrides"} table
+     * @param {string} email @param {string} exceptId @param {string | null} oid
+     */
+    async nameTaken(table, email, exceptId, oid) {
+      const { rows } = await db.query(
+        `SELECT 1 FROM ${table} WHERE lower(user_email) = $1 AND id <> $2 AND (user_oid IS NULL OR lower(user_oid) = $3)`,
+        [String(email).toLowerCase(), exceptId, oid ? String(oid).toLowerCase() : null]);
+      return rows.length > 0;
+    },
+
+    /** What a write route answers (HTTP 503) when the directory cannot confirm who the person is. */
+    unboundMessage: "The directory could not confirm that user right now, so no grant was saved. Try again shortly.",
+
+    /**
+     * The object id and sign-in name to store for a user the admin picked. An object id sent by the
+     * client is confirmed against the directory before it is trusted. Without one the email is looked up.
+     * Unresolvable (no Graph, unknown person) answers oid null and bound false. Routes that write a user
+     * grant answer 503 with `unboundMessage` then, so a Graph outage never leaves an email-only grant.
+     * @param {{ email?: unknown, oid?: unknown }} input
+     * The lookup is read only. `release()` on the result relabels a reused name and must be called by the
+     * route after its checks pass.
+     * @returns {Promise<{ email: string, oid: string | null, name: string | null, bound: boolean, release: () => Promise<void> }>}
+     */
+    async bind(input) {
+      const typed = String(input.email || "").trim().toLowerCase();
+      const sent = GRAPH_USERS_GUID.test(String(input.oid || "").trim()) ? String(input.oid).trim().toLowerCase() : null;
+      if (sent) {
+        const hit = (await directory.names([sent])).get(sent);
+        // The typed name must belong to that person (sign-in name or mail), so a client cannot attach
+        // one person's object id to another person's name.
+        if (hit && (!typed || typed === hit.upn || typed === hit.mail)) return withRelease({ email: hit.upn || typed, oid: sent, name: hit.name, bound: true });
+      }
+      if (typed) {
+        const found = await directory.resolve(typed);
+        if (found) return withRelease({ email: found.upn || typed, oid: found.oid, name: found.name, bound: true });
+      }
+      return { email: typed, oid: null, name: null, bound: false, release: async () => {} };
+    },
+
+    /**
+     * Add `userName` and `userUpn` to user rows from one batched directory read.
+     * @template {{ userOid?: string | null }} T
+     * @param {T[]} views
+     * @returns {Promise<Array<T & { userName: string | null, userUpn: string | null }>>}
+     */
+    async withNames(views) {
+      const names = await directory.names(views.map((v) => v.userOid));
+      return views.map((v) => {
+        const hit = v.userOid ? names.get(String(v.userOid).toLowerCase()) : undefined;
+        return { ...v, userName: hit ? hit.name : null, userUpn: hit ? hit.upn : null };
+      });
+    },
+
+    /**
+     * Stamp the object id on every user row that has none and is stored under a person's exact sign-in
+     * name. The email is left as stored and no row is ever deleted. A row whose person cannot be resolved,
+     * matches by mail only, or duplicates a bound row is left on its email and counted.
+     * @returns {Promise<{ stamped: number, unresolved: number, skipped: number }>}
+     */
+    async backfill() {
+      const out = { stamped: 0, unresolved: 0, skipped: 0 };
+      for (const table of ["role_assignments", "permission_overrides"]) {
+        const where = table === "role_assignments" ? "type = 'user' AND user_email IS NOT NULL" : "user_email IS NOT NULL";
+        const { rows } = await db.query(`SELECT id, user_email, to_jsonb(t)->>'created_at' AS created_at FROM ${table} t WHERE user_oid IS NULL AND user_email NOT LIKE '%#retired-%' AND ${where}`);
+        /** @type {Map<string, { oid: string, upn?: string | null, created?: string | null, name?: string | null } | null>} */
+        const seen = new Map();
+        for (const r of rows) {
+          const key = String(r.user_email).toLowerCase();
+          if (!seen.has(key)) seen.set(key, await directory.resolve(key));
+        }
+        // The row stored under the person's sign-in name is the one that applied, so it is stamped first.
+        // A second row for the same person (stored under their mail) then hits the unique index.
+        const applied = (/** @type {{ user_email: string }} */ r) => {
+          const who = /** @type {{ upn?: string | null } | null | undefined} */ (seen.get(String(r.user_email).toLowerCase()));
+          return who && who.upn === String(r.user_email).toLowerCase() ? 0 : 1;
+        };
+        rows.sort((x, y) => applied(x) - applied(y));
+        for (const r of rows) {
+          const who = /** @type {{ oid: string, upn?: string | null, created?: string | null, name?: string | null } | null | undefined} */ (seen.get(String(r.user_email).toLowerCase()));
+          if (!who) { out.unresolved += 1; continue; }
+          // resolve() answers a person only when the name is unambiguous (that account's sign-in name,
+          // or the one account carrying that mail), so a row stored under a directory mail (the CA and
+          // admin twins, which never matched a token) is stamped too. Each one is logged for review.
+          const viaMail = !who.upn || who.upn !== String(r.user_email).toLowerCase();
+          // A row stored under a directory mail is stamped only when that account already existed when
+          // the grant was written. A later holder of a reused mail was created after the grant, so a
+          // leaver's grant never transfers to them. No creation date on either side means it stays put.
+          if (viaMail) {
+            // Only the CA and admin twin shape is bound on a mail match: a +admin address that belongs to
+            // a CA account (the -ca sign-in name or a CA- display name). Any other mail match stays put
+            // for an admin to bind through the picker.
+            const twin = /\+admin@/i.test(String(r.user_email)) && (/-ca@/i.test(String(who.upn || "")) || /^ca-/i.test(String(who.name || "")));
+            if (!twin) {
+              log(`[user-binding] ${table} ${r.id} ${r.user_email} matches ${who.oid} by mail, not a CA or admin twin, left unbound`);
+              out.skipped += 1;
+              continue;
+            }
+            const made = Date.parse(String(r.created_at || ""));
+            const born = Date.parse(String(who.created || ""));
+            if (!Number.isFinite(made) || !Number.isFinite(born) || born > made) {
+              log(`[user-binding] ${table} ${r.id} ${r.user_email} matches ${who.oid} by mail but the account is newer than the grant or undated, left unbound`);
+              out.skipped += 1;
+              continue;
+            }
+          }
+          try {
+            await mutate(`UPDATE ${table} SET user_oid = $1 WHERE id = $2 AND user_oid IS NULL`, [who.oid, r.id]);
+            out.stamped += 1;
+            log(`[user-binding] bound ${table} ${r.id} ${r.user_email} -> ${who.oid}${viaMail ? " (matched on directory mail, newly effective)" : ""}`);
+          } catch (e) {
+            if (/** @type {{ code?: string }} */ (e)?.code !== "23505") throw e;
+            // The same person already holds this role (or override) on a bound row. A twin that adds
+            // nothing is retired (it would otherwise match a reused name), one that differs is left
+            // for a manual merge and counted. Nothing is ever narrowed.
+            // Soft retire, never a delete: the row keeps its data and is relabelled so it no longer
+            // matches by name (a reused name cannot pick it up) and a person can restore it.
+            /** @type {{ rows?: unknown[] } | null | undefined} */
+            let gone = null;
+            try {
+              gone = table === "role_assignments"
+              ? await mutate(
+                `UPDATE role_assignments t SET user_email = lower(t.user_email) || '#retired-' || t.id::text
+                  WHERE t.id = $1 AND t.user_oid IS NULL
+                    AND EXISTS (SELECT 1 FROM role_assignments b WHERE lower(b.user_oid) = $2 AND b.id <> t.id
+                                  AND (to_jsonb(t) - 'id' - 'user_email' - 'user_oid' - 'created_at' - 'updated_at' - 'created_by' - 'note')
+                                    = (to_jsonb(b) - 'id' - 'user_email' - 'user_oid' - 'created_at' - 'updated_at' - 'created_by' - 'note')) RETURNING t.id`,
+                [r.id, who.oid])
+              : await mutate(
+                `UPDATE permission_overrides t SET user_email = lower(t.user_email) || '#retired-' || t.id::text
+                  WHERE t.id = $1 AND t.user_oid IS NULL
+                    AND EXISTS (SELECT 1 FROM permission_overrides b WHERE lower(b.user_oid) = $2 AND b.id <> t.id
+                                  AND (to_jsonb(t) - 'id' - 'user_email' - 'user_oid' - 'created_at' - 'updated_at' - 'created_by' - 'note' - 'permissions')
+                                    = (to_jsonb(b) - 'id' - 'user_email' - 'user_oid' - 'created_at' - 'updated_at' - 'created_by' - 'note' - 'permissions')
+                                  AND t.permissions <@ b.permissions) RETURNING t.id`,
+                [r.id, who.oid]);
+            } catch (err) {
+              log(`[user-binding] could not retire ${table} ${r.id}: ${err instanceof Error ? err.message : String(err)}`);
+            }
+            if (gone && gone.rows && gone.rows.length) {
+              log(`[user-binding] retired ${table} ${r.id} ${r.user_email} (relabelled #retired, not deleted), the bound row for ${who.oid} already covers it`);
+              out.stamped += 1;
+            } else {
+              log(`[user-binding] ${table} ${r.id} ${r.user_email} differs from the bound row for ${who.oid}, left for a manual merge`);
+              out.skipped += 1;
+            }
+          }
+        }
+      }
+      log(`backfill stamped ${out.stamped}, unresolved ${out.unresolved}, skipped ${out.skipped}`);
+      return out;
+    },
+  };
 }
 
 // Retry of a failed export. The exporter runs with offline storage off, so a
@@ -2162,5 +2628,197 @@ export function gatewayGuard(options = {}) {
         res.status(403).json({ error: "Forbidden", message: refusalMessage });
       })
       .catch(next);
+  };
+}
+
+// --- Job leader ---
+//
+// Background jobs that keep their dedupe state in memory (a status snapshot to diff, a
+// "last fired" value read once) fire twice when two processes run them at the same time.
+// That happens during a slot swap (the incoming instances start before the outgoing ones
+// stop) and whenever a plan scales past one instance. createJobLeader makes the jobs run in
+// exactly one process: each process asks Postgres for a session advisory lock on a dedicated
+// connection, the holder starts the jobs, every other process keeps asking. The lock belongs
+// to the connection, so when the holder's process exits or its connection drops, Postgres
+// frees it and the next process takes over within retryMs. The holder pings its connection
+// every checkMs and stops its jobs at once when the ping fails. It needs a direct Postgres
+// connection (session pooling), never a transaction-mode pooler.
+
+/**
+ * The 64-bit advisory lock key for a job name (stable across processes and versions). The prefix
+ * namespaces the key, so two apps on one database never share a lock; keep it fixed once chosen.
+ * @param {string} name
+ * @param {string} [prefix]
+ * @returns {string}
+ */
+export function jobLockKey(name, prefix = "jobs") {
+  return createHash("sha256").update(`${prefix}:${name}`).digest().readBigInt64BE(0).toString();
+}
+
+/**
+ * @param {{
+ *   name: string,
+ *   getClient: () => Promise<any>,
+ *   start: () => unknown,
+ *   stop: () => unknown,
+ *   retryMs?: number,
+ *   checkMs?: number,
+ *   pingTimeoutMs?: number,
+ *   log?: Pick<Console, "log" | "warn" | "error">,
+ *   lockPrefix?: string,
+ * }} options
+ */
+export function createJobLeader(options) {
+  const { name, getClient, start, stop } = options || /** @type {any} */ ({});
+  if (!name || typeof getClient !== "function" || typeof start !== "function" || typeof stop !== "function") {
+    throw new TypeError("createJobLeader needs name, getClient, start and stop");
+  }
+  const retryMs = options.retryMs ?? 15000;
+  const checkMs = options.checkMs ?? 30000;
+  const pingTimeoutMs = options.pingTimeoutMs ?? 10000;
+  const log = options.log ?? console;
+  const key = jobLockKey(name, options.lockPrefix);
+  /** @type {any} */
+  let client = null;
+  let leading = false;
+  let running = false;
+  let busy = false;
+  // start() can take a while. A loss or end() while it runs bumps epoch, and the jobs it set up are
+  // stopped as soon as it returns, so they never run without the lock.
+  let starting = false;
+  let epoch = 0;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let timer = null;
+
+  /** @param {number} ms */
+  function schedule(ms) {
+    if (timer) clearTimeout(timer);
+    if (!running) return;
+    timer = setTimeout(step, ms);
+    if (timer.unref) timer.unref();
+  }
+
+  /**
+   * @template T
+   * @param {Promise<T>} work @param {string} what
+   * @returns {Promise<T>}
+   */
+  function bounded(work, what) {
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    let t;
+    const late = new Promise((_, reject) => {
+      t = setTimeout(() => reject(new Error(`${what} timed out after ${pingTimeoutMs} ms`)), pingTimeoutMs);
+      if (t.unref) t.unref();
+    });
+    return /** @type {Promise<T>} */ (Promise.race([work, late])).finally(() => clearTimeout(t));
+  }
+
+  /** @param {unknown} err */
+  function onClientError(err) {
+    lose(err instanceof Error ? err.message : String(err));
+    schedule(retryMs);
+  }
+
+  /** @param {boolean} destroy  true closes the connection, which also frees a lock it holds */
+  function drop(destroy) {
+    const c = client;
+    client = null;
+    if (!c) return;
+    if (typeof c.removeListener === "function") c.removeListener("error", onClientError);
+    try { c.release(destroy ? true : undefined); } catch { /* already released */ }
+  }
+
+  function stopJobs() {
+    try { stop(); } catch (e) { log.error(`[jobs] ${name}: stop failed: ${e instanceof Error ? e.message : e}`); }
+  }
+
+  /** @param {string} reason */
+  function lose(reason) {
+    if (leading) {
+      leading = false;
+      epoch += 1;
+      log.warn(`[jobs] ${name}: lost the job lock (${reason}), jobs stopped`);
+      if (!starting) stopJobs();
+    }
+    drop(true);
+  }
+
+  async function step() {
+    if (!running || busy) return;
+    busy = true;
+    try {
+      if (leading) {
+        await bounded(client.query("SELECT 1"), "lock check");
+        schedule(checkMs);
+        return;
+      }
+      client = await getClient();
+      if (typeof client.on === "function") client.on("error", onClientError);
+      const { rows } = await bounded(client.query("SELECT pg_try_advisory_lock($1::bigint) AS got", [key]), "lock request");
+      if (!running) { drop(true); return; }
+      if (rows && rows[0] && rows[0].got === true) {
+        leading = true;
+        const mine = ++epoch;
+        starting = true;
+        try {
+          await start();
+        } catch (e) {
+          starting = false;
+          // A process that cannot start its jobs gives the lock up, so it never blocks one that can.
+          log.error(`[jobs] ${name}: start failed, giving up the job lock: ${e instanceof Error ? e.message : e}`);
+          if (mine === epoch) lose("start failed");
+          schedule(retryMs);
+          return;
+        }
+        starting = false;
+        if (mine !== epoch) {
+          log.warn(`[jobs] ${name}: the job lock was lost while the jobs were starting, jobs stopped`);
+          stopJobs();
+          schedule(retryMs);
+          return;
+        }
+        log.log(`[jobs] ${name}: holding the job lock, jobs started`);
+        schedule(checkMs);
+      } else {
+        drop(false);
+        schedule(retryMs);
+      }
+    } catch (e) {
+      lose(e instanceof Error ? e.message : String(e));
+      schedule(retryMs);
+    } finally {
+      busy = false;
+    }
+  }
+
+  return {
+    /** Start asking for the lock (idempotent). */
+    begin() {
+      if (running) return;
+      running = true;
+      schedule(0);
+    },
+    /** Stop the jobs if this process runs them, free the lock and stop asking. */
+    async end() {
+      running = false;
+      if (timer) { clearTimeout(timer); timer = null; }
+      if (leading) {
+        leading = false;
+        epoch += 1;
+        if (!starting) stopJobs();
+        try {
+          await bounded(client.query("SELECT pg_advisory_unlock($1::bigint)", [key]), "lock release");
+          drop(false);
+        } catch {
+          drop(true);
+        }
+        return;
+      }
+      drop(true);
+    },
+    /** True while this process holds the lock and runs the jobs. */
+    isLeader() {
+      return leading;
+    },
   };
 }

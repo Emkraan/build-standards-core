@@ -130,6 +130,62 @@ export declare function whatsNewNotes(notes: unknown, moduleId: string): { relea
 /** GET handler for one tool's release notes behind the tool's own entry check (allow). */
 export declare function whatsNewHandler(options: { notes: unknown; moduleId: string; allow: (req: any) => boolean | Promise<boolean> }): (req: any, res: any) => Promise<unknown>;
 export declare function safeMessage(err: unknown): string;
+
+export declare const PG_ENTRA_SCOPE: string;
+export declare function usesPgEntraAuth(env?: NodeJS.ProcessEnv): boolean;
+export interface PgTokenSource {
+  getToken?: (scope: string) => Promise<{ token: string; expiresAt?: number; expiresOnTimestamp?: number } | null | undefined>;
+  /** One managed identity request gives up after this (default 10000). Ignored when getToken is set. */
+  msiTimeoutMs?: number;
+  /** Waits before each new ask after a miss (default [1000, 2000], so 3 asks). Ignored when getToken is set. */
+  msiRetryDelaysMs?: number[];
+}
+export interface PgPoolOptions extends PgTokenSource {
+  /** The pg module. With it, a connection signs in as the login its token belongs to (slot swap warm-up). */
+  pg?: { Client: any };
+}
+export declare function pgUserForToken(token: string, configuredUser: string): string;
+export declare function entraPgClient(BaseClient: any): any;
+export declare function pgEntraPassword(options?: PgTokenSource): () => Promise<string>;
+export declare function pgPoolConfig(env?: NodeJS.ProcessEnv, options?: PgPoolOptions): {
+  max: number;
+  idleTimeoutMillis: number;
+  connectionTimeoutMillis: number;
+  host?: string;
+  database?: string;
+  user?: string;
+  port?: number;
+  password?: () => Promise<string>;
+  Client?: any;
+  connectionString?: string;
+  ssl: false | { rejectUnauthorized: boolean };
+};
+
+export interface DirectoryUser { oid: string; name: string | null; upn: string | null; mail: string | null }
+export interface UserDirectory {
+  resolve(emailOrUpn: unknown): Promise<DirectoryUser | null>;
+  names(oids: unknown[]): Promise<Map<string, DirectoryUser>>;
+}
+export declare function createUserDirectory(options: {
+  getToken: () => Promise<string | null>; ttlMs?: number; maxEntries?: number; timeoutMs?: number;
+  now?: () => number; fetchImpl?: typeof fetch; log?: (m: string) => void;
+}): UserDirectory;
+export interface UserBinding {
+  directory: UserDirectory;
+  unboundMessage: string;
+  mergeMessage: string;
+  nameTaken(table: "role_assignments" | "permission_overrides", email: string, exceptId: string, oid: string | null): Promise<boolean>;
+  bind(input: { email?: unknown; oid?: unknown }): Promise<{ email: string; oid: string | null; name: string | null; bound: boolean; release: () => Promise<void> }>;
+  withNames<T extends { userOid?: string | null }>(views: T[]): Promise<Array<T & { userName: string | null; userUpn: string | null }>>;
+  backfill(): Promise<{ stamped: number; unresolved: number; skipped: number }>;
+}
+export declare function createUserBinding(options: {
+  db: { query: (text: string, params?: unknown[]) => Promise<{ rows: any[] }> };
+  mutate?: (text: string, params?: unknown[]) => Promise<{ rows: any[] }>;
+  getToken: () => Promise<string | null>;
+  directory?: UserDirectory;
+  log?: (m: string) => void;
+}): UserBinding;
 /** True when serverTiming resolved the route from the app's route definitions. */
 export declare function isDeclaredRoute(route: string): boolean;
 /** The declared path of an Express 4 mount layer, proven by recompiling it ("" for a root mount), or null. */
@@ -322,3 +378,35 @@ export interface GatewayGuardOptions {
 export declare function gatewayGuard(
   options?: GatewayGuardOptions,
 ): (req: any, res: any, next: (err?: unknown) => void) => void;
+
+export interface JobLeaderOptions {
+  /** Unique per job set within the database, e.g. "xerox-automations". */
+  name: string;
+  /** A dedicated pg client (pool.connect()). It is held while this process leads. */
+  getClient: () => Promise<any>;
+  /** Starts the jobs. Called once each time this process takes the lock. A throw or rejection gives the lock up. */
+  start: () => unknown;
+  /** Stops the jobs. Called when this process loses or gives up the lock. */
+  stop: () => unknown;
+  /** How often a process without the lock asks again. Default 15000. */
+  retryMs?: number;
+  /** How often the holder pings its connection. Default 30000. */
+  checkMs?: number;
+  /** A lock request, check or release that takes longer than this counts as a lost connection (default 10000). */
+  pingTimeoutMs?: number;
+  log?: Pick<Console, "log" | "warn" | "error">;
+  /** Namespaces the advisory lock key (default "jobs"). Keep it fixed once chosen. */
+  lockPrefix?: string;
+}
+
+export interface JobLeader {
+  begin(): void;
+  end(): Promise<void>;
+  isLeader(): boolean;
+}
+
+/** The 64-bit advisory lock key for a job name, as a decimal string. */
+export function jobLockKey(name: string, prefix?: string): string;
+
+/** Runs an app's background jobs in one process at a time (Postgres session advisory lock). */
+export function createJobLeader(options: JobLeaderOptions): JobLeader;

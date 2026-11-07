@@ -13,6 +13,13 @@ core already states the rule.
 | RBAC core (`rbac`) | What permission data means: accessible tabs, the grant ceiling, assignable roles, view-as, client access helpers | Code: `shell-packages/rbac/` |
 | Client package (`app-client`) | One sign-in boot, token renewal, the API client and its cache, resource hooks, the live feed strip | Code: `shell-packages/app-client/` (TypeScript source). Rules: [web-client-runtime.md](web-client-runtime.md) sections 1 to 3, 5 and 6, [web-shell.md](web-shell.md) section 8 |
 | Health package (`health`) | The two read patterns behind a status page: a stale-while-revalidate reader and the public liveness route | Code: `shell-packages/health/`. Opt in. Rules: section 5.11 |
+| Route conformance (`route-conformance`) | The proof for [web-shell-server.md](web-shell-server.md) section 1 rule 3: plain functions a consumer's own test calls | Code: `shell-packages/route-conformance/`. Test time only. Rules: section 5.9 |
+| Home pins package (`home-pins`) | The server side of a person's pinned pages: per person, only pages the manifests declare | Code: `shell-packages/home-pins/`. Opt in. Rules: section 5.8 |
+| External tools package (`external-tools`) | Tools that live outside the shell's repository, kept in data and shown in the launcher: validation, who may see a tool, the audited admin routes | Code: `shell-packages/external-tools/`. Opt in. Rules: section 5.7 |
+| Announcements package (`announcements`) | Platform announcements for the console feed strip: validation, the cached active read, the audited admin routes | Code: `shell-packages/announcements/`. Opt in. Rules: section 5.6 |
+| Jobs package (`jobs`) | Scheduled jobs inside a tool's API: a daily runner in Eastern time with a live on/off switch per job, and the `GET /jobs` contract the console Scheduled jobs tab reads | Code: `shell-packages/jobs/`. Opt in. Rules: section 5.4 |
+| Audit package (`audit`) | A Postgres audit log with a tamper-evident hash chain: write, transaction, reads, `verify` | Code: `shell-packages/audit/`. Opt in. Rules: section 5.5 |
+| Settings package (`settings`) | A sealed secret box and plain application settings the console edits at runtime | Code: `shell-packages/settings/`. Opt in. Rules: section 5.5 |
 | Server package (`app-server`) | Group cache, directory token, CORS and origin guard, Server-Timing, gateway token check, request telemetry with its export retry, What's new handler | Code: `shell-packages/app-server/`. Rules: [web-api-runtime.md](web-api-runtime.md) sections 1 to 7 |
 
 The code is plain ESM with hand-written `.d.ts` files, no runtime dependency and no build step, so a CommonJS
@@ -68,6 +75,7 @@ registry and its own role, assignment and override tables; the package decides w
 | Function | Side | Purpose |
 |---|---|---|
 | `permissionsBeyond` | server | Grant ceiling: ids a write would confer that the caller does not hold. The wildcard only from a genuine wildcard holder; an id the registry no longer defines is not dropped (fail closed) |
+| `removalBeyond`, `removalCeilingMessage` | server | The removal ceiling ([rbac.md](rbac.md) section 3): deleting a role, an assignment or an override takes away the permissions it confers, so the caller must hold every one of them, and only a genuine wildcard holder removes the wildcard. Pass the permissions of the thing being removed (the role's for a role delete or the assignment of that role, the stored list for an override). Same answer as `permissionsBeyond`, with its own message |
 | `annotateRoles`, `assignableRoleIds` | server | Per-role `assignable` and `unknownPermissions` (registry drift) |
 | `grantableIds` | server | Registry ids the caller may grant |
 | `accessibleTabs` | server | Tabs a permission set opens, computed from the registry, so a client never infers access from id strings |
@@ -110,6 +118,8 @@ way the mapping lives in the consumer's configuration, never in core source.
 | `createApi`, `qs` | The API client: bearer token from the shared auth, one error contract (`ApiError` with status and details), one request for identical concurrent GETs, a stale-while-revalidate cache with a freshness window per key, opt-in `sessionStorage` persistence for identity reads only, a configurable answer to a 401 and a cache that a logout or account change clears |
 | `createStore`, `defaultStore`, `isStale` | The resource store behind the client and the hooks: subscribers, one request per key, a waiting fetch re-run after an invalidation |
 | `useResource`, `useApiResource` | Cached data renders at once and is refreshed in the background; a key per resource, optional refresh interval, `enabled` and `ttl` |
+| `createServerPinsStore` | A person's pinned pages, stored on the server and shared by a header pin control and a Home block. It has the shape of the kit's `PinsStore` (snapshot, subscribe, load, pin, unpin) without importing the kit: status `loading`, `ready` or `denied`, a stable snapshot object, one shared first read, `pin` and `unpin` answering null or one plain sentence and never throwing, and `reset` for sign-out. Every failure of the read is quiet (`denied`), so a person without access never sees a control that cannot work. The server side is `home-pins` (section 5.8) |
+| `createRecents` | Recent pages kept in this browser for this account: newest first, one entry per page, capped (default 8), keyed by an app prefix plus the account id so two people on one browser never see each other's trail. Entries for pages the shell no longer declares are dropped on read, the Home page can be skipped, and a damaged or unavailable store reads as empty and never throws. Nothing reaches a server |
 | `ConsoleFeed`, `useConsoleFeed`, `healthStatusOf`, `mergeHealth`, `mergeItems`, `parseFeed` | The feed strip under a module's header: the platform feed (health and announcements) from the console API merged with the module's own items and health, always showing a health line even when one source is down |
 
 The auth options carry no tenant or product value: `clientId`, `tenantId`, `apiScope`, `loginAttemptKey`, `basePath` and
@@ -141,6 +151,9 @@ Express style stack (`req`, `res`, `next`) and the CommonJS servers `require` it
 | `whatsNewHandler`, `whatsNewNotes` | A module's release notes behind the module's own access check; labels from a fixed list, versions `x.y.z`, an https changelog link |
 | `gatewayGuard`, `verifyGatewayToken`, `createSigningKeyCache` | Accept a request only when it carries the gateway's token ([web-shell-gateway.md](web-shell-gateway.md) section 4): signature against the tenant signing keys (cached, refetched at most once a minute), issuer, tenant, audience, expiry, not before, the gateway identity and the gateway role. No secret. Log only until enforcement is on; `/health` style paths stay open. The header name, the role and the request property are options (section 5.2) |
 | `safeMessage` | An error message with bearer tokens and key values removed, short enough to log |
+| `pgPoolConfig`, `pgEntraPassword`, `usesPgEntraAuth`, `pgUserForToken`, `entraPgClient`, `PG_ENTRA_SCOPE` | The Postgres pool config with a directory token as the password instead of a database password; section 5.10 |
+| `createUserDirectory`, `createUserBinding` | Directory object id to name and back, and grants bound to the object id; section 5.10 |
+| `createJobLeader`, `jobLockKey` | Run an app's background jobs in one process at a time across every instance and deploy slot (a Postgres session advisory lock on a dedicated connection); section 5.4 |
 
 The gateway guard reads `GATEWAY_ENFORCE`, `GATEWAY_PRINCIPAL_ID`, `GATEWAY_AUDIENCE` and `TENANT_ID` from the
 environment (the names are the core's defaults; the consumer preset in 5.2 renames them). With none set and enforcement off it only removes the header; some but not all set logs a
@@ -247,6 +260,129 @@ Opt in. A status page must never wait on the thing it reports on: a slow or fail
 
 - `createSwrReader({ read, staleMs, now, log, onError })` answers from the last reading and never waits. `get()` answers `{ value, at, ageMs, refreshing, lastError }` at once (`value` is null and `ageMs` null before the first reading, which the page shows as "not checked yet" and never as healthy), and starts one refresh in the background when there is no reading or it is older than `staleMs` (default 30 s). A pass already running is shared, so any number of callers cause one read; a failed refresh keeps the last good reading with its real age, records `lastError`, logs it and never rejects; `refresh()` forces a pass and resolves when it is done.
 - `healthRoute(router, { version, critical, info, env, path, log })` mounts the public liveness route (no auth: it is for uptime monitors and the console, and it is the safety valve of a fail-soft boot, where a startup task that failed does not exit the process and this route says which subsystem is down). Each `critical` check answers `{ ok, ... }`; a check that answers not ok or throws makes the status `degraded` and the answer a 503. `info` readings never change the status. In production a failed check puts `error: "Unreachable"` on the wire and the real message only in the log, because the raw text can name a host, an account or a database. Mount it before the sign-in check and list it as a public path in the route conformance check (section 5.9).
+### 5.10 Postgres with a directory token, user directory and user binding
+
+Opt in. A shell API with no database password, and grants that follow the person rather than their sign-in name.
+
+**Postgres with the directory token.** `usesPgEntraAuth(env)` is true when `DATABASE_URL` is empty and `PGHOST`,
+`PGDATABASE` and `PGUSER` are set; a `DATABASE_URL` (local development, tests) always wins. `pgPoolConfig(env, options)` is
+the `pg` Pool config for either mode: in token mode host, database, user and `PGPORT` with TLS on, a 40 second connect
+timeout (the pool allows the whole token retry sequence before it calls a connect late) and the password a function;
+otherwise the `DATABASE_URL`, with TLS unless the URL is local or says `sslmode=disable`. `PG_POOL_MAX` sets the pool size
+(default 10).
+
+- `pgEntraPassword(options)` is the async password function: a token for `PG_ENTRA_SCOPE`, cached until 5 minutes before expiry with one request in flight for concurrent callers, a failure never cached. The token comes from the App Service managed identity unless `getToken(scope)` supplies it. Right after an App Service start the identity endpoint can take longer than one short request, so it asks up to three times (10 seconds each, `msiTimeoutMs` and `msiRetryDelaysMs` change that) before it gives up; a process with no identity endpoint (local) answers null at once and the function throws a plain "no token" error.
+- `pgUserForToken(token, configuredUser)` and `entraPgClient(pg.Client)` handle the slot swap: App Service warms the incoming instance with the target slot's settings, so for a minute or two the staging instance holds production's `PGUSER` but signs in with its own slot identity, and Postgres refuses it. The token's `xms_mirid` claim names the web app and slot, and the login for that identity is the app name, plus `/slots/<slot>` for a slot. The configured user is kept unless the token names the same web app, so a wrong `PGUSER` for another app still fails loudly. `pg` is passed in; the package has no runtime dependency.
+
+**User directory.** `createUserDirectory({ getToken, ttlMs, maxEntries, timeoutMs, fetchImpl, log })` is the one small directory reader that turns an email or sign-in name into an object id (`resolve`, exact on mail or sign-in name; when one account's sign-in name equals what was typed it wins, otherwise a single match is used, and two different people answer null) and object ids back into full names (`names`, one batched read for the ids not cached). Reads only, cached with a bound, and it never throws: a failed read answers null or what is cached.
+
+**User binding.** `createUserBinding({ db, mutate, getToken, directory, log })` stores a person's object id beside the sign-in name on the two tables every tool keeps, `role_assignments` and `permission_overrides` (each with `user_email` and `user_oid`), so reads match on the object id (`userRowMatches` in the rbac package, section 3) and a rename, a sign-in name change or a directory mail that differs from the sign-in name never orphans a grant.
+
+- `bind({ email, oid })` answers the object id and sign-in name to store. An id sent by the client is confirmed against the directory, and the typed name must belong to that person (sign-in name or mail), so a client cannot attach one person's id to another person's name. Unresolvable answers `bound: false`; a route that writes a user grant then answers 503 with `unboundMessage`, so a directory outage never leaves an email-only grant.
+- `release()` on the result relabels a row still carrying a reused sign-in name (a leaver's name handed to a new hire) to `<email>#<its oid>`, so it keeps matching its own person and the new person's row can take the name. A route calls it only after its authorization and grant-ceiling checks pass, never `bind` itself.
+- `nameTaken(table, email, exceptId, oid)` is the read-only check a rename makes before its UPDATE would hit the unique email key (answer 409 with `mergeMessage`).
+- `withNames(views)` adds `userName` and `userUpn` to user rows from one batched read.
+- `backfill()` stamps the object id on rows that have none. The row stored under the person's sign-in name is stamped first. A row stored under a directory mail is stamped only when it is the CA and admin twin shape and the account already existed when the grant was written, so a leaver's grant never transfers to a later holder of a reused mail; every other mail match is left for an admin to bind and counted as skipped. A duplicate of a bound row that adds nothing is soft retired (relabelled `#retired-<id>`, never deleted); one that differs is left for a manual merge. Nothing is ever narrowed and no row is deleted.
+### 5.9 Route conformance
+
+Test time only. [web-shell-server.md](web-shell-server.md) section 1 rule 3 says every server route carries a
+server-side permission gate or a stated reason, and that a test proves it. `shell-packages/route-conformance` is that
+test's engine: each function reads the route sources and answers a list of problem strings, empty when the code
+conforms, so the consumer's test is `assert.deepEqual(checkRoutes({ routesDir, allow }), [])`.
+
+- `checkRoutes({ routesDir, allow })` fails a route that has neither a gate (`requirePermission(`, `requireAnyPermission(` or `requireWildcard(` by default; `gate` replaces the pattern) nor a reason in `allow`, a route declaration the parser could not read (a computed path, a router under another name: reported, never skipped, so the table cannot silently shrink), a reason that is empty, and a reason listed for a route that no longer exists. `minRoutes` catches a routes folder that moved.
+- `checkGates(table, file, expected)` pins one file's routes to an exact set, each on its own gate (a console layout write on its own permission, an admin route on the wildcard). A route added to the file fails until it is classified; a route moved to a broader gate fails.
+- `checkAuthOrder({ indexSource })` fails a router mounted before the sign-in check, and any path before it that is not in `publicPaths` (default `/api/`, `/api/health`, `/api/version`).
+- `checkNoLiteralKeys(dirs)` fails a literal string as an HMAC key. `checkNoErrorDetail(file)` fails a permission middleware that answers 500 with a `details:` field.
+
+The parser reads `router.<verb>("<path>", ...)` declarations on one router variable (default `router`; the `router` option renames it) from the `.js`, `.mjs` and `.cjs` files of one folder. It does not run the server, so a gate applied by a mount (`app.use("/api/x", gate, router)`) is not seen: list those routes in `allow` with that reason.
+### 5.8 Home pins
+
+Opt in. `homePinRoutes(router, { db, gate, caller, modules, max })` (`shell-packages/home-pins`) mounts `GET /pins`,
+`PUT /pins` and `DELETE /pins` for the pages a person pins on the console Home. The consumer creates the
+`console_home_pins` table (the schema is at the top of the file) and passes the manifests it loaded as `modules`.
+
+- Every route is behind `gate`, the permission that shows the Home tab. A person without it gets 403 and the client store reads that as `denied`.
+- Pins belong to the caller: they are stored under the verified token's email, lowercased, and nobody can read or write another person's. A request with no email is a 401.
+- A pin must name a page the manifests declare (a module id and one of its page routes), with a label of 1 to 60 plain printable characters and no angle brackets, so a pin never carries a made up route. Anything else is a 400.
+- `PUT` is idempotent and re-labels an existing pin. A new pin is added only while the person holds fewer than `max` (default 12), in the same statement that checks the count, so two concurrent pins cannot pass the limit together; the 13th is a 409 and nothing is written, and re-labelling one at the limit still works.
+- Pins are display only: the page a pin opens enforces its own access, so they are not audited.
+### 5.7 External tools
+
+Opt in. `shell-packages/external-tools` lets an admin add a tool the shell does not host (a dashboard first) as data, and
+the launcher show it after the modules. The consumer creates the `console_external_tools` table (the schema is at the
+top of the file), mounts `externalToolRoutes` and wires four things: `manage` (the permission check for its manage
+action, seeded to no role), `permissions` (the registry an audience may name), `callerGroups` and
+`callerHasPermission`.
+
+- Visibility is display only. The external tool keeps enforcing its own access, so hiding a tool from someone never grants or removes anything there.
+- Every tool names an audience and there is no "everyone": a console permission (the console RBAC, wildcard included) or a directory group (the caller's token groups first, then the consumer's group resolver). Any failure of the permission read, the group lookup or the database fails closed: the tool is not shown. A failed read of the table answers 503 with no tools.
+- `GET /mine` (signed in) answers only the tools this caller may see, as `{ id, name, url, icon, hue, tagline, description, order }`; no audience, group id or audit field leaves the server. The other routes are behind `manage`: `GET /` (every tool with its audience and the permission list), `POST /`, `PUT /order` (those tools first, in that order), `PUT /:id` and `DELETE /:id`, at most 50 tools.
+- `validateTool` refuses unknown fields and checks each one: the id a lowercase slug, text plain printable ASCII without `<` or `>`, the url https only with no user name or password, an icon name, a hue from `HUES` (the same list as `console-modules`; pass `hues` to change it), a whole number order, and an audience whose permission is one of the `permissionIds` it is given. Each refusal answers 400 with the field the editor highlights.
+- Every write runs in `audit.transaction` (section 5.5) with the before and after snapshot, so an audit failure rolls the change back and answers 503. A duplicate id is a 409.
+### 5.6 Announcements
+
+Opt in. `shell-packages/announcements` is the store behind a feed strip every signed-in console shows. The consumer
+creates the `announcements` table (the schema is at the top of the file), mounts the routes and reads `listActive` in
+its own feed route.
+
+- `validate(body, { partial, current, now })` checks a create (needs a client generated UUID `id`) or an edit: tone one of `info`, `success`, `warning`, `critical`; title 1 to 120 characters; body up to 400; the link empty, a path on the site or an https URL; unknown fields refused. Text has control, zero-width and bidi characters removed and newlines folded to spaces (the strip shows one line per item). A link holding any of those, or whitespace, is refused outright, as are `//host`, `/\host` and every scheme but https, and the limit applies to the stored (percent-encoded) form. The window must end after it starts and neither end may be more than 400 days out.
+- `createAnnouncements({ db }).listActive()` answers the rows whose window is open now (newest start first, at most 10), cached briefly: the cache never outlives a window boundary (it expires at the earliest of 15 seconds, the first cached row's end and the next scheduled start), a committed write drops it at once, and another instance catches up within 15 seconds. `STATE_SQL` is the live, scheduled or expired state worked out on the database clock, so the admin list and the feed never disagree.
+- `announcementRoutes(router, { db, audit, store, manage, caller })` mounts `GET /`, `POST /`, `PUT /:id`, `POST /:id/expire` and `DELETE /:id`, every one behind `manage` (the consumer's permission check for the manage action, reads included, because the list carries scheduled and expired rows nobody else sees). Every write runs in `audit.transaction` (section 5.5): the row is locked with `SELECT ... FOR UPDATE`, changed, and the audit entry written through the same client, so an audit failure rolls the change back and answers 503, and there is never an unaudited change or an audit entry for one that did not commit. A retried create returns the row it already made (200); the same id from another operator is a 409. A database check violation answers 400 with the field it belongs to. Expiring keeps the schedule the operator set and records when it was ended by hand.
+### 5.4 Scheduled jobs and the job leader
+
+Opt in. A tool that runs background work in its own API registers it with `createScheduler` (`shell-packages/jobs`)
+and serves the contract with `jobRoutes`:
+
+```js
+const scheduler = createScheduler({ db, tool: 'demo', offEnv: 'DEMO_JOBS' });
+scheduler.register({
+  id: 'orphan-cleanup', name: 'Remove orphans', description: '...',
+  at: '03:30', source: 'apps/demo/server/lib/scheduled-jobs.js', defaultEnabled: false,
+  run: async () => ({ deleted: 0 }),
+});
+scheduler.start();
+jobRoutes(router, { scheduler, read, manage, canManage, caller, audit });
+```
+
+- `at` is `HH:MM` Eastern time, every day, and lives in code, so a timing change is a pull request. The on/off switch and the last run live in the tool's own `scheduled_jobs` table, created on start.
+- A run is claimed with one `UPDATE`, so two instances never run the same occurrence and a restart never repeats one. A run missed by more than three hours waits for the next day. Turning a job on after its time today skips that occurrence.
+- A job that can change something outside the tool ships with `defaultEnabled: false`. `run()` returns a small summary; a non-zero `failed` marks the run a failure. Never return secrets.
+- `GET /jobs` answers `{ tool, canManage, jobs }`; `PUT /jobs/:id` with `{ enabled }` turns a job on or off and is audited, and a switch whose audit write fails is put back. The tool names the path in its manifest as `"jobs": { "path": "/admin/jobs" }`; the core carries that key through and a consumer checks it with the `keys` option of `validateManifest` (web-shell-manifest.md section 2).
+- The environment variable named by `offEnv` (default `JOBS`) set to `off` stops the runner on an instance.
+- The package also parses the schedules of work outside an API for the same tab: `nextCron`, `describeCron` (UTC cron, five fields or six with a zero seconds field), `nextAutomation`, `describeAutomation` and `nextScheduled`.
+
+A scheduler's state is in the database, but a job that keeps its dedupe state in memory (a status snapshot to diff, a
+last fired value) fires twice while two processes run it, which happens in a slot swap and when a plan scales past one
+instance. `createJobLeader({ name, getClient, start, stop })` makes the jobs run in exactly one process: each process
+asks Postgres for a session advisory lock on a dedicated connection (`pool.connect()`), the holder calls `start`,
+every other process keeps asking every `retryMs` (15 s). The lock belongs to the connection, so a holder whose process
+exits or whose connection drops frees it. The holder pings its connection every `checkMs` (30 s) and calls `stop` at
+once when the ping fails; a lock request, check or release that takes longer than `pingTimeoutMs` (10 s) counts as a
+lost connection; a `start` that throws gives the lock up. `begin()` starts asking, `end()` stops the jobs and frees the
+lock, `isLeader()` reads the state. It needs a direct Postgres connection (session pooling), never a transaction-mode
+pooler. `lockPrefix` (default `jobs`) namespaces the 64-bit key `jobLockKey(name, prefix)`; keep it fixed once chosen,
+since a process on a different prefix does not see the lock.
+### 5.5 Audit log and settings
+
+Opt in. Three small factories a tool's API takes when it keeps its own audit log or lets the console edit its settings.
+Each takes the database as `{ query(text, params) }` (the audit log also `getClient()` for transactions) and reads its
+environment from an `env` option that defaults to `process.env`.
+
+`createAudit({ db, env, hmacEnv, clientIp, log })` (`shell-packages/audit`) writes entries to the consumer's
+`audit_log` table (the columns are listed at the top of the file) and chains them:
+
+- Each entry's hash is HMAC-SHA256 over the canonical JSON of the entry including the previous hash. The canonical form sorts object keys recursively, because the actor, details and context are stored as `jsonb`, which does not keep key order. The key is the variable named by `hmacEnv` (default `AUDIT_HMAC_SECRET`); without it the hash is plain SHA-256 so a dev database still chains, and `verify` reports `secretMode`.
+- `write` is non-fatal: a logging failure resolves `null` and never breaks the mutation that triggered it. `transaction(work)` runs a change and its audit entries in one database transaction: `work(client, record)` makes its changes through `client` and calls `record` per entry, which throws on failure and rolls the change back. A returned `{ rollback: true }` rolls back too. A change that must not exist without its audit record uses `transaction`.
+- Writes are serialised by an in-process queue (a failed write does not stop the ones behind it), so two concurrent requests never chain off the same previous hash and fork the chain. The queue is per process: run one writer process, or add a cross-process lock around `write`.
+- Only the actor's email, name and object id are stored, never the token claims or groups. The caller address comes from `clientIp` (default `clientPublicIp`: strips the source port a platform proxy appends and the IPv4 mapping); never the first `X-Forwarded-For` entry, which the caller controls.
+- `verify` walks the chain in order and reports the first break: an entry edited after it was written, an entry removed or reordered, and a deleted head (the first surviving entry must link to the genesis hash). Rows with no hash (written before the chain) are skipped.
+- `csvCell` quotes an export cell and puts a leading apostrophe before `=`, `+`, `-`, `@`, tab or carriage return, so a spreadsheet does not run text written by whoever the entry is about.
+
+`createSecretbox({ info, masterEnv, env })` and `createAppSettings({ db, ttlMs, now })` (`shell-packages/settings`):
+
+- The secret box is AES-256-GCM with a key derived by HKDF from a master (the variable named by `masterEnv`, default `SECRETBOX_MASTER_KEY`). `info` is required and domain-separates the derivation, so one master backs several purposes; it must stay fixed because changing it orphans every stored secret. The sealed form is `v1.<iv>.<tag>.<ct>`. `open` answers `null` for no master, a wrong key, a tampered or malformed value and a value with extra segments, and never throws; callers treat `null` as not configured. Rotating the master means re-entering the secrets.
+- App settings are one `jsonb` value per name in an `app_settings` table, read through a cache of `ttlMs` (default 30 s) that a write to the same name clears. Secrets never go there: seal them and store the sealed string.
 
 ## 6. Tests
 
@@ -258,6 +394,9 @@ Opt in. A status page must never wait on the thing it reports on: a slow or fail
 | `kit/tests/shell-rbac.test.ts` | The ceiling, fail-closed stale ids, the wildcard rule, view-as, tab computation and the client helpers |
 | `tests/test_console_module_schema.py` | The same manifest fixtures against the JSON schema ([web-shell-manifest.md](web-shell-manifest.md)) |
 | `kit/tests/app-client/*.test.ts` | The OIDC sign-in over a fake manager (callback and state routing, parameter stripping, refresh-only renewal, granted scopes, end-session fallback, account changes), and the sign-in boot (silent, redirect, loop guard, return target, module bounce, configuration errors), the API client (token, errors, single flight, cache, 401 handling, persistence), the store, `useResource` and the feed strip, with a fake MSAL client |
+| `kit/tests/jobs/*.test.js`, `kit/tests/app-server/job-leader.test.js` | The scheduler on an in-memory table (occurrence on Eastern time across a daylight change, run once across instances, the catch-up window, on and off, the switch audited and undone when the audit fails), the cron and automation helpers, and the job leader (one leader of two processes, ping loss, start failure, the lock prefix) |
+| `kit/tests/audit/*.test.js` | The chain on an in-memory log: links off the genesis hash, intact verifies, an edited entry, a removed one, a reordered pair and a deleted head each break it, the key mode, concurrent writes never fork, a failed write is non-fatal and the queue survives, transactions commit and roll back, `csvCell`, the caller address |
+| `kit/tests/settings/*.test.js` | The secret box round trip, no master, wrong master, wrong `info`, tampered and malformed values, and the settings cache (ttl, write clears, fallback) |
 | `kit/tests/app-server/*.test.js` | The group cache (TTL, bound, single flight, fail closed, scoped lists), CORS and the origin guard, Server-Timing and route naming on real Express apps, the request telemetry (settings, record mapping, flush and close) and its export retry, the release notes handler, and the gateway token check against a local signing key, including a custom header, role and request property and the consumer preset. Run by `npm run test:server` inside `kit`, and again under a consumer preset by `npm run test:server:consumer` |
 
 The kit workflow runs on a change under `shell-packages/` or the manifest fixtures.
