@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-07 (v1.164.0, the documentation audit gains rules R13, R15 and R16)
+## 2026-11-07 (v1.165.0, the documentation audit gains rules R13, R15 and R16)
 
 Opt in, each off until configured: with none of them set the audit writes the same store as before (no extra internal thing appears).
 
@@ -8,6 +8,10 @@ Opt in, each off until configured: with none of them set the audit writes the sa
 - R15 (retired or merged page outside the Archive): runs only when the registry sets `archive_page`; walks the real parent chain (the search lags a move), skips children that move with their parent.
 - R16 (backup mirror behind live code): config `mirror` (`repo`, `repo_slug`, `map` of `{repo_prefix, live_dir}`, `grace_hours` 30, `sync_pr_hours` 24). A file is drift only once unchanged for the grace window and its git blob sha differs from the mirror's main; a sync pull request open too long is named; an unreadable mirror is one line, never a pass.
 - The three surface on the Knowledge page only (low severity, pseudo things `_retired_live`, `_archive`, `_backup`), never on the Action Center. The consumer-only moved-page rule (R14) stays out.
+
+## 2026-11-07 (v1.164.0, the CI-only freeze exemption holds more, and the draft gate checks an apply)
+
+Ops center lanes. `lanes/freeze_ci_only.py` (opt in, policy `freeze_ci_only`) now holds four kinds of pull request it used to exempt from a change freeze: a workflow on `pull_request_target` (it runs with the base branch's permissions and secrets), a reusable workflow whose file name starts with `_`, a workflow that names a deployment environment outside an allowlist (policy `own_pr_merge.freeze_ci_environments`, null: only `terraform-plan`; an environment block or an unreadable expression is held), and a workflow whose `on:` block is malformed (the reader has no YAML library, so it is now strict and fails closed). Changed behaviour: a consumer that relied on any of these being exempt sees them held during a freeze; set `freeze_ci_environments` to admit its own CI environments. Decisions cached under the old rules are made again. `lanes/pr_gate.py` gains a built-in `applied: <number>` kind: met only when that pull request is merged and a run of the apply workflow on the apply branch that started at or after the merge succeeded; a failed run after the merge is named. The workflow and branch come from policy `own_pr_merge.gate_apply_workflow` and `gate_apply_branch` (passed by the own-PR lane to a gate plug-in whose `evaluate` takes `config`) or from `OPSCENTER_GATE_APPLY_WORKFLOW` and `OPSCENTER_GATE_APPLY_BRANCH`; null by default, and the kind is then never met and says so.
 
 ## 2026-11-07 (v1.163.0, rbac matches a stored user row by directory object id)
 
