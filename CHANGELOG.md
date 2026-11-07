@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-07 (v1.162.0, the documentation drift feed, a provider slot)
+
+Opt in: `OPSCENTER_DOCS_DRIFT_PROVIDER` (`path/to/file.py:ClassName`). Without it there is no route and nothing is imported (a null slot hides the tab).
+
+- `server/modules/docs_drift.py`: the core owns the summary shape (counts by status and basis, the 40 pages most behind, the pages with no verdict, per app README and changelog facts, the write preview filtered and trimmed), the status vocabulary (closed sets, an unknown value is kept), the cache (900 s), the one background refresh a GET starts (a GET never waits on the source) and the three routes.
+- The consumer owns where the report comes from: `docs_drift_source(now)`, optional `docs_drift_latest_run()` (the same run id means no second fetch) and `docs_drift_dispatch()` (absent: Run now answers 501; a refusal answers 409 with its reason). A failed fetch keeps the last good data and names the error.
+- `authorize(headers, action, key)` gates all three routes (`docs-drift.read`, `docs-drift.run`) and refuses everything until a provider supplies it.
+
 ## 2026-11-07 (v1.161.0, a consumer can validate the manifest keys it adds)
 
 Opt in, `console-modules`. `validateManifest` and `validateRegistry` take a second argument: `keys` maps a key to a validator `(value, manifest)` that returns a problem string, a list, or nothing, and runs only when the manifest carries the key; `strictKeys: true` rejects a top-level key that is neither a core key nor registered. Closes the gap where a malformed consumer key (a jobs path) passed core validation because unknown keys are carried untouched.

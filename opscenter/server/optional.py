@@ -5,6 +5,7 @@ Purpose: Registers the optional modules (log intake, reports) with the route reg
 Date:    2026-11-07
 
 Settings: OPSCENTER_LOG_INTAKE   any non empty value other than 0, false or off turns the log intake routes on
+          OPSCENTER_DOCS_DRIFT_PROVIDER   a provider (path/to/file.py:ClassName) is the opt in for the docs drift feed (docs_drift.py)
           OPSCENTER_REPORTS      the same for the reports routes
 Providers: OPSCENTER_LOG_INTAKE_PROVIDER and OPSCENTER_REPORTS_PROVIDER (`path/to/file.py:ClassName`), see each module's http_routes.py.
 API:      enabled(name) -> bool     register(registry) -> [names of the modules registered]
@@ -24,7 +25,11 @@ def enabled(name):
 
 def register(r):
     on = []
-    if enabled("OPSCENTER_LOG_INTAKE") or enabled("OPSCENTER_REPORTS"):
+    if (
+        enabled("OPSCENTER_LOG_INTAKE")
+        or enabled("OPSCENTER_REPORTS")
+        or os.environ.get("OPSCENTER_DOCS_DRIFT_PROVIDER", "").strip()
+    ):
         if str(MODULES) not in sys.path:
             sys.path.insert(0, str(MODULES))
         import optional_provider as op
@@ -38,4 +43,10 @@ def register(r):
 
         http_routes.register(r, op.load("OPSCENTER_REPORTS_PROVIDER"))
         on.append("reports")
+    if os.environ.get("OPSCENTER_DOCS_DRIFT_PROVIDER", "").strip():
+        # The provider is the opt in: with none there is no route and no tab (a null slot hides the page).
+        import docs_drift
+
+        docs_drift.register(r, op.load("OPSCENTER_DOCS_DRIFT_PROVIDER"))
+        on.append("docs_drift")
     return on
