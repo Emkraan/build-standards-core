@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-07 (v1.149.0, the optional reports module: the workbook export)
+
+Opt in: `server/modules/reports/export_xlsx.py`, imported only when a consumer uses it or sets `OPSCENTER_REPORTS`; standard library only, no import side effect.
+
+- One workbook: a Summary tab and one tab per panel, each a real table (a header, a matching ref, unique column names). Text is always an inline string and never a formula. Sheet and table names are made valid and unique. Deterministic output.
+- Pre-built pivot tables stay off (`PREBUILT_PIVOTS = False`, with a test): hand-written pivot parts crash the spreadsheet application for Mac on open, so nothing beyond these parts ships until a generated file was opened on Mac and Windows without a repair prompt or a crash.
+- Not verified here: the workbook was read back with a standard zip and XML reader, not opened in the desktop spreadsheet application. Open one generated file on Mac and Windows before relying on it (this is the hub's own rule for any new workbook part).
+
 ## 2026-11-07 (v1.148.0, the optional reports module: dates, definitions, grants, preview)
 
 Opt in: all of it sits under `server/modules/reports/`, is imported only when a consumer sets `OPSCENTER_REPORTS`, and has no import side effect.
