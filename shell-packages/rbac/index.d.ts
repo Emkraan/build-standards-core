@@ -35,3 +35,6 @@ export declare function createAccess(source: { permissions?: string[] | null; ta
 };
 export declare function canAssignRole(role: { id: string | number; assignable?: boolean }, impersonating: object | null | undefined): boolean;
 export declare function canGrantPermission(id: string, registryResponse: { grantable?: string[] | null } | null | undefined, impersonating: object | null | undefined): boolean;
+export declare function cleanOid(value: unknown): string | null;
+export declare function userRowMatches(row: { user_oid?: unknown; userOid?: unknown; user_email?: unknown; userEmail?: unknown }, who: { email?: unknown; oid?: unknown }): boolean;
+export declare function pickUserRow<R extends Record<string, any>>(rows: R[], who: { email?: unknown; oid?: unknown }): R | undefined;
