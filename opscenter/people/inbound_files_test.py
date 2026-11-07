@@ -23,7 +23,7 @@ sys.path.insert(0, str(HERE.parent / "server" / "modules"))
 TMP = tempfile.TemporaryDirectory()
 os.environ["OPSCENTER_ROOT"] = TMP.name
 os.environ["OPSCENTER_STATE_DIR"] = str(Path(TMP.name) / "state")
-os.environ["INBOUND_FILES_SHARE_SENDERS"] = json.dumps(["docshare.example"])
+os.environ["INBOUND_FILES_SHARE_SENDERS"] = json.dumps(["docs.example.com"])
 os.environ["INBOUND_FILES_TZ"] = "UTC"
 
 import inbound_files as f  # noqa: E402
@@ -105,7 +105,7 @@ class Harvest(unittest.TestCase):
         }
         share = {
             "id": "x2",
-            "from_addr": "noreply@docshare.example",
+            "from_addr": "noreply@example.com",
             "from_name": "Alex Doe via Docs",
             "subject": "Alex shared 'Plan.docx' with you",
             "received": "2026-11-06T09:30:00Z",
@@ -130,7 +130,7 @@ class Harvest(unittest.TestCase):
     def test_a_share_from_an_unlisted_sender_is_not_a_share(self):
         share = {
             "id": "x2",
-            "from_addr": "noreply@elsewhere.example",
+            "from_addr": "noreply@other.example.com",
             "from_name": "Alex Doe",
             "subject": "Alex shared 'Plan.docx' with you",
         }

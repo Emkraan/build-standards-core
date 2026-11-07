@@ -153,7 +153,6 @@ STOP = set(
         "note",
         "imp",
         "td",
-        "richard",
         "pierre",
         "suggested",
         "proposed",

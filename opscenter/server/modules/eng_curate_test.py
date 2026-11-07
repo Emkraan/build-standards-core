@@ -224,16 +224,16 @@ class Curation(Base):
 
     def test_run_folds_parked_twins_without_shared_reference(self):
         extra = """
-## TD-020: intune-hooks holds tenant-wide Intune app write
+## TD-020: deploy-hooks holds tenant-wide Console app write
 
-- **Description**: The intune-hooks managed identity holds tenant-wide Intune app write for app assignment.
-- **Status**: accepted 2026-10-20, revisit if Intune adds scoped app permissions
+- **Description**: The deploy-hooks managed identity holds tenant-wide Console app write for app assignment.
+- **Status**: accepted 2026-10-20, revisit if Console adds scoped app permissions
 
 ---
 
-## TD-021: automation account identity gains tenant-wide Intune configuration write
+## TD-021: automation account identity gains tenant-wide Console configuration write
 
-- **Description**: The automation account managed identity gains tenant-wide Intune configuration write for driver approval.
+- **Description**: The automation account managed identity gains tenant-wide Console configuration write for driver approval.
 - **Status**: accepted 2026-10-25, revisit if Graph adds a narrower role
 
 ---
@@ -253,16 +253,16 @@ class Curation(Base):
 
     def test_dismissed_fold_is_never_automatic(self):
         extra = """
-## TD-020: intune-hooks holds tenant-wide Intune app write
+## TD-020: deploy-hooks holds tenant-wide Console app write
 
-- **Description**: The intune-hooks managed identity holds tenant-wide Intune app write.
+- **Description**: The deploy-hooks managed identity holds tenant-wide Console app write.
 - **Status**: accepted 2026-10-20
 
 ---
 
-## TD-021: intune-hooks also holds tenant-wide Intune configuration write
+## TD-021: deploy-hooks also holds tenant-wide Console configuration write
 
-- **Description**: The intune-hooks managed identity holds tenant-wide Intune configuration write.
+- **Description**: The deploy-hooks managed identity holds tenant-wide Console configuration write.
 - **Status**: accepted 2026-10-25
 
 ---
