@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-06 (v1.136.0, evaluation notes for the hub's tool features and the items not lifted)
+
+Documentation only: `opscenter/evaluations/` holds three notes (the hub's log intake platform, its reports and dashboards, and the ops center and shell items the core did not lift). Each says, entry by entry, generic or consumer-specific, what the core has, what it would need and a recommendation with the decision it needs. Nothing is built or promised.
+
 ## 2026-11-06 (v1.130.0, shell server rules)
 
 New `standards/web-shell-server.md`: the server rules a multi-module shell meets beyond the shared runtime, from the consumer inventory. Text only; each rule carries the proof a shell owns, and no rule is registered for enforcement yet.
