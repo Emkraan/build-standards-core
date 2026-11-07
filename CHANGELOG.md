@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-07 (v1.163.0, dark launches: a launch can name its own job)
+
+- Registry key `job` (optional) on a dark launch. When several launches share one workflow, the dry run passes on that launch's job only, so an unrelated failing job in the same workflow no longer blocks Enable, and a skipped or missing job is never a pass. A malformed job name fails the whole registry closed (503), like any other bad entry. A launch without `job` behaves exactly as before and reads no job data.
+- The dry run in the card names the job it judged on. The live automation tab itself (an enabled launch leaves the Action Center and lives on its own tab, acting first) needs no new data: the cards already carry it.
+
 ## 2026-11-07 (v1.162.0, the processing indicator can stop reads)
 
 Closes the gap against the hub's handoff tag (the busy bar spec): the indicator's Cancel request, the stop on leaving the page and the server run stop. A second opt in on top of `installBusyTracking`; with `cancel` off nothing changes.
