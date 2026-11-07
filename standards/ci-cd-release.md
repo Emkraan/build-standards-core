@@ -247,6 +247,15 @@ lint issue, because a missing tool is not a lint finding.
 - Acceptance (overlay-ci): `lint-sweep.yml` is installed and its `sweep` job's latest default-branch
   run succeeded.
 
+### 2.2 The local gate
+
+Before every push the author merges the latest `origin/main` into the branch and runs every check CI runs, from one
+command (a `verify` script is the usual name). That includes the check scripts that otherwise run only in CI (the
+attribution, identity and private-reference checks, the dialog check and the code scan), so a PR does not go up to
+learn what a script would have told it locally. A check that exists only in CI is a gap in the local gate, not a reason
+to skip it. **Acceptance (review):** the one command lists the same checks as the required CI set, and a new CI check
+is added to it in the same PR.
+
 ## 3. Conventional commits and semver
 
 - PR titles and commits follow Conventional Commits with the types `feat fix chore ci docs refactor

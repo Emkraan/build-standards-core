@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-06 (v1.133.0, owner roots ahead of main, the owner apply guard, the draft gate grammar)
+## 2026-11-06 (v1.134.0, owner roots ahead of main, the owner apply guard, the draft gate grammar)
 
 Gating and owner roots from rpmm23's inventory (OC-4, OC-5, OC-6, OC-19). Opt in: the hold needs the consumer's PR apply flow to record it and provider hooks to read a PR; with none, nothing changes.
 
@@ -10,6 +10,14 @@ Gating and owner roots from rpmm23's inventory (OC-4, OC-5, OC-6, OC-19). Opt in
 - OC-8 and OC-9, `lanes/run_watches.py`: a main watch (the newest completed run of a deploy or apply workflow on main raises one item with the failed job, its first error line and the run link; a later success closes it; cancelled and skipped runs count neither way) and a drift watch (the newest N scheduled runs all failed: one item naming each failing job; manual and branch runs never count). A watch that cannot be read is an item, never clear.
 - RL-1 and RL-2, `server/modules/status_source.py`: a missing, stale, unreadable or malformed status file reads as unknown, never in sync; a collector that loses its sign-in keeps its last reading marked stale and exits non-zero after the lapse limit (240 minutes).
 - OC-4, `lanes/pr_gate.py`: the draft gate block grammar the own-PR lane's gate plug-in loads, with two built-in kinds and a consumer kinds file. Written from the inventory text and test names, not from reference code; the branch-apply flow and the detection of an unrecorded branch apply are not lifted.
+
+## 2026-11-06 (v1.133.0, roles and gate rules from the hub review)
+
+Text only, from the hub consumer's inventory. Standards: `rbac.md`, `ci-cd-release.md`, `scripting-powershell.md`.
+
+- `rbac.md`: grants follow their report or dashboard (removed on delete, swept after seeding); the View-As preview allows a pinned list of read-only query POSTs only; the Roles page gives a tool with its own area its own heading and lists every tool.
+- `ci-cd-release.md` 2.2: the local gate merges `origin/main` and runs every CI check, including the CI-only scripts, from one command.
+- `scripting-powershell.md`: do not wrap `ConvertFrom-Json` output in `@(...)` in the same expression. Already in core and recorded as such: the additive union of grants, route contracts, changelog lines from PR bodies, and the kit action-button styling.
 
 ## 2026-11-06 (v1.132.0, the freeze lane: human bypass, CI-only exemption, GraphQL labeler, stale green)
 
