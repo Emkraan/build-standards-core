@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-07 (v1.156.0, the optional modules at the server: routes, providers and the off state)
+
+Opt in: `OPSCENTER_LOG_INTAKE` and `OPSCENTER_REPORTS`. With neither set nothing is imported, no route or background task is added and no file is created (a test runs a fresh interpreter and checks the module list).
+
+- `server/optional.py` registers only the modules that are on; `routes.build()` calls it last.
+- Log intake routes: the device post `POST /api/log-streams/<key>/ingest` (key through the provider's `verify_key`, null refuses every key; `Retry-After` kept), stream list, read, create, update, schema (dry run and confirm), delete, the sink checks and the marked test row. Two background tasks: the forwarder flush (only with a sink) and retention.
+- Reports routes: dashboards list, save, delete, reset, export, import (a bad definition refuses the whole batch) and run, plus an ad hoc report query. Shipped dashboards seed by version from the provider; an edited copy is never overwritten.
+- Providers (`OPSCENTER_LOG_INTAKE_PROVIDER`, `OPSCENTER_REPORTS_PROVIDER`, `path/to/file.py:ClassName`, every method optional). `authorize(headers, action, key)` gates every admin and dashboard route and has a null default that refuses everything, so a route is closed until a consumer says who may use it.
+- Writes are POST (the registry has no PUT or DELETE). A panel may carry a `spec` instead of a `measure` (definitions validation).
+
 ## 2026-11-07 (v1.155.0, the optional reports module: the report engine, the source slot and dashboard runs)
 
 Opt in: `server/modules/reports/{query,sources,dashboards}.py`, imported only when a consumer uses them or sets `OPSCENTER_REPORTS`; no import side effect, no file or database touched until a function that needs it runs.

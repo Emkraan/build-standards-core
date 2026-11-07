@@ -717,6 +717,9 @@ def build(registry=None):
     acc = load("model_accounts")
     if acc is not None and hasattr(acc, "sample"):
         r.background.append((acc.sample, 600))
+    import optional
+
+    optional.register(r)  # the optional modules, only the ones a consumer turned on
     return r
 
 

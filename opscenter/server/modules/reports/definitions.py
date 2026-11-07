@@ -10,8 +10,8 @@ Purpose: Dashboard and report definitions are data, not code (reports module R2)
          refused whole, never half stored.
 Date:    2026-11-07
 
-Definition: {"key": "slug", "title": "text", "panels": [{"title": "text", "stream": "name", "measure": "name"}, ...]}
-            a panel names a stream and a measure, never a store (R3). Extra fields are kept.
+Definition: {"key": "slug", "title": "text", "panels": [{"title": "text", "stream": "name", "measure": "name" | "spec": {...}}, ...]}
+            a panel names a stream and a measure (or the full report spec, see query.py), never a store (R3). Extra fields are kept.
 Store file: {"definitions": {key: {"def": {...}, "shipped_version": int | null, "edited": bool, "at": iso}}}
 API:        Store(path).seed(defaults, version) -> {"added": [...], "updated": [...], "kept": [...]}
             .get(key) .list() .save(definition) (an edit) .reset(key, defaults) .delete(key)
@@ -52,9 +52,14 @@ def validate(definition):
         if not isinstance(p, dict):
             out.append(f"panel {i + 1} must be an object")
             continue
-        for f in ("title", "stream", "measure"):
+        for f in ("title", "stream"):
             if not isinstance(p.get(f), str) or not p[f].strip():
                 out.append(f"panel {i + 1}: {f} must be a non-empty string")
+        has_measure = isinstance(p.get("measure"), str) and p["measure"].strip()
+        if not has_measure and not isinstance(p.get("spec"), dict):
+            out.append(
+                f"panel {i + 1}: a measure (a name) or a spec (the report query) is required"
+            )
     return out
 
 
@@ -103,6 +108,10 @@ class Store:
             }
             for k, r in sorted(self._read()["definitions"].items())
         ]
+
+    def records(self):
+        """Every record as {key: {def, edited, shipped_version, at}} (copies)."""
+        return json.loads(json.dumps(self._read()["definitions"]))
 
     def export(self, key):
         d = self.get(key)
