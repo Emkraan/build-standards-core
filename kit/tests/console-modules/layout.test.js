@@ -344,3 +344,47 @@ test("homeContributions shows only what the caller holds, drops disabled modules
   assert.deepEqual(homeContributions(off, holds(["*"])), { actions: [], feeds: [] });
 });
 
+
+// --- Manifest keys the contract does not name are carried through, never dropped ---
+
+/** A consumer's own manifest fields, on the module and on its parts. */
+const withExtras = () => {
+  const m = base();
+  m.jobs = [{ key: "sync", schedule: "0 * * * *", note: "hourly" }];
+  m.groups[0].badge = "new";
+  m.pages[0].beta = true;
+  m.links[0].partner = "acme";
+  m.tiles[0].unit = "count";
+  return m;
+};
+
+test("an unknown manifest key is not an error and rides through effectiveLayout", () => {
+  assert.deepEqual(validateManifest(withExtras()), [], "the validator ignores it");
+  const mod = effectiveLayout([withExtras(), consoleMod()]).modules.find((/** @type {any} */ x) => x.id === "demo");
+  assert.deepEqual(mod.jobs, [{ key: "sync", schedule: "0 * * * *", note: "hourly" }]);
+  assert.equal(mod.groups.find((/** @type {any} */ g) => g.key === "main").badge, "new");
+  assert.equal(mod.groups.flatMap((/** @type {any} */ g) => g.items).find((/** @type {any} */ i) => i.key === "dashboard").beta, true);
+  assert.equal(mod.account.find((/** @type {any} */ i) => i.key === "status").partner, "acme");
+  assert.equal(mod.tiles.find((/** @type {any} */ t) => t.key === "total").unit, "count");
+});
+
+test("carried keys are copies, and a module with none gains no new keys", () => {
+  const m = withExtras();
+  const mod = effectiveLayout([m, consoleMod()]).modules.find((/** @type {any} */ x) => x.id === "demo");
+  mod.jobs[0].key = "changed";
+  assert.equal(m.jobs[0].key, "sync", "the manifest is not shared with the result");
+  const plain = effectiveLayout([base(), consoleMod()]).modules.find((/** @type {any} */ x) => x.id === "demo");
+  assert.equal("jobs" in plain, false);
+  assert.equal("client" in plain, false, "a key the contract names but the layout does not output stays out");
+});
+
+test("a carried key never shadows a field the layout computes", () => {
+  const m = base();
+  m.enabled = "yes";
+  m.basePath = "/elsewhere";
+  m.account = "x";
+  const mod = effectiveLayout([m, consoleMod()]).modules.find((/** @type {any} */ x) => x.id === "demo");
+  assert.equal(mod.enabled, true);
+  assert.equal(mod.basePath, "/demo");
+  assert.ok(Array.isArray(mod.account));
+});

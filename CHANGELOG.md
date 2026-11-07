@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-06 (v1.126.0, the layout merge carries unknown manifest keys)
+
+`shell-packages/console-modules`: `effectiveLayout` no longer drops a manifest key the contract does not name.
+
+- A consumer's own field (a `jobs` list) on a module, group, page, link or tile comes through as a deep copy on the matching output entry. Before, it vanished with no error and no test failing. `validateManifest` still ignores unknown keys.
+- A carried key never shadows a computed field (`enabled`, `account`, `basePath`); a module with no extra keys gets an identical result. `EffectiveModule` gains an index signature. Tests: 3, two of which fail on the old code. Not run: the consumer's platform tree has no axe or live-action browser tests.
+
 ## 2026-11-02 (v1.125.0, hub and override polish from the ops center adoption)
 
 Opt in: hub and override pieces, and one new spinner form; nothing changes unless a consumer uses them.
