@@ -13,6 +13,17 @@ navigation, the saved layout and tile order, announcements, settings, the RBAC a
 access overview across modules, estate health and a relay to a module's API for a few shell-initiated reads. It
 has its own database, and a module's API keeps its own.
 
+**A consumer with no console API.** The console API is not a requirement of the packages. The registry still holds
+one `console` module (it owns `/`, the launcher and Home), and that module's `rbac.me` must answer. A consumer whose
+modules each keep their own roles runs the console module shell-owned and minimal: the launcher and Home, and one
+`/me` route in the shell's own small server that aggregates the caller's permission answers from the modules (the
+same `{ roles, permissions }` answer shape, one call per module with the caller's own token, a module that does not
+answer left out rather than invented). It has no admin API, no layout store and no RBAC admin of its own; the console
+manifest sets `rbac.shape` to `console` and may name another module as its `permissionSource` when that module owns
+the roles. This is an allowed shape and needs no change in the packages. A module with no permission read at all (a
+public site) declares `"public": true` and no `rbac` ([web-shell-manifest.md](web-shell-manifest.md) section 2.3), so a
+consumer is not forced to fake an answer.
+
 Boot order: preflight, then migrations, then the RBAC bootstrap, then listen. A migration or seed failure is
 logged and does not exit, so the health route reports it ([ci-cd-release.md](ci-cd-release.md) section 6 gates
 a deploy on that route). Preflight fails a production start that lacks a required setting (database, audit
@@ -76,6 +87,27 @@ service's managed identity and sets it in a header; the API checks it before any
 
 Cross-module calls made by the shell's server (relay, estate probes, the access overview) go to the module's
 own host directly with the caller's own token. They skip the gateway, which is why the health routes are exempt.
+
+### 4.1 Another gateway (Kong)
+
+The gateway token is the API-management shape. A fleet that fronts its APIs with Kong (or any gateway that mints no
+token) uses the same manifest and the same client, and differs in four places:
+
+| Item | Rule |
+|---|---|
+| Routing | One host for the fleet, one path prefix per app (`<gateway host>/<app>`), each route in the gateway's own configuration. The manifest's `api.gateway` is only a name and `api.prefix` the path inside the app; neither names a product |
+| Who may reach an API | The gateway's own policy (routes, rate limits, anonymous denial) and the network rule that the API accepts traffic only from the gateway. Neither is something the app can prove from inside a request |
+| The bearer token | Validated by the API itself under [web-api-runtime.md](web-api-runtime.md) section 7, with the issuer, signing keys and audience of the provider the fleet signs in with. The gateway adds no second token |
+| `scopeEnv` | Names the build pair `VITE_<SCOPEENV>_API_BASE_URL` (the gateway host plus the app prefix) and `VITE_<SCOPEENV>_API_SCOPE`. The scope value is any scope string the sign-in provider understands: an OIDC scope under the second sign-in shape ([web-shell-auth.md](web-shell-auth.md) section 2.1), an `api://` scope under MSAL. The manifest does not parse it |
+
+**What `gatewayGuard` does and does not enforce.** It checks one thing: the gateway token header, an RS256 directory
+token (signature against the tenant keys, issuer, tenant, audience, the gateway principal and the gateway role), and
+only when enforcement is on and every setting is present. It never reads the caller's bearer token, never checks a
+right, CORS or the origin, and cannot tell that a request came through Kong. Under a gateway that mints no token it
+has nothing to check, so mount it with `enforce: false` (an explicit choice, [web-shell-packages.md](web-shell-packages.md)
+section 5.2) or leave it out; it removes the gateway header from the request either way. "Only through the gateway"
+is then the gateway's and the network's rule, stated in the fleet's gateway standard, not an app check that could
+look enforced and not be.
 
 ## 5. Layout per tier
 

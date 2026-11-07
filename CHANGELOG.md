@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-06 (v1.135.0, rules from the consumers' inventories: freeze lane, sign-offs, review threads, evidence, ticket comments, ahead of main, status files, watches)
+## 2026-11-06 (v1.144.0, rules from the consumers' inventories: freeze lane, sign-offs, review threads, evidence, ticket comments, ahead of main, status files, watches)
 
 Rule text for what the ops center lifts, so the standard states what the code does. Opt in: reported by core-status; each is a `test` rule a consumer proves with its own tests, and the ops center layout rules apply to an ops center app only.
 
@@ -8,6 +8,114 @@ Rule text for what the ops center lifts, so the standard states what the code do
 - iac-governance 1.12: an owner apply never undoes what an open pull request applied from its branch.
 - ops-center-layout 1.13 to 1.16: a status card shows unknown when its source is missing, stale or unreadable; a lapsed sign-in is never silent; a job that stays red is raised on the board; a change that takes minutes to reach its destination shows its in-flight rollout. Rule 1.5 now also says a running build is never red and a cancelled or superseded run never counts.
 - Already in core and now stated: the sign-off fingerprint and the destroy and replace exclusion (`signoff_store`, `own_pr_merge`), the fail-closed review conversations (`review_threads`).
+
+## 2026-11-06 (v1.143.0, sessions and cards: session on it, curation, inbound files, CI test runner, page renderer)
+
+Sessions and cards from rpmm23's inventory (OC-11, OC-12, OC-13, OC-14, OC-15, OC-21, OC-23). Opt in: every module is called by a consumer or configured by environment; `eng_backlog.py` gains behaviour for every consumer of the debt page (below).
+
+- OC-11 `server/modules/pr_sessions.py`: find a live session working a pull request (a running delegated task, a session dedicated by title, a session working the branch worktree); reading a PR is never working it. Title patterns, state database and repo clones are configuration.
+- OC-12 `server/modules/tackle_session.py`: bind a launch from a card to the session whose first user message is its staged prompt, not the session a desktop plugin reports.
+- OC-13 `server/modules/eng_curate.py`: the curation front door (`add`, `similar`) and the scheduled pass (`run`): auto-close, fold into the clear best match, hints, all logged and undoable. `eng_backlog.py` now reads the common status words ("DONE 10/24", "Superseded by TD-075", "In review"), links folded rows to their parent, and has the fold, ship, withdraw and undo acts; a status the old reader dropped into "Needs decision" may now land in a different bucket.
+- OC-14 `people/inbound_files.py`: files a report sends (chat attachment, mail attachment, document share) become Action Center items. Written for the core's roster and feeds from the reference, with a test suite (the reference had none).
+- OC-15 `tools/ci_tests.py`: one process per test file, a live-state skip list printed every run, listed proofs that must exist.
+- OC-21 `engine/doc_render.py`: repo markdown to docs home HTML with ASCII and prose rules, a verified-against footer and a configurable internal-terms check. Written with tests (the reference had none).
+- OC-23: compared, already in `engine/handled.py` (identical module and tests apart from wording); nothing lifted.
+
+## 2026-11-06 (v1.142.0, hub tab working marker and inline pending note colour)
+
+Two look details from the ops center adoption, both inside the hub pieces; the plain `Spinner` and every other badge are unchanged.
+
+- The hub tab working marker is 9px with a 1.6px arc turning on 900ms (was 8px, 1.5px, 800ms). It is scoped to `.hub-head .tab-badge`, so no other spinner changes. The existing 5px gap between the marker and the count stays on its right.
+- `PendingReason inline` follows the text colour of the line it sits in (it is a next step, not a warning); the block form keeps the warning colour.
+
+## 2026-11-06 (v1.141.0, a public module needs no rbac)
+
+Opt in. A manifest that declares `"public": true` may omit `rbac`, and its pages may list an empty `requires`.
+
+- `validateManifest`, the JSON schema, the typings and `web-shell-manifest.md` 2.3: with `public: true` no `rbac` is needed and a page's `requires` may be empty (open to every caller); a declared `rbac` and any non-empty `requires` are still validated. `public` must be a boolean. Without `public: true` nothing changes: `rbac` and a non-empty `requires` stay required, with the same messages.
+- `effectiveLayout` gives a public module `public: true` and `rbac: null` (typed non-null so a consumer with no public module compiles unchanged); a module that is not public gets no `public` key and its `rbac` object as before. `validateRegistry` refuses a `permissionSource` or a peer id that names a public module, since it has no permission read. Tests: 8 across the module, validator and schema suites; five fail on the old code. Not run: a shell rendering a public module.
+
+## 2026-11-07 (v1.140.0, a test race fix)
+
+Test only: `pool_view_test` no longer races the background refresh threads of the previous test, which wrote a stale answer into the cache after it was cleared and failed `test_a_failed_read_is_unknown_never_a_pass` now and then in CI.
+
+## 2026-11-06 (v1.139.0, the Kong gateway option and the minimal console module)
+
+Text only, `standards/web-shell-gateway.md`, from a consumer's shell move.
+
+- New 4.1 documents a gateway that mints no token (Kong): routing by path prefix, who may reach an API, the bearer token validated by the API itself, what `scopeEnv` and the scope value are, and exactly what `gatewayGuard` does and does not enforce (it checks the gateway token only; under Kong mount it with `enforce: false` or leave it out).
+- Section 1 records the shell-owned console module (launcher, Home and one `/me` aggregation answering `rbac.me`) as an allowed pattern for a consumer with no console API. It needs no code in the packages. A module with no `rbac` at all is not covered: the manifest still requires it.
+
+## 2026-11-06 (v1.138.0, a consumer can refresh its own visual baselines)
+
+`kit/scripts/visual-update.mjs` takes a project root. Default behaviour for the core kit is unchanged.
+
+- New options: `--root` (the consumer's Playwright project), `--baselines`, `--build`, `--workflow` and `--artifact`, so a consumer refreshes its own baselines against the kit it syncs with the same pinned image, the same full-set replacement and the same CI-first rule. A typo or a missing value now stops with a usage error before any CI run or container starts. The Docker run for another root mounts the repository, works inside the root and keeps `node_modules` in a volume of its own. Documented in the README beside the kit's gate.
+- `parseArgs` and `dockerArgs` are exported with typings; the Docker command for the kit itself is asserted identical to the old one. Tests: 9. Not run: a real CI or Docker baseline refresh on a consumer.
+
+## 2026-11-06 (v1.134.0, the manifest client folder may be spa)
+
+## 2026-11-06 (v1.137.0, the manifest client folder may be spa)
+
+Additive. `console.module.json` `client` accepts `apps/<dir>/spa` as well as `apps/<dir>/client`.
+
+- `validateManifest`, the JSON schema and `web-shell-manifest.md` take either folder name, for an app that already names its client folder `spa`. Nothing that validated before stops validating. The generator reads the field as plain data and needed no change. Tests: accepted for both names, rejected for another folder name and for a trailing path, in the TypeScript and the Python schema suites.
+
+<<<<<<< HEAD
+=======
+## 2026-11-06 (v1.136.0, an OIDC sign-in beside MSAL in the client package)
+
+`shell-packages/app-client`: `createOidcAuth(manager, options)` and `createOidcClient(manager)`. Opt in; `createAuth` and the MSAL path are unchanged.
+
+- The same `createAuth` (boot, return target in state, loop guard, config-error and silent-only answers, shell and module modes, bounce, bypass) over an OIDC manager the app builds (oidc-client-ts or anything with its few methods), for a fleet that signs in through an identity broker. No OIDC dependency in the package; refresh-token renewal only, never a hidden frame; the provider callback parameters are stripped after boot; an end-session fallback for a provider without one; other-tab sign-out and user changes are seen.
+- `web-shell-auth.md` 2.1 documents it as the second sign-in shape and keeps the rule that no app in a brokered fleet wires straight to the upstream directory. Tests: 17 over a fake manager. Not run: a live provider and browser sign-in.
+
+## 2026-11-06 (v1.135.0, owner roots ahead of main, the owner apply guard, the draft gate grammar)
+
+Gating and owner roots from rpmm23's inventory (OC-4, OC-5, OC-6, OC-19). Opt in: the hold needs the consumer's PR apply flow to record it and provider hooks to read a PR; with none, nothing changes.
+
+- OC-6, `owner_roots.py`: `set_pr_hold` records a root a PR applied from its branch; main's plan that would destroy it is marked "ahead of main, waiting on #N" and Apply is refused by the server and the worker; the hold clears when main contains the merge commit or the PR closes; an unreadable PR keeps it. Hooks `pr_state`, `contains`, `pr_url`, `owner_name`.
+- OC-5, the owner apply guard: `guard_refusal` and `owner_roots.py guard <name> <tier>` (exit 3) refuse a saved plan that deletes an address an open PR applied, whether or not the card was marked.
+- OC-19, `ahead_items`: an Action Center item for a PR left ahead of main for more than two days (`OWNER_ROOTS_AHEAD_CARD_S`).
+- OC-8 and OC-9, `lanes/run_watches.py`: a main watch (the newest completed run of a deploy or apply workflow on main raises one item with the failed job, its first error line and the run link; a later success closes it; cancelled and skipped runs count neither way) and a drift watch (the newest N scheduled runs all failed: one item naming each failing job; manual and branch runs never count). A watch that cannot be read is an item, never clear.
+- RL-1 and RL-2, `server/modules/status_source.py`: a missing, stale, unreadable or malformed status file reads as unknown, never in sync; a collector that loses its sign-in keeps its last reading marked stale and exits non-zero after the lapse limit (240 minutes).
+- OC-4, `lanes/pr_gate.py`: the draft gate block grammar the own-PR lane's gate plug-in loads, with two built-in kinds and a consumer kinds file. Written from the inventory text and test names, not from reference code; the branch-apply flow and the detection of an unrecorded branch apply are not lifted.
+
+## 2026-11-06 (v1.134.0, hub routing, run dialog and override defects)
+
+Fixes from the consumer review of v1.125.0. Opt in pieces only; a look that worked before is unchanged.
+
+- Hub routing: a section with no items no longer loops (it resolves to the Overview and gets no tab); `hubSectionProblems` reports a section or item key used twice and the first one wins; route segments are decoded when read and encoded when written; an item the section does not have selects the first tab.
+- `RunDialog`: `RunInput.publishesWhen` and `RunSpec.publishes` decide what publishes ahead of the `dry_run` and `mode` name rule; inputs that arrive after the form opened take their defaults and keep what was typed; submit honours the same guards as the button; a refusal from the last attempt no longer locks Run (only the `refusal` prop does) and clears when an input changes; a branch name is checked for plausible characters; `onClose` is not called when the app closed the dialog first.
+- `AreaCard` sends its link through the guarded link, so an unsafe `to` never reaches the app's link component; duplicate detail lines, section keys and item keys no longer collide as React keys. `OverrideBar` and `OverrideButton` send one write at a time from the click on.
+
+>>>>>>> origin/main
+## 2026-11-06 (v1.133.0, roles and gate rules from the hub review)
+
+Text only, from the hub consumer's inventory. Standards: `rbac.md`, `ci-cd-release.md`, `scripting-powershell.md`.
+
+- `rbac.md`: grants follow their report or dashboard (removed on delete, swept after seeding); the View-As preview allows a pinned list of read-only query POSTs only; the Roles page gives a tool with its own area its own heading and lists every tool.
+- `ci-cd-release.md` 2.2: the local gate merges `origin/main` and runs every CI check, including the CI-only scripts, from one command.
+- `scripting-powershell.md`: do not wrap `ConvertFrom-Json` output in `@(...)` in the same expression. Already in core and recorded as such: the additive union of grants, route contracts, changelog lines from PR bodies, and the kit action-button styling.
+
+## 2026-11-06 (v1.132.0, the freeze lane: human bypass, CI-only exemption, GraphQL labeler, stale green)
+
+Four own-PR lane additions from rpmm23's inventory (OC-1, OC-2, OC-3, OC-16). Opt in: the bypass needs a store and a PR read (null default, the freeze holds), the CI-only exemption is off by default (`freeze_ci_only`); the labeler and stale-green changes take effect for every lane.
+
+- `lanes/freeze_bypass.py` (OC-1): one PR for this window only, or all own PRs until the next midnight in the owner's zone, on the override store: window-scoped, expiry read on every read, fail closed, own open PRs only, every change logged, a bypass logged once per head by the lane.
+- `lanes/freeze_ci_only.py` (OC-2): a PR that only changes how CI checks pull requests is not held by a freeze; both sides of each changed workflow, every workflow that names a changed script (also through another script), anything unreadable held. Written from the inventory description, not from reference code.
+- `override_by_me` (OC-3) reads the newest labeler from the GraphQL timeline; the REST events list truncates at about 300 entries. A read error is not an override.
+- `unstick` (OC-16): a ready PR the lane never merged gets its CI run re-run once per head after `stale_ready_min` minutes, then one alert.
+
+## 2026-11-06 (v1.131.0, delivery: cancelled runs, pre-push, pr-watch, release notes, shrink-only lists)
+
+Delivery steps from the hub's gaps D2, D3, U4, U5 and the route exemption list. Opt in: new `core-ci.py` subcommands and a parameters row; the merge gate template is copied once, so only a repo that copies it again changes.
+
+- Cancelled runs (D2): `core-ci.py ready SHA` reads the newest run of each check and treats a cancelled one as wait, not failure; `--rerun-cancelled` re-runs a head whose runs were cancelled, at most 3 attempts per workflow run. `wait-checks` and the progress counts agree. The `automerge.yml` template uses it, so a cancelled run no longer stalls a PR until someone re-runs it (rule pr-review-and-merge 1.22).
+- `core-ci.py pre-push` (U4): fails unless the branch contains the latest default branch, then runs commitlint, attribution with the private term guard, identity, ascii, changelog, changelog-entries and repo-checks locally (rule 1.21).
+- `core-ci.py pr-watch PR` (D3): watches a PR to a stop point (merged, checks failed, closed, conflict, timeout), prints a line at every change and ends with a report (rule 1.23).
+- `core-ci.py changelog-lines` (U5): release notes from `Changelog:` lines in PR bodies; docs, test, ci, chore, style and build commits ignored; one generic line when there is none (docs-and-changelog 1.10).
+- `core-ci.py list-shrinks BASE HEAD` and the parameters row `Shrink-only lists` (U3): an exemption list may lose entries and never gain one.
 
 ## 2026-11-06 (v1.130.0, shell server rules)
 

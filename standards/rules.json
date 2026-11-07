@@ -1921,6 +1921,48 @@
       "acceptance": "A fixture PR for each kind is held with its rule id, an author at N merged PRs is not held as new, and a lookup error holds with the lookup reason."
     },
     {
+      "id": "pr-review-and-merge.1.21",
+      "ref": "pr-review-and-merge.md 1.21",
+      "title": "Merge the latest main and run every check script before a push",
+      "statement": "Before a push, merge the latest default branch into the branch and run every check script that can run locally: commit subjects, attribution and the private term guard, author identity, ASCII, the changelog entry and the repo checks. A check that runs only in CI is found too late.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "`core-ci.py pre-push` fails when the branch does not contain the default branch and when any of the check scripts fails."
+    },
+    {
+      "id": "pr-review-and-merge.1.22",
+      "ref": "pr-review-and-merge.md 1.22",
+      "title": "A cancelled run is neither a pass nor a failure",
+      "statement": "A merge gate reads the newest run of each check. A run that a later push or a label edit cancelled is not a failure and never blocks a head that has a later green run; a head whose newest run was cancelled is re-run, a bounded number of times, instead of waiting for someone to re-run it by hand.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a test reads a head whose newest run of a check was cancelled and gets wait, not fail, and the re-run is bounded and skips a run a later run replaced."
+    },
+    {
+      "id": "pr-review-and-merge.1.23",
+      "ref": "pr-review-and-merge.md 1.23",
+      "title": "A PR watch has a stop point and a report",
+      "statement": "Watching a pull request after it opens is a step with a defined stop: merged, checks failed, closed without merging, a merge conflict or a timeout. It prints a line at every change and ends with a report that names which stop it reached and what to do next.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a test drives the watch to each of the five stop points and asserts the exit code and the final report."
+    },
+    {
       "id": "live-actions.1.1",
       "ref": "live-actions.md 1.1",
       "title": "Success removes the object at once, everywhere",
@@ -2249,6 +2291,20 @@
         ]
       },
       "acceptance": "With the parameters row Changelog entries set to per-pr, core-ci.yml job core-changelog (step changelog-entries) fails a pull request that adds no entry or more than one, edits an older entry, uses another heading or dates the entry before the one below it, and fails in CI when the base commit is unknown."
+    },
+    {
+      "id": "docs-and-changelog.1.10",
+      "ref": "docs-and-changelog.md 1.10",
+      "title": "Release notes come from the pull request body",
+      "statement": "Only a `Changelog:` line in a pull request body reaches the generated release notes. A commit of type docs, test, ci, chore, style or build is ignored, and a release with no such line carries one generic line.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a test builds the notes from commits with and without the line and asserts the ignored types and the generic line."
     },
     {
       "id": "iac-governance.1.1",

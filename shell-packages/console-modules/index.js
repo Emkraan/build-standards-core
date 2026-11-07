@@ -71,11 +71,17 @@ export function validateManifest(input) {
   if (m.description !== undefined && !isDescription(m.description)) err(`description must be plain ASCII text up to ${DESCRIPTION_MAX} chars`);
   if (!isStr(m.icon) || !ICON_RE.test(m.icon)) err("icon must be an icon name");
   if (!isOrder(m.order)) err("order must be a whole number 0..100000");
-  if (!isStr(m.client) || !/^apps\/[a-z0-9-]+\/client$/.test(m.client)) err("client must be apps/<dir>/client");
+  if (!isStr(m.client) || !/^apps\/[a-z0-9-]+\/(client|spa)$/.test(m.client)) err("client must be apps/<dir>/client or apps/<dir>/spa");
   if (!m.api || !isStr(m.api.gateway) || !KEY_RE.test(m.api.gateway) || !isStr(m.api.prefix) || !PATH_RE.test(m.api.prefix)
       || !isStr(m.api.scopeEnv) || !SCOPE_ENV_RE.test(m.api.scopeEnv)) err("api needs gateway, prefix and scopeEnv");
   if (m.api && m.api.estateKey !== undefined && (!isStr(m.api.estateKey) || !KEY_RE.test(m.api.estateKey))) err("api.estateKey must be an estate app key");
-  if (!m.rbac || !RBAC_SHAPES.includes(m.rbac.shape) || !isStr(m.rbac.base) || !PATH_RE.test(m.rbac.base)
+  // A module that declares public: true may omit rbac (it has no permission read) and its pages may
+  // list no requires (open to every caller). Every other module needs both, as always.
+  if (m.public !== undefined && typeof m.public !== "boolean") err("public must be true or false");
+  const isPublic = m.public === true;
+  if (isPublic && m.rbac === undefined) {
+    // no permission read to check
+  } else if (!m.rbac || !RBAC_SHAPES.includes(m.rbac.shape) || !isStr(m.rbac.base) || !PATH_RE.test(m.rbac.base)
       || !isStr(m.rbac.me) || !PATH_RE.test(m.rbac.me)) err("rbac needs shape, base and me");
   // A module may declare another module's permissions as its own (rbac.permissionSource names
   // that module). It then has no admin API or roles of its own: its pages keep the tab and action
@@ -109,8 +115,8 @@ export function validateManifest(input) {
     if (!isStr(p.label) || !isAscii(p.label)) err(`page ${p.key} label must be ASCII`);
     if (!isStr(p.icon) || !ICON_RE.test(p.icon)) err(`page ${p.key} icon invalid`);
     if (!HUES.includes(p.hue)) err(`page ${p.key} hue must be one of ${HUES.join(", ")}`);
-    if (!Array.isArray(p.requires) || p.requires.length === 0 || !p.requires.every((/** @type {unknown} */ r) => isStr(r) && (PERM_RE.test(r) || PEER_RE.test(r)))) {
-      err(`page ${p.key} requires must list at least one tab or action id`);
+    if (!Array.isArray(p.requires) || (p.requires.length === 0 && !isPublic) || !p.requires.every((/** @type {unknown} */ r) => isStr(r) && (PERM_RE.test(r) || PEER_RE.test(r)))) {
+      err(`page ${p.key} requires must list at least one tab or action id${isPublic ? " (or none, for a public module)" : ""}`);
     }
     if (!groupKeys.has(p.group)) err(`page ${p.key} group ${p.group} is not declared`);
     if (!isOrder(p.order)) err(`page ${p.key} order invalid`);
@@ -220,7 +226,8 @@ export function validateRegistry(manifests) {
     if (!isStr(src) || src === m.id) continue;
     const target = byId.get(src);
     if (!target) { errs.push(`${m.id}: rbac.permissionSource ${src} is not a module in the registry`); continue; }
-    if (target.rbac?.permissionSource !== undefined) errs.push(`${m.id}: rbac.permissionSource ${src} must own its permissions`);
+    if (!target.rbac) { errs.push(`${m.id}: rbac.permissionSource ${src} has no permission read (a public module declares no rbac)`); continue; }
+    if (target.rbac.permissionSource !== undefined) errs.push(`${m.id}: rbac.permissionSource ${src} must own its permissions`);
     for (const k of ["shape", "base", "me"]) if (target.rbac?.[k] !== m.rbac?.[k]) errs.push(`${m.id}: rbac.${k} must match ${src}`);
     for (const k of ["gateway", "prefix", "scopeEnv"]) if (target.api?.[k] !== m.api?.[k]) errs.push(`${m.id}: api.${k} must match ${src}`);
   }
@@ -230,7 +237,8 @@ export function validateRegistry(manifests) {
       const target = byId.get(peer);
       if (peer === m.id || peer === m?.rbac?.permissionSource) errs.push(`${m.id}: a peer permission cannot name ${peer}, use its plain id`);
       else if (!target) errs.push(`${m.id}: peer permission module ${peer} is not a module in the registry`);
-      else if (target.rbac?.permissionSource !== undefined) errs.push(`${m.id}: peer permission module ${peer} must own its permissions`);
+      else if (!target.rbac) errs.push(`${m.id}: peer permission module ${peer} has no permission read (a public module declares no rbac)`);
+      else if (target.rbac.permissionSource !== undefined) errs.push(`${m.id}: peer permission module ${peer} must own its permissions`);
       else if (target.rbac?.shape === "console") errs.push(`${m.id}: peer permission module ${peer} must be a tool with its own me read`);
     }
   }
@@ -340,7 +348,7 @@ export function autoDescription(m) {
   return head.slice(0, DESCRIPTION_MAX).trim();
 }
 
-const MANIFEST_KEYS = new Set(["id", "name", "tagline", "description", "accent", "icon", "order", "client", "api", "rbac", "groups", "pages", "links", "tiles", "landing", "whatsnew", "home"]);
+const MANIFEST_KEYS = new Set(["id", "name", "tagline", "description", "accent", "icon", "order", "client", "api", "rbac", "public", "groups", "pages", "links", "tiles", "landing", "whatsnew", "home"]);
 const GROUP_KEYS = new Set(["key", "label", "order"]);
 const PAGE_KEYS = new Set(["key", "route", "label", "icon", "hue", "requires", "group", "order", "keywords"]);
 const LINK_KEYS = new Set(["key", "label", "href", "slot", "group", "order", "icon"]);
@@ -474,7 +482,8 @@ export function effectiveLayout(manifests, overrides = {}, opts = {}) {
       descriptionSource: adminDescription ? "admin" : isDescription(m.description) ? "manifest" : "auto",
       accent: m.accent, icon: m.icon,
       order: ord(mo?.order, m.order), enabled: mo?.enabled === undefined ? true : Boolean(mo.enabled), isNew: !mo,
-      basePath: m.id === "console" ? "/" : `/${m.id}`, api: { ...m.api }, rbac: { ...m.rbac },
+      basePath: m.id === "console" ? "/" : `/${m.id}`, api: { ...m.api }, rbac: m.rbac ? { ...m.rbac } : m.public === true ? null : {},
+      ...(m.public === true ? { public: true } : {}),
       groups: groupList, account: account.sort(byOrder),
       tiles: tiles.sort((a, b) => (a.dashboard === b.dashboard ? byOrder(a, b) : a.dashboard.localeCompare(b.dashboard))),
       // Landing: the code's own landing chain when it declares one (parity with today), else rail order.

@@ -13,7 +13,7 @@ manifest carries on top of the seven kit keys, and the rules around them.
 
 One file per module, `apps/<dir>/console.module.json`. A second module hosted inside an app lives in
 `apps/<dir>/modules/<id>/console.module.json`: the folder name equals `id` and `client` equals
-`apps/<dir>/client`. The file is plain ASCII (tab, LF, CR and 0x20 to 0x7e); any other byte stops the
+`apps/<dir>/client` (or `apps/<dir>/spa`). The file is plain ASCII (tab, LF, CR and 0x20 to 0x7e); any other byte stops the
 generator. A `$schema` key is an editor hint, deleted before validation and never written to the registry.
 
 The generator reads every manifest and writes it, untouched apart from `$schema`, into the generated
@@ -56,8 +56,9 @@ draws the fallback), an order is an integer from 0 to 100000.
 | `accent` | yes | `brand`, `amber`, `blue`, `cyan`, `fuchsia`, `gold`, `green`, `indigo`, `orange`, `red`, `rose`, `teal` or `violet` | Becomes `data-app-accent` while the module is active |
 | `icon` | yes | icon name | Launcher and rail switch icon |
 | `order` | yes | order | Position in the launcher and the registry; lower first |
-| `client` | yes | `^apps/[a-z0-9-]+/client$` | The client package that draws the module; its own stylesheet is scoped from it ([web-shell.md](web-shell.md) section 5) |
-| `api`, `rbac` | yes | sections 2.2 and 2.3 | Where the module's API is and how the shell reads the caller's permissions |
+| `client` | yes | `^apps/[a-z0-9-]+/(client\|spa)$` | The client package that draws the module (the folder is `client`, or `spa` for an app that already names it so); its own stylesheet is scoped from it ([web-shell.md](web-shell.md) section 5) |
+| `api`, `rbac` | yes (`rbac` not for a public module) | sections 2.2 and 2.3 | Where the module's API is and how the shell reads the caller's permissions |
+| `public` | no | `true` or `false`, default false | `true` marks a public module (a site with no sign-in and no roles): it may omit `rbac`, and its pages may list an empty `requires`, which opens them to every caller. Opt in: absent or `false` keeps both required. Section 2.3 |
 | `groups`, `pages`, `links`, `tiles` | yes | arrays, may be empty | Sections 2.4 to 2.7 |
 | `landing` | no | each entry is a declared page route | Ordered routes to land on; the first one the caller can open wins |
 | `whatsnew` | no | section 2.8 | Release notes source for the rail build card |
@@ -80,6 +81,13 @@ draws the fallback), an order is an integer from 0 to 100000.
 | `base` | yes | path | Admin API base on the tool API |
 | `me` | yes | path | The caller's own permission read. The shell calls it for the rail, the launcher probe and the Home gates |
 | `permissionSource` | no | module id; only with `shape: console` | The module has no roles of its own and reads another module's permission answer. Display routing only: the source's server enforces ([web-api-runtime.md](web-api-runtime.md), [rbac.md](rbac.md)) |
+
+A **public module** declares `"public": true`. It has no permission read, so `rbac` may be left out, and a page's
+`requires` may be an empty list (the entry then shows and opens for every caller, including one who holds nothing).
+Declared `rbac` is still validated, a non-empty `requires` still lists valid ids, and every other module is unchanged:
+without `public: true` both stay required. A public module declares no permission read, so no module can name it as a
+`permissionSource` or a peer id (the registry check says so), and in the generated layout its `rbac` is `null` and
+`public` is `true`. Public pages are open to anyone who can reach the URL: nothing on them may be sensitive.
 
 ### 2.4 `groups[]`
 
@@ -177,7 +185,7 @@ validator. A host that has no such validator runs them as a `--validate-with` ho
 | `pages[].group` and `links[].group` name a declared group | manifest |
 | Page `route`, group `key`, `dashboard/key` of a tile, and home action and feed keys are unique; item `key` is unique among pages and links | manifest |
 | `home.actions[].route` and every `landing` entry is a declared page route | manifest |
-| `client` equals `apps/<dir>/client` of the folder that holds the file; `id` equals the folder for `modules/<id>/` | file |
+| `client` equals `apps/<dir>/client` or `apps/<dir>/spa` of the folder that holds the file; `id` equals the folder for `modules/<id>/` | file |
 | The registry holds one of each `id` and holds the `console` module | registry |
 | A `permissionSource` target exists, owns its permissions (no chains), and has the same `shape`, `base`, `me`, `api.gateway`, `api.prefix` and `api.scopeEnv` | registry |
 | A peer id names a module that exists, owns its permissions, is not shape `console`, and is neither the module itself nor its permission source | registry |

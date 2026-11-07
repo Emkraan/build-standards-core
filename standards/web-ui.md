@@ -747,6 +747,10 @@ runs, never by the data source or the vendor.
   has a current tab.
 - A hub with a single tab row passes `tabs` (a flat item list, route `<base>/<item>`, the current tab
   is `item`) instead of `sections`: one row, no second row, same counts and spinner.
+- Keys are route segments: unique across sections and items (`hubSectionProblems` lists a clash, and
+  the first one wins), decoded when read from the route and encoded when written. A section with no
+  items has no tab and resolves to the Overview, and an item the section does not have selects the
+  first tab.
 - `headerOnly` gives the page header with no tabs and no Overview, for a page in the hub's header
   style with nothing to switch between; `base` and `onNavigate` are then not needed.
 - `HubHeader` is router free. The app passes the current `section` and `item` from its route and goes
@@ -754,7 +758,7 @@ runs, never by the data source or the vendor.
 - Counts and the working state come from the app and are never decided here. An item `count` is the
   number of things that need attention, read from the one server list the rail badge also reads
  ; a section tab shows the sum of its items. Work in progress (`live`) is a
-  spinner, never a red count, and a count of zero shows nothing.
+  9px open-arc spinner (1.6px, 9/8 of --dur-spin, 900ms) with a 5px gap before the count, never a red count, and a count of zero shows nothing.
 - Old links never break: `resolveHubRoute(base, sections, section, item)` returns `overview`, the
   `item`, or a `redirect` target. A section the hub does not have is an old flat link (`<base>/<item>`)
   and redirects to the item's new path; a bare section or an unknown item redirects to the section's
@@ -861,12 +865,18 @@ button, and the form behind it opens with safe defaults. The kit owns the form; 
   settings, nothing is published." until the values would write, then "This run publishes or changes
   something. Any job that writes still waits on its environment approval.", and the primary button
   changes from "Run" to "Run for real" (and the dialog hue from blue to amber). A run writes when
-  `dry_run` is off or a `mode` input is anything but `dry-run`; `publishes` replaces that rule.
+  `dry_run` is off or a `mode` input is anything but `dry-run`, unless the spec says otherwise: an
+  input's `publishesWhen` (the value that publishes) or `RunSpec.publishes` (always) win over that
+  name rule, so a spec that publishes through an input with another name is never shown as safe. The
+  hook's `publishes` option replaces the whole rule.
 - A paused or running item is refused with a reason. Pass `refusal` when the app already knows, and the
   reason shows in the dialog and on the primary button before the click. When the server refuses
   after the click, the run callback throws `RunRefusedError` (`runErrorFrom(status, body)` maps a 409
   or a body with a `kind`), and the dialog stays open with the same notice. Any other error shows as
-  an alert and the user can try again. A click while a run is being queued does nothing.
+  an alert and the user can try again. A click while a run is being queued does nothing, and a refusal
+  from an attempt does not lock the button (only a `refusal` the app passes in does): the server
+  decides again on the next click, and the notice clears when an input changes. A branch name with
+  characters no branch holds waits with a reason; the server checks it again.
 - The button only queues the run. Environment approvals still gate any job that writes, and the
   dialog says so.
 - `RunFields` and `useRunForm` are the body and the state of the dialog, for an app that shows the
@@ -1836,7 +1846,8 @@ it, and each piece renders nothing, or the plain reason, when the app has not gi
 - `PendingReason` is rule 11: between the action and the next pass of whatever re-checks the item it
   shows the server's pending line (`role="status"`) and never the reason the action removed; with no
   pending line it shows the reason; with neither it shows nothing. `inline` renders a span for a line
-  inside the card's own reason text.
+  inside the card's own reason text and takes that text's colour, since there it is a next step, not
+  a warning; the block form is in the warning colour.
 - Writes stay with the app: same-origin or loopback only, one writer, one log, the owner's own work
   only. The kit never reads or stores an override.
 
