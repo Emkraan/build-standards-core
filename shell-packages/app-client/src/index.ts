@@ -3,6 +3,8 @@
 
 export { RETURN_TO_KEY, createAuth, isShellMode } from './auth';
 export type { Auth, AuthError, AuthMode, AuthOptions, BootResult, TokenOptions } from './auth';
+export { createOidcAuth, createOidcClient } from './oidc';
+export type { OidcAuthOptions, OidcClientOptions, OidcManagerLike, OidcUser } from './oidc';
 export { safeReturnTo } from './returnTo';
 export { createApi, qs } from './api';
 export type { Api, ApiDetails, ApiError, CreateApiOptions, GetOptions, QueryParams, RequestOptions } from './api';

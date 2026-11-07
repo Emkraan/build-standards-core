@@ -30,6 +30,29 @@ reconcile are the reverse, each recorded in a ledger.
 | Hub and tool modes | The shell owns sign-in. A module run on its own bounces a signed-out caller to the shell with a validated `returnTo` ([web-shell.md](web-shell.md) section 8) and never signs in itself |
 | Dev bypass | Only with no client id on a localhost host; the API's dev identity then applies ([web-api-runtime.md](web-api-runtime.md) section 7) |
 
+### 2.1 The second sign-in shape: OIDC through a broker
+
+A shell whose fleet signs in through an identity broker (for example Authentik with the directory as its upstream) uses
+`createOidcAuth(manager, options)` from the app-client package instead of the MSAL client. Everything in the table
+above holds unchanged, because it is the same `createAuth` underneath: one boot, the return target in `state` routed in
+app, the loop guard, the config-error and silent-only answers, the shell and module modes, the module bounce and the
+dev bypass. Only the client that talks to the provider differs.
+
+| Item | Rule |
+|---|---|
+| Who builds the manager | The app. The package takes no OIDC library: the app passes an oidc-client-ts `UserManager` (or anything with the same few methods, `OidcManagerLike`), configured for authorization code with PKCE, no client secret, the origin root as redirect URI and `localStorage` for the user store so the shell and every module share one session |
+| Client id and scope | `clientId` is the OIDC client id; `apiScope` an OIDC scope string. The sign-in asks for the API scope plus `openid profile email` |
+| Tokens | One access token per session, from the cache while fresh. An expired token renews with the refresh token only (the manager's silent renewal when a refresh token exists); with none, or a scope the session was never granted, the call needs interaction and takes the same loop-guarded redirect path as MSAL. No hidden frame is ever used |
+| Callback | Boot completes a returning sign-in from `code` and `state` in the URL, then removes the provider parameters from the address. A failed callback does not break boot and is reported in `BootResult.error` |
+| Sign-out | The provider end-session, with the signed-out page as the post-logout address. A provider with no end-session endpoint clears the local session and lands on the same page |
+| Other tabs | A sign-out or a different user in another tab is seen on the next storage or focus event, and the listeners clear this tab's cached answers |
+| No direct wiring to the directory | The broker is the only identity provider an app talks to. An app in a brokered fleet never wires itself straight to the upstream directory, even when the broker's upstream is that directory |
+| Peers | `@azure/msal-browser` stays a peer of the package (its event names and lookup policy are imported by `createAuth`), though no MSAL client is created in this shape |
+
+The server side is unchanged: the bearer validation in [web-api-runtime.md](web-api-runtime.md) section 7 is written for
+the directory's tokens, so a brokered API validates the broker's issuer, signing keys and audience under the same
+rules (one signing algorithm, key cache and fetch limits) and an API scope that is a broker scope string.
+
 ## 3. Tokens go only where they belong
 
 The API client sends the bearer token only to its own base URL: a path must be an absolute path under it (no
