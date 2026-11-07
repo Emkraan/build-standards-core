@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-07 (v1.162.0, the audit chain and the sealed settings, with tests)
+## 2026-11-07 (v1.163.0, the audit chain and the sealed settings, with tests)
 
 Opt in, two new packages from the Olympus shell source (SH-4 and SH-5, K-source-refresh). Documented in `web-shell-packages.md` section 5.5.
 
@@ -11,6 +11,14 @@ Opt in, two new packages from the Olympus shell source (SH-4 and SH-5, K-source-
 - New exports only, nothing existing changes. Typings added.
 
 No issue: requested by the core consolidation session (build-standards-core-intake#117).
+
+## 2026-11-07 (v1.162.0, the processing indicator can stop reads)
+
+Closes the gap against the hub's handoff tag (the busy bar spec): the indicator's Cancel request, the stop on leaving the page and the server run stop. A second opt in on top of `installBusyTracking`; with `cancel` off nothing changes.
+
+- `installBusyTracking({ cancel: true, keepAcrossRoutes, runs })`: a counted read carries a signal of its own joined with the caller's. `cancelBusyReads()` stops every stoppable read with `Request cancelled`; `abortStaleReads(route)` stops reads that outlived their route after 1.5 s of grace (`The page was left before the request finished`); a hidden page stops them all. Writes are never stopped. `runs` tags the server's stoppable runs with an id header and tells the server on every stop (a beacon, then a keepalive POST).
+- `BusyIndicator`: a chip with the elapsed seconds after 5 s and, while a stoppable read is in flight, a Cancel request button; the bar itself still takes no input. `route`, `cancelAfterMs`, `cancelLabel` and `onCancel` are props.
+- `BusyState` gains `cancellable`; `CANCELLED_MESSAGE`, `LEFT_PAGE_MESSAGE` and `NAV_GRACE_MS` are exported.
 
 ## 2026-11-07 (v1.161.0, a consumer can validate the manifest keys it adds)
 
