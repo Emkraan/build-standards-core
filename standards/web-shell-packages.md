@@ -12,6 +12,7 @@ core already states the rule.
 | Module contract (`console-modules`) | The per-module manifest ([web-shell-manifest.md](web-shell-manifest.md)): the validator, the registry checks, the permission source and peer helpers, the layout merge with its typed contracts, the generated registry and its staleness check | Code: `shell-packages/console-modules/`. The generator is `kit/scripts/build-registry.mjs` ([web-shell.md](web-shell.md) section 3) |
 | RBAC core (`rbac`) | What permission data means: accessible tabs, the grant ceiling, assignable roles, view-as, client access helpers | Code: `shell-packages/rbac/` |
 | Client package (`app-client`) | One sign-in boot, token renewal, the API client and its cache, resource hooks, the live feed strip | Code: `shell-packages/app-client/` (TypeScript source). Rules: [web-client-runtime.md](web-client-runtime.md) sections 1 to 3, 5 and 6, [web-shell.md](web-shell.md) section 8 |
+| Announcements package (`announcements`) | Platform announcements for the console feed strip: validation, the cached active read, the audited admin routes | Code: `shell-packages/announcements/`. Opt in. Rules: section 5.6 |
 | Server package (`app-server`) | Group cache, directory token, CORS and origin guard, Server-Timing, gateway token check, request telemetry with its export retry, What's new handler | Code: `shell-packages/app-server/`. Rules: [web-api-runtime.md](web-api-runtime.md) sections 1 to 7 |
 
 The code is plain ESM with hand-written `.d.ts` files, no runtime dependency and no build step, so a CommonJS
@@ -239,6 +240,16 @@ export * from '@example/core-app-server';
    `TEST_CONSUMER_PRESET` set to a JSON file (or inline JSON) in the preset's shape; the suite reads every name it needs
    from the preset in force, so the same assertions hold under any naming. The core runs it in CI against
    `kit/tests/app-server/consumer-preset.example.json`; a consumer points it at its own preset file.
+
+### 5.6 Announcements
+
+Opt in. `shell-packages/announcements` is the store behind a feed strip every signed-in console shows. The consumer
+creates the `announcements` table (the schema is at the top of the file), mounts the routes and reads `listActive` in
+its own feed route.
+
+- `validate(body, { partial, current, now })` checks a create (needs a client generated UUID `id`) or an edit: tone one of `info`, `success`, `warning`, `critical`; title 1 to 120 characters; body up to 400; the link empty, a path on the site or an https URL; unknown fields refused. Text has control, zero-width and bidi characters removed and newlines folded to spaces (the strip shows one line per item). A link holding any of those, or whitespace, is refused outright, as are `//host`, `/\host` and every scheme but https, and the limit applies to the stored (percent-encoded) form. The window must end after it starts and neither end may be more than 400 days out.
+- `createAnnouncements({ db }).listActive()` answers the rows whose window is open now (newest start first, at most 10), cached briefly: the cache never outlives a window boundary (it expires at the earliest of 15 seconds, the first cached row's end and the next scheduled start), a committed write drops it at once, and another instance catches up within 15 seconds. `STATE_SQL` is the live, scheduled or expired state worked out on the database clock, so the admin list and the feed never disagree.
+- `announcementRoutes(router, { db, audit, store, manage, caller })` mounts `GET /`, `POST /`, `PUT /:id`, `POST /:id/expire` and `DELETE /:id`, every one behind `manage` (the consumer's permission check for the manage action, reads included, because the list carries scheduled and expired rows nobody else sees). Every write runs in `audit.transaction` (section 5.5): the row is locked with `SELECT ... FOR UPDATE`, changed, and the audit entry written through the same client, so an audit failure rolls the change back and answers 503, and there is never an unaudited change or an audit entry for one that did not commit. A retried create returns the row it already made (200); the same id from another operator is a 409. A database check violation answers 400 with the field it belongs to. Expiring keeps the schedule the operator set and records when it was ended by hand.
 
 ## 6. Tests
 
