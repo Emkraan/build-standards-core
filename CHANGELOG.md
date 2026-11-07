@@ -5,7 +5,7 @@
 `shell-packages/app-client`: `createOidcAuth(manager, options)` and `createOidcClient(manager)`. Opt in; `createAuth` and the MSAL path are unchanged.
 
 - The same `createAuth` (boot, return target in state, loop guard, config-error and silent-only answers, shell and module modes, bounce, bypass) over an OIDC manager the app builds (oidc-client-ts or anything with its few methods), for a fleet that signs in through an identity broker. No OIDC dependency in the package; refresh-token renewal only, never a hidden frame; the provider callback parameters are stripped after boot; an end-session fallback for a provider without one; other-tab sign-out and user changes are seen.
-- `web-shell-auth.md` 2.1 documents it as the second sign-in shape and keeps the rule that no app in a brokered fleet wires straight to the upstream directory. Tests: 14 over a fake manager. Not run: a live provider and browser sign-in.
+- `web-shell-auth.md` 2.1 documents it as the second sign-in shape and keeps the rule that no app in a brokered fleet wires straight to the upstream directory. Tests: 17 over a fake manager. Not run: a live provider and browser sign-in.
 
 ## 2026-11-06 (v1.133.0, roles and gate rules from the hub review)
 
