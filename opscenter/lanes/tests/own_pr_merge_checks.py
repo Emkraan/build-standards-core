@@ -741,7 +741,58 @@ expect(
     "change freeze test-freeze",
     freeze=win,
 )
+# the environment allowlist reaches the classifier, and a decision cached under older rules is made again
+seen_envs = []
+fco.fetch_and_classify = lambda gh, repo, number, head, base, *a: (
+    seen_envs.append(a[1] if len(a) > 1 else "missing") or (False, "x is not a CI file")
+)
+rec_ci = {"ci_only": {"head": HEAD, "ok": True, "why": "cached under the old rules"}}
+got = own.freeze_exempt(
+    POL,
+    pr(baseRefOid="b" * 40),
+    rec_ci,
+    {"id": "w"},
+    dict(CFG, freeze_ci_environments=["plan-only"]),
+)
+ok = (
+    got is False
+    and seen_envs == [["plan-only"]]
+    and rec_ci["ci_only"]["rules"] == own.CI_ONLY_RULES
+)
+fails += not ok
+print(
+    f"{'OK  ' if ok else 'FAIL'} ci-only: allowlist passed on, old cached decision re-made ({seen_envs})"
+)
 fco.fetch_and_classify = orig_fetch
+
+
+# the draft gate hands the plug-in the applied kind's settings when it takes them, and keeps the old call otherwise
+class _NewGate:
+    seen = None
+
+    @staticmethod
+    def evaluate(gate, repo, gh="gh", config=None):
+        _NewGate.seen = config
+        return []
+
+
+class _OldGate:
+    @staticmethod
+    def evaluate(gate, repo, gh="gh"):
+        return ["old"]
+
+
+_pol_gate = dict(
+    POL, own_pr_merge=dict(POL.get("own_pr_merge") or {}, gate_apply_workflow="apply.yml")
+)
+own._gate_evaluate(_NewGate, {"lines": []}, _pol_gate)
+ok = _NewGate.seen == {"apply_workflow": "apply.yml", "apply_branch": None} and own._gate_evaluate(
+    _OldGate, {"lines": []}, _pol_gate
+) == ["old"]
+fails += not ok
+print(
+    f"{'OK  ' if ok else 'FAIL'} draft gate: config reaches a new plug-in, an old one keeps its call"
+)
 
 # tick: merges a clean PR with --admin --match-head-commit and records it
 FREEZE.write_text(json.dumps({"timezone": "America/New_York", "windows": []}))
