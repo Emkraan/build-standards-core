@@ -4,9 +4,9 @@
 from __future__ import annotations
 
 import importlib
-import sys
 import json
 import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
