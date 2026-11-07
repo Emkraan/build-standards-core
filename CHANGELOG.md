@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-06 (v1.131.0, roles and gate rules from the hub review)
+
+Text only, from the hub consumer's inventory. Standards: `rbac.md`, `ci-cd-release.md`, `scripting-powershell.md`.
+
+- `rbac.md`: grants follow their report or dashboard (removed on delete, swept after seeding); the View-As preview allows a pinned list of read-only query POSTs only; the Roles page gives a tool with its own area its own heading and lists every tool.
+- `ci-cd-release.md` 2.2: the local gate merges `origin/main` and runs every CI check, including the CI-only scripts, from one command.
+- `scripting-powershell.md`: do not wrap `ConvertFrom-Json` output in `@(...)` in the same expression. Already in core and recorded as such: the additive union of grants, route contracts, changelog lines from PR bodies, and the kit action-button styling.
+
 ## 2026-11-06 (v1.130.0, shell server rules)
 
 New `standards/web-shell-server.md`: the server rules a multi-module shell meets beyond the shared runtime, from the consumer inventory. Text only; each rule carries the proof a shell owns, and no rule is registered for enforcement yet.
