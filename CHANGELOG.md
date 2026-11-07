@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-06 (v1.130.0, shell server rules)
+
+New `standards/web-shell-server.md`: the server rules a multi-module shell meets beyond the shared runtime, from the consumer inventory. Text only; each rule carries the proof a shell owns, and no rule is registered for enforcement yet.
+
+- Rights: the removal ceiling, a module opening on its own permission, every route gated or explained, group ids from role assignments only. Relays: a closed target list, forward the caller's token and status unchanged under an allowlist. Stores: sealed console secrets, a keyed audit chain, plain-text announcements, validated display-only external tools, per-user state keyed by lowercased identity. Health and boot: health never invented, paint from the persisted identity. Data and config: additive idempotent migrations, an unset environment is production, settings and vault references, per-item bulk results, one-process background jobs.
+- `rbac.md` section 6 and `web-api-runtime.md` section 7 gain a pointer line each. Code for the stores, the job leader and the scheduler follows in separate releases. Not run: the consumer's platform tree has no axe or live-action browser tests.
+
 ## 2026-11-06 (v1.129.0, the layout merge carries unknown manifest keys)
 
 `shell-packages/console-modules`: `effectiveLayout` no longer drops a manifest key the contract does not name.
