@@ -286,6 +286,44 @@ class P:
         by = {i["id"]: i for i in pb.collect()["items"]}
         self.assertEqual((by["spend"]["tone"], by["spend"]["count"]), ("needs_me", 3))
 
+    def test_headline_maps_healthy_sources_and_explicit_counts(self):
+        self.world()
+        self.use(
+            """
+class P:
+    def headlines(self):
+        return {
+            "ci": {"headline": "2 online, 1 queued", "details": ["Last backup 3 h ago"], "url": "/ci", "label": "CI and backup"},
+            "builds:app": {"headline": "v1.2.3", "details": ["must not replace a problem's lines"]},
+        }
+    def healthy(self):
+        return [
+            {"key": "live", "section": "automation", "item": "live", "label": "Live automation", "headline": "42 of 100 used, projected 80", "details": ["Account a: 42"]},
+            {"key": "ci", "headline": "ignored: ci is already an item"},
+        ]
+    def needs_me(self):
+        return [{"key": "builds:app", "details": ["Deploy refused"], "count": 3}]
+"""
+        )
+        by = {i["id"]: i for i in pb.collect()["items"]}
+        self.assertEqual(
+            (by["ci"]["headline"], by["ci"]["details"], by["ci"]["url"], by["ci"]["label"]),
+            ("2 online, 1 queued", ["Last backup 3 h ago"], "/ci", "CI and backup"),
+        )
+        self.assertEqual(
+            (by["live"]["tone"], by["live"]["headline"], by["live"]["count"]),
+            ("healthy", "42 of 100 used, projected 80", 0),
+        )
+        self.assertEqual(
+            (by["live"]["section"], by["live"]["details"]), ("automation", ["Account a: 42"])
+        )
+        # a problem keeps its own lines; an explicit count is the number of lines it stands for
+        self.assertEqual(
+            (by["builds:app"]["tone"], by["builds:app"]["details"], by["builds:app"]["count"]),
+            ("needs_me", ["Deploy refused"], 3),
+        )
+        self.assertEqual(by["builds:app"]["headline"], "v1.2.3")
+
     def test_a_broken_provider_is_one_needs_me_item(self):
         self.world()
         for src in (
