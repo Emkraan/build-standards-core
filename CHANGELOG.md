@@ -9,6 +9,7 @@ Opt in: `OPSCENTER_LOG_INTAKE` and `OPSCENTER_REPORTS`. With neither set nothing
 - Reports routes: dashboards list, save, delete, reset, export, import (a bad definition refuses the whole batch) and run, plus an ad hoc report query. Shipped dashboards seed by version from the provider; an edited copy is never overwritten.
 - Providers (`OPSCENTER_LOG_INTAKE_PROVIDER`, `OPSCENTER_REPORTS_PROVIDER`, `path/to/file.py:ClassName`, every method optional). `authorize(headers, action, key)` gates every admin and dashboard route and has a null default that refuses everything, so a route is closed until a consumer says who may use it.
 - Writes are POST (the registry has no PUT or DELETE). A panel may carry a `spec` instead of a `measure` (definitions validation).
+- To confirm with the reference owner: a new stream keeps its sink data for 180 days by default (the reference code and its test say 180); its inventory text said 90. The report time zone defaults to UTC (`OPSCENTER_REPORTS_TZ`).
 
 ## 2026-11-07 (v1.155.0, the optional reports module: the report engine, the source slot and dashboard runs)
 
