@@ -1,11 +1,20 @@
 # Changelog
 
-## 2026-11-07 (v1.144.0, KeepRedirect and the flat hub index tab)
+## 2026-11-07 (v1.145.0, KeepRedirect and the flat hub index tab)
 
 Opt in: a consumer that does not import them sees nothing.
 
 - `KeepRedirect` and `redirectTarget`: a redirect for a moved route that keeps the query string and hash (layout standard rule 9). Router free (`onRedirect`), same-site paths only, so a redirect built from data cannot leave the site.
 - `HubHeader` with `tabs` takes `indexKey`: the index tab's route is `<base>` itself (not `<base>/<key>`) and it is the tab selected when the route has no item.
+
+## 2026-11-06 (v1.144.0, rules from the consumers' inventories: freeze lane, sign-offs, review threads, evidence, ticket comments, ahead of main, status files, watches)
+
+Rule text for what the ops center lifts, so the standard states what the code does. Opt in: reported by core-status; each is a `test` rule a consumer proves with its own tests, and the ops center layout rules apply to an ops center app only.
+
+- automation-safety 1.13 to 1.19: a change freeze holds what can deploy (a CI-only PR is not held); who applied a label is read from the newest timeline events; a green PR the lane never merged is re-run once, then reported once; a sign-off covers every rule hit, is bound to the head and never covers a destroy or a replace; a reply or resolve from a card fails closed and never tags an automated reviewer; approval evidence comes from system data, never a model; an automatic ticket comment runs only when its inputs changed.
+- iac-governance 1.12: an owner apply never undoes what an open pull request applied from its branch.
+- ops-center-layout 1.13 to 1.16: a status card shows unknown when its source is missing, stale or unreadable; a lapsed sign-in is never silent; a job that stays red is raised on the board; a change that takes minutes to reach its destination shows its in-flight rollout. Rule 1.5 now also says a running build is never red and a cancelled or superseded run never counts.
+- Already in core and now stated: the sign-off fingerprint and the destroy and replace exclusion (`signoff_store`, `own_pr_merge`), the fail-closed review conversations (`review_threads`).
 
 ## 2026-11-06 (v1.143.0, sessions and cards: session on it, curation, inbound files, CI test runner, page renderer)
 
