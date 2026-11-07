@@ -159,3 +159,47 @@ test('search lists the help of the page and its words, and choosing one opens th
   await row.click();
   await expect(page.getByRole('dialog', { name: 'Help: Kit gallery' })).toBeVisible();
 });
+
+test('the header search trigger keeps its own width when the title is long', async ({ page }) => {
+  const specimen = page.locator('#specimen-header-long-title');
+  await specimen.scrollIntoViewIfNeeded();
+  const search = specimen.locator('.search-btn');
+  await expect(search).toBeVisible();
+  const box = await search.boundingBox();
+  const natural = await search.evaluate((el) => {
+    const label = el.querySelector('.search-btn-label') as HTMLElement | null;
+    const keys = el.querySelector('.search-btn-keys') as HTMLElement | null;
+    return (label?.scrollWidth ?? 0) + (keys?.scrollWidth ?? 0);
+  });
+  expect(box?.width ?? 0).toBeGreaterThan(natural);
+  // The label is still all there, not clipped, and the title is what gave way.
+  const clipped = await search.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+  expect(clipped).toBe(false);
+  const title = specimen.locator('.header-title');
+  expect(await title.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+});
+
+test('a card is white by default and one step up under data-card-surface=raised in the light theme', async ({ page }) => {
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'));
+  const specimen = page.locator('#specimen-header-long-title');
+  const plain = await specimen.getByTestId('card-surface').evaluate((el) => getComputedStyle(el).backgroundColor);
+  const raised = await specimen.getByTestId('card-raised').evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(plain).toBe('rgb(255, 255, 255)');
+  expect(raised).toBe('rgb(243, 246, 251)');
+});
+
+test('the sidebar pin control is a target of at least 24px whatever the icon size', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.evaluate(() => {
+    const pin = document.createElement('button');
+    pin.className = 'rail-pin';
+    pin.style.cssText = 'display:inline-flex;position:fixed;left:0;top:0;padding:0';
+    pin.innerHTML = '<svg width="12" height="16" aria-hidden="true"></svg>';
+    pin.id = 'probe-pin';
+    document.body.appendChild(pin);
+  });
+  const box = await page.locator('#probe-pin').boundingBox();
+  expect(box?.width ?? 0).toBeGreaterThanOrEqual(24);
+  expect(box?.height ?? 0).toBeGreaterThanOrEqual(24);
+});
+

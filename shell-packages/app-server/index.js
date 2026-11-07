@@ -21,7 +21,7 @@
 //   gatewayGuard         accept a request only when it carries the gateway token the tier's API
 //                        gateway adds, log only until enforcement is on
 
-import { createPublicKey, verify as cryptoVerify } from "node:crypto";
+import { createHash, createPublicKey, verify as cryptoVerify } from "node:crypto";
 
 // --- Group resolver ---
 
@@ -2162,5 +2162,197 @@ export function gatewayGuard(options = {}) {
         res.status(403).json({ error: "Forbidden", message: refusalMessage });
       })
       .catch(next);
+  };
+}
+
+// --- Job leader ---
+//
+// Background jobs that keep their dedupe state in memory (a status snapshot to diff, a
+// "last fired" value read once) fire twice when two processes run them at the same time.
+// That happens during a slot swap (the incoming instances start before the outgoing ones
+// stop) and whenever a plan scales past one instance. createJobLeader makes the jobs run in
+// exactly one process: each process asks Postgres for a session advisory lock on a dedicated
+// connection, the holder starts the jobs, every other process keeps asking. The lock belongs
+// to the connection, so when the holder's process exits or its connection drops, Postgres
+// frees it and the next process takes over within retryMs. The holder pings its connection
+// every checkMs and stops its jobs at once when the ping fails. It needs a direct Postgres
+// connection (session pooling), never a transaction-mode pooler.
+
+/**
+ * The 64-bit advisory lock key for a job name (stable across processes and versions). The prefix
+ * namespaces the key, so two apps on one database never share a lock; keep it fixed once chosen.
+ * @param {string} name
+ * @param {string} [prefix]
+ * @returns {string}
+ */
+export function jobLockKey(name, prefix = "jobs") {
+  return createHash("sha256").update(`${prefix}:${name}`).digest().readBigInt64BE(0).toString();
+}
+
+/**
+ * @param {{
+ *   name: string,
+ *   getClient: () => Promise<any>,
+ *   start: () => unknown,
+ *   stop: () => unknown,
+ *   retryMs?: number,
+ *   checkMs?: number,
+ *   pingTimeoutMs?: number,
+ *   log?: Pick<Console, "log" | "warn" | "error">,
+ *   lockPrefix?: string,
+ * }} options
+ */
+export function createJobLeader(options) {
+  const { name, getClient, start, stop } = options || /** @type {any} */ ({});
+  if (!name || typeof getClient !== "function" || typeof start !== "function" || typeof stop !== "function") {
+    throw new TypeError("createJobLeader needs name, getClient, start and stop");
+  }
+  const retryMs = options.retryMs ?? 15000;
+  const checkMs = options.checkMs ?? 30000;
+  const pingTimeoutMs = options.pingTimeoutMs ?? 10000;
+  const log = options.log ?? console;
+  const key = jobLockKey(name, options.lockPrefix);
+  /** @type {any} */
+  let client = null;
+  let leading = false;
+  let running = false;
+  let busy = false;
+  // start() can take a while. A loss or end() while it runs bumps epoch, and the jobs it set up are
+  // stopped as soon as it returns, so they never run without the lock.
+  let starting = false;
+  let epoch = 0;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let timer = null;
+
+  /** @param {number} ms */
+  function schedule(ms) {
+    if (timer) clearTimeout(timer);
+    if (!running) return;
+    timer = setTimeout(step, ms);
+    if (timer.unref) timer.unref();
+  }
+
+  /**
+   * @template T
+   * @param {Promise<T>} work @param {string} what
+   * @returns {Promise<T>}
+   */
+  function bounded(work, what) {
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    let t;
+    const late = new Promise((_, reject) => {
+      t = setTimeout(() => reject(new Error(`${what} timed out after ${pingTimeoutMs} ms`)), pingTimeoutMs);
+      if (t.unref) t.unref();
+    });
+    return /** @type {Promise<T>} */ (Promise.race([work, late])).finally(() => clearTimeout(t));
+  }
+
+  /** @param {unknown} err */
+  function onClientError(err) {
+    lose(err instanceof Error ? err.message : String(err));
+    schedule(retryMs);
+  }
+
+  /** @param {boolean} destroy  true closes the connection, which also frees a lock it holds */
+  function drop(destroy) {
+    const c = client;
+    client = null;
+    if (!c) return;
+    if (typeof c.removeListener === "function") c.removeListener("error", onClientError);
+    try { c.release(destroy ? true : undefined); } catch { /* already released */ }
+  }
+
+  function stopJobs() {
+    try { stop(); } catch (e) { log.error(`[jobs] ${name}: stop failed: ${e instanceof Error ? e.message : e}`); }
+  }
+
+  /** @param {string} reason */
+  function lose(reason) {
+    if (leading) {
+      leading = false;
+      epoch += 1;
+      log.warn(`[jobs] ${name}: lost the job lock (${reason}), jobs stopped`);
+      if (!starting) stopJobs();
+    }
+    drop(true);
+  }
+
+  async function step() {
+    if (!running || busy) return;
+    busy = true;
+    try {
+      if (leading) {
+        await bounded(client.query("SELECT 1"), "lock check");
+        schedule(checkMs);
+        return;
+      }
+      client = await getClient();
+      if (typeof client.on === "function") client.on("error", onClientError);
+      const { rows } = await bounded(client.query("SELECT pg_try_advisory_lock($1::bigint) AS got", [key]), "lock request");
+      if (!running) { drop(true); return; }
+      if (rows && rows[0] && rows[0].got === true) {
+        leading = true;
+        const mine = ++epoch;
+        starting = true;
+        try {
+          await start();
+        } catch (e) {
+          starting = false;
+          // A process that cannot start its jobs gives the lock up, so it never blocks one that can.
+          log.error(`[jobs] ${name}: start failed, giving up the job lock: ${e instanceof Error ? e.message : e}`);
+          if (mine === epoch) lose("start failed");
+          schedule(retryMs);
+          return;
+        }
+        starting = false;
+        if (mine !== epoch) {
+          log.warn(`[jobs] ${name}: the job lock was lost while the jobs were starting, jobs stopped`);
+          stopJobs();
+          schedule(retryMs);
+          return;
+        }
+        log.log(`[jobs] ${name}: holding the job lock, jobs started`);
+        schedule(checkMs);
+      } else {
+        drop(false);
+        schedule(retryMs);
+      }
+    } catch (e) {
+      lose(e instanceof Error ? e.message : String(e));
+      schedule(retryMs);
+    } finally {
+      busy = false;
+    }
+  }
+
+  return {
+    /** Start asking for the lock (idempotent). */
+    begin() {
+      if (running) return;
+      running = true;
+      schedule(0);
+    },
+    /** Stop the jobs if this process runs them, free the lock and stop asking. */
+    async end() {
+      running = false;
+      if (timer) { clearTimeout(timer); timer = null; }
+      if (leading) {
+        leading = false;
+        epoch += 1;
+        if (!starting) stopJobs();
+        try {
+          await bounded(client.query("SELECT pg_advisory_unlock($1::bigint)", [key]), "lock release");
+          drop(false);
+        } catch {
+          drop(true);
+        }
+        return;
+      }
+      drop(true);
+    },
+    /** True while this process holds the lock and runs the jobs. */
+    isLeader() {
+      return leading;
+    },
   };
 }
