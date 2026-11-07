@@ -1,8 +1,8 @@
 # Changelog
 
-## 2026-11-06 (v1.136.0, evaluation notes for the hub's tool features and the items not lifted)
+## 2026-11-06 (v1.136.0, build plan for the optional hub modules and the items not lifted)
 
-Documentation only: `opscenter/evaluations/` holds three notes (the hub's log intake platform, its reports and dashboards, and the ops center and shell items the core did not lift). Each says, entry by entry, generic or consumer-specific, what the core has, what it would need and a recommendation with the decision it needs. Nothing is built or promised.
+Documentation only: `opscenter/plans/` holds the build plan for two optional core modules the owner decided to build (a log intake module and a reports module, never mandatory, absent when off) with the opt-in contract, a module layout, and per entry whether the hub's text and tests specify it or the source is still needed; and a note of the ops center and shell items the core did not lift, with what each needs. Nothing is built by this change.
 
 ## 2026-11-06 (v1.130.0, shell server rules)
 

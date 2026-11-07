@@ -1,4 +1,4 @@
-# Evaluation: ops center and shell items the core did not lift
+# Ops center and shell items the core did not lift
 
 Source: the ops center and shell inventories (intake issue 117, comments 6645998172 and 6645998639). Everything not listed here was lifted,
 compared and found already present, or is the shell session's; the lifts are in the pull requests of the same release series.
