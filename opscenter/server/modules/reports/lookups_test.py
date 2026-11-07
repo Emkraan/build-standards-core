@@ -24,8 +24,8 @@ from reports import lookup_db  # noqa: E402
 T0 = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
 PERSON = {
     "displayName": "Pat Example",
-    "userPrincipalName": "pat@corp.example",
-    "mail": "pat@corp.example",
+    "userPrincipalName": "pat@docshare.example",
+    "mail": "pat@docshare.example",
     "department": "Ops",
     "jobTitle": "Analyst",
     "accountEnabled": True,
@@ -50,7 +50,7 @@ class Names(unittest.TestCase):
 
     def test_the_bare_name_comes_out_of_a_domain_or_a_upn(self):
         self.assertEqual(d.bare_account("CORP\\Pat"), "pat")
-        self.assertEqual(d.bare_account("Pat@corp.example"), "pat")
+        self.assertEqual(d.bare_account("Pat@docshare.example"), "pat")
         self.assertEqual(d.bare_account("pat"), "pat")
 
     def test_not_a_person_classes(self):
@@ -68,7 +68,7 @@ class Resolve(unittest.TestCase):
         )
         self.assertEqual(
             (e["status"], e["displayName"], e["email"], e["enabled"]),
-            ("found", "Pat Example", "pat@corp.example", True),
+            ("found", "Pat Example", "pat@docshare.example", True),
         )
 
     def test_the_principal_name_is_the_second_try(self):
