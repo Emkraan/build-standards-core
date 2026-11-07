@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-07 (v1.153.0, the reports entry: dashboards with click to cross-filter and deep links)
+## 2026-11-07 (v1.154.0, the reports entry: dashboards with click to cross-filter and deep links)
 
 A new optional entry, `kit-core/reports`, the client side of the reports module (R1, R4, and the dashboard half of R5). It reads the kit charts (recharts, an optional peer), so an app that shows no dashboard never loads it. Lifted from the hub tool features and made generic: a panel names a stream and a measure, never a store.
 
@@ -8,6 +8,13 @@ A new optional entry, `kit-core/reports`, the client side of the reports module 
 - Deep links: `?d=<key>&range=<preset>&f.<filter>=<value>` read and written without losing other parameters, and a `drill` link that carries the rows behind a panel.
 - `dashboardSheets`: a Summary tab and a tab per panel for `kit-core/export`.
 - `BarChart` and `DonutChart` take `onSelect` (click a bar or slice); nothing changes without it.
+
+## 2026-11-07 (v1.153.0, the optional reports module: directory and catalog lookups)
+
+Opt in: `server/modules/reports/{directory,catalog,lookup_db}.py`, imported only when a consumer uses them or sets `OPSCENTER_REPORTS`; no import side effect (the database `OPSCENTER_REPORTS_DB` is created on first use).
+
+- `directory.py`: account names to directory people at ingest, behind a `lookup(kind, value)` slot. One lookup per name, cached 30 days found, 1 day miss, 1 hour error; computer and service accounts and the posting device are "not a person"; two matches are not found, never guessed; an outage pauses lookups for 10 minutes and never fails the caller; at most 200 per run.
+- `catalog.py`: ids (for example extensions) resolved once behind a `fetch(id)` slot, cached 30 days found and 7 days miss; an outage caches nothing and pauses for an hour; a publisher a person typed is never overwritten and never expires; at most 100 per run; the id pattern is configuration.
 
 ## 2026-11-07 (v1.152.0, the optional log intake module: receiver, streams, snapshots, buffer, sink checks)
 
