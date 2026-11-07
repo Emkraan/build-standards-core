@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-07 (v1.160.0, the reports client reads the server's export and import answers)
+
+Opt in, `kit-core/reports`. The client reads an export as a list of definitions or as `{ dashboards }`, and an import answer whose `errors` are `{ index, key, message }` objects (each definition is stored or refused on its own) as well as plain strings; `importProblemText` turns one into a line.
+
 ## 2026-11-07 (v1.159.0, the dashboard routes match the kit client)
 
 - `POST /api/dashboards` and `POST /api/dashboards/<key>` take the definition as the body (the `{def}` wrapper still works). Export is a list. Import answers `{created, updated, errors: [{index, key, message}]}`: each definition is stored whole or refused with its reason, and one bad definition no longer stops the others.

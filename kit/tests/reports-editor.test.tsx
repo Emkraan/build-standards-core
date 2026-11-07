@@ -2,7 +2,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import axe from 'axe-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DashboardEditor, blankDefinition, createDashboardsClient, exportDefinitions, newPanel, parseDefinitions, slugFor, validateDefinition } from '../src/reports';
+import { DashboardEditor, blankDefinition, createDashboardsClient, exportDefinitions, importProblemText, newPanel, parseDefinitions, slugFor, validateDefinition } from '../src/reports';
 import type { DashboardDefinition, DashboardRun } from '../src/reports';
 import { installMatchMedia, resetMedia } from './helpers';
 
@@ -93,6 +93,15 @@ describe('createDashboardsClient', () => {
       'POST /api/reports/dashboards/run',
     ]);
     expect(f).toHaveBeenCalledWith('/api/reports/dashboards/import', expect.objectContaining({ body: JSON.stringify({ dashboards: [good] }) }));
+  });
+
+  it('reads an export as a list or as { dashboards }, and an import problem as text', async () => {
+    const list = createDashboardsClient({ base: '/x', fetch: reply({ success: true, data: [good] }) as unknown as typeof fetch });
+    expect(await list.exportAll()).toEqual([good]);
+    expect(importProblemText({ index: 1, key: 'two', message: 'title must be a non-empty string' })).toBe('two: title must be a non-empty string');
+    expect(importProblemText({ index: 2, message: 'bad' })).toBe('#3: bad');
+    expect(importProblemText({ message: 'bad' })).toBe('definition: bad');
+    expect(importProblemText('plain')).toBe('plain');
   });
 
   it('unwraps the export envelope into a list of definitions', async () => {
