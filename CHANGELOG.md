@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-07 (v1.164.0, the sprint trend and the closed sprint view)
+
+- `tracker/sprint_trend.py` (new, pure): the trend rows (the last six closed sprints oldest first, then the active one: items, done today, points, points done, carried into a later sprint), the recent closed sprint list (one per id, newest first, at most 12) and the id allow list for the per sprint view (400 for a non number, 404 for an id that is not a recent closed sprint). A sprint the source cannot read fails the trend instead of reading as empty.
+- `tracker/work.py`: `closed_sprints`, `sprint_trend` and `sprint(sprint_id)` read the Sprint field through the driver as the sprint view already does. The optional source `OPSCENTER_TRACKER_SPRINT_PROVIDER` (`tracker_closed_sprints(limit)`, `tracker_sprint_items(sprint_id)`) replaces that read for a tracker without such a field.
+- Routes: `GET /api/jira/sprints`, `GET /api/jira/sprint-trend`, `GET /api/jira/sprint?id=`. The first two are new; the third answers the active sprint exactly as before when `id` is absent.
+- "Done" is what the tracker shows today: there is no committed at start snapshot (a source can give one as `committed`).
+
 ## 2026-11-07 (v1.163.0, rbac matches a stored user row by directory object id)
 
 Opt in, `rbac`. New exports `cleanOid`, `userRowMatches` and `pickUserRow` from the Olympus shell source (SH-3 family, K-source-refresh): a grant to a person binds to their directory object id, the email stays a label and is the match only for rows with no object id. A caller whose token has no object id matches only rows that have none (fail closed); `pickUserRow` prefers the row bound to the id whatever the row order. Documented in `web-shell-packages.md` section 3.
