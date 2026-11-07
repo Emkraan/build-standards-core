@@ -20,5 +20,24 @@ def load_tests(loader, tests, pattern):
     return tests
 
 
+class LaneChecks(unittest.TestCase):
+    """The own-PR lane's synthetic checks (opscenter/lanes/tests/own_pr_merge_checks.py) exit non-zero on any failed case."""
+
+    def test_own_pr_merge_checks_pass(self):
+        import subprocess
+
+        script = OPSCENTER / "lanes" / "tests" / "own_pr_merge_checks.py"
+        r = subprocess.run(
+            [sys.executable, str(script)], capture_output=True, text=True, timeout=300
+        )
+        self.assertEqual(
+            r.returncode,
+            0,
+            "\n".join(ln for ln in r.stdout.splitlines() if ln.startswith("FAIL"))
+            or r.stderr[-800:],
+        )
+        self.assertIn("FAILURES: 0", r.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()
