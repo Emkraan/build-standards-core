@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-07 (v1.165.0, the owner apply guard fails closed and covers open PRs)
+## 2026-11-07 (v1.166.0, the owner apply guard fails closed and covers open PRs)
 
 `opscenter/server/modules/owner_roots.py`.
 
@@ -10,6 +10,13 @@
 - Opt in provider hooks, null by default: `open_pr_addresses(root)` (the guard and the Apply refusal also refuse a delete of an address an open PR declares, and refuse when that read fails), `detect_ahead(root)` (a root with no hold record whose main plan destroys what an open PR holds gets a detected hold), `is_protection(id)` (a lock the plan itself deletes is left out of the deletes handed to the lift), `retry_kinds()` (the apply is retried after a lift when the failure is one of the provider's own error kinds, not only when the output says retry), and a third `before_apply` parameter, a private directory to record the lift in before the first lift. An exception from `before_apply` that carries a `state` attribute reaches `after_apply`, so a partial lift is restored.
 - Behaviour change: the lift lag retry needs a non empty state from `before_apply` (it used to be any state that is not None), so nothing lifted means no retry.
 - Terminal apply logging: `owner_roots.py --log-start --root <name>:<tier> --sha <sha> [--by <account>]` and `--log-done ... [--result <text>]` append `owner_apply_started` and `owner_apply_done` in the module's own record shape. `--by` defaults to the provider's expected identity.
+
+## 2026-11-07 (v1.165.0, the run watches read a failed run once and pick the real error line)
+
+`lanes/run_watches.py` (OC-8 drift watch, OC-9 main watch). Two changes to what runs today:
+- Error lines: the first `Error:` line of the failed job's log is preferred (colour codes, timestamps and a box drawing prefix dropped), else the first `##[error]` annotation; the runner's `Process completed with exit code N.` line is never returned (a log with only that line gives no error line), and the word failed in ordinary output, `FATAL` and `Traceback` no longer match. The drift item now shows every error line of each failing job (up to 3), the main item the first.
+- API budget: a failed run's jobs and logs are read once and cached by repo, run id and attempt (newest 20 kept), so a run that stays red costs one runs list per collect instead of a jobs and log read each time. A log that could not be read is not cached and is read again. The cache lives in the process by default; the optional `cache_file` config key keeps it between runs of the `items` CLI. Job logs are read with `--allow-escape-sequences` (a gh without that flag is asked again without it).
+- `collect`, `main_item` and `drift_item` take an optional `cache`; the runs list asks for `attempt`. Tests port the scenarios of the reference main and drift watch tests onto `collect()`.
 
 ## 2026-11-07 (v1.164.0, the CI-only freeze exemption holds more, and the draft gate checks an apply)
 
