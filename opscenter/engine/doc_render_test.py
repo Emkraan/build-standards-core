@@ -47,7 +47,9 @@ class Render(unittest.TestCase):
         self.assertEqual(d.sanitize_check(out), [])
 
     def test_non_ascii_punctuation_is_normalized(self):
-        out = d.render("## T\n\nIt\u2019s a \u201cquote\u201d \u2014 and an arrow \u2192 here\u2026\n")
+        out = d.render(
+            "## T\n\nIt\u2019s a \u201cquote\u201d \u2014 and an arrow \u2192 here\u2026\n"
+        )
         self.assertTrue(out.isascii())
         self.assertIn("It's", out)
         self.assertIn("-&gt;", out)
