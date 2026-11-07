@@ -1,12 +1,20 @@
 # Changelog
 
-## 2026-11-07 (v1.162.0, the documentation drift feed, a provider slot)
+## 2026-11-07 (v1.163.0, the documentation drift feed, a provider slot)
 
 Opt in: `OPSCENTER_DOCS_DRIFT_PROVIDER` (`path/to/file.py:ClassName`). Without it there is no route and nothing is imported (a null slot hides the tab).
 
 - `server/modules/docs_drift.py`: the core owns the summary shape (counts by status and basis, the 40 pages most behind, the pages with no verdict, per app README and changelog facts, the write preview filtered and trimmed), the status vocabulary (closed sets, an unknown value is kept), the cache (900 s), the one background refresh a GET starts (a GET never waits on the source) and the three routes.
 - The consumer owns where the report comes from: `docs_drift_source(now)`, optional `docs_drift_latest_run()` (the same run id means no second fetch) and `docs_drift_dispatch()` (absent: Run now answers 501; a refusal answers 409 with its reason). A failed fetch keeps the last good data and names the error.
 - `authorize(headers, action, key)` gates all three routes (`docs-drift.read`, `docs-drift.run`) and refuses everything until a provider supplies it.
+
+## 2026-11-07 (v1.162.0, the processing indicator can stop reads)
+
+Closes the gap against the hub's handoff tag (the busy bar spec): the indicator's Cancel request, the stop on leaving the page and the server run stop. A second opt in on top of `installBusyTracking`; with `cancel` off nothing changes.
+
+- `installBusyTracking({ cancel: true, keepAcrossRoutes, runs })`: a counted read carries a signal of its own joined with the caller's. `cancelBusyReads()` stops every stoppable read with `Request cancelled`; `abortStaleReads(route)` stops reads that outlived their route after 1.5 s of grace (`The page was left before the request finished`); a hidden page stops them all. Writes are never stopped. `runs` tags the server's stoppable runs with an id header and tells the server on every stop (a beacon, then a keepalive POST).
+- `BusyIndicator`: a chip with the elapsed seconds after 5 s and, while a stoppable read is in flight, a Cancel request button; the bar itself still takes no input. `route`, `cancelAfterMs`, `cancelLabel` and `onCancel` are props.
+- `BusyState` gains `cancellable`; `CANCELLED_MESSAGE`, `LEFT_PAGE_MESSAGE` and `NAV_GRACE_MS` are exported.
 
 ## 2026-11-07 (v1.161.0, a consumer can validate the manifest keys it adds)
 
