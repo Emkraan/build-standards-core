@@ -460,3 +460,34 @@ test("validateRegistry: a public module declares no permission read, so no modul
   assert.match(validateRegistry([consoleMod(), site, peer]).join("\n"), /peer permission module site has no permission read/);
   assert.deepEqual(validateRegistry([consoleMod(), site]), []);
 });
+
+const jobsCheck = (/** @type {any} */ j) => (!j || typeof j.path !== "string" || !/^\/[A-Za-z0-9/_-]*$/.test(j.path) || j.path.includes("//") ? "jobs path must be a plain API path" : undefined);
+
+test("validateManifest: a registered key validator runs on that key and a malformed value fails", () => {
+  const m = base();
+  m.jobs = { path: "//jobs" };
+  assert.deepEqual(validateManifest(m), []);
+  assert.match(validateManifest(m, { keys: { jobs: jobsCheck } }).join("\n"), /demo: jobs path must be a plain API path/);
+  m.jobs = { path: "/jobs" };
+  assert.deepEqual(validateManifest(m, { keys: { jobs: jobsCheck } }), []);
+  // a validator may return a list, and is skipped when the key is absent
+  assert.equal(validateManifest(base(), { keys: { jobs: () => ["never"] } }).length, 0);
+  m.jobs = {};
+  assert.equal(validateManifest(m, { keys: { jobs: () => ["one", "two"] } }).length, 2);
+});
+
+test("validateManifest: strictKeys rejects a key that is neither core nor registered", () => {
+  const m = base();
+  m.jobz = { path: "/jobs" };
+  assert.deepEqual(validateManifest(m), []);
+  assert.match(validateManifest(m, { strictKeys: true }).join("\n"), /demo: unknown key jobz/);
+  assert.deepEqual(validateManifest(m, { strictKeys: true, keys: { jobz: () => undefined } }), []);
+  assert.deepEqual(validateManifest(base(), { strictKeys: true }), []);
+});
+
+test("validateRegistry passes the options to every manifest", () => {
+  const m = base();
+  m.jobs = { path: "//x" };
+  assert.match(validateRegistry([consoleMod(), m], { keys: { jobs: jobsCheck } }).join("\n"), /jobs path must be a plain API path/);
+  assert.deepEqual(validateRegistry([consoleMod(), base()], { strictKeys: true }), []);
+});
