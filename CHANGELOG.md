@@ -4,6 +4,14 @@
 
 `scripting-powershell.md`: the `ConvertFrom-Json` array rule now names the right cause, from the hub consumer's check against its scripts repo. Windows PowerShell 5.1 returns a JSON array from `ConvertFrom-Json` as a single object, so a pipeline wrapped in `@(...)` yields an array inside an array; assign the result, then enumerate `@($rows)`. It no longer reads as a variant of the PowerShell 7 `Invoke-RestMethod` note, which is a separate problem. The acceptance fixture (empty array, one object, several, counts 0, 1 and N) now runs on Windows PowerShell 5.1 specifically (`tests/fixtures/powershell-51/ConvertFromJsonShape.ps1`) and says so and skips on any other host, never passing in silence. Core CI has no 5.1 host, so it checks the fixture's shape and the skip; the 5.1 run is the consumer's.
 
+## 2026-11-07 (v1.162.0, the processing indicator can stop reads)
+
+Closes the gap against the hub's handoff tag (the busy bar spec): the indicator's Cancel request, the stop on leaving the page and the server run stop. A second opt in on top of `installBusyTracking`; with `cancel` off nothing changes.
+
+- `installBusyTracking({ cancel: true, keepAcrossRoutes, runs })`: a counted read carries a signal of its own joined with the caller's. `cancelBusyReads()` stops every stoppable read with `Request cancelled`; `abortStaleReads(route)` stops reads that outlived their route after 1.5 s of grace (`The page was left before the request finished`); a hidden page stops them all. Writes are never stopped. `runs` tags the server's stoppable runs with an id header and tells the server on every stop (a beacon, then a keepalive POST).
+- `BusyIndicator`: a chip with the elapsed seconds after 5 s and, while a stoppable read is in flight, a Cancel request button; the bar itself still takes no input. `route`, `cancelAfterMs`, `cancelLabel` and `onCancel` are props.
+- `BusyState` gains `cancellable`; `CANCELLED_MESSAGE`, `LEFT_PAGE_MESSAGE` and `NAV_GRACE_MS` are exported.
+
 ## 2026-11-07 (v1.161.0, a consumer can validate the manifest keys it adds)
 
 Opt in, `console-modules`. `validateManifest` and `validateRegistry` take a second argument: `keys` maps a key to a validator `(value, manifest)` that returns a problem string, a list, or nothing, and runs only when the manifest carries the key; `strictKeys: true` rejects a top-level key that is neither a core key nor registered. Closes the gap where a malformed consumer key (a jobs path) passed core validation because unknown keys are carried untouched.
