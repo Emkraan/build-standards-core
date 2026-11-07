@@ -146,6 +146,12 @@ class ConsoleModuleSchema(unittest.TestCase):
 
         walk(self.schema)
 
+    def test_client_folder_may_be_client_or_spa(self):
+        for folder in ("client", "spa"):
+            m = self.load("alerts.module.json")
+            m["client"] = "apps/alerts/" + folder
+            self.assertEqual(self.problems(m), [])
+
     def test_unknown_keys_pass_at_every_level(self):
         m = self.load("alerts.module.json")
         m["x-other"] = 1
@@ -174,6 +180,8 @@ class ConsoleModuleSchema(unittest.TestCase):
             "bad icon": lambda m: m.update(icon="megaphone"),
             "negative order": lambda m: m.update(order=-1),
             "wrong client": lambda m: m.update(client="packages/x"),
+            "client folder neither client nor spa": lambda m: m.update(client="apps/alerts/web"),
+            "client with a trailing path": lambda m: m.update(client="apps/alerts/spa/src"),
             "non ASCII name": lambda m: m.update(name="Caf" + chr(0xE9)),
             "angle bracket in description": lambda m: m.update(description="a <b> c"),
             "padded description": lambda m: m.update(description=" lead"),

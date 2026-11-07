@@ -66,8 +66,8 @@
     },
     "client": {
       "type": "string",
-      "pattern": "^apps/[a-z0-9-]+/client$",
-      "description": "The client package folder of the app that holds the manifest (apps/<dir>/client)."
+      "pattern": "^apps/[a-z0-9-]+/(client|spa)$",
+      "description": "The client package folder of the app that holds the manifest (apps/<dir>/client, or apps/<dir>/spa for an app that names its client folder spa)."
     },
     "api": {
       "type": "object",

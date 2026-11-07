@@ -1,8 +1,14 @@
 # Changelog
 
-## 2026-11-07 (v1.137.0, a test race fix)
+## 2026-11-07 (v1.138.0, a test race fix)
 
 Test only: `pool_view_test` no longer races the background refresh threads of the previous test, which wrote a stale answer into the cache after it was cleared and failed `test_a_failed_read_is_unknown_never_a_pass` now and then in CI.
+
+## 2026-11-06 (v1.137.0, the manifest client folder may be spa)
+
+Additive. `console.module.json` `client` accepts `apps/<dir>/spa` as well as `apps/<dir>/client`.
+
+- `validateManifest`, the JSON schema and `web-shell-manifest.md` take either folder name, for an app that already names its client folder `spa`. Nothing that validated before stops validating. The generator reads the field as plain data and needed no change. Tests: accepted for both names, rejected for another folder name and for a trailing path, in the TypeScript and the Python schema suites.
 
 ## 2026-11-06 (v1.136.0, an OIDC sign-in beside MSAL in the client package)
 
