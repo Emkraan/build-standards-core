@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-07 (v1.148.0, the optional reports module: dates, definitions, grants, preview)
+
+Opt in: all of it sits under `server/modules/reports/`, is imported only when a consumer sets `OPSCENTER_REPORTS`, and has no import side effect.
+
+- `dateranges.py` (R4, R7): whole-day filters in a named zone with the end day counted in full across a clock change; rows dated more than a day ahead are separated from time panels and counted, never dropped.
+- `definitions.py` (R2): definitions as data; shipped defaults seeded by version, an edited copy never overwritten, reset, export and import by key, bad definitions refused whole.
+- `grants.py` (P1, P4): effective rights are the union of roles and user grants; separate global rights for reports and dashboards plus per-object rights; a grant is removed when its object is deleted and swept when it outlived it.
+- `view_as.py` (P3): a read-only role preview with a pinned allowlist of read-only query POSTs.
+- Built from the hub's text and tests; the API shapes are mine (the hub source is not in the core), flagged.
+
 ## 2026-11-07 (v1.147.0, the CSV formula guard, the first part of the optional reports module)
 
 Opt in: the helper is used by a consumer's own export; the reports module itself stays off and unloaded until `OPSCENTER_REPORTS` is set.
