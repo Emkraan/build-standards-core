@@ -1364,7 +1364,7 @@ button.md-link { padding: 0; border: 0; background: transparent; font: inherit; 
 /* ---- Dashboard editor (R2): the definition as JSON, its problems, a live preview ---- */
 .dash-editor { display: grid; gap: var(--space-4); }
 .dash-editor-names { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); }
-.dash-editor-json { width: 100%; font-family: var(--font-mono); font-size: var(--fs-label); }
+.dash-editor-json { width: 100%; font-family: var(--font-mono); font-size: var(--fs-mono); }
 .dash-editor-problems { margin: 0; padding-left: 18px; font-size: var(--fs-label); color: var(--danger); }
 .dash-editor-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 

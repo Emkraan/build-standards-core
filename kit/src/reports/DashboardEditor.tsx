@@ -44,7 +44,7 @@ function parse(text: string): { value?: DashboardDefinition; problems: string[] 
 }
 
 export function DashboardEditor({ definition, existing, modified, streams = [], defaultMeasure = 'rows', onSave, onPreview, onReset, onDelete, onClose, help, className }: DashboardEditorProps) {
-  const { confirm, dialog } = useConfirm();
+  const { confirm: ask, dialog } = useConfirm();
   const [text, setText] = useState(() => JSON.stringify(definition, null, 2));
   const [addType, setAddType] = useState<PanelType>('stat');
   const [busy, setBusy] = useState(false);
@@ -92,7 +92,7 @@ export function DashboardEditor({ definition, existing, modified, streams = [], 
     setText(JSON.stringify({ ...parsed.value, panels }, null, 2));
   };
   const remove = async () => {
-    const ok = await confirm({ title: 'Delete dashboard', body: `Delete ${title || 'this dashboard'}?${modified ? ' A shipped dashboard can be brought back by restoring the defaults.' : ''}`, confirmLabel: 'Delete', danger: true });
+    const ok = await ask({ title: 'Delete dashboard', body: `Delete ${title || 'this dashboard'}?${modified ? ' A shipped dashboard can be brought back by restoring the defaults.' : ''}`, confirmLabel: 'Delete', danger: true });
     if (ok && onDelete) void guard(() => onDelete());
   };
 
