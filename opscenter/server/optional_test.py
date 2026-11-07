@@ -343,20 +343,26 @@ class Reports(Base):
             )
         self.assertEqual(self.post("/api/dashboards", {"def": "x"}, ADMIN)[0], 400)
 
-    def test_export_and_an_all_or_nothing_import(self):
+    def test_a_save_takes_the_whole_definition_as_the_body(self):
+        self.assertEqual(self.post("/api/dashboards", self.dash(key="bare"), ADMIN)[0], 200)
+        self.assertEqual(self.post("/api/dashboards/bare", self.dash(title="Again"), ADMIN)[0], 200)
+        bad_type = self.dash(key="typed")
+        bad_type["panels"][0]["type"] = "pie"
+        self.assertEqual(self.post("/api/dashboards", bad_type, ADMIN)[0], 400)
+
+    def test_export_is_a_list_and_an_import_reports_each_definition(self):
         self.post("/api/dashboards", {"def": self.dash()}, ADMIN)
-        out = self.js("GET", "/api/dashboards/export", headers=READER)[2]["data"]["dashboards"]
+        out = self.js("GET", "/api/dashboards/export", headers=READER)[2]["data"]
         self.assertEqual(sorted(d["key"] for d in out), ["mine", "shipped"])
         good, bad = self.dash(key="two"), self.dash(key="three", title="")
-        self.assertEqual(
-            self.post("/api/dashboards/import", {"dashboards": [good, bad]}, ADMIN)[0], 400
-        )
-        keys = [r["key"] for r in self.js("GET", "/api/dashboards", headers=READER)[2]["data"]]
-        self.assertNotIn("two", keys)
-        self.assertEqual(
-            self.post("/api/dashboards/import", {"dashboards": [good]}, ADMIN)[2]["data"],
-            {"keys": ["two"]},
-        )
+        items = [good, bad, self.dash(key="mine")]
+        r = self.post("/api/dashboards/import", {"dashboards": items}, ADMIN)[2]["data"]
+        self.assertEqual((r["created"], r["updated"]), (["two"], ["mine"]))
+        self.assertEqual([(e["index"], e["key"]) for e in r["errors"]], [(1, "three")])
+        keys = [x["key"] for x in self.js("GET", "/api/dashboards", headers=READER)[2]["data"]]
+        self.assertIn("two", keys)
+        self.assertNotIn("three", keys)
+        self.assertEqual(self.post("/api/dashboards/import", {"dashboards": "x"}, ADMIN)[0], 400)
 
     def test_run_by_key_and_by_definition(self):
         from log_intake import current_store, stream_store

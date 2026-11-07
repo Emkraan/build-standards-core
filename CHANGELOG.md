@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-07 (v1.159.0, the dashboard routes match the kit client)
+
+- `POST /api/dashboards` and `POST /api/dashboards/<key>` take the definition as the body (the `{def}` wrapper still works). Export is a list. Import answers `{created, updated, errors: [{index, key, message}]}`: each definition is stored whole or refused with its reason, and one bad definition no longer stops the others.
+- A panel `type`, when present, is validated on the server (stat, line, area, bar, hbar, donut, table).
+
 ## 2026-11-07 (v1.158.0, the reports client follows the server routes)
 
 Aligns the `kit-core/reports` client with the routes the core server registers (the registry has only GET and POST). Opt in, same entry.

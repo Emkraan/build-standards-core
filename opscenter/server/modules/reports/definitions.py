@@ -30,6 +30,7 @@ from pathlib import Path
 
 KEY_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 MAX_PANELS = 50
+PANEL_TYPES = ("stat", "line", "area", "bar", "hbar", "donut", "table")
 
 
 def validate(definition):
@@ -55,6 +56,8 @@ def validate(definition):
         for f in ("title", "stream"):
             if not isinstance(p.get(f), str) or not p[f].strip():
                 out.append(f"panel {i + 1}: {f} must be a non-empty string")
+        if p.get("type") is not None and p["type"] not in PANEL_TYPES:
+            out.append(f"panel {i + 1}: type must be one of {', '.join(PANEL_TYPES)}")
         has_measure = isinstance(p.get("measure"), str) and p["measure"].strip()
         if not has_measure and not isinstance(p.get("spec"), dict):
             out.append(

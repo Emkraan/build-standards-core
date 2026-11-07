@@ -12,12 +12,12 @@ Provider (all optional, `OPSCENTER_REPORTS_PROVIDER=path/to/file.py:ClassName`):
          dashboards() -> {"defaults": [definition], "version": int}   the shipped dashboards, seeded by version, an edited copy never overwritten
 
 Routes:  GET  /api/dashboards                  action dashboards.read    rows {key, title, description, def, isDefault, modified, canEdit}
-         POST /api/dashboards                  dashboards.write          {def} create or replace by key
-         POST /api/dashboards/<key>            dashboards.write          {def} replace (the key is the path's)
+         POST /api/dashboards                  dashboards.write          the definition (the body itself, or {def}) create or replace by key
+         POST /api/dashboards/<key>            dashboards.write          the definition replaces (the key is the path's)
          POST /api/dashboards/<key>/delete     dashboards.write
          POST /api/dashboards/<key>/reset      dashboards.write          back to the shipped copy
-         GET  /api/dashboards/export           dashboards.read           {dashboards: [def]}
-         POST /api/dashboards/import           dashboards.write          {dashboards: [def]} every one validated, a bad one refuses the whole batch
+         GET  /api/dashboards/export           dashboards.read           [def]
+         POST /api/dashboards/import           dashboards.write          {dashboards: [def]} each validated; answers {created, updated, errors: [{index, key, message}]}
          POST /api/dashboards/run              dashboards.read           {key | def, range?, selections?} the run result of dashboards.py
          POST /api/reports/query               reports.run               {stream, spec} one report spec on the source
 Answers: {success: true, data} or the registry's error mapping (ValueError 400, KeyError 404, PermissionError 403)
@@ -69,6 +69,10 @@ def register(r, provider):
         except PermissionError:
             return False
 
+    def body_def(p):
+        """The definition of a save: the whole body, or `{def}` (both shapes are taken)."""
+        return p["def"] if isinstance(p.get("def"), dict) else p
+
     def checked(defn, key=None):
         if not isinstance(defn, dict):
             raise ValueError("def must be a dashboard definition object")
@@ -108,13 +112,13 @@ def register(r, provider):
 
     def save_new(q):
         who(q, "dashboards.write")
-        defn = checked(q.payload().get("def"))
+        defn = checked(body_def(q.payload()))
         who(q, "dashboards.write", defn["key"])
         return _ok({"key": store.save(defn)})
 
     def save_one(q):
         who(q, "dashboards.write", q.groups[0])
-        return _ok({"key": store.save(checked(q.payload().get("def"), q.groups[0]))})
+        return _ok({"key": store.save(checked(body_def(q.payload()), q.groups[0]))})
 
     def delete(q):
         who(q, "dashboards.write", q.groups[0])
@@ -129,13 +133,11 @@ def register(r, provider):
     def export(q):
         who(q, "dashboards.read")
         return _ok(
-            {
-                "dashboards": [
-                    rec["def"]
-                    for k, rec in sorted(store.records().items())
-                    if allowed(q, "dashboards.read", k)
-                ]
-            }
+            [
+                rec["def"]
+                for k, rec in sorted(store.records().items())
+                if allowed(q, "dashboards.read", k)
+            ]
         )
 
     def import_(q):
@@ -143,11 +145,24 @@ def register(r, provider):
         items = q.payload().get("dashboards")
         if not isinstance(items, list):
             raise ValueError("dashboards must be a list")
-        # Every definition is checked before any is stored: a bad one refuses the whole batch.
-        good = [checked(d) for d in items]
-        for d in good:
-            who(q, "dashboards.write", d["key"])
-        return _ok({"keys": [store.save(d) for d in good]})
+        # Each definition is refused whole or stored whole; one bad definition never stops the others.
+        created, updated, errors = [], [], []
+        for i, d in enumerate(items):
+            try:
+                good = checked(d)
+                who(q, "dashboards.write", good["key"])
+                existed = store.get(good["key"]) is not None
+                store.save(good)
+                (updated if existed else created).append(good["key"])
+            except (ValueError, PermissionError) as e:
+                errors.append(
+                    {
+                        "index": i,
+                        "key": d.get("key") if isinstance(d, dict) else None,
+                        "message": str(e),
+                    }
+                )
+        return _ok({"created": created, "updated": updated, "errors": errors})
 
     def run(q):
         p = q.payload()
