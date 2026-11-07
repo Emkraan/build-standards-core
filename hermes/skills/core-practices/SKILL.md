@@ -330,6 +330,7 @@ How to use it:
 | `web-api-runtime.5.7` Retry telemetry exports through a short outage | should | web | test | A failed export is retried after 2, 5 and 10 seconds and unsent spans wait in a bounded buffer of 2,000; a full buffer drops the oldest and logs once per outage. |
 | `web-api-runtime.7` Fixed bearer rules and a development-only dev identity | must | web | test | Bearer tokens use one signing algorithm (RS256), both issuer versions, the audience as the union of the API ids, signing keys cached 10 minutes with at most 10 key fetches a minute. A dev identity exists only when the environment is exactly development or test. |
 | `web-api-runtime.9.1` Every route has a contract and the exemption list only shrinks | must | web | test | Every route has a contract bound to its handler, the API reference is generated from the contracts and checked in CI, and the exemption list for older routes only shrinks to zero. |
+| `web-api-runtime.9.2` Every CSV or spreadsheet export goes through one formula guard | must | web | test | A text value whose first character is =, +, -, @, a tab or a carriage return is written with a leading apostrophe so a download never runs a formula; numbers and booleans are never mangled; no code builds a CSV line by hand. |
 
 ## web-build.md
 

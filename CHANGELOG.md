@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-07 (v1.146.0, the CSV formula guard, the first part of the optional reports module)
+
+Opt in: the helper is used by a consumer's own export; the reports module itself stays off and unloaded until `OPSCENTER_REPORTS` is set.
+
+- `opscenter/server/modules/reports/export_csv.py`: `guard`, `cell` and `to_csv`. A text value starting with `=`, `+`, `-`, `@`, a tab or a carriage return gets a leading apostrophe; numbers, booleans and None are written as they are; commas, quotes and line breaks are quoted; CRLF line ends. No import side effect.
+- New rule web-api-runtime 9.2: every CSV or spreadsheet export goes through one formula guard.
+- The reports folder joins the unit test discovery.
+
 ## 2026-11-06 (v1.145.0, build plan for the optional hub modules and the items not lifted)
 
 Documentation only: `opscenter/plans/` holds the build plan for two optional core modules the owner decided to build (a log intake module and a reports module, never mandatory, absent when off) with the opt-in contract, a module layout, and per entry whether the hub's text and tests specify it or the source is still needed; and a note of the ops center and shell items the core did not lift, with what each needs. Nothing is built by this change.
