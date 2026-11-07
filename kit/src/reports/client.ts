@@ -20,10 +20,23 @@ export interface RunRequest {
   selections: Readonly<Record<string, string>>;
 }
 
+/** One definition an import refused: its position, key and the reason. A plain string is also read. */
+export interface ImportProblem {
+  index?: number | undefined;
+  key?: string | undefined;
+  message: string;
+}
+
 export interface ImportResult {
   created: number;
   updated: number;
-  errors: string[];
+  /** Each definition is stored or refused on its own. */
+  errors: (ImportProblem | string)[];
+}
+
+/** An import problem as one line of text. */
+export function importProblemText(p: ImportProblem | string): string {
+  return typeof p === 'string' ? p : `${p.key ?? (p.index !== undefined ? `#${p.index + 1}` : 'definition')}: ${p.message}`;
 }
 
 export interface ReportsClientOptions {
@@ -55,7 +68,11 @@ export function createDashboardsClient({ base, fetch: f }: ReportsClientOptions)
     save: (key: string, def: DashboardDefinition) => call<DashboardRow>('POST', `/${seg(key)}`, { def }),
     remove: (key: string) => call<void>('POST', `/${seg(key)}/delete`, {}),
     reset: (key: string) => call<DashboardRow>('POST', `/${seg(key)}/reset`, {}),
-    exportAll: async () => (await call<{ dashboards: DashboardDefinition[] }>('GET', '/export')).dashboards,
+    // The export is a list of definitions, or `{ dashboards }` around one: both are read.
+    exportAll: async () => {
+      const out = await call<DashboardDefinition[] | { dashboards: DashboardDefinition[] }>('GET', '/export');
+      return Array.isArray(out) ? out : (out.dashboards ?? []);
+    },
     importAll: (dashboards: readonly DashboardDefinition[]) => call<ImportResult>('POST', '/import', { dashboards }),
     run: (req: RunRequest) => call<DashboardRun>('POST', '/run', req),
   };
