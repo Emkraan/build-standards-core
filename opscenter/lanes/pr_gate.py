@@ -20,13 +20,19 @@ Block:   a fence opened by three backticks and the word gate, closed by three ba
 
          One line is `kind: argument`. A line that starts with white space continues the line above. Blank lines and lines
          starting with # are ignored. A line with no kind, or a kind nobody registered, is an error and is never met.
-Built-in kinds: `pr-merged: <number>` (that pull request is merged) and `run-success: <workflow> <branch>` (the newest completed
-         run of the workflow on the branch succeeded). The consumer adds kinds: `OPSCENTER_GATE_KINDS` names a Python file with a
+Built-in kinds: `pr-merged: <number>` (that pull request is merged), `run-success: <workflow> <branch>` (the newest completed
+         run of the workflow on the branch succeeded, however old it is) and `applied: <number>` (that pull request is merged
+         AND a run of the apply workflow on the apply branch that started at or after the merge succeeded; a run after the
+         merge that did not succeed is named in the reason). The apply workflow and branch come from evaluate's `config`
+         ({"apply_workflow", "apply_branch"}, the own-PR lane passes its policy `gate_apply_workflow` and
+         `gate_apply_branch`) or from OPSCENTER_GATE_APPLY_WORKFLOW and OPSCENTER_GATE_APPLY_BRANCH. Both default to
+         nothing, and `applied` is then never met and says it is not configured. The consumer adds kinds: `OPSCENTER_GATE_KINDS` names a Python file with a
          dict `KINDS = {"kind": fn(arg, repo, run) -> (met: bool, detail: str)}`, or call `register(kind, fn)`.
-API:     parse(body) -> gate | None;  evaluate(gate, repo, gh="gh", kinds=None, run=None) -> results;  summary(results) ->
+API:     parse(body) -> gate | None;  evaluate(gate, repo, gh="gh", kinds=None, run=None, config=None) -> results;  summary(results) ->
          (met, total, first unmet or None). A result is {label, detail, met}. A check that raises is unmet with the error.
 """
 
+import datetime as dt
 import importlib.util
 import json
 import os
@@ -129,18 +135,104 @@ def _run_success(arg, repo, run):
     ) == "success", f"newest run of {parts[0]} on {parts[1]}: {done[0].get('conclusion')}"
 
 
+def _when(s):
+    """A code host timestamp (2026-01-02T03:04:05Z) as an aware datetime, or None when it cannot be read."""
+    try:
+        t = dt.datetime.fromisoformat(str(s).strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return t if t.tzinfo else t.replace(tzinfo=dt.timezone.utc)
+
+
+def apply_settings(config=None):
+    """(workflow, branch) for the `applied` kind: `config` first, then the environment, else None."""
+    config = config or {}
+    wf = config.get("apply_workflow") or os.environ.get("OPSCENTER_GATE_APPLY_WORKFLOW", "").strip()
+    br = config.get("apply_branch") or os.environ.get("OPSCENTER_GATE_APPLY_BRANCH", "").strip()
+    return (str(wf) if wf else None), (str(br) if br else None)
+
+
+def _applied(arg, repo, run, config=None):
+    m = re.fullmatch(r"#?(\d+)", arg.strip())
+    if not m:
+        return False, f"{arg!r} is not a pull request number"
+    workflow, branch = apply_settings(config)
+    if not workflow or not branch:
+        return False, (
+            "no apply workflow and branch are configured (gate_apply_workflow and gate_apply_branch, or "
+            "OPSCENTER_GATE_APPLY_WORKFLOW and OPSCENTER_GATE_APPLY_BRANCH)"
+        )
+    n = m.group(1)
+    d = _gh_json(run, ["pr", "view", n, "-R", repo, "--json", "state,mergedAt"]) or {}
+    if str(d.get("state")).upper() != "MERGED":
+        return False, f"#{n} is {str(d.get('state') or 'unknown').lower()}, not merged"
+    merged = _when(d.get("mergedAt"))
+    if merged is None:
+        return False, f"#{n} is merged but its merge time could not be read"
+    runs = (
+        _gh_json(
+            run,
+            [
+                "run",
+                "list",
+                "-R",
+                repo,
+                "--workflow",
+                workflow,
+                "--branch",
+                branch,
+                "--limit",
+                "50",
+                "--json",
+                "databaseId,conclusion,status,startedAt,createdAt,headBranch",
+            ],
+        )
+        or []
+    )
+    after = []
+    for r in runs:
+        if r.get("headBranch") not in (None, branch):
+            continue
+        started = _when(r.get("startedAt") or r.get("createdAt"))
+        if started is not None and started >= merged:  # a run with no readable start never counts
+            after.append((started, r))
+    after.sort(key=lambda x: x[0])
+    ok = [
+        r for _, r in after if r.get("status") == "completed" and r.get("conclusion") == "success"
+    ]
+    if ok:
+        return (
+            True,
+            f"#{n} merged, and {workflow} run {ok[0].get('databaseId')} on {branch} succeeded after the merge",
+        )
+    bad = [
+        r
+        for _, r in after
+        if r.get("status") == "completed" and r.get("conclusion") not in ("success", None, "")
+    ]
+    if bad:
+        r = bad[-1]
+        return False, (
+            f"#{n} merged, but {workflow} run {r.get('databaseId')} on {branch} after the merge ended "
+            f"{r.get('conclusion')}"
+        )
+    return False, f"#{n} merged, but {workflow} has not succeeded on {branch} since the merge"
+
+
 register("pr-merged", _pr_merged)
 register("run-success", _run_success)
+register("applied", _applied)
 
 
-def evaluate(gate, repo, gh="gh", kinds=None, run=None):
-    """Check every line against live data. Nothing here writes."""
+def evaluate(gate, repo, gh="gh", kinds=None, run=None, config=None):
+    """Check every line against live data. Nothing here writes. `config` carries the `applied` kind's settings."""
     run = run or (
         lambda args: subprocess.run(
             [gh or "gh", *args], capture_output=True, text=True, timeout=60, check=True
         )
     )
     table = dict(_KINDS)
+    table["applied"] = lambda arg, repo, run: _applied(arg, repo, run, config)
     table.update(_consumer_kinds())
     table.update({k.lower(): v for k, v in (kinds or {}).items()})
     out = []
