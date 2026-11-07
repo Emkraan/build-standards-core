@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-06 (v1.129.0, owner roots ahead of main, the owner apply guard, the draft gate grammar)
+
+Gating and owner roots from rpmm23's inventory (OC-4, OC-5, OC-6, OC-19). Opt in: the hold needs the consumer's PR apply flow to record it and provider hooks to read a PR; with none, nothing changes.
+
+- OC-6, `owner_roots.py`: `set_pr_hold` records a root a PR applied from its branch; main's plan that would destroy it is marked "ahead of main, waiting on #N" and Apply is refused by the server and the worker; the hold clears when main contains the merge commit or the PR closes; an unreadable PR keeps it. Hooks `pr_state`, `contains`, `pr_url`, `owner_name`.
+- OC-5, the owner apply guard: `guard_refusal` and `owner_roots.py guard <name> <tier>` (exit 3) refuse a saved plan that deletes an address an open PR applied, whether or not the card was marked.
+- OC-19, `ahead_items`: an Action Center item for a PR left ahead of main for more than two days (`OWNER_ROOTS_AHEAD_CARD_S`).
+- OC-4, `lanes/pr_gate.py`: the draft gate block grammar the own-PR lane's gate plug-in loads, with two built-in kinds and a consumer kinds file. Written from the inventory text and test names, not from reference code; the branch-apply flow and the detection of an unrecorded branch apply are not lifted.
+
 ## 2026-11-06 (v1.128.0, rules: smoke retries, route contracts, installs, codemods)
 
 Four rules from the consumers' inventories, with two repo checks. Opt in: the rules are reported by core-status; RC026 and RC027 run on the local-ops stack only and fail a PR only where a consumer sets the `Repo checks gate` row.
