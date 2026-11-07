@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-07 (v1.146.0, the optional reports module: dates, definitions, grants, preview)
+
+Opt in: all of it sits under `server/modules/reports/`, is imported only when a consumer sets `OPSCENTER_REPORTS`, and has no import side effect.
+
+- `dateranges.py` (R4, R7): whole-day filters in a named zone with the end day counted in full across a clock change; rows dated more than a day ahead are separated from time panels and counted, never dropped.
+- `definitions.py` (R2): definitions as data; shipped defaults seeded by version, an edited copy never overwritten, reset, export and import by key, bad definitions refused whole.
+- `grants.py` (P1, P4): effective rights are the union of roles and user grants; separate global rights for reports and dashboards plus per-object rights; a grant is removed when its object is deleted and swept when it outlived it.
+- `view_as.py` (P3): a read-only role preview with a pinned allowlist of read-only query POSTs.
+- Built from the hub's text and tests; the API shapes are mine (the hub source is not in the core), flagged.
+
 ## 2026-11-06 (v1.145.0, build plan for the optional hub modules and the items not lifted)
 
 Documentation only: `opscenter/plans/` holds the build plan for two optional core modules the owner decided to build (a log intake module and a reports module, never mandatory, absent when off) with the opt-in contract, a module layout, and per entry whether the hub's text and tests specify it or the source is still needed; and a note of the ops center and shell items the core did not lift, with what each needs. Nothing is built by this change.
