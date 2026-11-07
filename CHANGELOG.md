@@ -1,11 +1,15 @@
 # Changelog
 
-## 2026-11-07 (v1.145.0, KeepRedirect and the flat hub index tab)
+## 2026-11-07 (v1.146.0, KeepRedirect and the flat hub index tab)
 
 Opt in: a consumer that does not import them sees nothing.
 
 - `KeepRedirect` and `redirectTarget`: a redirect for a moved route that keeps the query string and hash (layout standard rule 9). Router free (`onRedirect`), same-site paths only, so a redirect built from data cannot leave the site.
 - `HubHeader` with `tabs` takes `indexKey`: the index tab's route is `<base>` itself (not `<base>/<key>`) and it is the tab selected when the route has no item.
+
+## 2026-11-06 (v1.145.0, build plan for the optional hub modules and the items not lifted)
+
+Documentation only: `opscenter/plans/` holds the build plan for two optional core modules the owner decided to build (a log intake module and a reports module, never mandatory, absent when off) with the opt-in contract, a module layout, and per entry whether the hub's text and tests specify it or the source is still needed; and a note of the ops center and shell items the core did not lift, with what each needs. Nothing is built by this change.
 
 ## 2026-11-06 (v1.144.0, rules from the consumers' inventories: freeze lane, sign-offs, review threads, evidence, ticket comments, ahead of main, status files, watches)
 
