@@ -140,6 +140,8 @@ Express style stack (`req`, `res`, `next`) and the CommonJS servers `require` it
 | `whatsNewHandler`, `whatsNewNotes` | A module's release notes behind the module's own access check; labels from a fixed list, versions `x.y.z`, an https changelog link |
 | `gatewayGuard`, `verifyGatewayToken`, `createSigningKeyCache` | Accept a request only when it carries the gateway's token ([web-shell-gateway.md](web-shell-gateway.md) section 4): signature against the tenant signing keys (cached, refetched at most once a minute), issuer, tenant, audience, expiry, not before, the gateway identity and the gateway role. No secret. Log only until enforcement is on; `/health` style paths stay open. The header name, the role and the request property are options (section 5.2) |
 | `safeMessage` | An error message with bearer tokens and key values removed, short enough to log |
+| `pgPoolConfig`, `pgEntraPassword`, `usesPgEntraAuth`, `pgUserForToken`, `entraPgClient`, `PG_ENTRA_SCOPE` | The Postgres pool config with a directory token as the password instead of a database password; section 5.10 |
+| `createUserDirectory`, `createUserBinding` | Directory object id to name and back, and grants bound to the object id; section 5.10 |
 
 The gateway guard reads `GATEWAY_ENFORCE`, `GATEWAY_PRINCIPAL_ID`, `GATEWAY_AUDIENCE` and `TENANT_ID` from the
 environment (the names are the core's defaults; the consumer preset in 5.2 renames them). With none set and enforcement off it only removes the header; some but not all set logs a
@@ -239,6 +241,30 @@ export * from '@example/core-app-server';
    `TEST_CONSUMER_PRESET` set to a JSON file (or inline JSON) in the preset's shape; the suite reads every name it needs
    from the preset in force, so the same assertions hold under any naming. The core runs it in CI against
    `kit/tests/app-server/consumer-preset.example.json`; a consumer points it at its own preset file.
+
+### 5.10 Postgres with a directory token, user directory and user binding
+
+Opt in. A shell API with no database password, and grants that follow the person rather than their sign-in name.
+
+**Postgres with the directory token.** `usesPgEntraAuth(env)` is true when `DATABASE_URL` is empty and `PGHOST`,
+`PGDATABASE` and `PGUSER` are set; a `DATABASE_URL` (local development, tests) always wins. `pgPoolConfig(env, options)` is
+the `pg` Pool config for either mode: in token mode host, database, user and `PGPORT` with TLS on, a 40 second connect
+timeout (the pool allows the whole token retry sequence before it calls a connect late) and the password a function;
+otherwise the `DATABASE_URL`, with TLS unless the URL is local or says `sslmode=disable`. `PG_POOL_MAX` sets the pool size
+(default 10).
+
+- `pgEntraPassword(options)` is the async password function: a token for `PG_ENTRA_SCOPE`, cached until 5 minutes before expiry with one request in flight for concurrent callers, a failure never cached. The token comes from the App Service managed identity unless `getToken(scope)` supplies it. Right after an App Service start the identity endpoint can take longer than one short request, so it asks up to three times (10 seconds each, `msiTimeoutMs` and `msiRetryDelaysMs` change that) before it gives up; a process with no identity endpoint (local) answers null at once and the function throws a plain "no token" error.
+- `pgUserForToken(token, configuredUser)` and `entraPgClient(pg.Client)` handle the slot swap: App Service warms the incoming instance with the target slot's settings, so for a minute or two the staging instance holds production's `PGUSER` but signs in with its own slot identity, and Postgres refuses it. The token's `xms_mirid` claim names the web app and slot, and the login for that identity is the app name, plus `/slots/<slot>` for a slot. The configured user is kept unless the token names the same web app, so a wrong `PGUSER` for another app still fails loudly. `pg` is passed in; the package has no runtime dependency.
+
+**User directory.** `createUserDirectory({ getToken, ttlMs, maxEntries, timeoutMs, fetchImpl, log })` is the one small directory reader that turns an email or sign-in name into an object id (`resolve`, exact on mail or sign-in name; when one account's sign-in name equals what was typed it wins, otherwise a single match is used, and two different people answer null) and object ids back into full names (`names`, one batched read for the ids not cached). Reads only, cached with a bound, and it never throws: a failed read answers null or what is cached.
+
+**User binding.** `createUserBinding({ db, mutate, getToken, directory, log })` stores a person's object id beside the sign-in name on the two tables every tool keeps, `role_assignments` and `permission_overrides` (each with `user_email` and `user_oid`), so reads match on the object id (`userRowMatches` in the rbac package, section 3) and a rename, a sign-in name change or a directory mail that differs from the sign-in name never orphans a grant.
+
+- `bind({ email, oid })` answers the object id and sign-in name to store. An id sent by the client is confirmed against the directory, and the typed name must belong to that person (sign-in name or mail), so a client cannot attach one person's id to another person's name. Unresolvable answers `bound: false`; a route that writes a user grant then answers 503 with `unboundMessage`, so a directory outage never leaves an email-only grant.
+- `release()` on the result relabels a row still carrying a reused sign-in name (a leaver's name handed to a new hire) to `<email>#<its oid>`, so it keeps matching its own person and the new person's row can take the name. A route calls it only after its authorization and grant-ceiling checks pass, never `bind` itself.
+- `nameTaken(table, email, exceptId, oid)` is the read-only check a rename makes before its UPDATE would hit the unique email key (answer 409 with `mergeMessage`).
+- `withNames(views)` adds `userName` and `userUpn` to user rows from one batched read.
+- `backfill()` stamps the object id on rows that have none. The row stored under the person's sign-in name is stamped first. A row stored under a directory mail is stamped only when it is the CA and admin twin shape and the account already existed when the grant was written, so a leaver's grant never transfers to a later holder of a reused mail; every other mail match is left for an admin to bind and counted as skipped. A duplicate of a bound row that adds nothing is soft retired (relabelled `#retired-<id>`, never deleted); one that differs is left for a manual merge. Nothing is ever narrowed and no row is deleted.
 
 ## 6. Tests
 

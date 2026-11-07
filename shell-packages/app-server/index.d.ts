@@ -130,6 +130,62 @@ export declare function whatsNewNotes(notes: unknown, moduleId: string): { relea
 /** GET handler for one tool's release notes behind the tool's own entry check (allow). */
 export declare function whatsNewHandler(options: { notes: unknown; moduleId: string; allow: (req: any) => boolean | Promise<boolean> }): (req: any, res: any) => Promise<unknown>;
 export declare function safeMessage(err: unknown): string;
+
+export declare const PG_ENTRA_SCOPE: string;
+export declare function usesPgEntraAuth(env?: NodeJS.ProcessEnv): boolean;
+export interface PgTokenSource {
+  getToken?: (scope: string) => Promise<{ token: string; expiresAt?: number; expiresOnTimestamp?: number } | null | undefined>;
+  /** One managed identity request gives up after this (default 10000). Ignored when getToken is set. */
+  msiTimeoutMs?: number;
+  /** Waits before each new ask after a miss (default [1000, 2000], so 3 asks). Ignored when getToken is set. */
+  msiRetryDelaysMs?: number[];
+}
+export interface PgPoolOptions extends PgTokenSource {
+  /** The pg module. With it, a connection signs in as the login its token belongs to (slot swap warm-up). */
+  pg?: { Client: any };
+}
+export declare function pgUserForToken(token: string, configuredUser: string): string;
+export declare function entraPgClient(BaseClient: any): any;
+export declare function pgEntraPassword(options?: PgTokenSource): () => Promise<string>;
+export declare function pgPoolConfig(env?: NodeJS.ProcessEnv, options?: PgPoolOptions): {
+  max: number;
+  idleTimeoutMillis: number;
+  connectionTimeoutMillis: number;
+  host?: string;
+  database?: string;
+  user?: string;
+  port?: number;
+  password?: () => Promise<string>;
+  Client?: any;
+  connectionString?: string;
+  ssl: false | { rejectUnauthorized: boolean };
+};
+
+export interface DirectoryUser { oid: string; name: string | null; upn: string | null; mail: string | null }
+export interface UserDirectory {
+  resolve(emailOrUpn: unknown): Promise<DirectoryUser | null>;
+  names(oids: unknown[]): Promise<Map<string, DirectoryUser>>;
+}
+export declare function createUserDirectory(options: {
+  getToken: () => Promise<string | null>; ttlMs?: number; maxEntries?: number; timeoutMs?: number;
+  now?: () => number; fetchImpl?: typeof fetch; log?: (m: string) => void;
+}): UserDirectory;
+export interface UserBinding {
+  directory: UserDirectory;
+  unboundMessage: string;
+  mergeMessage: string;
+  nameTaken(table: "role_assignments" | "permission_overrides", email: string, exceptId: string, oid: string | null): Promise<boolean>;
+  bind(input: { email?: unknown; oid?: unknown }): Promise<{ email: string; oid: string | null; name: string | null; bound: boolean; release: () => Promise<void> }>;
+  withNames<T extends { userOid?: string | null }>(views: T[]): Promise<Array<T & { userName: string | null; userUpn: string | null }>>;
+  backfill(): Promise<{ stamped: number; unresolved: number; skipped: number }>;
+}
+export declare function createUserBinding(options: {
+  db: { query: (text: string, params?: unknown[]) => Promise<{ rows: any[] }> };
+  mutate?: (text: string, params?: unknown[]) => Promise<{ rows: any[] }>;
+  getToken: () => Promise<string | null>;
+  directory?: UserDirectory;
+  log?: (m: string) => void;
+}): UserBinding;
 /** True when serverTiming resolved the route from the app's route definitions. */
 export declare function isDeclaredRoute(route: string): boolean;
 /** The declared path of an Express 4 mount layer, proven by recompiling it ("" for a root mount), or null. */
