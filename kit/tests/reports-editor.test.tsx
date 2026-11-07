@@ -32,6 +32,8 @@ describe('validateDefinition', () => {
       'panel 2: stream must be a non-empty string',
       'panel 2: type must be one of stat, line, area, bar, hbar, donut, table',
     ]);
+    expect(validateDefinition({ ...good, panels: [{ title: 'a', stream: 's' }] })).toEqual(['panel 1: a measure (a name) or a spec (the report query) is required']);
+    expect(validateDefinition({ ...good, panels: [{ title: 'a', stream: 's', type: 'table', spec: { groupBy: ['x'], metrics: ['rows'] } }] })).toEqual([]);
     expect(validateDefinition({ ...good, panels: Array.from({ length: 51 }, () => good.panels[0]) })).toContain('at most 50 panels');
   });
 });
@@ -73,12 +75,31 @@ describe('createDashboardsClient', () => {
     expect(await api.list()).toEqual([{ key: 'ops' }]);
     expect(f).toHaveBeenCalledWith('/api/reports/dashboards', expect.objectContaining({ method: 'GET', credentials: 'same-origin' }));
     await api.save('a b', good);
-    expect(f).toHaveBeenLastCalledWith('/api/reports/dashboards/a%20b', expect.objectContaining({ method: 'PUT', body: JSON.stringify(good) }));
+    expect(f).toHaveBeenLastCalledWith('/api/reports/dashboards/a%20b', expect.objectContaining({ method: 'POST', body: JSON.stringify({ def: good }) }));
+    await api.create(good);
+    expect(f).toHaveBeenLastCalledWith('/api/reports/dashboards', expect.objectContaining({ method: 'POST', body: JSON.stringify({ def: good }) }));
     await api.reset('ops');
     await api.remove('ops');
     await api.importAll([good]);
     await api.run({ key: 'ops', range: '30', selections: { dept: 'IT' } });
-    expect(f.mock.calls.map((c) => `${(c[1] as RequestInit).method} ${c[0]}`)).toEqual(['GET /api/reports/dashboards', 'PUT /api/reports/dashboards/a%20b', 'POST /api/reports/dashboards/ops/reset', 'DELETE /api/reports/dashboards/ops', 'POST /api/reports/dashboards/import', 'POST /api/reports/dashboards/run']);
+    // The server registry has only GET and POST: nothing is a PUT or a DELETE.
+    expect(f.mock.calls.map((c) => `${(c[1] as RequestInit).method} ${c[0]}`)).toEqual([
+      'GET /api/reports/dashboards',
+      'POST /api/reports/dashboards/a%20b',
+      'POST /api/reports/dashboards',
+      'POST /api/reports/dashboards/ops/reset',
+      'POST /api/reports/dashboards/ops/delete',
+      'POST /api/reports/dashboards/import',
+      'POST /api/reports/dashboards/run',
+    ]);
+    expect(f).toHaveBeenCalledWith('/api/reports/dashboards/import', expect.objectContaining({ body: JSON.stringify({ dashboards: [good] }) }));
+  });
+
+  it('unwraps the export envelope into a list of definitions', async () => {
+    const f = reply({ success: true, data: { dashboards: [good] } });
+    const api = createDashboardsClient({ base: '/api/dashboards', fetch: f as unknown as typeof fetch });
+    expect(await api.exportAll()).toEqual([good]);
+    expect(f).toHaveBeenCalledWith('/api/dashboards/export', expect.objectContaining({ method: 'GET' }));
   });
 
   it('turns a failure into an Error with the server message, or a plain one', async () => {

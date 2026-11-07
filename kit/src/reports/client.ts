@@ -32,6 +32,10 @@ export interface ReportsClientOptions {
   fetch?: typeof fetch | undefined;
 }
 
+/**
+ * The module's routes: the server registry has only GET and POST, so a save, a delete and a reset are POSTs. The base
+ * is where they live (`/api/dashboards`); a save sends `{ def }` and import and export carry `{ dashboards }`.
+ */
 export function createDashboardsClient({ base, fetch: f }: ReportsClientOptions) {
   const root = base.replace(/\/+$/, '');
   async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -47,11 +51,11 @@ export function createDashboardsClient({ base, fetch: f }: ReportsClientOptions)
   const seg = encodeURIComponent;
   return {
     list: () => call<DashboardRow[]>('GET', ''),
-    create: (def: DashboardDefinition) => call<DashboardRow>('POST', '', def),
-    save: (key: string, def: DashboardDefinition) => call<DashboardRow>('PUT', `/${seg(key)}`, def),
-    remove: (key: string) => call<void>('DELETE', `/${seg(key)}`),
+    create: (def: DashboardDefinition) => call<DashboardRow>('POST', '', { def }),
+    save: (key: string, def: DashboardDefinition) => call<DashboardRow>('POST', `/${seg(key)}`, { def }),
+    remove: (key: string) => call<void>('POST', `/${seg(key)}/delete`, {}),
     reset: (key: string) => call<DashboardRow>('POST', `/${seg(key)}/reset`, {}),
-    exportAll: () => call<DashboardDefinition[]>('GET', '/export'),
+    exportAll: async () => (await call<{ dashboards: DashboardDefinition[] }>('GET', '/export')).dashboards,
     importAll: (dashboards: readonly DashboardDefinition[]) => call<ImportResult>('POST', '/import', { dashboards }),
     run: (req: RunRequest) => call<DashboardRun>('POST', '/run', req),
   };

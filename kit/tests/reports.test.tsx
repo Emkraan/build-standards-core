@@ -108,7 +108,7 @@ describe('PanelView', () => {
   it('says so when a range has nothing, and offers download and rows only on a good result', () => {
     const onExport = vi.fn();
     const onRows = vi.fn();
-    const empty = { columns: [{ name: 'Day' }, { name: 'Rows' }], rows: [] as unknown[][] };
+    const empty = { columns: [{ name: 'Day' }, { name: 'Rows' }], rows: [] as unknown[][], rowsSpec: { groupBy: ['day'] } };
     const { rerender } = render(<PanelView panel={def.panels[3]!} result={empty} onExport={onExport} onRows={onRows} />);
     expect(screen.getByText('Nothing in this range')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Download Broken/ }));
@@ -117,6 +117,9 @@ describe('PanelView', () => {
     expect(onRows).toHaveBeenCalled();
     rerender(<PanelView panel={def.panels[3]!} result={{ ...empty, error: 'x' }} onExport={onExport} onRows={onRows} />);
     expect(screen.queryByRole('button', { name: /Download/ })).toBeNull();
+    // No rowsSpec from the server: no View rows button.
+    rerender(<PanelView panel={def.panels[3]!} result={{ columns: empty.columns, rows: empty.rows }} onExport={onExport} onRows={onRows} />);
+    expect(screen.queryByRole('button', { name: 'View rows' })).toBeNull();
   });
 });
 
@@ -163,10 +166,10 @@ describe('Dashboard', () => {
     const onFutureRows = vi.fn();
     const { rerender } = render(<Dashboard definition={{ ...def, refreshSeconds: 60 }} picks={{}} onPicks={vi.fn()} onRefresh={onRefresh} />);
     expect(screen.getAllByText(/Loading/).length).toBeGreaterThan(0);
-    rerender(<Dashboard definition={{ ...def, refreshSeconds: 60 }} run={{ ...run, futureDated: [{ stream: 's', field: 'at', rows: 1500 }] }} picks={{}} onPicks={vi.fn()} onRefresh={onRefresh} onFutureRows={onFutureRows} />);
+    rerender(<Dashboard definition={{ ...def, refreshSeconds: 60 }} run={{ ...run, futureDated: [{ stream: 's', field: 'at', rows: 1500, rowsSpec: { filters: [] } }] }} picks={{}} onPicks={vi.fn()} onRefresh={onRefresh} onFutureRows={onFutureRows} />);
     expect(screen.getByRole('status').textContent).toContain('1,500 events are dated in the future');
     fireEvent.click(screen.getAllByRole('button', { name: 'View rows' })[0] as HTMLElement);
-    expect(onFutureRows).toHaveBeenCalled();
+    expect(onFutureRows).toHaveBeenCalledWith(expect.objectContaining({ stream: 's', rowsSpec: { filters: [] } }));
     vi.advanceTimersByTime(60_000);
     expect(onRefresh).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
@@ -202,5 +205,23 @@ describe('stylesheet', () => {
     const css = readFileSync(resolve(__dirname, '../src/styles/kit.css'), 'utf8');
     expect(css).toMatch(/\.dash-pick \{[^}]*clip-path: inset\(50%\)/);
     expect(css).toMatch(/\.dash-pick:focus-within \{[^}]*position: static/);
+  });
+});
+
+describe('panels that carry a report spec', () => {
+  it('draws a table panel that names a spec instead of a measure, and opens rows with the server spec', () => {
+    const panel = { id: 'q', title: 'Queues', type: 'table' as const, stream: 's', spec: { groupBy: ['team'], metrics: ['rows'] } };
+    const onRows = vi.fn();
+    const result = { columns: [{ name: 'Team' }, { name: 'Rows' }], rows: [['IT', 3]], rowsSpec: { filters: [{ f: 'team' }] } };
+    render(<Dashboard definition={{ key: 'k', title: 'K', panels: [panel] }} run={{ generatedAt: '2026-11-07T10:00:00Z', range: '30', options: {}, panels: { q: result } }} picks={{}} onPicks={vi.fn()} onRows={onRows} />);
+    fireEvent.click(screen.getByRole('button', { name: 'View rows' }));
+    expect(onRows).toHaveBeenCalledWith(0, { filters: [{ f: 'team' }] });
+  });
+
+  it('round trips a drill target that carries a spec, and refuses one with neither a measure nor a spec', () => {
+    const t = { stream: 's', spec: { groupBy: ['team'] }, name: 'Rows' };
+    const link = drillLink('/explore', t);
+    expect(readDrill(link.slice(link.indexOf('?')))).toEqual(t);
+    expect(readDrill(`?drill=${btoa('{"stream":"s"}')}`)).toBeNull();
   });
 });

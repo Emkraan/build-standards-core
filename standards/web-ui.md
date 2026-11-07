@@ -1937,8 +1937,10 @@ fetches a run from its server and passes it in; the kit draws it.
   holds the dashboard, the range, one choice per filter and the picks that are on as removable chips,
   and every change refreshes the run. Building a dashboard is a separate screen, not part of this surface.
 - A definition is data: `{ key, title, filters, panels }`, where a panel is `{ title, type, stream,
-  measure, w, h, x, y, drill, stat }`. It names a stream and a measure and never a store, so the
-  server decides where the numbers come from. A panel's `drill` names the filter that a click on it sets.
+  measure | spec, w, h, x, y, drill, stat }`. It names a stream and a measure (a number tile) or the
+  report query in `spec` (a chart or a table) and never a store, so the server decides where the
+  numbers come from. A panel's `rowsSpec` in a run is the query behind it: "View rows" shows only
+  when the server sent one, and the app opens its explorer with it. A panel's `drill` names the filter that a click on it sets.
 - Click to cross-filter: a click on a bar, a slice or a table label sets the panel's filter, a second
   click on the same value clears it, and every panel narrows. Each chart also offers the same choice to
   the keyboard as a list of buttons that appears when it takes focus, so a mouse is never required.
@@ -1973,9 +1975,13 @@ never see it, and building a dashboard is the only place that asks for criteria.
 - Export and import are one JSON file of definitions (`exportDefinitions`, `parseDefinitions`). A file with
   any problem is refused whole and names the definition at fault, so nothing is half imported. The server
   checks again; this is the courtesy before it.
-- `createDashboardsClient({ base })` is a small typed client for the module's routes (list, create, save,
-  delete, reset, export, import, run) for an app that has no client of its own. The kit never stores a
-  definition.
+- `createDashboardsClient({ base })` is a small typed client for the module's routes for an app that
+  has no client of its own. The server registry has only GET and POST, so a save is `POST <base>/<key>`
+  with `{ def }`, a delete is `POST <base>/<key>/delete`, a reset `POST <base>/<key>/reset`, a create
+  `POST <base>` with `{ def }`, an export `GET <base>/export` (`{ dashboards }`), an import
+  `POST <base>/import` with `{ dashboards }` and a run `POST <base>/run` with `{ key | def, range,
+  selections }`; the base is `/api/dashboards` and every answer is `{ success, data }`. The kit never
+  stores a definition.
 
 **Acceptance:** a test asserts the validation messages, the whole-file refusal on import, the round trip of
 an export, each route the client calls, the editor's problems and disabled Save, add panel, a failed

@@ -113,7 +113,7 @@ export function PanelView({ panel, result, onPick, picked, onExport, onRows, cla
   const ok = result && !result.error;
   const controls: ReactNode = ok ? (
     <>
-      {onRows ? (
+      {onRows && result?.rowsSpec ? (
         <Button size="sm" data-act="link" onClick={onRows}>
           View rows
         </Button>
