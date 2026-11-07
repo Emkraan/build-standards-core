@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
 import { createOidcAuth } from '../../../shell-packages/app-client/src';
 import type { OidcAuthOptions, OidcManagerLike, OidcUser } from '../../../shell-packages/app-client/src';
 
@@ -10,16 +11,12 @@ function user(over: Partial<OidcUser> = {}): OidcUser {
   return { access_token: 'tok-1', expires_at: NOW() + 3600, refresh_token: 'refresh-1', scope: 'openid api', profile: { sub: 'sub-1', email: 'user-1', name: 'User One' }, ...over };
 }
 
-interface Fake extends OidcManagerLike {
+type Methods = 'getUser' | 'signinRedirect' | 'signinRedirectCallback' | 'signinSilent' | 'signoutRedirect' | 'removeUser';
+type Mocked = { [K in Methods]: Mock<OidcManagerLike[K]> };
+interface Fake extends Omit<OidcManagerLike, Methods>, Mocked {
   stored: OidcUser | null;
   loaded: Array<(u: OidcUser) => void>;
   unloaded: Array<() => void>;
-  getUser: ReturnType<typeof vi.fn>;
-  signinRedirect: ReturnType<typeof vi.fn>;
-  signinRedirectCallback: ReturnType<typeof vi.fn>;
-  signinSilent: ReturnType<typeof vi.fn>;
-  signoutRedirect: ReturnType<typeof vi.fn>;
-  removeUser: ReturnType<typeof vi.fn>;
 }
 
 function fake(stored: OidcUser | null = user()): Fake {
