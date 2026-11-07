@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-07 (v1.163.0, the audit chain and the sealed settings, with tests)
+## 2026-11-07 (v1.164.0, the audit chain and the sealed settings, with tests)
 
 Opt in, two new packages from the Olympus shell source (SH-4 and SH-5, K-source-refresh). Documented in `web-shell-packages.md` section 5.5.
 
@@ -11,6 +11,13 @@ Opt in, two new packages from the Olympus shell source (SH-4 and SH-5, K-source-
 - New exports only, nothing existing changes. Typings added.
 
 No issue: requested by the core consolidation session (build-standards-core-intake#117).
+
+## 2026-11-07 (v1.163.0, rbac matches a stored user row by directory object id)
+
+Opt in, `rbac`. New exports `cleanOid`, `userRowMatches` and `pickUserRow` from the Olympus shell source (SH-3 family, K-source-refresh): a grant to a person binds to their directory object id, the email stays a label and is the match only for rows with no object id. A caller whose token has no object id matches only rows that have none (fail closed); `pickUserRow` prefers the row bound to the id whatever the row order. Documented in `web-shell-packages.md` section 3.
+
+- New exports only, nothing existing changes; typings added.
+- Tests: the source's 5 (`kit/tests/rbac/oid-binding.test.js`, example addresses in place of the source's), run in `test:server`.
 
 ## 2026-11-07 (v1.162.0, the processing indicator can stop reads)
 
