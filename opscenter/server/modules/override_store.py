@@ -14,6 +14,9 @@ Store file: {"all": {"scope", "until", "set_at"} | absent, "keys": {<key>: {"sco
             `until` is an ISO 8601 UTC time with a Z; `all` covers every key that qualifies, `keys` one key each.
 Reads:      allowed(key, scope) is True only when an entry for the key (or `all`) has this scope and an expiry in the future.
             Anything else, including any error, is False. status(scope) lists what is on right now.
+Window, extra: set(..., window=<id>, extra={...}) stores the window the entry was made in (also its scope when none is given)
+            and a JSON map; entry(key, scope) reads a live entry back. expires_at_local_midnight(tz) is the expiry for "until
+            the end of the owner's day".
 Rule 11:    pending_line(what, within_s) is the one line a card shows after an action until the next pass replaces it ("freeze
             bypassed, the lane re-checks within 3 minutes"), so a card never shows the reason the action just removed.
 """
@@ -41,6 +44,19 @@ def _utc(t):
 
 def _parse(s):
     return dt.datetime.strptime(str(s), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=dt.timezone.utc)
+
+
+def expires_at_local_midnight(tz, now=None):
+    """The next midnight in the time zone `tz` (an IANA name such as "America/New_York", or a tzinfo) as an aware UTC datetime,
+    for an override that lasts until the end of the owner's day. `now` is an aware datetime (tests). An unknown zone raises
+    ValueError, so a write with a bad zone is refused instead of guessing an expiry."""
+    try:
+        zone = tz if isinstance(tz, dt.tzinfo) else __import__("zoneinfo").ZoneInfo(str(tz))
+    except Exception as exc:  # noqa: BLE001 - ZoneInfoNotFoundError, a missing tz database, a bad name
+        raise ValueError(f"unknown time zone: {tz!r}") from exc
+    local = (now or dt.datetime.now(dt.timezone.utc)).astimezone(zone)
+    midnight = dt.datetime.combine(local.date() + dt.timedelta(days=1), dt.time(0, 0), tzinfo=zone)
+    return midnight.astimezone(dt.timezone.utc)
 
 
 def pending_line(what, within_s):
@@ -117,20 +133,51 @@ class OverrideStore:
         with open(self.log, "a", encoding="utf-8") as f:
             f.write(json.dumps(dict({"at": _utc(self.clock())}, **rec)) + "\n")
 
-    def set(self, key, scope, until, who="", **extra):
-        """Turn the override on for one key (or `*` for all) in this scope until `until` (an aware datetime)."""
+    def entry(self, key, scope):
+        """A copy of the live entry for the key (or, failing that, for `all`) in this scope, or None. Fail closed like
+        `allowed`: anything but an unexpired entry of exactly this scope is None. Lets a gate read what the entry carries
+        (`window`, `extra`, the head it was made for) without reading the file itself."""
+        try:
+            data = self._read()
+            for rec in ((data.get("keys") or {}).get(key), data.get("all")):
+                if self._live(rec, scope):
+                    return json.loads(json.dumps(rec))
+        except Exception:  # noqa: BLE001
+            pass
+        return None
+
+    def set(self, key, scope, until, who="", window=None, extra=None, **more):
+        """Turn the override on for one key (or `*` for all) in this scope until `until` (an aware datetime).
+        `window` is the id of the window the entry was made in (a freeze window, a release); with no `scope` it is the scope,
+        so a gate keyed on the window id passes `scope=None, window=<id>`. `extra` is a JSON map the entry carries and a gate
+        reads back with `entry` (the head sha it was made for, who asked, a ticket). Other keywords stay top-level as before."""
+        scope = scope or window
         if not scope:
             raise OverrideRefused("there is nothing to override outside a scope", 409)
         if until <= self.clock():
             raise OverrideRefused("the expiry is already past")
+        if extra is not None:
+            try:
+                extra = json.loads(json.dumps(extra))
+            except (TypeError, ValueError) as exc:
+                raise OverrideRefused(f"extra must be a JSON object: {exc}") from exc
+            if not isinstance(extra, dict):
+                raise OverrideRefused("extra must be a JSON object")
         if key != "*" and self.qualify:
             self.qualify(key)
-        rec = dict(extra, scope=scope, until=_utc(until), set_at=_utc(self.clock()))
+        rec = dict(more, scope=scope, until=_utc(until), set_at=_utc(self.clock()))
+        if window is not None:
+            rec["window"] = window
+        if extra:
+            rec["extra"] = extra
         if key == "*":
             self._mutate(lambda d: d.update(all=rec))
         else:
             self._mutate(lambda d: d["keys"].__setitem__(key, rec))
-        self._log({"action": "on", "key": key, "scope": scope, "until": rec["until"], "who": who})
+        self._log(
+            {"action": "on", "key": key, "scope": scope, "until": rec["until"], "who": who}
+            | ({"window": window} if window is not None else {})
+        )
         return rec
 
     def clear(self, key, who=""):

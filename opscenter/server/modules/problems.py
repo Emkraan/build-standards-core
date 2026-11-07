@@ -18,9 +18,14 @@ List: {items, counts: {needs_me, worth_a_look, healthy, running, total, lines, b
 
 The provider slot (null default): OPSCENTER_PROBLEMS_PROVIDER, `path/to/file.py:ClassName`, lets a consumer add its own problem
 sources and live facts without forking this file. Every method is optional and returns plain data:
-  headlines()    {key: "one line of live facts"}, the headline of any item by its source key (healthy or not);
+  headlines()    {key: "one line of live facts"}, the headline of any item by its source key (healthy or not). A value may also be
+                 a map {headline, details: [lines], label, url}: details (at most four) and the link are set only on an item that
+                 is healthy, so a problem's own lines are never replaced;
+  healthy()      the same shape as needs_me() for items that are fine but have live facts to show (spend against the projection
+                 when no account is over its limit); a key that is already an item is left to headlines();
   running()      the keys that have a run in flight (any item, drawn as a spinner, never red);
-  needs_me()     [{key, section, item, label, headline?, details: [lines], running?, url?}] things waiting on the owner (a refused
+  needs_me()     [{key, section, item, label, headline?, details: [lines], count?, running?, url?}] (`count` overrides the number
+                 of problem lines when the lines are a summary) things waiting on the owner (a refused
                  deploy waiting on a click, a run waiting on an approval); red;
   worth_a_look() the same shape for amber lines (spend headroom at 70 percent or more, an account that could not be read).
 A source whose key is already an item adds its lines to that item and raises its tone; a new key is a new item. A provider that
@@ -270,6 +275,8 @@ def _extras(items, sources, tone):
         lines = [str(x) for x in (src.get("details") or [])]
         head = str(src.get("headline") or (lines[0] if lines else key))
         cur = by.get(key)
+        n = src.get("count")
+        n = int(n) if isinstance(n, int) and not isinstance(n, bool) and n > 0 else None
         if cur is None:
             new = _item(
                 key,
@@ -281,6 +288,7 @@ def _extras(items, sources, tone):
                 lines,
                 bool(src.get("running")),
                 src.get("url"),
+                lines=n,
             )
             items.append(new)
             by[key] = new
@@ -288,7 +296,7 @@ def _extras(items, sources, tone):
         if _TONE_ORDER[tone] < _TONE_ORDER[cur["tone"]]:
             cur["tone"] = tone
             cur["headline"] = head
-        cur["count"] += max(1, len(lines))
+        cur["count"] += n or max(1, len(lines))
         cur["details"] = (cur["details"] + lines)[:MAX_DETAILS]
         cur["running"] = cur["running"] or bool(src.get("running"))
 
@@ -301,11 +309,32 @@ def _provided(items):
             return
         _extras(items, _call(p, "needs_me"), "needs_me")
         _extras(items, _call(p, "worth_a_look"), "worth_a_look")
+        have = {i["id"] for i in items}
+        _extras(
+            items,
+            [
+                x
+                for x in (_call(p, "healthy") or [])
+                if isinstance(x, dict) and x.get("key") not in have
+            ],
+            "healthy",
+        )
         heads = _call(p, "headlines") or {}
         run = {str(k) for k in (_call(p, "running") or [])}
         for i in items:
-            if heads.get(i["id"]):
-                i["headline"] = str(heads[i["id"]])
+            h = heads.get(i["id"])
+            if isinstance(h, dict):
+                if h.get("headline"):
+                    i["headline"] = str(h["headline"])
+                if i["tone"] == "healthy":
+                    if h.get("details") is not None:
+                        i["details"] = [str(x) for x in h["details"]][:MAX_DETAILS]
+                    if h.get("url"):
+                        i["url"] = h["url"]
+                if h.get("label"):
+                    i["label"] = str(h["label"])
+            elif h:
+                i["headline"] = str(h)
             if i["id"] in run:
                 i["running"] = True
     except Exception as e:  # noqa: BLE001 - a broken provider is reported, never read as clear

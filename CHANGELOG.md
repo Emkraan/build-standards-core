@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-06 (v1.126.0, override store window and extra, problems provider healthy items)
+
+Two consumer-requested extensions. Opt in: both are optional arguments and methods; nothing that runs changes.
+
+- `override_store.py`: `set(..., window=, extra=)` stores the window id the entry was made in (its scope when none is given) and a JSON map; `entry(key, scope)` reads a live entry back, failing closed like `allowed`; `expires_at_local_midnight(tz)` gives the end of the owner's day in an IANA zone. One file, still copyable verbatim.
+- Problems provider: `headlines()` values may be a map `{headline, details, label, url}`, a new `healthy()` method adds items that are fine but carry live facts, and a source may carry `count`. This is what moving a consumer's browser-clock and accounts-feed headlines onto the server needs.
+
 ## 2026-11-02 (v1.125.0, hub and override polish from the ops center adoption)
 
 Opt in: hub and override pieces, and one new spinner form; nothing changes unless a consumer uses them.
