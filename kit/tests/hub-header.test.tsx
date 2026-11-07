@@ -179,5 +179,7 @@ describe('HubHeader', () => {
     const css = readFileSync(resolve(__dirname, '../src/styles/kit.css'), 'utf8');
     expect(css).toMatch(/\.hub-head \{[^}]*margin-bottom: var\(--space-5\)/);
     expect(css).toMatch(/\.hub-head \.tab-badge \.spinner \{[^}]*color: var\(--info\)/);
+    expect(css).toMatch(/\.hub-head \.tab-badge \.spinner \{[^}]*width: 9px; height: 9px/);
+    expect(css).toMatch(/\.hub-head \.tab-badge \.spinner::after \{[^}]*border-width: 1\.6px[^}]*animation-duration: 900ms/);
   });
 });
