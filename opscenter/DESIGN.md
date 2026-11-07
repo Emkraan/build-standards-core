@@ -1755,7 +1755,7 @@ All of it sits under `server/modules/reports/`, is imported only when `OPSCENTER
 - Providers: `OPSCENTER_LOG_INTAKE_PROVIDER` and `OPSCENTER_REPORTS_PROVIDER` name `path/to/file.py:ClassName`, loaded by `modules/optional_provider.py` (the same contract as the other provider slots; every method optional). Log intake: `verify_key`, `authorize`, `on_rows`, `audit`, `audit_event`, `sink`, `extra_reserved`. Reports: `authorize`, `source`, `dashboards`.
 - Authorization: the core's trust boundary is the loopback port and it has no user model, so `authorize(headers, action, key)` is the one slot for who may do what, with a null default that refuses everything. Actions: `log-streams.read|write`, `dashboards.read|write`, `reports.run`. Per-key rights (`reports/grants.py`) are the consumer's `authorize` to apply.
 - The device route is the only route a device calls: `X-Api-Key` through `verify_key` (null refuses every key). The server's body cap (`OPSCENTER_MAX_BODY`, default 1 MiB) applies before a stream's own post size, and the consumer's proxy must pass the route and add its host name to `OPSCENTER_ALLOWED_HOSTS`.
-- Writes are POST: a dashboard save is `POST /api/dashboards/<key>`, a delete `POST /api/dashboards/<key>/delete`; the keys `run`, `import` and `export` are reserved.
+- Writes are POST: a save takes the definition as the body (or `{def}`), a dashboard save is `POST /api/dashboards/<key>`, a delete `POST /api/dashboards/<key>/delete`; the keys `run`, `import` and `export` are reserved.
 
 ### 12.62 The optional reports engine (R3, the report spec, the source slot and dashboard runs)
 

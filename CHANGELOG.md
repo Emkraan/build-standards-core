@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-07 (v1.158.0, the dashboard routes match the kit client)
+
+- `POST /api/dashboards` and `POST /api/dashboards/<key>` take the definition as the body (the `{def}` wrapper still works). Export is a list. Import answers `{created, updated, errors: [{index, key, message}]}`: each definition is stored whole or refused with its reason, and one bad definition no longer stops the others.
+- A panel `type`, when present, is validated on the server (stat, line, area, bar, hbar, donut, table).
+
 ## 2026-11-07 (v1.157.0, the optional modules at the server: routes, providers and the off state)
 
 Opt in: `OPSCENTER_LOG_INTAKE` and `OPSCENTER_REPORTS`. With neither set nothing is imported, no route or background task is added and no file is created (a test runs a fresh interpreter and checks the module list).

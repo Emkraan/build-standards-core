@@ -94,6 +94,7 @@ class Store(unittest.TestCase):
             json.dumps({"key": "x", "title": "t", "panels": "no"}),
             json.dumps(dash(panels=[{"title": "p", "stream": "", "measure": "m"}])),
             json.dumps(dash(panels=[{"title": "p", "stream": "s"}])),
+            json.dumps(dash(panels=[{"title": "p", "stream": "s", "measure": "m", "type": "pie"}])),
             json.dumps(dash(panels=[{"title": "p", "stream": "s", "spec": "not an object"}])),
             json.dumps(
                 dash(panels=[{"title": "p", "stream": "s", "measure": "m"}] * (d.MAX_PANELS + 1))
