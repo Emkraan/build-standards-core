@@ -404,3 +404,11 @@ The kit workflow runs on a change under `shell-packages/` or the manifest fixtur
 ## 7. Not in the core
 
 Data, not code: a shell's own manifests, route inventories and role lists. The packages above take them as input.
+
+**The module frame and the location store are the consumer's.** The core does not ship a host: no module loader, no
+module frame and no location store. A shell that mounts several tools builds its own frame on `kit-core` (the kit's
+launcher, tool switcher, pins button, recents helpers, command palette, account menu and Home blocks are the pieces),
+and its own location store (an in-place history push the shell re-reads, so a tool mounts under the same frame
+without a page load). A frame is wired to the tools its shell hosts, how their client code is loaded and what the
+shell shows around them, so there is no part of it that two shells share beyond the kit components already in the
+core. The packages in this document take a frame's inputs (the manifests, the permission reads) and never draw it.

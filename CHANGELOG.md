@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-07 (v1.180.0, the changelog and the tags agree, and a check holds them to it)
+
+Record fixes, one new check and one recorded decision. No tag is edited.
+
+- Three entries were headed with a number that another entry already held, so auto-release tagged the first and never tagged the second; the second entry's change shipped inside a later release. Each is folded into the release it shipped in, under that release's heading, with its body kept: "the manifest client folder may be spa" (headed v1.134.0, ships in v1.138.0), "script rule U6: the cause is Windows PowerShell 5.1" (headed v1.162.0, ships in v1.166.0) and "shell gaps from the console redesign against Olympus" (headed v1.168.0, ships in v1.169.0). The v1.117.0 heading was an exact repeat of itself and is now one entry.
+- New `checks/check-changelog-versions.py`, run by `checks`: from v1.0.0 a version has at most one heading, a heading has a tag unless it is above every existing tag (the unreleased entry a pull request adds), and a tag has a heading. The 0.x headings predate tagging and are left alone. On main as it was it reports exactly the four defects above and none after this change; it fails closed in CI when no tags are visible.
+- Decision recorded in `web-shell-packages.md` section 7: the core ships no module frame and no location store. A consumer builds its own frame on `kit-core` and keeps its own location store; the host code in the Olympus shell is wired to its five tool packages and was not lifted.
+- Tests: 8 in `tests/test_changelog_versions.py`, including the v1.168.0 case.
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
+
 ## 2026-11-07 (v1.179.0, health reads: the stale-while-revalidate reader and the liveness route)
 
 Opt in, SH-11 from the Olympus shell source (K-source-refresh), the generic part. New package `shell-packages/health`. Documented in `web-shell-packages.md` section 5.11.
@@ -108,7 +119,8 @@ No issue: requested by the core consolidation session (build-standards-core-inta
 =======
 <<<<<<< HEAD
 =======
-## 2026-11-07 (v1.168.0, shell gaps from the console redesign against Olympus)
+
+Also in this release: shell gaps from the console redesign against Olympus. This entry was first headed v1.168.0 by mistake (v1.168.0 is the dark launches release, tagged earlier); the change ships in v1.169.0.
 
 Three default compatible kit changes from the redesign's measurements (the screenshots and `measurements.json` in the private handoff repo). Nothing changes for a consumer that does not use them, except the floors, which only act where the control was too small.
 
@@ -142,12 +154,13 @@ Opt in, each off until configured: with none of them set the audit writes the sa
 - Behaviour change: the lift lag retry needs a non empty state from `before_apply` (it used to be any state that is not None), so nothing lifted means no retry.
 - Terminal apply logging: `owner_roots.py --log-start --root <name>:<tier> --sha <sha> [--by <account>]` and `--log-done ... [--result <text>]` append `owner_apply_started` and `owner_apply_done` in the module's own record shape. `--by` defaults to the provider's expected identity.
 
-## 2026-11-07 (v1.162.0, script rule U6: the cause is Windows PowerShell 5.1)
+Also in this release: script rule U6: the cause is Windows PowerShell 5.1. This entry was first headed v1.162.0 by mistake (v1.162.0 is the processing indicator release, tagged earlier); the change ships in v1.166.0.
 
 `scripting-powershell.md`: the `ConvertFrom-Json` array rule now names the right cause, from the hub consumer's check against its scripts repo. Windows PowerShell 5.1 returns a JSON array from `ConvertFrom-Json` as a single object, so a pipeline wrapped in `@(...)` yields an array inside an array; assign the result, then enumerate `@($rows)`. It no longer reads as a variant of the PowerShell 7 `Invoke-RestMethod` note, which is a separate problem. The acceptance fixture (empty array, one object, several, counts 0, 1 and N) now runs on Windows PowerShell 5.1 specifically (`tests/fixtures/powershell-51/ConvertFromJsonShape.ps1`) and says so and skips on any other host, never passing in silence. Core CI has no 5.1 host, so it checks the fixture's shape and the skip; the 5.1 run is the consumer's.
 
 >>>>>>> origin/main
 >>>>>>> origin/main
+
 ## 2026-11-07 (v1.165.0, the run watches read a failed run once and pick the real error line)
 
 `lanes/run_watches.py` (OC-8 drift watch, OC-9 main watch). Two changes to what runs today:
@@ -362,7 +375,9 @@ Text only, `standards/web-shell-gateway.md`, from a consumer's shell move.
 - New options: `--root` (the consumer's Playwright project), `--baselines`, `--build`, `--workflow` and `--artifact`, so a consumer refreshes its own baselines against the kit it syncs with the same pinned image, the same full-set replacement and the same CI-first rule. A typo or a missing value now stops with a usage error before any CI run or container starts. The Docker run for another root mounts the repository, works inside the root and keeps `node_modules` in a volume of its own. Documented in the README beside the kit's gate.
 - `parseArgs` and `dockerArgs` are exported with typings; the Docker command for the kit itself is asserted identical to the old one. Tests: 9. Not run: a real CI or Docker baseline refresh on a consumer.
 
-## 2026-11-06 (v1.134.0, the manifest client folder may be spa)
+Also in this release: the manifest client folder may be spa. This entry was first headed v1.134.0 by mistake (v1.134.0 is the hub routing release, tagged earlier); the change ships in v1.138.0.
+
+
 
 ## 2026-11-06 (v1.137.0, the manifest client folder may be spa)
 
@@ -515,13 +530,6 @@ Three rules join the ops center layout standard (1.10 to 1.12), with a core help
 
 - New row `Repo checks gate` in `standards-local/parameters.md`: rule ids, doc names (for example `ops-center-layout`) or `all`. `python3 scripts/core-ci.py repo-checks` runs `core-status.py --json` and fails the run when a named repo-check rule fails, prints the file and line of every finding, treats an active exception as excepted and a rule the overlay cannot run as a failure. The row empty (the default) is a clean skip.
 - `core-repo-checks` is one more named step of `core-checks`; it adds no job, so no merge gate changes. A sync refreshes the workflow.
-
-## 2026-11-01 (v1.117.0, RC023 flags ages and durations)
-
-Rule 1.4 of the ops center layout standard covers every threshold that decides a tone, not only counts. Opt in: only a repo with an ops center app (RC023 runs there only).
-
-- RC023 also fails a client source that decides a tone, badge or severity from an age or a duration compared with a number: a name that says time (`ageHours`, `minutesSince`, `elapsed`, `stale_days`, `...Ms`) compared with a number, a clock difference (`Date.now() - t`) compared with a number, or anything compared with a product of time units (`30 * 3600 * 1000`). Comparison with zero is not a threshold; the exception marker works as before. Tone words now include amber, red, yellow and orange.
-- The core app's meeting schedule state is renamed from `tone` to `phase` (it is a schedule label, not a severity); no behaviour changes.
 
 ## 2026-11-01 (v1.117.0, RC023 flags ages and durations)
 
