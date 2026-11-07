@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-06 (v1.141.0, sessions and cards: session on it, curation, inbound files, CI test runner, page renderer)
+## 2026-11-06 (v1.142.0, sessions and cards: session on it, curation, inbound files, CI test runner, page renderer)
 
 Sessions and cards from rpmm23's inventory (OC-11, OC-12, OC-13, OC-14, OC-15, OC-21, OC-23). Opt in: every module is called by a consumer or configured by environment; `eng_backlog.py` gains behaviour for every consumer of the debt page (below).
 
@@ -11,6 +11,13 @@ Sessions and cards from rpmm23's inventory (OC-11, OC-12, OC-13, OC-14, OC-15, O
 - OC-15 `tools/ci_tests.py`: one process per test file, a live-state skip list printed every run, listed proofs that must exist.
 - OC-21 `engine/doc_render.py`: repo markdown to docs home HTML with ASCII and prose rules, a verified-against footer and a configurable internal-terms check. Written with tests (the reference had none).
 - OC-23: compared, already in `engine/handled.py` (identical module and tests apart from wording); nothing lifted.
+
+## 2026-11-06 (v1.141.0, a public module needs no rbac)
+
+Opt in. A manifest that declares `"public": true` may omit `rbac`, and its pages may list an empty `requires`.
+
+- `validateManifest`, the JSON schema, the typings and `web-shell-manifest.md` 2.3: with `public: true` no `rbac` is needed and a page's `requires` may be empty (open to every caller); a declared `rbac` and any non-empty `requires` are still validated. `public` must be a boolean. Without `public: true` nothing changes: `rbac` and a non-empty `requires` stay required, with the same messages.
+- `effectiveLayout` gives a public module `public: true` and `rbac: null` (typed non-null so a consumer with no public module compiles unchanged); a module that is not public gets no `public` key and its `rbac` object as before. `validateRegistry` refuses a `permissionSource` or a peer id that names a public module, since it has no permission read. Tests: 8 across the module, validator and schema suites; five fail on the old code. Not run: a shell rendering a public module.
 
 ## 2026-11-07 (v1.140.0, a test race fix)
 

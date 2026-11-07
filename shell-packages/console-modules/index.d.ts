@@ -16,7 +16,10 @@ export interface ManifestTile { key: string; dashboard: string; label: string; p
 export interface ModuleManifest {
   id: string; name: string; tagline: string; description?: string; accent: Accent; icon: string; order: number; client: string;
   api: { gateway: string; prefix: string; scopeEnv: string; estateKey?: string };
+  /** Required, except for a module that declares `public: true` (see below). */
   rbac: { shape: RbacShape; base: string; me: string; permissionSource?: string };
+  /** `true` marks a public module: `rbac` may be omitted and its pages may list an empty `requires` (open to every caller). Opt in. */
+  public?: boolean;
   groups: ManifestGroup[]; pages: ManifestPage[]; links: ManifestLink[]; tiles: ManifestTile[];
   landing?: string[];
   home?: ManifestHome;
@@ -44,7 +47,11 @@ export interface EffectiveModule {
   /** The description from code (manifest, else the automatic summary): what a reset returns to. */
   descriptionDefault: string;
   descriptionSource: "admin" | "manifest" | "auto";
-  basePath: string; api: ModuleManifest["api"]; rbac: ModuleManifest["rbac"];
+  basePath: string; api: ModuleManifest["api"];
+  /** Null at run time only for a module that declares `public: true` and no `rbac`; the type stays non-null so a consumer that has no public module is unchanged, and a consumer that has one reads `public` first. */
+  rbac: ModuleManifest["rbac"];
+  /** Present (true) only for a module that declares `public: true`. */
+  public?: true;
   groups: NavGroupOut[]; account: NavEntry[]; tiles: TileOut[]; landing: string[];
   home: { actions: HomeAction[]; feeds: Array<HomeFeed & { linkModule: string }> };
   whatsnew: ManifestWhatsNew | null;
