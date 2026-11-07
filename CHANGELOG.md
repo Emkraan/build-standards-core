@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-07 (v1.163.0, rbac matches a stored user row by directory object id)
+
+Opt in, `rbac`. New exports `cleanOid`, `userRowMatches` and `pickUserRow` from the Olympus shell source (SH-3 family, K-source-refresh): a grant to a person binds to their directory object id, the email stays a label and is the match only for rows with no object id. A caller whose token has no object id matches only rows that have none (fail closed); `pickUserRow` prefers the row bound to the id whatever the row order. Documented in `web-shell-packages.md` section 3.
+
+- New exports only, nothing existing changes; typings added.
+- Tests: the source's 5 (`kit/tests/rbac/oid-binding.test.js`, example addresses in place of the source's), run in `test:server`.
+
 ## 2026-11-07 (v1.162.0, the processing indicator can stop reads)
 
 Closes the gap against the hub's handoff tag (the busy bar spec): the indicator's Cancel request, the stop on leaving the page and the server run stop. A second opt in on top of `installBusyTracking`; with `cancel` off nothing changes.
