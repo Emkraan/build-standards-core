@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-07 (v1.176.0, home pins: the server routes and the client stores)
+
+Opt in, SH-13 from the Olympus shell source (K-source-refresh). Documented in `web-shell-packages.md` section 5.8 and the client table in section 4.
+
+- `shell-packages/home-pins`: `homePinRoutes`, `validatePin`, `declaredRoutes`, `MAX_PINS`. The source route was bound to the shell's pool, permission module and manifest registry; here the database, the gate, the caller and the manifests are options.
+- `app-client`: `createServerPinsStore` (the shape of the kit's `PinsStore`, over the pins routes) and `createRecents` (per account, in this browser). The source stores were module singletons bound to the shell's API client and account module; here each is a factory over a request function, a key prefix and an account reader, and `createServerPinsStore` gains `reset` and drops the answer of a read started before it.
+- The header button and the Home block stay the kit's (`PinButton`, `HomeBlocks`); the source's own copies are the consumer's to retire.
+- Tests: 8 for the routes (the source's, adapted, plus the limit option and a missing email) and 11 for the client stores. `test:server` runs `tests/*/*.test.js`.
+
 ## 2026-11-07 (v1.175.0, the external tools store and routes)
 
 Opt in, new package `shell-packages/external-tools` from the Olympus shell source (SH-10, K-source-refresh). Documented in `web-shell-packages.md` section 5.7.
@@ -68,6 +77,8 @@ No issue: requested by the core consolidation session (build-standards-core-inta
 
 <<<<<<< HEAD
 =======
+<<<<<<< HEAD
+=======
 ## 2026-11-07 (v1.168.0, shell gaps from the console redesign against Olympus)
 
 Three default compatible kit changes from the redesign's measurements (the screenshots and `measurements.json` in the private handoff repo). Nothing changes for a consumer that does not use them, except the floors, which only act where the control was too small.
@@ -113,6 +124,7 @@ Opt in, each off until configured: with none of them set the audit writes the sa
 - API budget: a failed run's jobs and logs are read once and cached by repo, run id and attempt (newest 20 kept), so a run that stays red costs one runs list per collect instead of a jobs and log read each time. A log that could not be read is not cached and is read again. The cache lives in the process by default; the optional `cache_file` config key keeps it between runs of the `items` CLI. Job logs are read with `--allow-escape-sequences` (a gh without that flag is asked again without it).
 - `collect`, `main_item` and `drift_item` take an optional `cache`; the runs list asks for `attempt`. Tests port the scenarios of the reference main and drift watch tests onto `collect()`.
 
+>>>>>>> origin/main
 >>>>>>> origin/main
 ## 2026-11-07 (v1.164.0, the CI-only freeze exemption holds more, and the draft gate checks an apply)
 

@@ -25,3 +25,7 @@ export {
   useConsoleFeed,
 } from './feed';
 export type { ConsoleFeedProps, ConsoleFeedState, FeedEntry, PlatformFeed, UseConsoleFeedOptions } from './feed';
+export { createServerPinsStore } from './pins';
+export type { Pin, PinsSnapshot, ServerPinsStore, ServerPinsStoreOptions } from './pins';
+export { createRecents } from './recents';
+export type { Recent, Recents, RecentsOptions } from './recents';

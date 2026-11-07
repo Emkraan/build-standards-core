@@ -12,6 +12,7 @@ core already states the rule.
 | Module contract (`console-modules`) | The per-module manifest ([web-shell-manifest.md](web-shell-manifest.md)): the validator, the registry checks, the permission source and peer helpers, the layout merge with its typed contracts, the generated registry and its staleness check | Code: `shell-packages/console-modules/`. The generator is `kit/scripts/build-registry.mjs` ([web-shell.md](web-shell.md) section 3) |
 | RBAC core (`rbac`) | What permission data means: accessible tabs, the grant ceiling, assignable roles, view-as, client access helpers | Code: `shell-packages/rbac/` |
 | Client package (`app-client`) | One sign-in boot, token renewal, the API client and its cache, resource hooks, the live feed strip | Code: `shell-packages/app-client/` (TypeScript source). Rules: [web-client-runtime.md](web-client-runtime.md) sections 1 to 3, 5 and 6, [web-shell.md](web-shell.md) section 8 |
+| Home pins package (`home-pins`) | The server side of a person's pinned pages: per person, only pages the manifests declare | Code: `shell-packages/home-pins/`. Opt in. Rules: section 5.8 |
 | External tools package (`external-tools`) | Tools that live outside the shell's repository, kept in data and shown in the launcher: validation, who may see a tool, the audited admin routes | Code: `shell-packages/external-tools/`. Opt in. Rules: section 5.7 |
 | Announcements package (`announcements`) | Platform announcements for the console feed strip: validation, the cached active read, the audited admin routes | Code: `shell-packages/announcements/`. Opt in. Rules: section 5.6 |
 | Jobs package (`jobs`) | Scheduled jobs inside a tool's API: a daily runner in Eastern time with a live on/off switch per job, and the `GET /jobs` contract the console Scheduled jobs tab reads | Code: `shell-packages/jobs/`. Opt in. Rules: section 5.4 |
@@ -115,6 +116,8 @@ way the mapping lives in the consumer's configuration, never in core source.
 | `createApi`, `qs` | The API client: bearer token from the shared auth, one error contract (`ApiError` with status and details), one request for identical concurrent GETs, a stale-while-revalidate cache with a freshness window per key, opt-in `sessionStorage` persistence for identity reads only, a configurable answer to a 401 and a cache that a logout or account change clears |
 | `createStore`, `defaultStore`, `isStale` | The resource store behind the client and the hooks: subscribers, one request per key, a waiting fetch re-run after an invalidation |
 | `useResource`, `useApiResource` | Cached data renders at once and is refreshed in the background; a key per resource, optional refresh interval, `enabled` and `ttl` |
+| `createServerPinsStore` | A person's pinned pages, stored on the server and shared by a header pin control and a Home block. It has the shape of the kit's `PinsStore` (snapshot, subscribe, load, pin, unpin) without importing the kit: status `loading`, `ready` or `denied`, a stable snapshot object, one shared first read, `pin` and `unpin` answering null or one plain sentence and never throwing, and `reset` for sign-out. Every failure of the read is quiet (`denied`), so a person without access never sees a control that cannot work. The server side is `home-pins` (section 5.8) |
+| `createRecents` | Recent pages kept in this browser for this account: newest first, one entry per page, capped (default 8), keyed by an app prefix plus the account id so two people on one browser never see each other's trail. Entries for pages the shell no longer declares are dropped on read, the Home page can be skipped, and a damaged or unavailable store reads as empty and never throws. Nothing reaches a server |
 | `ConsoleFeed`, `useConsoleFeed`, `healthStatusOf`, `mergeHealth`, `mergeItems`, `parseFeed` | The feed strip under a module's header: the platform feed (health and announcements) from the console API merged with the module's own items and health, always showing a health line even when one source is down |
 
 The auth options carry no tenant or product value: `clientId`, `tenantId`, `apiScope`, `loginAttemptKey`, `basePath` and
@@ -247,6 +250,17 @@ export * from '@example/core-app-server';
    from the preset in force, so the same assertions hold under any naming. The core runs it in CI against
    `kit/tests/app-server/consumer-preset.example.json`; a consumer points it at its own preset file.
 
+### 5.8 Home pins
+
+Opt in. `homePinRoutes(router, { db, gate, caller, modules, max })` (`shell-packages/home-pins`) mounts `GET /pins`,
+`PUT /pins` and `DELETE /pins` for the pages a person pins on the console Home. The consumer creates the
+`console_home_pins` table (the schema is at the top of the file) and passes the manifests it loaded as `modules`.
+
+- Every route is behind `gate`, the permission that shows the Home tab. A person without it gets 403 and the client store reads that as `denied`.
+- Pins belong to the caller: they are stored under the verified token's email, lowercased, and nobody can read or write another person's. A request with no email is a 401.
+- A pin must name a page the manifests declare (a module id and one of its page routes), with a label of 1 to 60 plain printable characters and no angle brackets, so a pin never carries a made up route. Anything else is a 400.
+- `PUT` is idempotent and re-labels an existing pin. A new pin is added only while the person holds fewer than `max` (default 12), in the same statement that checks the count, so two concurrent pins cannot pass the limit together; the 13th is a 409 and nothing is written, and re-labelling one at the limit still works.
+- Pins are display only: the page a pin opens enforces its own access, so they are not audited.
 ### 5.7 External tools
 
 Opt in. `shell-packages/external-tools` lets an admin add a tool the shell does not host (a dashboard first) as data, and
