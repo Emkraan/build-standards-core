@@ -1,11 +1,18 @@
 # Changelog
 
-## 2026-11-07 (v1.161.0, rbac matches a stored user row by directory object id)
+## 2026-11-07 (v1.162.0, rbac matches a stored user row by directory object id)
 
 Opt in, `rbac`. New exports `cleanOid`, `userRowMatches` and `pickUserRow` from the Olympus shell source (SH-3 family, K-source-refresh): a grant to a person binds to their directory object id, the email stays a label and is the match only for rows with no object id. A caller whose token has no object id matches only rows that have none (fail closed); `pickUserRow` prefers the row bound to the id whatever the row order. Documented in `web-shell-packages.md` section 3.
 
 - New exports only, nothing existing changes; typings added.
 - Tests: the source's 5 (`kit/tests/rbac/oid-binding.test.js`, example addresses in place of the source's), run in `test:server`.
+
+## 2026-11-07 (v1.161.0, a consumer can validate the manifest keys it adds)
+
+Opt in, `console-modules`. `validateManifest` and `validateRegistry` take a second argument: `keys` maps a key to a validator `(value, manifest)` that returns a problem string, a list, or nothing, and runs only when the manifest carries the key; `strictKeys: true` rejects a top-level key that is neither a core key nor registered. Closes the gap where a malformed consumer key (a jobs path) passed core validation because unknown keys are carried untouched.
+
+- Default is unchanged: with no options both functions behave as before. Typings and `web-shell-manifest.md` section 2.1 updated.
+- Tests: 3 in `kit/tests/console-modules/layout.test.js` (registered validator, strict keys, registry passes the options).
 
 No issue: requested by the core consolidation session (build-standards-core-intake#117).
 

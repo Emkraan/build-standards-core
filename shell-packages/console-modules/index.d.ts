@@ -67,8 +67,10 @@ export const LINK_SLOTS: readonly LinkSlot[];
 export const DESCRIPTION_MAX: number;
 export function isDescription(v: unknown): v is string;
 export function autoDescription(manifest: ModuleManifest | Record<string, unknown>): string;
-export function validateManifest(input: unknown): string[];
-export function validateRegistry(manifests: unknown[]): string[];
+export type KeyValidator = (value: any, manifest: Record<string, any>) => string | string[] | void;
+export interface ValidateOptions { keys?: Record<string, KeyValidator>; strictKeys?: boolean }
+export function validateManifest(input: unknown, options?: ValidateOptions): string[];
+export function validateRegistry(manifests: unknown[], options?: ValidateOptions): string[];
 export function permissionSourceId(mod: { id: string; rbac?: { permissionSource?: string } }): string;
 export function ownsPermissions(mod: { id: string; rbac?: { permissionSource?: string } }): boolean;
 export function peerRef(id: string): { module: string; permission: string } | null;
