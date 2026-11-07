@@ -746,6 +746,21 @@ a baseline fails the run, and the failed run uploads the `visual-baselines` arti
 image in it, so a first baseline can come from the pull request itself. Diffs and the HTML report
 are in the `visual-report` artifact.
 
+A consumer refreshes its own baselines, against the kit it syncs, with the same script: it takes the project
+that holds the consumer's Playwright config and baselines, so the pinned image, the full-set replacement and the
+CI-first rule are the same.
+
+```bash
+node kit/scripts/visual-update.mjs --docker --root apps/site/visual --baselines baselines/linux --build "npm run build"
+node kit/scripts/visual-update.mjs --root apps/site/visual --workflow site-visual.yml --artifact site-baselines
+```
+
+`--root` is the Playwright project (the Docker run mounts the repository, works inside that folder and keeps its
+`node_modules` in a volume of its own), `--baselines` the committed folder inside it, `--build` runs before the
+screenshots (the core kit's own run keeps the gallery build; another root runs none unless given one), and `--workflow`
+and `--artifact` name the consumer's visual workflow and the artifact it uploads. With no options the script
+refreshes the core kit's baselines as before.
+
 After an update-baselines run, copy the full linux baseline set from the artifact, never a single
 specimen: copying only the changed one leaves unrelated specimens one pixel off.
 

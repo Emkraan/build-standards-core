@@ -3,8 +3,10 @@ import { render, screen, within } from '@testing-library/react';
 import axe from 'axe-core';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AREA_DETAIL_LINES, AreaCard, HubOverview } from '../src';
+import { ShellContext } from '../src/shell/context';
+import type { ShellContextValue } from '../src';
 import type { AreaCardData } from '../src';
 
 const sections = [
@@ -106,7 +108,44 @@ describe('AreaCard provider fields', () => {
   });
 });
 
+describe('AreaCard link and keys', () => {
+  const shell = { Link: ({ href, children, ...rest }: { href: string; children?: React.ReactNode }) => <a data-routed={href} href={href} {...rest}>{children}</a> } as unknown as ShellContextValue;
+
+  it('sends a safe target through the app link and never an unsafe one', () => {
+    const { rerender } = render(
+      <ShellContext.Provider value={shell}>
+        <AreaCard label="A" to="/p/a" tone="good" headline="h" />
+      </ShellContext.Provider>,
+    );
+    expect(screen.getByRole('link', { name: 'A' }).getAttribute('data-routed')).toBe('/p/a');
+    rerender(
+      <ShellContext.Provider value={shell}>
+        <AreaCard label="A" to="javascript:alert(1)" tone="good" headline="h" />
+      </ShellContext.Provider>,
+    );
+    expect(screen.queryByRole('link')).toBeNull();
+    expect(document.querySelector('[data-routed]')).toBeNull();
+  });
+
+  it('renders two identical detail lines without a duplicate key warning', () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(<AreaCard label="A" to="/a" tone="warn" headline="h" detail={['same', 'same']} />);
+    expect(screen.getAllByText('same')).toHaveLength(2);
+    expect(err.mock.calls.flat().join(' ')).not.toMatch(/same key/);
+    err.mockRestore();
+  });
+});
+
 describe('HubOverview', () => {
+  it('skips a section with no items and draws one card for an item key used twice', () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(<HubOverview sections={[{ key: 'e', label: 'Empty', items: [] }, { key: 'x', label: 'X', items: [{ key: 'alpha' }, { key: 'alpha' }] }, { key: 'x', label: 'X again', items: [{ key: 'beta' }] }]} areas={[card('alpha'), card('beta')]} />);
+    expect(screen.queryByText('Empty')).toBeNull();
+    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['ALPHA', 'BETA']);
+    expect(err.mock.calls.flat().join(' ')).not.toMatch(/same key/);
+    err.mockRestore();
+  });
+
   it('groups one card per item under the section titles, in section and item order', () => {
     const areas = [card('ci'), card('alpha'), card('jobs'), card('beta')];
     render(<HubOverview sections={sections} areas={areas} />);

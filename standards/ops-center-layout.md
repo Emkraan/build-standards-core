@@ -29,7 +29,7 @@ Related: [Local Ops App](local-ops-app.md) (the server, the problem list, the po
 4. **One source of truth for counts.** The rail badge, the section and item tab counts and the Overview all read one server-side problem list, counted one per problem line (two failing jobs and a stale heartbeat read 3). The client applies no thresholds of its own: none on a count, an age or a duration that decides a tone reporting a problem. Work in progress shows as a spinner, never red, on any item.
    - Prevents: a badge, a tab and a card that disagree, and a red mark for a job that is simply running.
    - Acceptance (repo check RC023): no client source decides a problem tone, badge or severity from a count, an age or a duration compared with a number; a test asserts the badge, tab and Overview counts equal the server list, and that an item with three problem lines counts 3.
-5. **Current state and history are different things.** A pipeline counts as failed only while its newest finished run on the default branch failed. Older runs fold under History, so a fixed failure never reads as current.
+5. **Current state and history are different things.** A pipeline counts as failed only while its newest finished run on the default branch failed. Older runs fold under History, so a fixed failure never reads as current. A running build is never red, and a cancelled or superseded run never counts.
    - Prevents: a red mark that stays until the operator dismisses a failure that was fixed an hour ago.
    - Acceptance (test): with a fake code host whose newest finished run succeeded after an earlier failure, the problem list has no item for the pipeline and the page shows the failure only under History.
 6. **Newest first everywhere.** Cards are ordered by latest activity with running items on top, runs by finish time, scheduled jobs by last run.
@@ -53,6 +53,18 @@ Related: [Local Ops App](local-ops-app.md) (the server, the problem list, the po
 12. **Known transient failures heal themselves and never count as failures.** Each known transient failure has a defined automatic recovery (a stale saved plan is re-planned at once). Only a failure that was not recovered reaches the owner or a repeat counter; real failures keep the normal path.
    - Prevents: an alert and a red card for something the ops center could have fixed itself in a second.
    - Acceptance (test): a test makes the known failure happen and asserts the recovery ran, a clean result clears the card and closes the repeat alert, a result with changes asks for one review, the failure never counts toward the repeat alert, and a real failure still takes the normal path (`owner_roots_test.py`, `StaleSavedPlan`).
+13. **A status card shows unknown when its source is missing, stale or unreadable.** A card that depends on a collector's status file shows unknown when the file is missing, older than its limit, unreadable or not the expected shape, and never shows in sync.
+   - Prevents: a card that reads as fine because nothing was written, and a rollout nobody noticed stalled.
+   - Acceptance (test): tests assert a missing, stale, unreadable and malformed file each read unknown, and a fresh well formed one reads ok (`status_source_test.py`).
+14. **A lapsed sign-in nobody renewed is never silent.** A collector that needs a signed-in tool keeps serving its last reading marked stale when the sign-in lapses and exits non-zero once the lapse has lasted its limit (default 240 minutes), so an alert fires.
+   - Prevents: a collector that quietly stopped reading while its last good numbers kept showing as current.
+   - Acceptance (test): tests assert the last reading is kept and marked stale, the exit is zero inside the limit and non-zero after it, and a returning sign-in clears the lapse (`status_source_test.py`).
+15. **A job that stays red is raised on the board.** A failed newest run of a watched deploy workflow on main, and a streak of failed scheduled runs of a nightly workflow, each raise one item naming the failed job. A later success closes it. Cancelled, skipped, manual and branch runs never count, and a watch that cannot be read is itself an item.
+   - Prevents: red hidden for days in a job nobody opens, a manual rerun that hides a red night, and a watch that fails quietly.
+   - Acceptance (test): tests assert each of those cases for both watches (`run_watches_test.py`).
+16. **A change that takes minutes to reach its destination shows its rollout where it is reviewed.** A change that applies at once but takes minutes to reach its destination (an edge, a cache, a fleet) shows its in-flight rollout where the pull request or the apply is reviewed: what is still rolling out, how long ago the change applied, and when it is expected to land, so a reader does not test the old behaviour and call the change broken.
+   - Prevents: a verified change reported as not working because it had not reached the destination yet.
+   - Acceptance (test): a test renders the in-flight state from a recent apply and shows nothing once the expected time has passed.
 
 ---
 

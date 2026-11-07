@@ -115,6 +115,8 @@ DEFAULTS = {
     "hold_labels": ["do-not-merge", "hold"],
     "max_high": 0,
     "respect_freeze": True,
+    "freeze_ci_only": False,  # true: a PR that only changes CI (freeze_ci_only.py) is not held by a freeze
+    "stale_ready_min": 20,  # a green PR the lane never merged is re-run once after this many minutes, then reported once
     "notify_on_merge": False,
 }
 
@@ -237,6 +239,48 @@ def active_freeze(now_utc=None):
         if start <= local <= end:
             return w
     return None
+
+
+def _freeze_bypass_mod():
+    import freeze_bypass
+
+    return freeze_bypass
+
+
+def freeze_bypassed(pr, window):
+    """'pr' or 'all' when the owner lifted the freeze for this pull request (freeze_bypass.py), else None. Anything unreadable
+    is None: the freeze holds."""
+    try:
+        return _freeze_bypass_mod().bypass_by(f"{TARGET}#{pr['number']}", window)
+    except Exception:  # noqa: BLE001 - fail closed
+        return None
+
+
+def freeze_exempt(pol, pr, rec, window):
+    """A PR that only changes CI (freeze_ci_only.classify) deploys nothing, so a change freeze does not hold it. Decided once
+    per head and logged; anything unreadable stays held."""
+    head = pr["headRefOid"]
+    cached = rec.get("ci_only") or {}
+    if cached.get("head") != head:
+        import freeze_ci_only
+
+        base = pr.get("baseRefOid") or ""
+        ok, why = (
+            (False, "no base sha")
+            if not base
+            else freeze_ci_only.fetch_and_classify(eng.gh, pol["repo"], pr["number"], head, base)
+        )
+        cached = {"head": head, "ok": bool(ok), "why": why}
+        rec["ci_only"] = cached
+        log(
+            {
+                "pr": pr["number"],
+                "decision": "freeze_ci_only" if ok else "freeze_not_ci_only",
+                "sha": head,
+                "detail": f"{window.get('id', '')}: {why}",
+            }
+        )
+    return bool(cached.get("ok"))
 
 
 def cheap_gate(pr, cfg):
@@ -471,37 +515,55 @@ OVERRIDE_LABEL = "ai-review-override"
 OVERRIDE_RULE = "ai-review-override"
 
 
-def override_by_me(pol, pr):
-    """True when the override label is on the PR and the newest labeled event for it
-    was mine. The repo removes the label on every push, so it always belongs to the
-    current head. Any read error = False (no exception, no merge button)."""
-    labels = {(lbl.get("name") or "").lower() for lbl in pr.get("labels") or []}
-    if OVERRIDE_LABEL not in labels:
-        return False
-    try:
-        out = eng.gh(
-            [
-                "api",
-                "--paginate",
-                f"repos/{pol['repo']}/issues/{pr['number']}/events?per_page=100",
-                "--jq",
-                ".[] | @json",
-            ],
-            raw=True,
-        )
-    except GhError:
-        return False
+TIMELINE_QUERY = (
+    "query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){"
+    "timelineItems(last:100,itemTypes:[LABELED_EVENT]){nodes{... on LabeledEvent{createdAt actor{login} label{name}}}}}}}"
+)
+
+
+def newest_labeler(pol, pr, label):
+    """The login that applied `label` most recently, read from the GraphQL timeline (the newest 100 label events, oldest first),
+    or None when it was never applied. The REST events list stops at about 300 entries, so on a PR with many deploy events
+    a fresh label was missing from it. Raises GhError when the timeline cannot be read."""
+    owner, _, name = pol["repo"].partition("/")
+    out = eng.gh(
+        [
+            "api",
+            "graphql",
+            "-f",
+            f"query={TIMELINE_QUERY}",
+            "-F",
+            f"o={owner}",
+            "-F",
+            f"r={name}",
+            "-F",
+            f"n={pr['number']}",
+            "--jq",
+            ".data.repository.pullRequest.timelineItems.nodes[] | @json",
+        ],
+        raw=True,
+    )
     actor = None
     for line in (out or "").splitlines():
         if not line.strip():
             continue
         e = json.loads(line)
-        if (
-            e.get("event") == "labeled"
-            and ((e.get("label") or {}).get("name") or "").lower() == OVERRIDE_LABEL
-        ):
+        if ((e.get("label") or {}).get("name") or "").lower() == label:
             actor = (e.get("actor") or {}).get("login")
-    return actor == pol["self_login"]
+    return actor
+
+
+def override_by_me(pol, pr):
+    """True when the override label is on the PR and the newest labeled event for it was mine. The repo removes the label on
+    every push, so it always belongs to the current head. The newest labeler is read from the GraphQL timeline, never the
+    truncated REST events list. Any read error = False (no exception, no merge button)."""
+    labels = {(lbl.get("name") or "").lower() for lbl in pr.get("labels") or []}
+    if OVERRIDE_LABEL not in labels:
+        return False
+    try:
+        return newest_labeler(pol, pr, OVERRIDE_LABEL) == pol["self_login"]
+    except (GhError, ValueError):
+        return False
 
 
 def review_skipped(pr):
@@ -1071,7 +1133,7 @@ def list_mine(pol):
                 "--limit",
                 "50",
                 "--json",
-                "number,title,url,author,headRefOid,headRefName,isDraft,mergeable,statusCheckRollup,labels,updatedAt,body",
+                "number,title,url,author,headRefOid,baseRefOid,headRefName,isDraft,mergeable,statusCheckRollup,labels,updatedAt,body",
             ]
         )
         or []
@@ -1115,7 +1177,11 @@ def evaluate(pr, cfg, pol, rec, force=False, mine=None):
     if cfg["respect_freeze"]:
         w = active_freeze()
         if w:
-            return "held", f"change freeze {w.get('id', '')} until {w.get('end', '')}", None
+            by = freeze_bypassed(pr, w)
+            if by:
+                _freeze_bypass_mod().note_once(rec, pr["number"], pr["headRefOid"], w, by, log)
+            elif not (cfg.get("freeze_ci_only") and freeze_exempt(pol, pr, rec, w)):
+                return "held", f"change freeze {w.get('id', '')} until {w.get('end', '')}", None
     head = pr["headRefOid"]
     # A held head is re-checked every 30 min, or at once when the PR changes
     # (a new comment such as a triage reply, a label, a review bumps updatedAt).
@@ -1153,6 +1219,65 @@ def evaluate(pr, cfg, pol, rec, force=False, mine=None):
             return "ready", "signed off by me in the decision card: " + why[10:], None
         return "held", why, None
     return "ready", why, None
+
+
+def _age_min(since, now):
+    try:
+        t = dt.datetime.strptime(since, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=dt.timezone.utc)
+    except (TypeError, ValueError):
+        return 0
+    return (now - t).total_seconds() / 60
+
+
+def unstick(pr, rec, pol, cfg, now=None):
+    """A green PR the lane never merged: re-run its latest CI run once per head, then report once. A PR waiting on the AI review
+    result that long gets the report only. Returns a line to print, or None. `stale_ready_min` (default 20) is the wait."""
+    now = now or NOW
+    stale = float(cfg.get("stale_ready_min") or 20)
+    n = pr["number"]
+    status, reason = rec.get("status"), rec.get("reason")
+    if status not in ("ready", "waiting") or _age_min(rec.get("since"), now) < stale:
+        return None
+    if status == "waiting" and reason != "ai-review result not reported yet":
+        return None
+    if status == "ready" and not rec.get("kicked"):
+        runs = eng.gh(
+            [
+                "run",
+                "list",
+                "-R",
+                pol["repo"],
+                "--workflow",
+                cfg.get("ci_workflow") or pol.get("ci_workflow") or "ci.yml",
+                "--commit",
+                pr["headRefOid"],
+                "--json",
+                "databaseId,status",
+                "--limit",
+                "1",
+            ]
+        )
+        rec["kicked"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+        if runs and runs[0].get("status") == "completed":
+            eng.gh(["run", "rerun", str(runs[0]["databaseId"]), "-R", pol["repo"]])
+            rec["kicked_run"] = runs[0]["databaseId"]
+            log(
+                {
+                    "pr": n,
+                    "decision": "gate-rerun",
+                    "sha": pr["headRefOid"],
+                    "detail": runs[0]["databaseId"],
+                }
+            )
+        return None
+    if status == "ready" and _age_min(rec.get("kicked"), now) < stale:
+        return None
+    if rec.get("stuck_reported"):
+        return None
+    rec["stuck_reported"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    what = "green but not merged after a re-run" if status == "ready" else "no AI review result"
+    log({"pr": n, "decision": "stuck", "sha": pr["headRefOid"], "detail": what})
+    return f"{TAG} PR #{n} {what} ({int(_age_min(rec.get('since'), now))} min): {pr.get('url')}"
 
 
 def tick():
@@ -1287,6 +1412,13 @@ def tick():
                             "detail": reason,
                         }
                     )
+            try:
+                stuck = unstick(pr, rec, pol, cfg)
+            except GhError as e:
+                stuck = None
+                rec["unstick_error"] = str(e)[:200]
+            if stuck:
+                out.append(stuck)
             frec = fix_state.setdefault(n, {})
             try:
                 line = fixer.consider(
