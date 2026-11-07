@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-07 (v1.155.0, dashboards: the editor, definitions import and export, the client)
+
+The R2 half of the `kit-core/reports` entry. Opt in, same entry as the dashboards.
+
+- `DashboardEditor`: a name, a description, the definition as JSON with its problems named before a save, add panel, a live preview, save, reset to the shipped copy and delete after a confirm.
+- `validateDefinition`, `parseDefinitions`, `exportDefinitions`, `newPanel`, `blankDefinition`, `slugFor`: definitions are validated in the browser as the server does (a file with any problem is refused whole) and exported as one JSON file.
+- `createDashboardsClient`: a small typed client for the module's routes.
+
 ## 2026-11-07 (v1.154.0, the reports entry: dashboards with click to cross-filter and deep links)
 
 A new optional entry, `kit-core/reports`, the client side of the reports module (R1, R4, and the dashboard half of R5). It reads the kit charts (recharts, an optional peer), so an app that shows no dashboard never loads it. Lifted from the hub tool features and made generic: a panel names a stream and a measure, never a store.

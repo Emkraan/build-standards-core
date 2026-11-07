@@ -5,6 +5,8 @@
 
 export { Dashboard } from './Dashboard';
 export type { DashboardProps } from './Dashboard';
+export { DashboardEditor } from './DashboardEditor';
+export type { DashboardEditorProps } from './DashboardEditor';
 export { DashboardFilterBar } from './DashboardFilterBar';
 export type { DashboardFilterBarProps } from './DashboardFilterBar';
 export { PanelView } from './PanelView';
@@ -18,3 +20,7 @@ export { dashboardLink, drillLink, readDashboardView, readDrill, writeDashboardV
 export type { DashboardView, DrillTarget } from './viewState';
 export { panelId } from './types';
 export type { DashboardDefinition, DashboardFilter, DashboardPanel, DashboardRow, DashboardRun, FutureDated, PanelColumn, PanelResult, PanelType, StatOptions } from './types';
+export { createDashboardsClient } from './client';
+export type { DashboardsClient, ImportResult, ReportsClientOptions, RunRequest } from './client';
+export { MAX_PANELS, PANEL_LABEL, PANEL_TYPES, blankDefinition, exportDefinitions, newPanel, parseDefinitions, slugFor, validateDefinition } from './definitions';
+export type { ParsedDefinitions } from './definitions';
