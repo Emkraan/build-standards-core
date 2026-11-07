@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-11-06 (v1.143.0, sessions and cards: session on it, curation, inbound files, CI test runner, page renderer)
+
+Sessions and cards from rpmm23's inventory (OC-11, OC-12, OC-13, OC-14, OC-15, OC-21, OC-23). Opt in: every module is called by a consumer or configured by environment; `eng_backlog.py` gains behaviour for every consumer of the debt page (below).
+
+- OC-11 `server/modules/pr_sessions.py`: find a live session working a pull request (a running delegated task, a session dedicated by title, a session working the branch worktree); reading a PR is never working it. Title patterns, state database and repo clones are configuration.
+- OC-12 `server/modules/tackle_session.py`: bind a launch from a card to the session whose first user message is its staged prompt, not the session a desktop plugin reports.
+- OC-13 `server/modules/eng_curate.py`: the curation front door (`add`, `similar`) and the scheduled pass (`run`): auto-close, fold into the clear best match, hints, all logged and undoable. `eng_backlog.py` now reads the common status words ("DONE 10/24", "Superseded by TD-075", "In review"), links folded rows to their parent, and has the fold, ship, withdraw and undo acts; a status the old reader dropped into "Needs decision" may now land in a different bucket.
+- OC-14 `people/inbound_files.py`: files a report sends (chat attachment, mail attachment, document share) become Action Center items. Written for the core's roster and feeds from the reference, with a test suite (the reference had none).
+- OC-15 `tools/ci_tests.py`: one process per test file, a live-state skip list printed every run, listed proofs that must exist.
+- OC-21 `engine/doc_render.py`: repo markdown to docs home HTML with ASCII and prose rules, a verified-against footer and a configurable internal-terms check. Written with tests (the reference had none).
+- OC-23: compared, already in `engine/handled.py` (identical module and tests apart from wording); nothing lifted.
+
 ## 2026-11-06 (v1.142.0, hub tab working marker and inline pending note colour)
 
 Two look details from the ops center adoption, both inside the hub pieces; the plain `Spinner` and every other badge are unchanged.
