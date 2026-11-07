@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-07 (v1.168.0, dark launches: a launch can name its own job)
+
+- Registry key `job` (optional) on a dark launch. When several launches share one workflow, the dry run passes on that launch's job only, so an unrelated failing job in the same workflow no longer blocks Enable, and a skipped or missing job is never a pass. A malformed job name fails the whole registry closed (503), like any other bad entry. A launch without `job` behaves exactly as before and reads no job data.
+- The dry run in the card names the job it judged on. The live automation tab itself (an enabled launch leaves the Action Center and lives on its own tab, acting first) needs no new data: the cards already carry it.
+
 ## 2026-11-07 (v1.167.0, the documentation audit gains rules R13, R15 and R16)
 
 Opt in, each off until configured: with none of them set the audit writes the same store as before (no extra internal thing appears).
