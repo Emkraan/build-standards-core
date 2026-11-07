@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-07 (v1.164.0, the announcements store and routes)
+
+Opt in, new package `shell-packages/announcements` from the Olympus shell source (SH-9, K-source-refresh). Documented in `web-shell-packages.md` section 5.6.
+
+- `validate`, `cleanText`, `cleanHref`, `toApi`, `stateOf`, `STATE_SQL`; `createAnnouncements({ db })` with the cached `listActive` and `invalidate`; `announcementRoutes(router, { db, audit, store, manage, caller })` for the audited admin routes. The source was CommonJS bound to the shell's pool, audit and permission modules; here each is an option, and `manage` is the consumer's gate (the source's permission id stays the consumer's). The audit option takes the `transaction` of `shell-packages/audit` or any object with the same shape.
+- The feed route that reads the announcements and the client panel stay in the consumer (the feed also folds in the consumer's own health items).
+- Tests: 14, adapted from the source's announcement tests (its feed tests stay with the consumer): validation, the states, every route gated, audited writes, the 503 rollback on every write, the retried create and the 409, check violations, the cache.
+- New package only, nothing existing changes. Typings added.
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
+
 ## 2026-11-07 (v1.163.0, rbac matches a stored user row by directory object id)
 
 Opt in, `rbac`. New exports `cleanOid`, `userRowMatches` and `pickUserRow` from the Olympus shell source (SH-3 family, K-source-refresh): a grant to a person binds to their directory object id, the email stays a label and is the match only for rows with no object id. A caller whose token has no object id matches only rows that have none (fail closed); `pickUserRow` prefers the row bound to the id whatever the row order. Documented in `web-shell-packages.md` section 3.
