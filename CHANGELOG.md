@@ -4,6 +4,13 @@
 
 `scripting-powershell.md`: the `ConvertFrom-Json` array rule now names the right cause, from the hub consumer's check against its scripts repo. Windows PowerShell 5.1 returns a JSON array from `ConvertFrom-Json` as a single object, so a pipeline wrapped in `@(...)` yields an array inside an array; assign the result, then enumerate `@($rows)`. It no longer reads as a variant of the PowerShell 7 `Invoke-RestMethod` note, which is a separate problem. The acceptance fixture (empty array, one object, several, counts 0, 1 and N) now runs on Windows PowerShell 5.1 specifically (`tests/fixtures/powershell-51/ConvertFromJsonShape.ps1`) and says so and skips on any other host, never passing in silence. Core CI has no 5.1 host, so it checks the fixture's shape and the skip; the 5.1 run is the consumer's.
 
+## 2026-11-07 (v1.163.0, rbac matches a stored user row by directory object id)
+
+Opt in, `rbac`. New exports `cleanOid`, `userRowMatches` and `pickUserRow` from the Olympus shell source (SH-3 family, K-source-refresh): a grant to a person binds to their directory object id, the email stays a label and is the match only for rows with no object id. A caller whose token has no object id matches only rows that have none (fail closed); `pickUserRow` prefers the row bound to the id whatever the row order. Documented in `web-shell-packages.md` section 3.
+
+- New exports only, nothing existing changes; typings added.
+- Tests: the source's 5 (`kit/tests/rbac/oid-binding.test.js`, example addresses in place of the source's), run in `test:server`.
+
 ## 2026-11-07 (v1.162.0, the processing indicator can stop reads)
 
 Closes the gap against the hub's handoff tag (the busy bar spec): the indicator's Cancel request, the stop on leaving the page and the server run stop. A second opt in on top of `installBusyTracking`; with `cancel` off nothing changes.
