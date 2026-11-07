@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-07 (v1.137.0, a test race fix)
+
+Test only: `pool_view_test` no longer races the background refresh threads of the previous test, which wrote a stale answer into the cache after it was cleared and failed `test_a_failed_read_is_unknown_never_a_pass` now and then in CI.
+
 ## 2026-11-06 (v1.136.0, an OIDC sign-in beside MSAL in the client package)
 
 `shell-packages/app-client`: `createOidcAuth(manager, options)` and `createOidcClient(manager)`. Opt in; `createAuth` and the MSAL path are unchanged.
