@@ -106,6 +106,73 @@ class Store(unittest.TestCase):
         self.s.set("repo#1", "w1", self.hours(1))
         self.assertTrue(self.s.allowed("repo#1", "w1"))
 
+    def test_window_is_the_scope_and_extra_comes_back_on_the_entry(self):
+        rec = self.s.set(
+            "repo#1",
+            None,
+            self.hours(5),
+            who="owner",
+            window="w1",
+            extra={"head": "abc123", "n": [1, 2]},
+        )
+        self.assertEqual(
+            (rec["scope"], rec["window"], rec["extra"]),
+            ("w1", "w1", {"head": "abc123", "n": [1, 2]}),
+        )
+        self.assertTrue(self.s.allowed("repo#1", "w1"))
+        self.assertFalse(self.s.allowed("repo#1", "w2"))  # another window never carries over
+        e = self.s.entry("repo#1", "w1")
+        self.assertEqual(e["extra"]["head"], "abc123")
+        e["extra"]["head"] = "changed"  # a copy: the store is not touched
+        self.assertEqual(self.s.entry("repo#1", "w1")["extra"]["head"], "abc123")
+        log = [json.loads(x) for x in (self.dir / "ov.log.jsonl").read_text().splitlines()]
+        self.assertEqual(log[0]["window"], "w1")
+
+    def test_entry_fails_closed_like_allowed(self):
+        self.assertIsNone(self.s.entry("repo#1", "w1"))  # missing store
+        self.s.set("repo#1", "w1", self.hours(2), window="w1")
+        self.assertIsNone(self.s.entry("repo#1", "w2"))  # foreign scope
+        self.assertIsNone(self.s.entry("repo#2", "w1"))  # another key
+        (self.dir / "ov.json").write_text("{broken")
+        self.assertIsNone(self.s.entry("repo#1", "w1"))  # unreadable
+        self.s.set("repo#1", "w1", self.hours(2), window="w1")
+        self.clock.now = self.hours(3)
+        self.assertIsNone(self.s.entry("repo#1", "w1"))  # expired
+
+    def test_a_window_with_no_scope_or_a_bad_extra_is_refused(self):
+        with self.assertRaises(o.OverrideRefused):
+            self.s.set("repo#1", None, self.hours(1))
+        with self.assertRaises(o.OverrideRefused):
+            self.s.set("repo#1", "w1", self.hours(1), extra={"x": object()})
+        with self.assertRaises(o.OverrideRefused):
+            self.s.set("repo#1", "w1", self.hours(1), extra=["not", "a", "map"])
+        self.assertFalse((self.dir / "ov.json").exists())
+
+    def test_the_all_entry_carries_window_and_extra_too(self):
+        self.s.set("*", None, self.hours(2), window="w1", extra={"by": "owner"})
+        self.assertEqual(self.s.entry("anything", "w1")["extra"], {"by": "owner"})
+
+    def test_expires_at_local_midnight_in_the_owner_zone(self):
+        now = dt.datetime(
+            2026, 11, 1, 3, 30, tzinfo=dt.timezone.utc
+        )  # 23:30 on Oct 31 in New York (EDT, UTC-4)
+        self.assertEqual(
+            o.expires_at_local_midnight("America/New_York", now),
+            dt.datetime(2026, 11, 1, 4, 0, tzinfo=dt.timezone.utc),
+        )
+        # across the end of daylight saving (Nov 1 2026): the next midnight is 05:00 UTC, not 04:00
+        now = dt.datetime(2026, 11, 1, 12, 0, tzinfo=dt.timezone.utc)
+        self.assertEqual(
+            o.expires_at_local_midnight("America/New_York", now),
+            dt.datetime(2026, 11, 2, 5, 0, tzinfo=dt.timezone.utc),
+        )
+        self.assertEqual(
+            o.expires_at_local_midnight(dt.timezone.utc, now),
+            dt.datetime(2026, 11, 2, 0, 0, tzinfo=dt.timezone.utc),
+        )
+        with self.assertRaises(ValueError):
+            o.expires_at_local_midnight("Not/AZone", now)
+
     def test_pending_line_says_what_happens_next(self):
         self.assertEqual(
             o.pending_line("Freeze bypassed", 180), "Freeze bypassed, re-checked within 3 minutes"
