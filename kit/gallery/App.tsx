@@ -163,7 +163,7 @@ import type { AreaCardData } from '../src/index';
 import type { RunRefusal, RunSpec } from '../src/index';
 import type { AppAccent, ArtAnchors, BulkRunState, ComboboxFreeEntry, FilterClause, FilterField, HomeTool, LauncherTool, PaletteItem, Recent, ReleaseNote, SortDirection, SortState, TableColumn, ThemeChoice } from '../src/index';
 import { AreaChart, BarChart, ChartLegend, DonutChart, Gauge, LineChart, RingProgress, Sparkline } from '../src/charts';
-import { Dashboard } from '../src/reports';
+import { Dashboard, DashboardEditor } from '../src/reports';
 import type { DashboardDefinition, DashboardRun, Picks } from '../src/reports';
 import { Graph, graphEdge } from '../src/graph';
 import type { Edge, GraphCardNode } from '../src/graph';
@@ -686,6 +686,10 @@ function DashboardSpecimen() {
       onExportPanel={() => undefined}
     />
   );
+}
+
+function DashboardEditorSpecimen() {
+  return <DashboardEditor definition={DASH_DEF} existing modified streams={['work']} help="Editing a dashboard. Viewers never see this screen. Streams: work. Panel types: stat, line, area, bar, hbar, donut, table." onSave={() => undefined} onPreview={() => Promise.resolve(dashRun(''))} onReset={() => undefined} onDelete={() => undefined} onClose={() => undefined} />;
 }
 
 function OverrideSpecimen() {
@@ -2620,7 +2624,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars', 'hub-header', 'hub-overview', 'run-dialog', 'hub-header-flat', 'override', 'action-buttons', 'dashboard'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars', 'hub-header', 'hub-overview', 'run-dialog', 'hub-header-flat', 'override', 'action-buttons', 'dashboard', 'dashboard-editor'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2898,6 +2902,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="dashboard" title="Dashboard (filter bar, panels, click to cross-filter)">
           <DashboardSpecimen />
+        </Specimen>
+        <Specimen id="dashboard-editor" title="Dashboard editor (definition as JSON)">
+          <DashboardEditorSpecimen />
         </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">

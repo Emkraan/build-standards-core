@@ -1958,3 +1958,27 @@ panel, the placeholders, the future dated note, the timer refresh, the deep link
 malformed drill, the workbook tabs, and axe; the gallery specimen `dashboard` carries baselines in
 both themes.
 
+### Dashboard definitions are data (`kit-core/reports`, the editor)
+
+A dashboard is a JSON definition kept by key on the server, not code. The editor is its own screen: viewers
+never see it, and building a dashboard is the only place that asks for criteria.
+
+- The editor shows a name, a description, the definition as JSON, and the problems with it named
+  before a save (`validateDefinition`, the same wording as the server). Save and Preview wait while there
+  is any problem. The name and the description edit the JSON, so there is one source of truth.
+- Add panel puts a starting panel of the chosen type on the first stream. Preview runs the definition
+  through the app and draws it with the same `Dashboard` viewers see.
+- A shipped dashboard that was edited shows Reset to shipped; a saved one shows Delete, after a confirm.
+  A failed save, reset or delete shows the server's message and keeps the editor open.
+- Export and import are one JSON file of definitions (`exportDefinitions`, `parseDefinitions`). A file with
+  any problem is refused whole and names the definition at fault, so nothing is half imported. The server
+  checks again; this is the courtesy before it.
+- `createDashboardsClient({ base })` is a small typed client for the module's routes (list, create, save,
+  delete, reset, export, import, run) for an app that has no client of its own. The kit never stores a
+  definition.
+
+**Acceptance:** a test asserts the validation messages, the whole-file refusal on import, the round trip of
+an export, each route the client calls, the editor's problems and disabled Save, add panel, a failed
+save, the preview, reset and delete only where they apply, and axe; the gallery specimen
+`dashboard-editor` carries baselines in both themes.
+

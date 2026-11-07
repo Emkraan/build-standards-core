@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-07 (v1.156.0, dashboards: the editor, definitions import and export, the client)
+
+The R2 half of the `kit-core/reports` entry. Opt in, same entry as the dashboards.
+
+- `DashboardEditor`: a name, a description, the definition as JSON with its problems named before a save, add panel, a live preview, save, reset to the shipped copy and delete after a confirm.
+- `validateDefinition`, `parseDefinitions`, `exportDefinitions`, `newPanel`, `blankDefinition`, `slugFor`: definitions are validated in the browser as the server does (a file with any problem is refused whole) and exported as one JSON file.
+- `createDashboardsClient`: a small typed client for the module's routes.
+
 ## 2026-11-07 (v1.155.0, the optional reports module: the report engine, the source slot and dashboard runs)
 
 Opt in: `server/modules/reports/{query,sources,dashboards}.py`, imported only when a consumer uses them or sets `OPSCENTER_REPORTS`; no import side effect, no file or database touched until a function that needs it runs.
@@ -147,8 +155,6 @@ Additive. `console.module.json` `client` accepts `apps/<dir>/spa` as well as `ap
 
 - `validateManifest`, the JSON schema and `web-shell-manifest.md` take either folder name, for an app that already names its client folder `spa`. Nothing that validated before stops validating. The generator reads the field as plain data and needed no change. Tests: accepted for both names, rejected for another folder name and for a trailing path, in the TypeScript and the Python schema suites.
 
-<<<<<<< HEAD
-=======
 ## 2026-11-06 (v1.136.0, an OIDC sign-in beside MSAL in the client package)
 
 `shell-packages/app-client`: `createOidcAuth(manager, options)` and `createOidcClient(manager)`. Opt in; `createAuth` and the MSAL path are unchanged.
@@ -175,7 +181,6 @@ Fixes from the consumer review of v1.125.0. Opt in pieces only; a look that work
 - `RunDialog`: `RunInput.publishesWhen` and `RunSpec.publishes` decide what publishes ahead of the `dry_run` and `mode` name rule; inputs that arrive after the form opened take their defaults and keep what was typed; submit honours the same guards as the button; a refusal from the last attempt no longer locks Run (only the `refusal` prop does) and clears when an input changes; a branch name is checked for plausible characters; `onClose` is not called when the app closed the dialog first.
 - `AreaCard` sends its link through the guarded link, so an unsafe `to` never reaches the app's link component; duplicate detail lines, section keys and item keys no longer collide as React keys. `OverrideBar` and `OverrideButton` send one write at a time from the click on.
 
->>>>>>> origin/main
 ## 2026-11-06 (v1.133.0, roles and gate rules from the hub review)
 
 Text only, from the hub consumer's inventory. Standards: `rbac.md`, `ci-cd-release.md`, `scripting-powershell.md`.

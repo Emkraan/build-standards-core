@@ -83,6 +83,8 @@ for (const theme of THEMES) {
       expect(await page.evaluate(findOverflow, 1.5), 'at the full gallery width').toEqual([]);
       // The narrow shell: labels that fit at desktop width are the ones that wrap or spill here.
       await page.setViewportSize({ width: 720, height: page.viewportSize()?.height ?? 900 });
+      // A chart sizes itself from a resize observer, a frame or two after the window changes: let it settle before measuring.
+      await page.evaluate(() => new Promise<void>((done) => setTimeout(done, 300)));
       expect(await page.evaluate(findOverflow, 1.5), 'at 720 pixels').toEqual([]);
     });
 
