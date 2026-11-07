@@ -1344,7 +1344,7 @@ button.md-link { padding: 0; border: 0; background: transparent; font: inherit; 
 .dash-updated, .dash-desc { font-size: var(--fs-label); color: var(--text-secondary); }
 .dash-desc { margin: 0; }
 .dash-grid { display: grid; gap: var(--space-4); }
-.dash-panel { height: 100%; overflow: hidden; }
+.dash-panel { height: 100%; min-width: 0; }
 .dash-empty { margin: 0; padding: var(--space-6) 0; text-align: center; font-size: var(--fs-label); color: var(--text-secondary); }
 .dash-error { margin: 0; font-size: var(--fs-label); color: var(--danger); }
 .dash-note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); font-size: var(--fs-label); }
