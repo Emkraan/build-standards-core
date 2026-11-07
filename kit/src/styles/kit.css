@@ -2108,12 +2108,12 @@ button.month-grid-chip { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { .busy-sweep { animation: none; left: 0; width: 100%; opacity: 0.7; } .busy-dock { animation: none; } }
 
 /* ---- Action buttons coloured by purpose (opt in with data-act on a Button) ----
-   Page and toolbar buttons carry data-act = create | link | transfer. A secondary one is tinted (create teal, link
-   blue, transfer violet) and a primary one keeps its fill with a firmer weight. Buttons inside a form or a dialog
+   Page and toolbar buttons carry data-act = create | link | transfer. A secondary one is tinted and outlined (create teal, link
+   blue, transfer violet) with the normal text colour, so the label keeps its contrast in both themes and a primary one keeps its fill with a firmer weight. Buttons inside a form or a dialog
    keep the plain look. Nothing changes for a button without data-act. */
 .btn[data-act]:not(form .btn[data-act]):not([role="dialog"] .btn[data-act]) { font-size: var(--fs-label); padding-block: var(--space-1); }
 .btn[data-variant="primary"][data-act]:not(form .btn[data-act]):not([role="dialog"] .btn[data-act]) { padding-inline: var(--space-4); font-weight: var(--fw-semibold); }
-.btn[data-variant="secondary"][data-act]:not(form .btn[data-act]):not([role="dialog"] .btn[data-act]) { --act-hue: var(--hue-teal); background: rgb(var(--act-hue) / 0.12); border-color: rgb(var(--act-hue) / 0.35); color: rgb(var(--act-hue)); }
+.btn[data-variant="secondary"][data-act]:not(form .btn[data-act]):not([role="dialog"] .btn[data-act]) { --act-hue: var(--hue-teal); background: rgb(var(--act-hue) / 0.12); border-color: rgb(var(--act-hue) / 0.55); color: var(--text-primary); }
 .btn[data-variant="secondary"][data-act="link"]:not(form .btn[data-act]):not([role="dialog"] .btn[data-act]) { --act-hue: var(--hue-blue); }
 .btn[data-variant="secondary"][data-act="transfer"]:not(form .btn[data-act]):not([role="dialog"] .btn[data-act]) { --act-hue: var(--hue-violet); }
-.btn[data-variant="secondary"][data-act]:hover:not(:disabled):not(:where([aria-disabled="true"])):not(form .btn[data-act]):not([role="dialog"] .btn[data-act]) { background: rgb(var(--act-hue) / 0.22); border-color: rgb(var(--act-hue) / 0.55); }
+.btn[data-variant="secondary"][data-act]:hover:not(:disabled):not(:where([aria-disabled="true"])):not(form .btn[data-act]):not([role="dialog"] .btn[data-act]) { background: rgb(var(--act-hue) / 0.22); border-color: rgb(var(--act-hue) / 0.85); }
