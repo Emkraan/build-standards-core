@@ -49,6 +49,11 @@ elif a[:2] == ["variable", "set"]:
 elif a[:2] == ["workflow", "run"]:
     st.setdefault("dispatched", []).append(a)
     save()
+elif a[:2] == ["run", "view"]:
+    if st.get("jobs_error"):
+        sys.stderr.write("HTTP 502 bad gateway")
+        sys.exit(1)
+    sys.stdout.write(json.dumps({{"jobs": st.get("jobs", [])}}))
 elif a[:2] == ["run", "list"]:
     sys.stdout.write(json.dumps(st.get("runs", [])))
 else:
@@ -204,6 +209,70 @@ class Cards(unittest.TestCase):
         dispatched_log()
         c = dl.get(force=True)["launches"][0]
         self.assertTrue(c["can_enable"])
+
+
+class JobScoped(unittest.TestCase):
+    """A launch that shares a workflow names its own job: the dry run passes on that job only."""
+
+    def test_job_scoped_dry_run_ignores_other_jobs(self):
+        lc = dict(LAUNCH, job="drift auto-correct (members)")
+        for jobs, want, extra in (
+            (
+                [
+                    {"name": "drift auto-correct (members)", "conclusion": "success"},
+                    {"name": "drift (other)", "conclusion": "failure"},
+                ],
+                "passed",
+                {},
+            ),
+            ([{"name": "drift auto-correct (members)", "conclusion": "skipped"}], "failed", {}),
+            ([{"name": "drift (other)", "conclusion": "success"}], "failed", {}),
+            ([], "unknown", {"jobs_error": True}),
+        ):
+            setup(runs=[run(conclusion="failure")], entries=[lc], jobs=jobs, **extra)
+            dl._log({"id": lc["id"], "event": "dry_run_dispatched"})
+            dl._drop_cache()
+            c = dl.get(force=True)["launches"][0]
+            self.assertEqual(c["dry_run"]["state"], want, jobs)
+            self.assertEqual(c["can_enable"], want == "passed")
+
+    def test_the_job_is_named_in_the_dry_run_and_a_launch_without_one_is_unchanged(self):
+        lc = dict(LAUNCH, job="mine")
+        setup(runs=[run()], entries=[lc], jobs=[{"name": "mine", "conclusion": "success"}])
+        dl._log({"id": lc["id"], "event": "dry_run_dispatched"})
+        self.assertEqual(dl.get(force=True)["launches"][0]["dry_run"]["job"], "mine")
+        setup(runs=[run()], entries=[dict(LAUNCH)])
+        dl._log({"id": LAUNCH["id"], "event": "dry_run_dispatched"})
+        dry = dl.get(force=True)["launches"][0]["dry_run"]
+        self.assertEqual(dry["state"], "passed")
+        self.assertNotIn("job", dry)
+        self.assertFalse(
+            [c for c in calls() if c.startswith("run view")], "no jobs read without a job"
+        )
+
+    def test_two_launches_on_one_workflow_are_judged_separately(self):
+        a = dict(LAUNCH, id="launch-a", job="job a")
+        b = dict(LAUNCH, id="launch-b", job="job b", variable="OTHER_ENABLED")
+        setup(
+            runs=[run(conclusion="failure")],
+            entries=[a, b],
+            jobs=[
+                {"name": "job a", "conclusion": "success"},
+                {"name": "job b", "conclusion": "failure"},
+            ],
+        )
+        for lid in ("launch-a", "launch-b"):
+            dl._log({"id": lid, "event": "dry_run_dispatched"})
+        dl._drop_cache()
+        got = {c["id"]: c["dry_run"]["state"] for c in dl.get(force=True)["launches"]}
+        self.assertEqual(got, {"launch-a": "passed", "launch-b": "failed"})
+
+    def test_a_bad_job_name_is_rejected_and_the_registry_fails_closed(self):
+        for bad in ("x; rm -rf /", "a" * 101, "$(id)", " "):
+            if not bad.strip():
+                continue
+            setup(entries=[dict(LAUNCH, job=bad)])
+            self.assertIn("bad job name", dl.get(force=True)["error"], bad)
 
 
 class Actions(unittest.TestCase):
