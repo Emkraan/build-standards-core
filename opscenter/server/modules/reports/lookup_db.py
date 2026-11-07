@@ -38,6 +38,17 @@ CREATE TABLE IF NOT EXISTS log_catalog (
 """
 
 
+def ensure(con, schema="main"):
+    """Create the lookup tables in an attached database `schema` when they are missing (an empty cache reads as no matches)."""
+    for stmt in SCHEMA.split(";"):
+        if stmt.strip():
+            con.execute(
+                stmt.replace(
+                    "CREATE TABLE IF NOT EXISTS ", f"CREATE TABLE IF NOT EXISTS {schema}.", 1
+                )
+            )
+
+
 def path():
     return Path(os.environ.get("OPSCENTER_REPORTS_DB") or paths.state_dir() / "reports.db")
 

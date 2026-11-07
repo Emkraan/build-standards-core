@@ -1,12 +1,20 @@
 # Changelog
 
-## 2026-11-07 (v1.155.0, dashboards: the editor, definitions import and export, the client)
+## 2026-11-07 (v1.156.0, dashboards: the editor, definitions import and export, the client)
 
 The R2 half of the `kit-core/reports` entry. Opt in, same entry as the dashboards.
 
 - `DashboardEditor`: a name, a description, the definition as JSON with its problems named before a save, add panel, a live preview, save, reset to the shipped copy and delete after a confirm.
 - `validateDefinition`, `parseDefinitions`, `exportDefinitions`, `newPanel`, `blankDefinition`, `slugFor`: definitions are validated in the browser as the server does (a file with any problem is refused whole) and exported as one JSON file.
 - `createDashboardsClient`: a small typed client for the module's routes.
+
+## 2026-11-07 (v1.155.0, the optional reports module: the report engine, the source slot and dashboard runs)
+
+Opt in: `server/modules/reports/{query,sources,dashboards}.py`, imported only when a consumer uses them or sets `OPSCENTER_REPORTS`; no import side effect, no file or database touched until a function that needs it runs.
+
+- `query.py`: a report is a spec, never SQL. Fields are checked against the stream, values are bound parameters, and the SQL is assembled from fixed fragments, so a spec cannot reach another stream or run anything. Filters (17 operators), grouping, 8 metrics, time buckets (local day, Monday week, month), looked-up fields joined from the lookups cache, sort, limit and a truncation flag. The time zone is `OPSCENTER_REPORTS_TZ` (default UTC).
+- `sources.py`: the source slot. A panel names a stream and a measure; a source (`get_stream`, `run`, optional `options`) turns that into columns and rows. `LocalSource` reads the log intake tables.
+- `dashboards.py`: `check_dashboard` and `run_dashboard` with the range, dropdowns that narrow only panels whose stream has the field, stat panels with a comparison against the period before or a share, future-dated events kept off time panels and reported with the rows behind them, and one broken panel never taking the page down.
 
 ## 2026-11-07 (v1.154.0, the reports entry: dashboards with click to cross-filter and deep links)
 
