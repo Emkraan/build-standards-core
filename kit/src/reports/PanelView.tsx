@@ -58,6 +58,7 @@ function ChartBody({ panel, result, onPick }: { panel: DashboardPanel; result: P
   const { x, y } = seriesOf(panel, result);
   const height = (panel.h ?? 3) * ROW_PX;
   if (data.length === 0) return <p className="dash-empty">Nothing in this range</p>;
+  if (y.length === 0) return <p className="dash-empty">Nothing to draw</p>;
   const series = y.map((k) => ({ key: k, label: k }));
   const select = panel.drill ? onPick : undefined;
   if (panel.type === 'donut') {

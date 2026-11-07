@@ -1344,7 +1344,7 @@ button.md-link { padding: 0; border: 0; background: transparent; font: inherit; 
 .dash-updated, .dash-desc { font-size: var(--fs-label); color: var(--text-secondary); }
 .dash-desc { margin: 0; }
 .dash-grid { display: grid; gap: var(--space-4); }
-.dash-panel { height: 100%; overflow: hidden; }
+.dash-panel { height: 100%; min-width: 0; }
 .dash-empty { margin: 0; padding: var(--space-6) 0; text-align: center; font-size: var(--fs-label); color: var(--text-secondary); }
 .dash-error { margin: 0; font-size: var(--fs-label); color: var(--danger); }
 .dash-note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); font-size: var(--fs-label); }
@@ -1360,6 +1360,13 @@ button.md-link { padding: 0; border: 0; background: transparent; font: inherit; 
 /* The keyboard twin of a chart click: out of sight until it takes focus. */
 .dash-pick { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .dash-pick:focus-within { position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal; display: flex; flex-wrap: wrap; gap: var(--space-2); padding-top: var(--space-2); font-size: var(--fs-label); }
+
+/* ---- Dashboard editor (R2): the definition as JSON, its problems, a live preview ---- */
+.dash-editor { display: grid; gap: var(--space-4); }
+.dash-editor-names { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); }
+.dash-editor-json { width: 100%; font-family: var(--font-mono); font-size: var(--fs-mono); }
+.dash-editor-problems { margin: 0; padding-left: 18px; font-size: var(--fs-label); color: var(--danger); }
+.dash-editor-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 
 @media (prefers-reduced-motion: reduce) {
   .modal[data-state="closing"], .modal-backdrop[data-state="closing"], .popover, .tooltip,

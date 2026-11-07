@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-07 (v1.156.0, the optional modules at the server: routes, providers and the off state)
+## 2026-11-07 (v1.157.0, the optional modules at the server: routes, providers and the off state)
 
 Opt in: `OPSCENTER_LOG_INTAKE` and `OPSCENTER_REPORTS`. With neither set nothing is imported, no route or background task is added and no file is created (a test runs a fresh interpreter and checks the module list).
 
@@ -10,6 +10,14 @@ Opt in: `OPSCENTER_LOG_INTAKE` and `OPSCENTER_REPORTS`. With neither set nothing
 - Providers (`OPSCENTER_LOG_INTAKE_PROVIDER`, `OPSCENTER_REPORTS_PROVIDER`, `path/to/file.py:ClassName`, every method optional). `authorize(headers, action, key)` gates every admin and dashboard route and has a null default that refuses everything, so a route is closed until a consumer says who may use it.
 - Writes are POST (the registry has no PUT or DELETE). A panel may carry a `spec` instead of a `measure` (definitions validation).
 - To confirm with the reference owner: a new stream keeps its sink data for 180 days by default (the reference code and its test say 180); its inventory text said 90. The report time zone defaults to UTC (`OPSCENTER_REPORTS_TZ`).
+
+## 2026-11-07 (v1.156.0, dashboards: the editor, definitions import and export, the client)
+
+The R2 half of the `kit-core/reports` entry. Opt in, same entry as the dashboards.
+
+- `DashboardEditor`: a name, a description, the definition as JSON with its problems named before a save, add panel, a live preview, save, reset to the shipped copy and delete after a confirm.
+- `validateDefinition`, `parseDefinitions`, `exportDefinitions`, `newPanel`, `blankDefinition`, `slugFor`: definitions are validated in the browser as the server does (a file with any problem is refused whole) and exported as one JSON file.
+- `createDashboardsClient`: a small typed client for the module's routes.
 
 ## 2026-11-07 (v1.155.0, the optional reports module: the report engine, the source slot and dashboard runs)
 
@@ -158,8 +166,6 @@ Additive. `console.module.json` `client` accepts `apps/<dir>/spa` as well as `ap
 
 - `validateManifest`, the JSON schema and `web-shell-manifest.md` take either folder name, for an app that already names its client folder `spa`. Nothing that validated before stops validating. The generator reads the field as plain data and needed no change. Tests: accepted for both names, rejected for another folder name and for a trailing path, in the TypeScript and the Python schema suites.
 
-<<<<<<< HEAD
-=======
 ## 2026-11-06 (v1.136.0, an OIDC sign-in beside MSAL in the client package)
 
 `shell-packages/app-client`: `createOidcAuth(manager, options)` and `createOidcClient(manager)`. Opt in; `createAuth` and the MSAL path are unchanged.
@@ -186,7 +192,6 @@ Fixes from the consumer review of v1.125.0. Opt in pieces only; a look that work
 - `RunDialog`: `RunInput.publishesWhen` and `RunSpec.publishes` decide what publishes ahead of the `dry_run` and `mode` name rule; inputs that arrive after the form opened take their defaults and keep what was typed; submit honours the same guards as the button; a refusal from the last attempt no longer locks Run (only the `refusal` prop does) and clears when an input changes; a branch name is checked for plausible characters; `onClose` is not called when the app closed the dialog first.
 - `AreaCard` sends its link through the guarded link, so an unsafe `to` never reaches the app's link component; duplicate detail lines, section keys and item keys no longer collide as React keys. `OverrideBar` and `OverrideButton` send one write at a time from the click on.
 
->>>>>>> origin/main
 ## 2026-11-06 (v1.133.0, roles and gate rules from the hub review)
 
 Text only, from the hub consumer's inventory. Standards: `rbac.md`, `ci-cd-release.md`, `scripting-powershell.md`.
