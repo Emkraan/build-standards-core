@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-07 (v1.166.0, the documentation audit gains rules R13, R15 and R16)
+## 2026-11-07 (v1.167.0, the documentation audit gains rules R13, R15 and R16)
 
 Opt in, each off until configured: with none of them set the audit writes the same store as before (no extra internal thing appears).
 
@@ -8,6 +8,17 @@ Opt in, each off until configured: with none of them set the audit writes the sa
 - R15 (retired or merged page outside the Archive): runs only when the registry sets `archive_page`; walks the real parent chain (the search lags a move), skips children that move with their parent.
 - R16 (backup mirror behind live code): config `mirror` (`repo`, `repo_slug`, `map` of `{repo_prefix, live_dir}`, `grace_hours` 30, `sync_pr_hours` 24). A file is drift only once unchanged for the grace window and its git blob sha differs from the mirror's main; a sync pull request open too long is named; an unreadable mirror is one line, never a pass.
 - The three surface on the Knowledge page only (low severity, pseudo things `_retired_live`, `_archive`, `_backup`), never on the Action Center. The consumer-only moved-page rule (R14) stays out.
+
+## 2026-11-07 (v1.166.0, the owner apply guard fails closed and covers open PRs)
+
+`opscenter/server/modules/owner_roots.py`.
+
+- Behaviour change: `owner_roots.py guard <name> <tier>` fails closed. A corrupt or unreadable status file refuses (exit 3, the cause printed), and so does a missing one unless `--allow-missing-status` is given. An install that runs the guard but never recorded a hold, and so has no status file, must add that flag or plan once first.
+- `guard ... --allow-pr N` (repeatable) skips a PR meant to lose its objects. Bad guard arguments exit 2.
+- An address matches with or without an index suffix on either side: a hold of `x.a` covers a delete of `x.a["k"]` and a hold of `x.a["k"]` covers a delete of `x.a`. Two different instances never match. This applies to the ahead of main mark and the guard.
+- Opt in provider hooks, null by default: `open_pr_addresses(root)` (the guard and the Apply refusal also refuse a delete of an address an open PR declares, and refuse when that read fails), `detect_ahead(root)` (a root with no hold record whose main plan destroys what an open PR holds gets a detected hold), `is_protection(id)` (a lock the plan itself deletes is left out of the deletes handed to the lift), `retry_kinds()` (the apply is retried after a lift when the failure is one of the provider's own error kinds, not only when the output says retry), and a third `before_apply` parameter, a private directory to record the lift in before the first lift. An exception from `before_apply` that carries a `state` attribute reaches `after_apply`, so a partial lift is restored.
+- Behaviour change: the lift lag retry needs a non empty state from `before_apply` (it used to be any state that is not None), so nothing lifted means no retry.
+- Terminal apply logging: `owner_roots.py --log-start --root <name>:<tier> --sha <sha> [--by <account>]` and `--log-done ... [--result <text>]` append `owner_apply_started` and `owner_apply_done` in the module's own record shape. `--by` defaults to the provider's expected identity.
 
 ## 2026-11-07 (v1.162.0, script rule U6: the cause is Windows PowerShell 5.1)
 
