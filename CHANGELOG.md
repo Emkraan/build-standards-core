@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-07 (v1.151.0, the optional log intake module: receiver, streams, snapshots, buffer, sink checks)
+## 2026-11-07 (v1.152.0, the optional log intake module: receiver, streams, snapshots, buffer, sink checks)
 
 Opt in: `server/modules/log_intake/`, imported only when a consumer sets `OPSCENTER_LOG_INTAKE`; no import side effect, no database until first use, no route or task registered by this change.
 
@@ -8,6 +8,14 @@ Opt in: `server/modules/log_intake/`, imported only when a consumer sets `OPSCEN
 - The latest snapshot per device or every post for an events stream (E5), the local buffer and the forwarder to a sink slot (E2, E6), and the sink access test with a marked test row (E6): a missing right is reported with the role and scope that would grant it.
 - Ported from the reference implementation; the table prefix and suffix, the sink and its reserved names, and the key check are configuration or slots. The reference's workspace retention default is 180 days in its code (its inventory said 90); the code value is used.
 - Not in this change: the routes that register the module, the sink providers, the settings page (the kit's), directory and publisher lookups (R6).
+
+## 2026-11-07 (v1.151.0, the export entry: formula safe CSV and a spreadsheet workbook)
+
+A new optional entry, `kit-core/export`, with no dependency; an app that exports nothing never loads it. Lifted from the hub tool features (R5 and R9), made generic.
+
+- `csvCell`, `toCsv`, `downloadCsv`: every cell quoted, a text cell starting with = + - @ tab or CR gets a leading apostrophe, real numbers stay numeric, UTF-8 byte order mark on download.
+- `buildXlsx`, `downloadXlsx`: a workbook with a tab per table, bold frozen header, sized columns, numbers that stay numbers, text as inline strings (never formulas) and an optional Excel table. Written by a store-only zip (no compression library); pass `zip` to compress.
+- Not lifted: pivot tables. A hand-written pivot part passes the Open XML check yet crashes the spreadsheet app on open, so none ships until a generated file has been opened in the app on Mac and Windows.
 
 ## 2026-11-07 (v1.150.0, one processing indicator, action buttons by purpose, chart theme test)
 
