@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-07 (v1.154.0, the reports entry: dashboards with click to cross-filter and deep links)
+
+A new optional entry, `kit-core/reports`, the client side of the reports module (R1, R4, and the dashboard half of R5). It reads the kit charts (recharts, an optional peer), so an app that shows no dashboard never loads it. Lifted from the hub tool features and made generic: a panel names a stream and a measure, never a store.
+
+- `Dashboard`, `DashboardFilterBar`, `PanelView`: a dashboard that opens populated with one slim filter bar (dashboard, range, one choice per filter, removable chips) and no Run button; panels on a twelve column grid drawn with the kit charts and tiles; a failed panel says so in its own card; a click on a panel sets its filter, a second click clears it, and each chart offers the same choice to the keyboard.
+- Deep links: `?d=<key>&range=<preset>&f.<filter>=<value>` read and written without losing other parameters, and a `drill` link that carries the rows behind a panel.
+- `dashboardSheets`: a Summary tab and a tab per panel for `kit-core/export`.
+- `BarChart` and `DonutChart` take `onSelect` (click a bar or slice); nothing changes without it.
+
 ## 2026-11-07 (v1.153.0, the optional reports module: directory and catalog lookups)
 
 Opt in: `server/modules/reports/{directory,catalog,lookup_db}.py`, imported only when a consumer uses them or sets `OPSCENTER_REPORTS`; no import side effect (the database `OPSCENTER_REPORTS_DB` is created on first use).

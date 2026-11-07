@@ -16,6 +16,7 @@
     "./styles/kit.css": "./styles/kit.css",
     "./charts": "./charts/index.ts",
     "./export": "./export/index.ts",
+    "./reports": "./reports/index.ts",
     "./api-reference": "./api-reference/index.ts",
     "./api-reference.css": "./api-reference/api-reference.css",
     "./graph": "./graph/index.ts",

@@ -1927,3 +1927,34 @@ nothing never loads it.
 the workbook parts, inert text, unique headers and legal tab names, and that a real zip reader and
 XML parser accept the file.
 
+### Dashboards (`kit-core/reports`)
+
+The client side of the reports module, on its own entry (it reads the kit charts, so recharts is an
+optional peer): an app that shows no dashboard never loads it. The kit knows no data store. The app
+fetches a run from its server and passes it in; the kit draws it.
+
+- A dashboard opens populated. There are no criteria to pick and no Run button: one slim filter bar
+  holds the dashboard, the range, one choice per filter and the picks that are on as removable chips,
+  and every change refreshes the run. Building a dashboard is a separate screen, not part of this surface.
+- A definition is data: `{ key, title, filters, panels }`, where a panel is `{ title, type, stream,
+  measure, w, h, x, y, drill, stat }`. It names a stream and a measure and never a store, so the
+  server decides where the numbers come from. A panel's `drill` names the filter that a click on it sets.
+- Click to cross-filter: a click on a bar, a slice or a table label sets the panel's filter, a second
+  click on the same value clears it, and every panel narrows. Each chart also offers the same choice to
+  the keyboard as a list of buttons that appears when it takes focus, so a mouse is never required.
+- A failed panel shows its own message and leaves the others working. A number tile takes its colour
+  thresholds from the definition (`warnAt`, `badAt`), never from code. Events dated in the future (a
+  wrong device clock) are left off the charts and the note says how many, with a link to the rows.
+- The address holds the view: `?d=<key>&range=<preset>&f.<filter>=<value>`, so a link opens exactly
+  what was on screen, and writing it keeps the page's other parameters. A drill link carries the rows
+  behind a panel as one `drill` parameter (base64url JSON of stream, measure, filters, name) for the
+  app's own explorer; a malformed one reads as none.
+- `dashboardSheets` makes a Summary tab (what was exported and every number tile) and a table tab
+  per panel for `kit-core/export`; no pivot tables.
+
+**Acceptance:** a component test asserts that a dashboard opens populated with no Run button, that one
+click narrows by setting the filter and a second clears it, the keyboard twin of a chart click, a failed
+panel, the placeholders, the future dated note, the timer refresh, the deep link round trips and the
+malformed drill, the workbook tabs, and axe; the gallery specimen `dashboard` carries baselines in
+both themes.
+

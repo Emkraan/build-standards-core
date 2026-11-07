@@ -13,7 +13,7 @@ reports `ui: adopted` (web-ui.md 0.11). Work in this order, one pull request per
    additions: it re-exports the kit and the core tokens and grows repo-specific parts beside
    them. Adapters are consumer-owned app code; the core never ships one. If the app's TypeScript
    config includes the synced `kit-core` folder, list the optional entries whose peers it does not
-   install (`charts`, `graph`, `api-reference`) under `exclude`: nothing the kit root reaches imports their
+   install (`charts`, `reports`, `graph`, `api-reference`) under `exclude`: nothing the kit root reaches imports their
    peers, so an optional peer stays optional at typecheck too. `python3 scripts/core-ci.py kit-peers` proves it:
    it fails a tsconfig that includes the whole copy without excluding an entry whose peer the app's
    `package.json` does not declare, and where the repo has `tsc` it typechecks the copy with the
