@@ -1,11 +1,18 @@
 # Changelog
 
-## 2026-11-06 (v1.126.0, the layout merge carries unknown manifest keys)
+## 2026-11-06 (v1.127.0, the layout merge carries unknown manifest keys)
 
 `shell-packages/console-modules`: `effectiveLayout` no longer drops a manifest key the contract does not name.
 
 - A consumer's own field (a `jobs` list) on a module, group, page, link or tile comes through as a deep copy on the matching output entry. Before, it vanished with no error and no test failing. `validateManifest` still ignores unknown keys.
 - A carried key never shadows a computed field (`enabled`, `account`, `basePath`); a module with no extra keys gets an identical result. `EffectiveModule` gains an index signature. Tests: 3, two of which fail on the old code. Not run: the consumer's platform tree has no axe or live-action browser tests.
+
+## 2026-11-06 (v1.126.0, override store window and extra, problems provider healthy items)
+
+Two consumer-requested extensions. Opt in: both are optional arguments and methods; nothing that runs changes.
+
+- `override_store.py`: `set(..., window=, extra=)` stores the window id the entry was made in (its scope when none is given) and a JSON map; `entry(key, scope)` reads a live entry back, failing closed like `allowed`; `expires_at_local_midnight(tz)` gives the end of the owner's day in an IANA zone. One file, still copyable verbatim.
+- Problems provider: `headlines()` values may be a map `{headline, details, label, url}`, a new `healthy()` method adds items that are fine but carry live facts, and a source may carry `count`. This is what moving a consumer's browser-clock and accounts-feed headlines onto the server needs.
 
 ## 2026-11-02 (v1.125.0, hub and override polish from the ops center adoption)
 
