@@ -621,7 +621,7 @@ function RunPane({ title, spec, refusal }: { title: string; spec: RunSpec; refus
 function HeaderLongTitleSpecimen() {
   return (
     <div className="gallery-hub-demo" style={{ maxWidth: 640 }}>
-      <Header title="Quarterly operations review for the platform and every tool it runs" subtitle="A title long enough to push on the search control" menuLabel="Open navigation">
+      <Header title="Quarterly operations review for the platform and every tool it runs" subtitle="A title long enough to push on the search control" menuLabel="Open navigation" help={false}>
         <SearchTrigger />
       </Header>
       <article className="card" data-testid="card-surface">
