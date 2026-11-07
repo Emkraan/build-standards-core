@@ -418,6 +418,8 @@ passing canary and early; a device offered an older version refuses it.
 `/health` and `/api/ops/*` are excluded from platform-level auth. Every `/api/ops/*` route requires the Bearer
 secret (timing-safe compare) and answers 403 when it is wrong or unset.
 
+**6.1 The post-deploy smoke retries for a bounded window, then fails.** One attempt straight after the container swaps reads a cold start as a failure and teaches the team that red is normal, so a real failure hides in it. The smoke check retries every few seconds for a bounded window (default 5 minutes, `SMOKE_TIMEOUT_SEC`), passes on the first good answer and fails when the window ends, naming each attempt's last answer. A deploy that stays red after the window raises an alert through the notification path (notifications.md), once per deploy, so a red deploy is a signal and never the usual state. **Acceptance (test):** a smoke that fails twice and then answers passes; one that never answers fails after the window with each attempt listed and raises one alert.
+
 ## 7. Rollback
 
 `rollback.yml` (manual, input `vX.Y.Z`): checks out the tag, rebuilds it with that tag's own
