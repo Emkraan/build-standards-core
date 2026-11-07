@@ -1906,3 +1906,24 @@ it recolours when the theme or the accent changes and the accent never becomes a
 hue the accent withholds is dropped from `series`). A test sets the tokens and the theme attribute and
 asserts the colours follow.
 
+### Spreadsheet export (`kit-core/export`)
+
+One way to hand data to a spreadsheet, on its own entry with no dependency, so an app that exports
+nothing never loads it.
+
+- Every CSV download goes through `toCsv` or `downloadCsv`. A text cell that starts with `=`, `+`,
+  `-`, `@`, a tab or a carriage return gets a leading apostrophe (it shows as plain text), every cell
+  is quoted with inner quotes doubled, and a real number stays numeric. A download carries a UTF-8
+  byte order mark so Excel reads accents, and a dated name.
+- A workbook (`buildXlsx`, `downloadXlsx`) has one tab per table, a bold frozen header, sized columns,
+  numbers that stay numbers, and text written as inline strings, never as formulas. A rows tab can be
+  an Excel table (filter buttons, banding). Tab names are legal (31 characters, none of `[]:*?/\`,
+  unique ignoring case) and header cells of a table are unique.
+- No hand-written workbook part ships until a generated file has been opened in the spreadsheet app
+  itself, on Mac and Windows, without a repair prompt or a crash. Pivot tables are off for that
+  reason: the Open XML schema check passes while the app crashes on open.
+
+**Acceptance:** a test asserts the apostrophe guard for each leading character, numbers kept numeric,
+the workbook parts, inert text, unique headers and legal tab names, and that a real zip reader and
+XML parser accept the file.
+
