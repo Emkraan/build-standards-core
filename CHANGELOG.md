@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-06 (v1.145.0, build plan for the optional hub modules and the items not lifted)
+
+Documentation only: `opscenter/plans/` holds the build plan for two optional core modules the owner decided to build (a log intake module and a reports module, never mandatory, absent when off) with the opt-in contract, a module layout, and per entry whether the hub's text and tests specify it or the source is still needed; and a note of the ops center and shell items the core did not lift, with what each needs. Nothing is built by this change.
+
 ## 2026-11-06 (v1.144.0, rules from the consumers' inventories: freeze lane, sign-offs, review threads, evidence, ticket comments, ahead of main, status files, watches)
 
 Rule text for what the ops center lifts, so the standard states what the code does. Opt in: reported by core-status; each is a `test` rule a consumer proves with its own tests, and the ops center layout rules apply to an ops center app only.

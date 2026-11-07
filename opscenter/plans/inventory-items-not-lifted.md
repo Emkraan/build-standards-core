@@ -1,0 +1,22 @@
+# Ops center and shell items the core did not lift
+
+Source: the ops center and shell inventories (intake issue 117, comments 6645998172 and 6645998639). Everything not listed here was lifted,
+compared and found already present, or is the shell session's; the lifts are in the pull requests of the same release series.
+
+| Item | What it is | Why it was not lifted | What it needs to be lifted |
+|---|---|---|---|
+| OC-7 | A rollout collector and tab for an edge network change that takes about 30 minutes to reach the edges | Consumer-only as built (one provider's edge, one device route). Its generic rule is lifted as ops-center-layout 1.16 | The consumer's own named exception row in its `standards-local/exceptions.md` for the collector; core cannot hold a consumer exception. If a second provider appears, a rollout provider slot |
+| OC-10 | A docs drift feed and tab: read the newest successful docs-drift workflow artifacts, summarise them and cache the result | The report and facts artifact shapes are the consumer's and are not in the handoff, so a reader written now would guess them | The two artifact shapes (a sample of each) and the summary the tab shows. The reader itself is small: list artifacts of the newest successful run, download, parse, cache with a stale-while-revalidate read |
+| OC-18 | A sprint trend: read closed sprints (cached an hour), build a trend over the last N, a read-only per-sprint view that accepts only ids from the closed list | No reference code and no test; depends on the tracker adapter's sprint fields | The tracker adapter contract for a closed sprint (id, name, dates, committed and completed counts) and the trend the page draws |
+| OC-20 | A live automation tab: an enabled dark launch leaves the Action Center and lives under a Live automation tab with its Disable switch | A UI page, and the dark launch registry shape (`dark_launches.py`) is in the core but the tab is not | A decision to add a hub section for it, then a page; the data (enabled launches, acting first) is already in the registry |
+| OC-22 | Documentation audit gap kinds beyond the core's rules: pages that should be archived, backup drift against the git blob sha, retired things still documented as live (the moved-page check is consumer-only) | The newer consumer version of the audit is not in the handoff (the snapshot differs only by a token step); the registry fields the new kinds read are not documented | The consumer's current `doc_audit.py` and the registry keys it adds (`status: retired`, the backup page mapping), then three rules added to the audit |
+| SH-24 | A staging slot sweep: stop any production staging slot left running when no deploy is active, checked again right before each stop | Workflow of the shell repo, no test, slot-based deploys only | The workflow file and a decision that slot-based deploys are in scope for the standards; then one rule ("a staging slot is stopped after a deploy and swept hourly") |
+| SH-25 | A behind-main guard for a shared dev estate | Consumer-only (a shared dev mirror); the rule shape is generic | Nothing to build; a one-line rule is possible: a deploy to a shared non-production copy fails when the branch is behind main |
+| SH-26 | A forward version bump gate with a skip label | Workflow of the shell repo, no test; the core's pre-PR check already knows the skip label | A decision that an app version file is part of the standard, then a CI step that reads it |
+| SH-31 | A documentation drift workflow: weekdays on main, report pages behind the code, report only | Workflow of the shell repo; the core has the coverage audit and no drift workflow | The workflow and its page registry shape; the rule is "a documentation drift job is report only and names each page behind the code it documents" |
+
+## Notes
+
+- The shell session owns SH-24, SH-25, SH-26 and SH-31; this note only records the ops center side of the decision.
+- RL-10 to RL-13 are the shell session's.
+- No item above is blocked on core work; each is blocked on a reference, a shape or a decision named in the last column.
