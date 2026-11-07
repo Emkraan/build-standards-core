@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-06 (v1.140.0, a public module needs no rbac)
+
+Opt in. A manifest that declares `"public": true` may omit `rbac`, and its pages may list an empty `requires`.
+
+- `validateManifest`, the JSON schema, the typings and `web-shell-manifest.md` 2.3: with `public: true` no `rbac` is needed and a page's `requires` may be empty (open to every caller); a declared `rbac` and any non-empty `requires` are still validated. `public` must be a boolean. Without `public: true` nothing changes: `rbac` and a non-empty `requires` stay required, with the same messages.
+- `effectiveLayout` gives a public module `public: true` and `rbac: null` (typed non-null so a consumer with no public module compiles unchanged); a module that is not public gets no `public` key and its `rbac` object as before. `validateRegistry` refuses a `permissionSource` or a peer id that names a public module, since it has no permission read. Tests: 8 across the module, validator and schema suites; five fail on the old code. Not run: a shell rendering a public module.
+
 ## 2026-11-06 (v1.139.0, the Kong gateway option and the minimal console module)
 
 Text only, `standards/web-shell-gateway.md`, from a consumer's shell move.

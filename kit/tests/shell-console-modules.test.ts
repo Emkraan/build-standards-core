@@ -28,12 +28,24 @@ describe('validateManifest', () => {
     }
   });
 
+  it('a public module may omit rbac and list pages with no requires; a module that is not public may not', () => {
+    const m = load('alerts.module.json');
+    m.public = true;
+    delete m.rbac;
+    for (const p of m.pages) p.requires = [];
+    expect(validateManifest(m)).toEqual([]);
+    m.public = false;
+    expect(validateManifest(m).join('\n')).toMatch(/rbac needs/);
+  });
+
   const cases: Record<string, (m: any) => void> = {
     'bad id': (m) => { m.id = 'Alerts'; },
     'bad accent': (m) => { m.accent = 'pink'; },
     'bad icon': (m) => { m.icon = 'megaphone'; },
     'negative order': (m) => { m.order = -1; },
     'wrong client': (m) => { m.client = 'packages/x'; },
+    'public that is not a boolean': (m) => { m.public = 'yes'; },
+    'no rbac without public': (m) => { delete m.rbac; },
     'client folder neither client nor spa': (m) => { m.client = 'apps/alerts/web'; },
     'client with a trailing path': (m) => { m.client = 'apps/alerts/spa/src'; },
     'non ASCII name': (m) => { m.name = 'Caf' + String.fromCharCode(0xe9); },
