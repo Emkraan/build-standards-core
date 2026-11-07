@@ -59,6 +59,7 @@ jobs:
       - run: python3 checks/check-hermes-skills.py
       - run: python3 checks/check-hermes-tools.py
       - run: python3 checks/check-changelog.py "origin/${GITHUB_BASE_REF:-main}"
+      - run: python3 checks/check-changelog-versions.py
       - name: Consumer neutral (added lines)
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
