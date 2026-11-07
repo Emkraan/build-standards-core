@@ -35,11 +35,19 @@ export interface RunInput {
   help?: string | undefined;
   /** Shown name. Default the input name with its underscores read as spaces. */
   label?: string | undefined;
+  /**
+   * The value of this input that makes the run publish or change something. It wins over the name rule
+   * (`dry_run` off, `mode` other than `dry-run`): once any input of the spec sets it, only inputs that set it
+   * decide. Use it for a spec that publishes through an input with another name.
+   */
+  publishesWhen?: string | boolean | undefined;
 }
 
 export interface RunSpec {
   /** `branch` adds a branch field that opens on main. Default main only. */
   ref?: 'main' | 'branch' | undefined;
+  /** The run always publishes or changes something (it has no dry run), whatever the inputs say. Wins over the input rules. */
+  publishes?: boolean | undefined;
   inputs: readonly RunInput[];
 }
 
@@ -86,10 +94,20 @@ export function runDefaults(spec: RunSpec, suggest?: Readonly<Record<string, str
   return Object.fromEntries(spec.inputs.map((i) => [i.name, i.type === 'string' && !i.default && suggest?.[i.name] ? (suggest[i.name] as string) : i.default]));
 }
 
-/** True when the values would publish or change something: `dry_run` turned off, or a `mode` other than `dry-run`. */
+/**
+ * True when the values would publish or change something. The spec decides first: `spec.publishes` (always), then
+ * any input with `publishesWhen` (its value matches). A spec that declares neither falls back to the name rule:
+ * `dry_run` turned off, or a `mode` other than `dry-run`.
+ */
 export function runPublishes(spec: RunSpec, values: RunValues): boolean {
+  if (spec.publishes) return true;
+  const declared = spec.inputs.filter((i) => i.publishesWhen !== undefined);
+  if (declared.length > 0) return declared.some((i) => values[i.name] === i.publishesWhen);
   return spec.inputs.some((i) => (i.name === 'dry_run' && values[i.name] === false) || (i.name === 'mode' && values[i.name] !== 'dry-run'));
 }
+
+/** What a branch name may hold. The server checks it again; this only stops a typo or a pasted sentence. */
+const REF_OK = /^[A-Za-z0-9._/-]+$/;
 
 export interface UseRunFormOptions {
   spec: RunSpec;
@@ -138,6 +156,23 @@ export function useRunForm({ spec, onRun, onDone, suggest, publishes, refusal, a
   const [error, setError] = useState('');
   const [refused, setRefused] = useState<RunRefusal | undefined>(undefined);
   const inFlight = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  // The spec can arrive or change after the form opened: inputs it did not have yet take their defaults, what was typed stays.
+  const inputKey = spec.inputs.map((i) => `${i.name}:${i.type}`).join(',');
+  useEffect(() => {
+    setValues((v) => {
+      const fresh = runDefaults(spec, suggest);
+      const kept = Object.fromEntries(Object.keys(fresh).filter((n) => n in v).map((n) => [n, v[n] as string | boolean]));
+      return { ...fresh, ...kept };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inputKey]);
 
   useEffect(() => {
     if (!active) return;
@@ -152,32 +187,48 @@ export function useRunForm({ spec, onRun, onDone, suggest, publishes, refusal, a
   const writes = publishes ? publishes(values) : runPublishes(spec, values);
   const missing = spec.inputs.filter((i) => i.required && !String(values[i.name] ?? '').trim()).map(labelOf);
   const shownRefusal = refusal ?? refused;
-  const disabledReason = shownRefusal ? shownRefusal.reason : missing.length ? `Fill in ${missing.join(', ')}` : undefined;
+  const badRef = spec.ref === 'branch' && ref.trim() !== '' && !REF_OK.test(ref.trim());
+  // Only a refusal the app knows (the `refusal` prop) holds the button. One from the last attempt is shown, but the
+  // button stays usable: the server decides again, so a run that was busy a moment ago is not locked out for good.
+  const disabledReason = refusal
+    ? refusal.reason
+    : missing.length
+      ? `Fill in ${missing.join(', ')}`
+      : badRef
+        ? 'A branch name holds letters, digits, dots, dashes, underscores and slashes'
+        : undefined;
 
   const submit = useCallback(async () => {
-    if (inFlight.current) return;
+    if (inFlight.current || disabledReason) return;
     inFlight.current = true;
     setBusy(true);
     setError('');
     setRefused(undefined);
     try {
-      const result = await onRun({ ref: ref.trim() || 'main', inputs: values });
-      onDone?.(result ?? {});
+      const result = await onRun({ ref: spec.ref === 'branch' ? ref.trim() || 'main' : 'main', inputs: values });
+      if (mounted.current) onDone?.(result ?? {});
     } catch (e) {
+      if (!mounted.current) return;
       if (e instanceof RunRefusedError) setRefused({ kind: e.kind, reason: e.message });
       else setError(e instanceof Error ? e.message : String(e));
     } finally {
       inFlight.current = false;
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
-  }, [onRun, onDone, ref, values]);
+  }, [onRun, onDone, ref, values, disabledReason, spec.ref]);
 
   return {
     spec,
     ref,
-    setRef,
+    setRef: (r) => {
+      setRefused(undefined);
+      setRef(r);
+    },
     values,
-    setValue: (name, value) => setValues((v) => ({ ...v, [name]: value })),
+    setValue: (name, value) => {
+      setRefused(undefined);
+      setValues((v) => ({ ...v, [name]: value }));
+    },
     writes,
     missing,
     busy,
@@ -251,12 +302,15 @@ export interface RunDialogProps extends Omit<UseRunFormOptions, 'active'> {
 }
 
 export function RunDialog({ open, onClose, title, subtitle, intro, refHint, cancelLabel = 'Cancel', onDone, ...options }: RunDialogProps) {
+  const openNow = useRef(open);
+  openNow.current = open;
   const form = useRunForm({
     ...options,
     active: open,
     onDone: (result) => {
       onDone?.(result);
-      onClose();
+      // The run finished after the app already closed the dialog: report the result, but do not close again.
+      if (openNow.current) onClose();
     },
   });
   return (

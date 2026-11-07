@@ -131,6 +131,33 @@ describe('OverrideButton', () => {
   });
 });
 
+describe('double clicks', () => {
+  it('sends one write for several clicks on the undo button while it runs', async () => {
+    let finish: () => void = () => {};
+    const onSet = vi.fn(() => new Promise<void>((r) => { finish = r; }));
+    render(<OverrideButton held={false} cover="item" label="B" undoLabel="Undo" confirm={{ title: 't' }} onSet={onSet} />);
+    const b = screen.getByRole('button', { name: 'Undo' });
+    fireEvent.click(b);
+    fireEvent.click(b);
+    fireEvent.click(b);
+    expect(onSet).toHaveBeenCalledTimes(1);
+    finish();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy());
+  });
+
+  it('sends one write when the bar switch is flipped twice while the write runs', async () => {
+    let finish: () => void = () => {};
+    const onToggle = vi.fn(() => new Promise<void>((r) => { finish = r; }));
+    bar({ on: true, onToggle });
+    const sw = screen.getByRole('switch');
+    fireEvent.click(sw);
+    fireEvent.click(sw);
+    expect(onToggle).toHaveBeenCalledTimes(1);
+    finish();
+    await waitFor(() => expect(screen.getByRole('switch').hasAttribute('disabled')).toBe(false));
+  });
+});
+
 describe('OverrideTag', () => {
   it('names the cover and renders nothing without one', () => {
     const { container, rerender } = render(<OverrideTag cover="item" itemLabel="freeze bypassed" allLabel="freeze bypassed (all)" />);
