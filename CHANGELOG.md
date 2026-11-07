@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-06 (v1.126.0, hub routing, run dialog and override defects)
+
+Fixes from the consumer review of v1.125.0. Opt in pieces only; a look that worked before is unchanged.
+
+- Hub routing: a section with no items no longer loops (it resolves to the Overview and gets no tab); `hubSectionProblems` reports a section or item key used twice and the first one wins; route segments are decoded when read and encoded when written; an item the section does not have selects the first tab.
+- `RunDialog`: `RunInput.publishesWhen` and `RunSpec.publishes` decide what publishes ahead of the `dry_run` and `mode` name rule; inputs that arrive after the form opened take their defaults and keep what was typed; submit honours the same guards as the button; a refusal from the last attempt no longer locks Run (only the `refusal` prop does) and clears when an input changes; a branch name is checked for plausible characters; `onClose` is not called when the app closed the dialog first.
+- `AreaCard` sends its link through the guarded link, so an unsafe `to` never reaches the app's link component; duplicate detail lines, section keys and item keys no longer collide as React keys. `OverrideBar` and `OverrideButton` send one write at a time from the click on.
+
 ## 2026-11-02 (v1.125.0, hub and override polish from the ops center adoption)
 
 Opt in: hub and override pieces, and one new spinner form; nothing changes unless a consumer uses them.

@@ -10,7 +10,7 @@ import { cx } from '../lib/env';
 import { Card, CardHead } from '../primitives/Card';
 import { Badge } from '../primitives/marks';
 import type { StatusTone } from '../primitives/marks';
-import { DefaultLink, useShell } from './context';
+import { DefaultLink, GuardedLink, useShell } from './context';
 
 /** healthy, worth a look, needs me. */
 export type AreaTone = 'good' | 'warn' | 'alert';
@@ -54,10 +54,10 @@ export function AreaCard({ label, to, tone, live: liveProp, running: runningProp
       <CardHead
         level={3}
         title={
-          <Link href={to} className="area-card-link">
+          <GuardedLink Link={Link} href={to} className="area-card-link">
             {label}
             <IconChevronRight />
-          </Link>
+          </GuardedLink>
         }
         controls={
           <Badge className="pill" tone={live ? 'info' : PILL[tone]} live={live} dot={!live}>
@@ -69,8 +69,8 @@ export function AreaCard({ label, to, tone, live: liveProp, running: runningProp
       {status ? <p className={headline ? 'area-card-status' : 'area-card-headline'}>{status}</p> : null}
       {shown.length > 0 ? (
         <ul className="area-card-detail">
-          {shown.map((d) => (
-            <li key={d}>{d}</li>
+          {shown.map((d, i) => (
+            <li key={`${i}:${d}`}>{d}</li>
           ))}
           {detail.length > AREA_DETAIL_LINES ? <li className="area-card-more">and {detail.length - AREA_DETAIL_LINES} more</li> : null}
         </ul>
@@ -100,10 +100,15 @@ export function HubOverview({ sections, areas, summary, className }: HubOverview
   return (
     <div className={cx('hub-overview', className)}>
       {summary ? <div className="hub-overview-summary">{summary}</div> : null}
-      {sections.map((sec) => {
-        const cards = sec.items.map((it) => areas.find((a) => a.key === it.key)).filter((a): a is AreaCardData => !!a);
+      {sections.map((sec, si) => {
+        if (sec.items.length === 0) return null;
+        const seen = new Set<string>();
+        const cards = sec.items
+          .filter((it) => (seen.has(it.key) ? false : (seen.add(it.key), true)))
+          .map((it) => areas.find((a) => a.key === it.key))
+          .filter((a): a is AreaCardData => !!a);
         return (
-          <section key={sec.key} className="hub-overview-section" aria-label={sec.label}>
+          <section key={`${si}:${sec.key}`} className="hub-overview-section" aria-label={sec.label}>
             <h2 className="hub-overview-title">{sec.label}</h2>
             <div className="hub-overview-grid">
               {cards.map(({ key, ...card }) => (
