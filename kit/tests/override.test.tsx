@@ -201,6 +201,13 @@ describe('PendingReason (rule 11)', () => {
   });
 });
 
+describe('stylesheet (inline note)', () => {
+  it('lets the inline pending note follow the text colour of the card it sits in', () => {
+    const css = readFileSync(resolve(__dirname, '../src/styles/kit.css'), 'utf8');
+    expect(css).toMatch(/\.override-pending\[data-inline\][^{]*\{[^}]*color: inherit/);
+  });
+});
+
 describe('stylesheet', () => {
   it('styles the bar, its on border and the pending line', () => {
     const css = readFileSync(resolve(__dirname, '../src/styles/kit.css'), 'utf8');
