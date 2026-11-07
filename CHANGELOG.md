@@ -1,12 +1,19 @@
 # Changelog
 
-## 2026-11-06 (v1.129.0, hub routing, run dialog and override defects)
+## 2026-11-06 (v1.130.0, hub routing, run dialog and override defects)
 
 Fixes from the consumer review of v1.125.0. Opt in pieces only; a look that worked before is unchanged.
 
 - Hub routing: a section with no items no longer loops (it resolves to the Overview and gets no tab); `hubSectionProblems` reports a section or item key used twice and the first one wins; route segments are decoded when read and encoded when written; an item the section does not have selects the first tab.
 - `RunDialog`: `RunInput.publishesWhen` and `RunSpec.publishes` decide what publishes ahead of the `dry_run` and `mode` name rule; inputs that arrive after the form opened take their defaults and keep what was typed; submit honours the same guards as the button; a refusal from the last attempt no longer locks Run (only the `refusal` prop does) and clears when an input changes; a branch name is checked for plausible characters; `onClose` is not called when the app closed the dialog first.
 - `AreaCard` sends its link through the guarded link, so an unsafe `to` never reaches the app's link component; duplicate detail lines, section keys and item keys no longer collide as React keys. `OverrideBar` and `OverrideButton` send one write at a time from the click on.
+
+## 2026-11-06 (v1.129.0, the layout merge carries unknown manifest keys)
+
+`shell-packages/console-modules`: `effectiveLayout` no longer drops a manifest key the contract does not name.
+
+- A consumer's own field (a `jobs` list) on a module, group, page, link or tile comes through as a deep copy on the matching output entry. Before, it vanished with no error and no test failing. `validateManifest` still ignores unknown keys.
+- A carried key never shadows a computed field (`enabled`, `account`, `basePath`); a module with no extra keys gets an identical result. `EffectiveModule` gains an index signature. Tests: 3, two of which fail on the old code. Not run: the consumer's platform tree has no axe or live-action browser tests.
 
 ## 2026-11-06 (v1.128.0, rules: smoke retries, route contracts, installs, codemods)
 
