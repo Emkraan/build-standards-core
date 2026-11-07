@@ -25,6 +25,12 @@ key at any level passes and is carried into the registry. The schema sets no `ad
 same reason. A host that wants a typo caught uses the generator's `--allow-keys` (web-shell.md section 3),
 which is stricter than the shell's own validator; the two settings are a choice per host.
 
+A consumer that adds a key checks it in the shell's own validator: `validateManifest(manifest, { keys })` and
+`validateRegistry(manifests, { keys })` take `keys`, a map from a key to a function `(value, manifest)` that
+returns a problem string, a list of them, or nothing. It runs only when the manifest carries that key. With
+`strictKeys: true` a top-level key that is neither a core key nor in `keys` is a problem, which catches a
+misspelled key. Both options are off by default, so a host that passes none sees no change.
+
 **Generator flags.** The shell keys are host extensions to the kit keys, so one command takes the
 manifests as they are:
 

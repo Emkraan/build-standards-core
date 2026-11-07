@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-07 (v1.161.0, the jobs package and the job leader)
+## 2026-11-07 (v1.162.0, the jobs package and the job leader)
 
 Opt in, two new pieces from the Olympus shell source: `shell-packages/jobs` (`createScheduler`, `jobRoutes`, the cron and Automation Account schedule helpers) and `createJobLeader` plus `jobLockKey` in `app-server`. Documented in `web-shell-packages.md` section 5.4.
 
@@ -10,6 +10,15 @@ Opt in, two new pieces from the Olympus shell source: `shell-packages/jobs` (`cr
 - Tests: 17 for the jobs package (the source's 16, plus the `offEnv` one) and 10 for the leader (the source's 9, plus the prefix one), added to `test:server`.
 
 No issue: requested by the core consolidation session (build-standards-core-intake#117, SH-15).
+
+## 2026-11-07 (v1.161.0, a consumer can validate the manifest keys it adds)
+
+Opt in, `console-modules`. `validateManifest` and `validateRegistry` take a second argument: `keys` maps a key to a validator `(value, manifest)` that returns a problem string, a list, or nothing, and runs only when the manifest carries the key; `strictKeys: true` rejects a top-level key that is neither a core key nor registered. Closes the gap where a malformed consumer key (a jobs path) passed core validation because unknown keys are carried untouched.
+
+- Default is unchanged: with no options both functions behave as before. Typings and `web-shell-manifest.md` section 2.1 updated.
+- Tests: 3 in `kit/tests/console-modules/layout.test.js` (registered validator, strict keys, registry passes the options).
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
 
 ## 2026-11-07 (v1.160.0, the reports client reads the server's export and import answers)
 
