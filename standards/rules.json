@@ -3736,6 +3736,20 @@
       "acceptance": "a route with no contract fails the coverage check, a generated reference that differs fails, and a pull request that adds an exemption fails core-ci.py list-shrinks."
     },
     {
+      "id": "web-api-runtime.9.2",
+      "ref": "web-api-runtime.md 9.2",
+      "title": "Every CSV or spreadsheet export goes through one formula guard",
+      "statement": "A text value whose first character is =, +, -, @, a tab or a carriage return is written with a leading apostrophe so a download never runs a formula; numbers and booleans are never mangled; no code builds a CSV line by hand.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a test writes each leading character and a negative number and asserts the guard and the exemption."
+    },
+    {
       "id": "web-client-runtime.1.1",
       "ref": "web-client-runtime.md 1.1",
       "title": "One canonical boot sequence",
