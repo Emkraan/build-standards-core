@@ -13,7 +13,7 @@ import type { DashboardFilterBarProps } from './DashboardFilterBar';
 import { PanelView } from './PanelView';
 import { togglePick } from './crossFilter';
 import type { Picks } from './crossFilter';
-import type { DashboardDefinition, DashboardRun } from './types';
+import type { DashboardDefinition, DashboardRun, FutureDated } from './types';
 import { panelId } from './types';
 
 export interface DashboardProps extends Pick<DashboardFilterBarProps, 'dashboards' | 'onDashboard' | 'ranges' | 'onRange'> {
@@ -27,10 +27,10 @@ export interface DashboardProps extends Pick<DashboardFilterBarProps, 'dashboard
   onRefresh?: (() => void) | undefined;
   /** Download one panel. Absent: no per-panel button. */
   onExportPanel?: ((panelIndex: number) => void) | undefined;
-  /** Open the rows behind a panel. Absent when the person cannot explore. */
-  onRows?: ((panelIndex: number) => void) | undefined;
-  /** Opens the rows behind the future-dated events, shown in the note. */
-  onFutureRows?: (() => void) | undefined;
+  /** Open the rows behind a panel (its `rowsSpec` from the run). Absent when the person cannot explore; a panel without a `rowsSpec` shows no button. */
+  onRows?: ((panelIndex: number, rowsSpec: Readonly<Record<string, unknown>>) => void) | undefined;
+  /** Opens the rows behind the future-dated events, shown in the note, with the first one's stream and `rowsSpec`. Absent: no button. */
+  onFutureRows?: ((item: FutureDated) => void) | undefined;
   /** Actions on the right of the filter bar: refresh, export, copy link, edit. */
   actions?: ReactNode;
   className?: string | undefined;
@@ -59,8 +59,8 @@ export function Dashboard({ definition, run, range, picks, onPicks, onRefresh, o
       {futureRows > 0 ? (
         <Card className="dash-note" role="status">
           <span>{futureRows.toLocaleString()} events are dated in the future (a wrong device clock). They are left off the charts and counts.</span>
-          {onFutureRows ? (
-            <Button size="sm" data-act="link" onClick={onFutureRows}>
+          {onFutureRows && future[0]?.rowsSpec ? (
+            <Button size="sm" data-act="link" onClick={() => onFutureRows(future[0] as FutureDated)}>
               View rows
             </Button>
           ) : null}
@@ -77,7 +77,7 @@ export function Dashboard({ definition, run, range, picks, onPicks, onRefresh, o
                 picked={p.drill ? picks[p.drill] : undefined}
                 onPick={p.drill ? (v) => onPicks(togglePick(picks, p.drill as string, v)) : undefined}
                 onExport={onExportPanel ? () => onExportPanel(i) : undefined}
-                onRows={onRows ? () => onRows(i) : undefined}
+                onRows={onRows ? () => { const spec = run?.panels[id]?.rowsSpec; if (spec) onRows(i, spec); } : undefined}
               />
             </div>
           );

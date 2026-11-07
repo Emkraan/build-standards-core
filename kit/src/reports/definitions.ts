@@ -36,10 +36,13 @@ export function validateDefinition(definition: unknown): string[] {
       out.push(`panel ${i + 1} must be an object`);
       return;
     }
-    for (const f of ['title', 'stream', 'measure']) {
+    for (const f of ['title', 'stream']) {
       const v = (p as Record<string, unknown>)[f];
       if (typeof v !== 'string' || !v.trim()) out.push(`panel ${i + 1}: ${f} must be a non-empty string`);
     }
+    const m = (p as Record<string, unknown>)['measure'];
+    const sp = (p as Record<string, unknown>)['spec'];
+    if (!(typeof m === 'string' && m.trim()) && !(sp && typeof sp === 'object' && !Array.isArray(sp))) out.push(`panel ${i + 1}: a measure (a name) or a spec (the report query) is required`);
     const type = (p as Record<string, unknown>)['type'];
     if (type !== undefined && !PANEL_TYPES.includes(type as PanelType)) out.push(`panel ${i + 1}: type must be one of ${PANEL_TYPES.join(', ')}`);
   });

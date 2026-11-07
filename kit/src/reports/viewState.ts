@@ -1,6 +1,6 @@
 /* Deep links (R4): the address holds the view, so a link opens exactly what was on screen. A dashboard is
    `?d=<key>&range=<preset>&f.<filterId>=<value>`: readable, shareable, and the other parameters of the page are kept.
-   A drill link carries the rows behind a panel as one `drill` parameter, base64url JSON of {stream, measure, filters,
+   A drill link carries the rows behind a panel as one `drill` parameter, base64url JSON of {stream, measure or spec, filters,
    name}, so an app can open its own explorer on them. Router free: the app reads and writes its own location. */
 
 export interface DashboardView {
@@ -40,7 +40,9 @@ export function dashboardLink(pageUrl: string, view: DashboardView, currentSearc
 /** The rows behind a panel: what an explorer needs to reproduce it. */
 export interface DrillTarget {
   stream: string;
-  measure: string;
+  /** A measure's name, or the report query in `spec`; one of the two. */
+  measure?: string | undefined;
+  spec?: Record<string, unknown> | undefined;
   filters?: Record<string, string> | undefined;
   /** A name for the explorer's tab. */
   name?: string | undefined;
@@ -70,9 +72,10 @@ export function readDrill(search: string | URLSearchParams): DrillTarget | null 
   if (!raw) return null;
   try {
     const t = JSON.parse(fromBase64Url(raw)) as Partial<DrillTarget> | null;
-    if (!t || typeof t.stream !== 'string' || typeof t.measure !== 'string') return null;
+    const spec = t && t.spec && typeof t.spec === 'object' && !Array.isArray(t.spec) ? t.spec : undefined;
+    if (!t || typeof t.stream !== 'string' || (typeof t.measure !== 'string' && !spec)) return null;
     const filters = t.filters && typeof t.filters === 'object' ? Object.fromEntries(Object.entries(t.filters).filter(([, v]) => typeof v === 'string')) : undefined;
-    return { stream: t.stream, measure: t.measure, ...(filters ? { filters } : {}), ...(typeof t.name === 'string' ? { name: t.name } : {}) };
+    return { stream: t.stream, ...(typeof t.measure === 'string' ? { measure: t.measure } : {}), ...(spec ? { spec } : {}), ...(filters ? { filters } : {}), ...(typeof t.name === 'string' ? { name: t.name } : {}) };
   } catch {
     return null;
   }
