@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-06 (v1.131.0, delivery: cancelled runs, pre-push, pr-watch, release notes, shrink-only lists)
+
+Delivery steps from the hub's gaps D2, D3, U4, U5 and the route exemption list. Opt in: new `core-ci.py` subcommands and a parameters row; the merge gate template is copied once, so only a repo that copies it again changes.
+
+- Cancelled runs (D2): `core-ci.py ready SHA` reads the newest run of each check and treats a cancelled one as wait, not failure; `--rerun-cancelled` re-runs a head whose runs were cancelled, at most 3 attempts per workflow run. `wait-checks` and the progress counts agree. The `automerge.yml` template uses it, so a cancelled run no longer stalls a PR until someone re-runs it (rule pr-review-and-merge 1.22).
+- `core-ci.py pre-push` (U4): fails unless the branch contains the latest default branch, then runs commitlint, attribution with the private term guard, identity, ascii, changelog, changelog-entries and repo-checks locally (rule 1.21).
+- `core-ci.py pr-watch PR` (D3): watches a PR to a stop point (merged, checks failed, closed, conflict, timeout), prints a line at every change and ends with a report (rule 1.23).
+- `core-ci.py changelog-lines` (U5): release notes from `Changelog:` lines in PR bodies; docs, test, ci, chore, style and build commits ignored; one generic line when there is none (docs-and-changelog 1.10).
+- `core-ci.py list-shrinks BASE HEAD` and the parameters row `Shrink-only lists` (U3): an exemption list may lose entries and never gain one.
+
 ## 2026-11-06 (v1.130.0, shell server rules)
 
 New `standards/web-shell-server.md`: the server rules a multi-module shell meets beyond the shared runtime, from the consumer inventory. Text only; each rule carries the proof a shell owns, and no rule is registered for enforcement yet.
