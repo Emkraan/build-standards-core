@@ -340,6 +340,28 @@ export function autoDescription(m) {
   return head.slice(0, DESCRIPTION_MAX).trim();
 }
 
+const MANIFEST_KEYS = new Set(["id", "name", "tagline", "description", "accent", "icon", "order", "client", "api", "rbac", "groups", "pages", "links", "tiles", "landing", "whatsnew", "home"]);
+const GROUP_KEYS = new Set(["key", "label", "order"]);
+const PAGE_KEYS = new Set(["key", "route", "label", "icon", "hue", "requires", "group", "order", "keywords"]);
+const LINK_KEYS = new Set(["key", "label", "href", "slot", "group", "order", "icon"]);
+const TILE_KEYS = new Set(["key", "dashboard", "label", "permission", "order"]);
+
+/**
+ * The keys of a manifest object that the contract does not name, as a deep copy. A consumer's own
+ * manifest field (a scheduled jobs list, say) rides through the merge untouched instead of vanishing
+ * with no error. The caller spreads this first, so a key that names a field the layout computes
+ * (enabled, account, basePath ...) never shadows the computed value.
+ * @param {Record<string, any> | null | undefined} src @param {ReadonlySet<string>} known
+ * @returns {Record<string, any>}
+ */
+function carried(src, known) {
+  /** @type {Record<string, any>} */
+  const out = {};
+  if (!src || typeof src !== "object") return out;
+  for (const k of Object.keys(src)) if (!known.has(k)) out[k] = structuredClone(src[k]);
+  return out;
+}
+
 /**
  * The one merge rule. Code manifests plus admin overrides -> the effective console layout.
  *  - a code entry with no override renders at its code default and is flagged isNew (admin only cue)
@@ -349,6 +371,8 @@ export function autoDescription(m) {
  *    must be in that module's registry ids when `registryIds` is given (else they are dropped)
  *  - a hidden group hides its entries, an entry moved to a missing group falls back to its code group
  *  - a module's description is the admin's text, else the manifest's, else autoDescription()
+ *  - keys the contract does not name (on the module, a group, a page, a link or a tile) are carried
+ *    through as deep copies, never dropped; validateManifest ignores them too
  * Pure, deterministic, never throws on bad override rows (they are skipped and reported).
  *
  * @param {Array<Record<string, any>>} manifests
@@ -375,7 +399,7 @@ export function effectiveLayout(manifests, overrides = {}, opts = {}) {
     const groups = new Map();
     for (const g of m.groups) {
       const o = gOv.get(g.key);
-      groups.set(g.key, { key: g.key, label: txt(o?.label, g.label), order: ord(o?.order, g.order), hidden: Boolean(o?.hidden), custom: false, isNew: !o, items: [] });
+      groups.set(g.key, { ...carried(g, GROUP_KEYS), key: g.key, label: txt(o?.label, g.label), order: ord(o?.order, g.order), hidden: Boolean(o?.hidden), custom: false, isNew: !o, items: [] });
     }
     for (const o of gOv.values()) {
       if (groups.has(o.group_key)) continue;
@@ -394,6 +418,7 @@ export function effectiveLayout(manifests, overrides = {}, opts = {}) {
       const g = groups.get(gk);
       if (!g) continue;
       g.items.push({
+        ...carried(p, PAGE_KEYS),
         kind: "page", key: p.key, route: p.route, requires: [...p.requires],
         label: txt(o?.label, p.label), icon: isStr(o?.icon) && ICON_RE.test(o.icon) ? o.icon : p.icon, hue: p.hue,
         keywords: p.keywords ? [...p.keywords] : [], order: ord(o?.order, p.order), hidden: Boolean(o?.hidden),
@@ -403,7 +428,7 @@ export function effectiveLayout(manifests, overrides = {}, opts = {}) {
     for (const l of m.links || []) {
       const o = iOv.get(l.key);
       const slot = LINK_SLOTS.includes(/** @type {string} */ (o?.slot)) ? o?.slot : (l.slot || "rail");
-      const entry = { kind: "link", key: l.key, href: l.href, requires: [], label: txt(o?.label, l.label), icon: isStr(o?.icon) && ICON_RE.test(o.icon) ? o.icon : (l.icon || "ExternalLink"), hue: "brand", keywords: [], order: ord(o?.order, l.order), hidden: Boolean(o?.hidden), isNew: !o, custom: false, slot };
+      const entry = { ...carried(l, LINK_KEYS), kind: "link", key: l.key, href: l.href, requires: [], label: txt(o?.label, l.label), icon: isStr(o?.icon) && ICON_RE.test(o.icon) ? o.icon : (l.icon || "ExternalLink"), hue: "brand", keywords: [], order: ord(o?.order, l.order), hidden: Boolean(o?.hidden), isNew: !o, custom: false, slot };
       if (slot === "account") account.push(entry);
       else { const g = groups.get(placeIn(o?.group_key, l.group)); if (g) g.items.push(entry); }
     }
@@ -432,7 +457,7 @@ export function effectiveLayout(manifests, overrides = {}, opts = {}) {
     const tiles = [];
     for (const t of m.tiles || []) {
       const o = tOv.get(`${t.dashboard}/${t.key}`);
-      tiles.push({ key: t.key, dashboard: t.dashboard, label: t.label, permission: t.permission, order: ord(o?.order, t.order), hidden: Boolean(o?.hidden), isNew: !o });
+      tiles.push({ ...carried(t, TILE_KEYS), key: t.key, dashboard: t.dashboard, label: t.label, permission: t.permission, order: ord(o?.order, t.order), hidden: Boolean(o?.hidden), isNew: !o });
     }
     const codeTiles = new Set((m.tiles || []).map((/** @type {any} */ t) => `${t.dashboard}/${t.key}`));
     for (const [k] of tOv) if (!codeTiles.has(k)) orphaned.push({ kind: "tile", module_id: m.id, key: k, reason: "tile not in code" });
@@ -443,6 +468,7 @@ export function effectiveLayout(manifests, overrides = {}, opts = {}) {
     const descriptionDefault = isDescription(m.description) ? m.description : autoDescription(m);
     const adminDescription = isDescription(mo?.description) ? mo.description : null;
     modules.push({
+      ...carried(m, MANIFEST_KEYS),
       id: m.id, name: m.name, tagline: txt(mo?.tagline, m.tagline),
       description: adminDescription ?? descriptionDefault, descriptionDefault,
       descriptionSource: adminDescription ? "admin" : isDescription(m.description) ? "manifest" : "auto",

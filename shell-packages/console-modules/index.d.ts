@@ -48,6 +48,8 @@ export interface EffectiveModule {
   groups: NavGroupOut[]; account: NavEntry[]; tiles: TileOut[]; landing: string[];
   home: { actions: HomeAction[]; feeds: Array<HomeFeed & { linkModule: string }> };
   whatsnew: ManifestWhatsNew | null;
+  /** A manifest key the contract does not name (a consumer's own field) is carried through as a deep copy. */
+  [extra: string]: unknown;
 }
 export interface Orphan { kind: "module" | "group" | "item" | "tile"; module_id: string; key: string; reason: string }
 

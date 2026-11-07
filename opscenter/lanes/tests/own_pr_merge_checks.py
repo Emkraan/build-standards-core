@@ -125,8 +125,21 @@ def fake_gh(args, timeout=60, raw=False):
     STATE["calls"].append(args)
     if args[:2] == ["pr", "list"]:
         return STATE["list"]
+    if args[0] == "api" and args[1] == "graphql":
+        if STATE.get("graphql_fails"):
+            raise eng.GhError("graphql: rc=1 boom")
+        STATE["graphql_calls"] = STATE.get("graphql_calls", 0) + 1
+        # the newest 100 label events, oldest first, the way the timeline answers
+        nodes = [
+            {"createdAt": "2026-10-09T10:00:00Z", "actor": e.get("actor"), "label": e.get("label")}
+            for e in STATE.get("events", [])
+            if e.get("event") == "labeled"
+        ]
+        return "\n".join(json.dumps(n) for n in nodes[-100:]) + "\n"
     if args[0] == "api" and "/events" in " ".join(args):
-        return "\n".join(json.dumps(e) for e in STATE.get("events", [])) + "\n"
+        raise AssertionError(
+            "the REST events list is truncated and is never read for the override labeler"
+        )
     if args[0] == "api" and "/comments" in " ".join(args):
         return "\n".join(json.dumps(c) for c in STATE["comments"]) + "\n"
     if args[0] == "api" and "actions/runs?head_sha=" in " ".join(args):
@@ -646,6 +659,89 @@ win = [
 expect("freeze held", pr(), "held", "change freeze test-freeze", freeze=win)
 past = [{"id": "old", "start": "2026-01-01T00:00:00", "end": "2026-01-02T00:00:00"}]
 expect("past freeze ignored, clean ready", pr(), "ready", "0 high", freeze=past)
+
+# the human freeze bypass (freeze_bypass.py, built on the override store): one PR for this window, or all until midnight
+import freeze_bypass as fbp  # noqa: E402
+
+BP = TMP / "bp.json"
+os.environ["OWNPR_FREEZE_BYPASS_FILE"] = str(BP)
+KEY = f"{own.TARGET}#900"
+until = dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=1)
+bp_store = fbp.make_store(
+    BP,
+    read_pr=lambda k: {"state": "open", "author": POL["self_login"]},
+    self_login=POL["self_login"],
+)
+BP.unlink(missing_ok=True)
+expect("freeze held with no bypass", pr(), "held", "change freeze test-freeze", freeze=win)
+bp_store.set(KEY, None, until, window="test-freeze", extra={"head": HEAD})
+expect("freeze bypassed for this PR", pr(), "ready", "0 high", freeze=win)
+expect("another PR is still held", pr(number=901), "held", "change freeze test-freeze", freeze=win)
+bp_store.clear(KEY)
+bp_store.set("*", None, until, window="test-freeze")
+expect("freeze bypassed for all my PRs", pr(), "ready", "0 high", freeze=win)
+bp_store.clear("*")
+bp_store.set(KEY, None, until, window="an-older-window")
+expect(
+    "a bypass of another window never carries over",
+    pr(),
+    "held",
+    "change freeze test-freeze",
+    freeze=win,
+)
+bp_store.set(
+    KEY, None, dt.datetime.now(dt.timezone.utc) + dt.timedelta(seconds=1), window="test-freeze"
+)
+BP.write_text("{not json")
+expect(
+    "an unreadable bypass store holds the freeze",
+    pr(),
+    "held",
+    "change freeze test-freeze",
+    freeze=win,
+)
+BP.unlink(missing_ok=True)
+# a bypass is logged once per head
+rec_seen = {}
+fbp.note_once(rec_seen, 900, HEAD, win[0], "pr", lambda r: None)
+ok = rec_seen == {"freeze_bypass": {"head": HEAD, "by": "pr"}}
+fails += not ok
+print(f"{'OK  ' if ok else 'FAIL'} bypass noted on the record")
+
+# a PR that only changes CI is not held by a freeze (opt in: freeze_ci_only)
+import freeze_ci_only as fco  # noqa: E402
+
+orig_fetch = fco.fetch_and_classify
+CFG["freeze_ci_only"] = True
+fco.fetch_and_classify = lambda gh, repo, number, head, base, *a: (
+    True,
+    "only changes how CI checks pull requests",
+)
+expect(
+    "ci-only PR is not held by the freeze", pr(baseRefOid="b" * 40), "ready", "0 high", freeze=win
+)
+expect("without a base sha the freeze holds", pr(), "held", "change freeze test-freeze", freeze=win)
+fco.fetch_and_classify = lambda gh, repo, number, head, base, *a: (
+    False,
+    "app/x.js is not a CI file",
+)
+expect(
+    "a PR that changes more than CI is held",
+    pr(baseRefOid="b" * 40),
+    "held",
+    "change freeze test-freeze",
+    freeze=win,
+)
+CFG["freeze_ci_only"] = False
+fco.fetch_and_classify = lambda *a: (True, "ignored")
+expect(
+    "ci-only is off by default",
+    pr(baseRefOid="b" * 40),
+    "held",
+    "change freeze test-freeze",
+    freeze=win,
+)
+fco.fetch_and_classify = orig_fetch
 
 # tick: merges a clean PR with --admin --match-head-commit and records it
 FREEZE.write_text(json.dumps({"timezone": "America/New_York", "windows": []}))
@@ -2143,6 +2239,86 @@ for k, v in saved.items():
         os.environ.pop(k, None)
     else:
         os.environ[k] = v
+
+# the override labeler is read from the GraphQL timeline, never the truncated REST list
+STATE["graphql_calls"] = 0
+STATE["events"] = [
+    {"event": "labeled", "label": {"name": "ai-review-override"}, "actor": {"login": "other"}}
+] * 150 + [
+    {
+        "event": "labeled",
+        "label": {"name": "ai-review-override"},
+        "actor": {"login": "owner-account"},
+    }
+]
+got = own.override_by_me(POL, pr(labels=OVR))
+ok = got is True and STATE["graphql_calls"] == 1
+fails += not ok
+print(f"{'OK  ' if ok else 'FAIL'} newest GraphQL labeler is me even past 150 older events: {got}")
+STATE["events"] = [
+    {
+        "event": "labeled",
+        "label": {"name": "ai-review-override"},
+        "actor": {"login": "owner-account"},
+    }
+] + [{"event": "labeled", "label": {"name": "ai-review-override"}, "actor": {"login": "other"}}]
+got = own.override_by_me(POL, pr(labels=OVR))
+ok = got is False
+fails += not ok
+print(f"{'OK  ' if ok else 'FAIL'} newest GraphQL labeler not me held: {got}")
+STATE["graphql_fails"] = True
+got = own.override_by_me(POL, pr(labels=OVR))
+STATE["graphql_fails"] = False
+ok = got is False
+fails += not ok
+print(f"{'OK  ' if ok else 'FAIL'} an unreadable timeline is not an override: {got}")
+STATE["events"] = []
+
+# stale green: a PR the lane never merged is re-run once per head, then reported once
+NOW0 = dt.datetime(2026, 10, 9, 12, 0, tzinfo=dt.timezone.utc)
+STATE["runs_list"] = [{"databaseId": 77, "status": "completed"}]
+_orig = fake_gh
+
+
+def stale_gh(args, timeout=60, raw=False):
+    if args[:2] == ["run", "list"]:
+        STATE["calls"].append(args)
+        return STATE["runs_list"]
+    return _orig(args, timeout, raw)
+
+
+eng.gh = stale_gh
+rec = {"status": "ready", "reason": "0 high", "since": "2026-10-09T11:00:00Z"}
+STATE["calls"] = []
+first = own.unstick(pr(), rec, POL, CFG, NOW0)
+ok = (
+    first is None
+    and rec.get("kicked")
+    and ["run", "rerun", "77", "-R", POL["repo"]] in STATE["calls"]
+)
+fails += not ok
+print(f"{'OK  ' if ok else 'FAIL'} stale green is re-run once: {first}")
+later = own.unstick(pr(), rec, POL, CFG, NOW0 + dt.timedelta(minutes=25))
+again = own.unstick(pr(), rec, POL, CFG, NOW0 + dt.timedelta(minutes=50))
+ok = later and "not merged after a re-run" in later and again is None
+fails += not ok
+print(f"{'OK  ' if ok else 'FAIL'} then one alert line only: {later}")
+fresh = {"status": "ready", "reason": "x", "since": "2026-10-09T11:55:00Z"}
+ok = own.unstick(pr(), fresh, POL, CFG, NOW0) is None and not fresh.get("kicked")
+fails += not ok
+print(f"{'OK  ' if ok else 'FAIL'} a green PR inside the wait is left alone")
+rec2 = {
+    "status": "waiting",
+    "reason": "ai-review result not reported yet",
+    "since": "2026-10-09T11:00:00Z",
+}
+line = own.unstick(pr(), rec2, POL, CFG, NOW0)
+ok = line and "no AI review result" in line and "kicked" not in rec2
+fails += not ok
+print(
+    f"{'OK  ' if ok else 'FAIL'} waiting on the AI review result is reported without a re-run: {line}"
+)
+eng.gh = _orig
 
 print("FAILURES:", fails)
 sys.exit(1 if fails else 0)
