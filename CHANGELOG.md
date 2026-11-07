@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-07 (v1.147.0, one processing indicator, action buttons by purpose, chart theme test)
+## 2026-11-07 (v1.148.0, one processing indicator, action buttons by purpose, chart theme test)
 
 Lifts from the consumer inventory. All opt in: `installBusyTracking` is never called for you, and `data-act` only affects a button that carries it.
 
