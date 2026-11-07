@@ -58,6 +58,29 @@ Usage (run from the consumer repo root; the overlay may sit in a subfolder):
                                                              file:line) and prints the ruleset commands;
                                                              --lists-only checks only such a list; exits
                                                              1 on any mismatch
+  python3 scripts/core-ci.py ready SHA [--repo R] [--expect "a b"] [--rerun-cancelled]
+                                                             one read of the checks on a head for a merge
+                                                             gate: exit 0 green, 1 wait (running, or a
+                                                             cancelled run, which is neither a pass nor a
+                                                             failure and is re-run at most 3 attempts with
+                                                             --rerun-cancelled), 2 failed
+  python3 scripts/core-ci.py pre-push [--base REF] [--skip-fetch]
+                                                             before a push: the branch contains the latest
+                                                             default branch, then commitlint, attribution
+                                                             (and the private term guard), identity, ascii,
+                                                             changelog, changelog-entries and repo-checks
+                                                             run locally
+  python3 scripts/core-ci.py pr-watch PR [--repo R] [--timeout MIN] [--interval SEC]
+                                                             watch a pull request to a stop point (merged 0,
+                                                             checks failed 1, closed 3, conflict 4, timeout
+                                                             5) and print a report line at every change
+  python3 scripts/core-ci.py changelog-lines [SINCE]         release notes from `Changelog:` lines in the
+                                                             pull request bodies a squash merge keeps; docs,
+                                                             test, ci, chore, style and build commits are
+                                                             ignored; no line at all gives one generic line
+  python3 scripts/core-ci.py list-shrinks BASE HEAD [FILE ...]
+                                                             a shrink-only list (an exemption list) gained
+                                                             no entry (parameters row "Shrink-only lists")
   python3 scripts/core-ci.py required-names [--github-output]
                                                              the core-ci job names a merge gate requires,
                                                              read from the synced core-ci.yml
@@ -2163,13 +2186,20 @@ def checks_verdict(runs: list, statuses: list, expect: list) -> tuple:
     """('wait' | 'fail' | 'green', detail) for the check runs [(name, status, conclusion)] and commit
     statuses [(context, state)] on one sha. Green needs at least one check, every check completed as
     success, skipped or neutral, and every expected name present."""
-    failed = [n for n, st, c in runs if st == "completed" and (c or "") not in GREEN]
+    # A cancelled run is neither green nor a failure: a later push or a label edit cancels runs in flight, and the head
+    # needs a re-run (rerun_cancelled), so it waits.
+    failed = [
+        n for n, st, c in runs if st == "completed" and (c or "") not in GREEN | {"cancelled"}
+    ]
     failed += [n for n, state in statuses if state in ("failure", "error")]
     if failed:
         return "fail", "failed: " + ", ".join(sorted(set(failed)))
     pending = [n for n, st, _ in runs if st != "completed"] + [
         n for n, state in statuses if state == "pending"
     ]
+    cancelled = [n for n, st, c in runs if st == "completed" and c == "cancelled"]
+    if cancelled and not pending:
+        return "wait", "cancelled, waiting for a re-run: " + ", ".join(sorted(set(cancelled)))
     if pending:
         return "wait", "running: " + ", ".join(sorted(set(pending)))
     names = {n for n, _, _ in runs} | {n for n, _ in statuses}
@@ -2209,6 +2239,8 @@ def check_counts(runs: list, statuses: list) -> tuple:
             pending += 1
         elif (c or "") in GREEN:
             done += 1
+        elif c == "cancelled":
+            pending += 1
         else:
             failed += 1
     for _, state in statuses:
@@ -2272,6 +2304,68 @@ def wait_loop(
             say(f"::error::wait-checks: timed out ({detail}); not merging")
             return 1
         sleep(interval)
+
+
+RERUN_LIMIT = 3  # attempts of one workflow run before a cancelled head is left alone
+
+
+def rerun_cancelled(repo: str, sha: str, run=None) -> list:
+    """Re-run the workflow runs of this head whose newest attempt was cancelled (a later push or a label edit cancelled them),
+    at most RERUN_LIMIT attempts each. Returns the run ids re-run. `run(args)` runs gh (tests)."""
+    run = run or (lambda a: subprocess.run(["gh", *a], capture_output=True, text=True, timeout=120))
+    r = run(
+        [
+            "run",
+            "list",
+            "-R",
+            repo,
+            "--commit",
+            sha,
+            "--json",
+            "databaseId,conclusion,attempt,workflowName,status",
+            "--limit",
+            "50",
+        ]
+    )
+    try:
+        rows = json.loads(r.stdout or "[]")
+    except ValueError:
+        return []
+    newest = {}
+    for x in rows:  # the newest run of each workflow decides: an older cancelled one that a later run replaced is ignored
+        name = x.get("workflowName")
+        if name not in newest or (x.get("databaseId") or 0) > (newest[name].get("databaseId") or 0):
+            newest[name] = x
+    done = []
+    for x in newest.values():
+        cancelled = x.get("status") == "completed" and x.get("conclusion") == "cancelled"
+        if cancelled and int(x.get("attempt") or 1) < RERUN_LIMIT:
+            run(["run", "rerun", str(x["databaseId"]), "-R", repo])
+            done.append(x["databaseId"])
+    return done
+
+
+def cmd_ready(argv: list) -> int:
+    """One read of the checks on a head for a merge gate: exit 0 green, 1 wait (running, or cancelled and re-run), 2 failed.
+    `--expect "a b"` names the checks that must be present; `--rerun-cancelled` re-runs a head whose runs were cancelled."""
+    args = list(argv)
+    repo = take(args, "--repo", os.environ.get("GITHUB_REPOSITORY", ""))
+    expect = listed(take(args, "--expect", "").replace(" ", ","))
+    rerun = "--rerun-cancelled" in args
+    args = [a for a in args if a != "--rerun-cancelled"]
+    if not args:
+        say('usage: core-ci.py ready SHA [--repo R] [--expect "a b"] [--rerun-cancelled]')
+        return 2
+    sha = args[0]
+    repo = repo or repo_and_branch()[0]
+    runs, statuses = read_checks(repo, sha)
+    verdict, detail = checks_verdict(runs, statuses, expect)
+    if verdict == "wait" and rerun and detail.startswith("cancelled"):
+        ids = rerun_cancelled(repo, sha)
+        if ids:
+            detail += f" (re-run {', '.join(str(i) for i in ids)})"
+    say(f"ready: {verdict}: {detail}")
+    return {"green": 0, "wait": 1}.get(verdict, 2)
 
 
 def cmd_wait_checks(argv: list) -> int:
@@ -2351,6 +2445,200 @@ def cmd_powershell(argv: list) -> int:
     return 0 if r.returncode == 0 else 1
 
 
+# ---------------------------------------------------------------- pre-push, pr-watch, changelog-lines, list-shrinks
+
+
+def cmd_pre_push(argv: list) -> int:
+    """The gate before a push (pr-review-and-merge.md 1.21): the branch contains the latest default branch, and every check
+    script that can run locally passes, the attribution, identity and private term scripts included. Run from the repo root;
+    `--skip-fetch` reads origin/<default> as it is (tests, an offline run), `--base REF` names the base."""
+    args = list(argv)
+    skip = "--skip-fetch" in args
+    args = [a for a in args if a != "--skip-fetch"]
+    base = take(args, "--base", "")
+    if not base:
+        head_ref = git("symbolic-ref", "--short", "refs/remotes/origin/HEAD", check=False).strip()
+        base = head_ref or "origin/main"
+    if not skip:
+        git("fetch", "--quiet", base.split("/")[0], check=False)
+    if (
+        subprocess.run(
+            ["git", "merge-base", "--is-ancestor", base, "HEAD"], capture_output=True
+        ).returncode
+        != 0
+    ):
+        say(
+            f"::error::pre-push: this branch does not contain {base}; merge {base} first, then run the checks again"
+        )
+        return 1
+    steps = [
+        ("commitlint", cmd_commitlint),
+        ("attribution", cmd_attribution),
+        ("identity", cmd_identity),
+        ("ascii", cmd_ascii),
+        ("changelog", cmd_changelog),
+        ("changelog-entries", cmd_changelog_entries),
+        ("repo-checks", cmd_repo_checks),
+    ]
+    bad = []
+    for name, fn in steps:
+        say(f"pre-push: {name}")
+        rc = fn([] if name in ("ascii", "repo-checks") else [base, "HEAD"])
+        if rc != 0:
+            bad.append(name)
+    say(
+        f"pre-push: {len(steps) - len(bad)} of {len(steps)} check(s) passed"
+        + (f"; failed: {', '.join(bad)}" if bad else "")
+    )
+    return 1 if bad else 0
+
+
+WATCH_CODES = {"merged": 0, "failed": 1, "closed": 3, "conflict": 4, "timeout": 5}
+
+
+def watch_pr(
+    read, timeout: float, interval: float, sleep=time.sleep, clock=time.monotonic, out=say
+) -> tuple:
+    """Watch one pull request until a stop point. `read()` returns {state, merged, mergeable, checks: (verdict, detail)}.
+    Stops at: merged (0), checks failed (1), closed without merging (3), a merge conflict (4), or the timeout (5). Prints a line
+    on every change of state and returns (exit code, final report), so the loop always ends with a report."""
+    t0, last = clock(), None
+    while True:
+        r = read()
+        verdict, detail = r["checks"]
+        line = f"{r['state']}; {verdict}: {detail}"
+        if line != last:
+            out(f"pr-watch: {line}")
+            last = line
+        if r.get("merged"):
+            outcome = "merged"
+        elif r["state"] != "OPEN":
+            outcome = "closed"
+        elif r.get("mergeable") == "CONFLICTING":
+            outcome = "conflict"
+        elif verdict == "fail":
+            outcome = "failed"
+        elif clock() - t0 >= timeout:
+            outcome = "timeout"
+        else:
+            sleep(interval)
+            continue
+        report = {
+            "merged": "the pull request merged",
+            "closed": "the pull request was closed without merging",
+            "conflict": "the pull request conflicts with its base: merge the base branch in, resolve and push",
+            "failed": f"checks failed ({detail}): read the failing job, fix, push",
+            "timeout": f"stopped after {int(timeout // 60)} min with the checks still {verdict} ({detail})",
+        }[outcome]
+        return WATCH_CODES[outcome], f"pr-watch: {outcome}: {report}"
+
+
+def cmd_pr_watch(argv: list) -> int:
+    args = list(argv)
+    repo = take(args, "--repo", os.environ.get("GITHUB_REPOSITORY", ""))
+    timeout = float(take(args, "--timeout", "60")) * 60
+    interval = float(take(args, "--interval", "30"))
+    if not args:
+        say("usage: core-ci.py pr-watch PR [--repo R] [--timeout MIN] [--interval SEC]")
+        return 2
+    number = args[0]
+    repo = repo or repo_and_branch()[0]
+
+    def read():
+        r = subprocess.run(
+            [
+                "gh",
+                "pr",
+                "view",
+                number,
+                "-R",
+                repo,
+                "--json",
+                "state,mergedAt,mergeable,headRefOid",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        if r.returncode != 0:
+            raise RuntimeError(
+                f"cannot read pull request {number}: {(r.stderr or r.stdout).strip()[:200]}"
+            )
+        d = json.loads(r.stdout)
+        runs, statuses = read_checks(repo, d["headRefOid"])
+        return {
+            "state": d["state"],
+            "merged": bool(d.get("mergedAt")),
+            "mergeable": d.get("mergeable"),
+            "checks": checks_verdict(runs, statuses, []),
+        }
+
+    code, report = watch_pr(read, timeout, interval)
+    say(report)
+    return code
+
+
+CHANGELOG_IGNORED = ("docs", "test", "ci", "chore", "style", "build")
+CHANGELOG_LINE = re.compile(r"^\s*Changelog:\s*(\S.*)$", re.I | re.M)
+
+
+def changelog_lines(since: str = "") -> list:
+    """The release notes from the pull request bodies a squash merge keeps in its commit message: only `Changelog:` lines
+    count; a commit of type docs, test, ci, chore, style or build is ignored; with no line at all one generic line stands."""
+    since = since or git("describe", "--tags", "--abbrev=0", check=False).strip()
+    spec = f"{since}..HEAD" if since else "HEAD"
+    out = git("log", "--format=%H%x1f%s%x1f%B%x1e", spec, check=False)
+    lines = []
+    for rec in out.split("\x1e"):
+        parts = rec.strip("\n").split("\x1f")
+        if len(parts) < 3:
+            continue
+        m = re.match(r"^(\w+)(\([^)]*\))?!?:", parts[1])
+        if m and m.group(1).lower() in CHANGELOG_IGNORED:
+            continue
+        lines += [x.strip() for x in CHANGELOG_LINE.findall(parts[2])]
+    return lines or ["Maintenance and internal changes."]
+
+
+def cmd_changelog_lines(argv: list) -> int:
+    for ln in changelog_lines(argv[0] if argv else ""):
+        say(f"- {ln}")
+    return 0
+
+
+def list_entries(text: str) -> set:
+    return {
+        ln.strip() for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith("#")
+    }
+
+
+def cmd_list_shrinks(argv: list) -> int:
+    """A shrink-only list (an exemption list, a baseline) may lose entries and never gain one (web-api-runtime.md route
+    contracts): every non-comment line of each file at HEAD was already in it at BASE. The files come from the arguments or
+    the parameters row "Shrink-only lists" (comma-separated paths)."""
+    if len(argv) < 2:
+        say("usage: core-ci.py list-shrinks BASE HEAD [FILE ...]")
+        return 2
+    base, head = argv[0], argv[1]
+    files = argv[2:] or listed(parameter("Shrink-only lists"))
+    if not files:
+        say('skip list-shrinks: no files named and the parameters row "Shrink-only lists" is empty')
+        return 0
+    bad = 0
+    for f in files:
+        was = git("show", f"{base}:{f}", check=False)
+        now = git("show", f"{head}:{f}", check=False)
+        if not was.strip() and not now.strip():
+            say(f"list-shrinks: {f} is empty or absent at both ends")
+            continue
+        added = sorted(list_entries(now) - list_entries(was)) if was.strip() else []
+        for entry in added:
+            bad += 1
+            say(f"::error file={f}::list-shrinks: new entry {entry!r}; this list only shrinks")
+    say(f"list-shrinks: {len(files)} list(s), {bad} new entr(ies)")
+    return 1 if bad else 0
+
+
 COMMANDS = {
     "params": cmd_params,
     "pr-title": cmd_pr_title,
@@ -2373,6 +2661,11 @@ COMMANDS = {
     "required-checks": cmd_required_checks,
     "required-names": cmd_required_names,
     "wait-checks": cmd_wait_checks,
+    "ready": cmd_ready,
+    "pre-push": cmd_pre_push,
+    "pr-watch": cmd_pr_watch,
+    "changelog-lines": cmd_changelog_lines,
+    "list-shrinks": cmd_list_shrinks,
     "repo-checks": cmd_repo_checks,
 }
 

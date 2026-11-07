@@ -78,6 +78,15 @@ Related: [Automation Safety](automation-safety.md), [Docs and Changelog](docs-an
 20. **Every PR declares what it does to issues.** The PR body holds exactly one of: `Closes #N` (or `Fixes #N`, `Resolves #N`, one or more issues); `Refs #N` plus a line `Remaining: <what is left>`; or `No issue: <reason>`. A revert (title or body) passes. Dependency bots (Renovate, dependabot) are exempt, and the consumer's parameters name more: exempt authors, app authors exempt on `chore/`, `pin/`, `standards-sync/` or `fold/` branches (`PR issue bot branches` sets the prefixes), and repo name prefixes whose reporters close the issue.
     - Prevents: finished work left open because the PR said `Refs` or named nothing, and an after-the-fact reconciler closing the wrong issues.
     - Acceptance (overlay-ci): the `core-ci.yml` job `core-pr-issue` passes.
+21. **Merge the latest main and run every check script before a push.** Before a push, merge the latest default branch into the branch and run every check script that can run locally: commit subjects, attribution and the private term guard, author identity, ASCII, the changelog entry and the repo checks. A check that runs only in CI is found too late.
+   - Prevents: a push that CI rejects for attribution, identity or a private reference that a local run would have caught, and a branch that is behind main reaching review.
+   - Acceptance (test): `core-ci.py pre-push` fails when the branch does not contain the default branch and when any of those scripts fails; a test covers both.
+22. **A cancelled run is neither a pass nor a failure.** A merge gate reads the newest run of each check. A run that a later push or a label edit cancelled is not a failure and never blocks a head that has a later green run; a head whose newest run was cancelled is re-run, a bounded number of times, instead of waiting for someone to re-run it by hand.
+   - Prevents: a pull request stalled by a cancelled run that nobody notices, and a gate that logs a cancelled run as a failure.
+   - Acceptance (test): a test reads a head whose newest run of a check was cancelled and gets wait, not fail; the re-run is bounded to three attempts and skips a run a later run replaced.
+23. **A PR watch has a stop point and a report.** Watching a pull request after it opens is a step with a defined stop: merged, checks failed, closed without merging, a merge conflict or a timeout. It prints a line at every change and ends with a report that names which stop it reached and what to do next.
+   - Prevents: red checks seen only when someone looks, and a watch that polls forever or ends silently.
+   - Acceptance (test): a test drives the watch to each stop point and asserts the exit code and the report.
 
 ## 2. Preparing the PR
 

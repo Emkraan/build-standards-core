@@ -29,6 +29,7 @@ Fill in per business. Keep secrets, hostnames and tenant ids out of any repo tha
 | UI adoption stage (`none`, `partial` or `adopted`: with `none` or `partial` the drift workflow's UI adoption gate reports N/A instead of failing, until the UI series lands; empty keeps the gate on, the default) | | web-ui.md 0.11, scripts/core-status.py --require-ui-adopted |
 | Node major version (web; empty takes the first pin found) | | ci-cd-release.md 1 |
 | Repo checks gate (the repo checks `core-ci.yml` fails the run on: rule ids, doc names or `all`, comma-separated, for example `ops-center-layout`; empty: off, the checks only report through core-status) | | scripts/core-ci.py repo-checks, repo_checks.py |
+| Shrink-only lists (paths, comma-separated, of lists that may lose entries and never gain one, such as a route exemption list; `core-ci.py list-shrinks` reads it; empty: off) | | web-api-runtime.md route contracts, scripts/core-ci.py list-shrinks |
 
 ## ascii_ignore
 
