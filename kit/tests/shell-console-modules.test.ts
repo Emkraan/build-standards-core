@@ -20,12 +20,22 @@ describe('validateManifest', () => {
     expect(validateManifest(m)).toEqual([]);
   });
 
+  it('accepts the client folder named client or spa', () => {
+    for (const folder of ['client', 'spa']) {
+      const m = load('alerts.module.json');
+      m.client = `apps/alerts/${folder}`;
+      expect(validateManifest(m)).toEqual([]);
+    }
+  });
+
   const cases: Record<string, (m: any) => void> = {
     'bad id': (m) => { m.id = 'Alerts'; },
     'bad accent': (m) => { m.accent = 'pink'; },
     'bad icon': (m) => { m.icon = 'megaphone'; },
     'negative order': (m) => { m.order = -1; },
     'wrong client': (m) => { m.client = 'packages/x'; },
+    'client folder neither client nor spa': (m) => { m.client = 'apps/alerts/web'; },
+    'client with a trailing path': (m) => { m.client = 'apps/alerts/spa/src'; },
     'non ASCII name': (m) => { m.name = 'Caf' + String.fromCharCode(0xe9); },
     'angle bracket in description': (m) => { m.description = 'a <b> c'; },
     'empty requires': (m) => { m.pages[0].requires = []; },
