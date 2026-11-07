@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-07 (v1.161.0, rbac matches a stored user row by directory object id)
+
+Opt in, `rbac`. New exports `cleanOid`, `userRowMatches` and `pickUserRow` from the Olympus shell source (SH-3 family, K-source-refresh): a grant to a person binds to their directory object id, the email stays a label and is the match only for rows with no object id. A caller whose token has no object id matches only rows that have none (fail closed); `pickUserRow` prefers the row bound to the id whatever the row order. Documented in `web-shell-packages.md` section 3.
+
+- New exports only, nothing existing changes; typings added.
+- Tests: the source's 5 (`kit/tests/rbac/oid-binding.test.js`, example addresses in place of the source's), run in `test:server`.
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
+
 ## 2026-11-07 (v1.160.0, the reports client reads the server's export and import answers)
 
 Opt in, `kit-core/reports`. The client reads an export as a list of definitions or as `{ dashboards }`, and an import answer whose `errors` are `{ index, key, message }` objects (each definition is stored or refused on its own) as well as plain strings; `importProblemText` turns one into a line.
