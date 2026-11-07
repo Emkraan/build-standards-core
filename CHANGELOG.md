@@ -11,6 +11,10 @@
 - Behaviour change: the lift lag retry needs a non empty state from `before_apply` (it used to be any state that is not None), so nothing lifted means no retry.
 - Terminal apply logging: `owner_roots.py --log-start --root <name>:<tier> --sha <sha> [--by <account>]` and `--log-done ... [--result <text>]` append `owner_apply_started` and `owner_apply_done` in the module's own record shape. `--by` defaults to the provider's expected identity.
 
+## 2026-11-07 (v1.162.0, script rule U6: the cause is Windows PowerShell 5.1)
+
+`scripting-powershell.md`: the `ConvertFrom-Json` array rule now names the right cause, from the hub consumer's check against its scripts repo. Windows PowerShell 5.1 returns a JSON array from `ConvertFrom-Json` as a single object, so a pipeline wrapped in `@(...)` yields an array inside an array; assign the result, then enumerate `@($rows)`. It no longer reads as a variant of the PowerShell 7 `Invoke-RestMethod` note, which is a separate problem. The acceptance fixture (empty array, one object, several, counts 0, 1 and N) now runs on Windows PowerShell 5.1 specifically (`tests/fixtures/powershell-51/ConvertFromJsonShape.ps1`) and says so and skips on any other host, never passing in silence. Core CI has no 5.1 host, so it checks the fixture's shape and the skip; the 5.1 run is the consumer's.
+
 ## 2026-11-07 (v1.165.0, the run watches read a failed run once and pick the real error line)
 
 `lanes/run_watches.py` (OC-8 drift watch, OC-9 main watch). Two changes to what runs today:
