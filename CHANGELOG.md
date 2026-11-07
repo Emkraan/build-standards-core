@@ -1,8 +1,17 @@
 # Changelog
 
-## 2026-11-07 (v1.161.0, script rule U6: the cause is Windows PowerShell 5.1)
+## 2026-11-07 (v1.162.0, script rule U6: the cause is Windows PowerShell 5.1)
 
 `scripting-powershell.md`: the `ConvertFrom-Json` array rule now names the right cause, from the hub consumer's check against its scripts repo. Windows PowerShell 5.1 returns a JSON array from `ConvertFrom-Json` as a single object, so a pipeline wrapped in `@(...)` yields an array inside an array; assign the result, then enumerate `@($rows)`. It no longer reads as a variant of the PowerShell 7 `Invoke-RestMethod` note, which is a separate problem. The acceptance fixture (empty array, one object, several, counts 0, 1 and N) now runs on Windows PowerShell 5.1 specifically (`tests/fixtures/powershell-51/ConvertFromJsonShape.ps1`) and says so and skips on any other host, never passing in silence. Core CI has no 5.1 host, so it checks the fixture's shape and the skip; the 5.1 run is the consumer's.
+
+## 2026-11-07 (v1.161.0, a consumer can validate the manifest keys it adds)
+
+Opt in, `console-modules`. `validateManifest` and `validateRegistry` take a second argument: `keys` maps a key to a validator `(value, manifest)` that returns a problem string, a list, or nothing, and runs only when the manifest carries the key; `strictKeys: true` rejects a top-level key that is neither a core key nor registered. Closes the gap where a malformed consumer key (a jobs path) passed core validation because unknown keys are carried untouched.
+
+- Default is unchanged: with no options both functions behave as before. Typings and `web-shell-manifest.md` section 2.1 updated.
+- Tests: 3 in `kit/tests/console-modules/layout.test.js` (registered validator, strict keys, registry passes the options).
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
 
 ## 2026-11-07 (v1.160.0, the reports client reads the server's export and import answers)
 
