@@ -26,7 +26,7 @@ from xml.sax.saxutils import escape
 PREBUILT_PIVOTS = False  # stays False until a generated workbook was opened on Mac and Windows without a repair prompt or a crash
 
 MAX_ROWS = 1_048_575  # the sheet limit, minus the header row
-_INVALID_XML = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f￾￿]")
+_INVALID_XML = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]")
 _BAD_SHEET_CHARS = re.compile(r"[\[\]:*?/\\]")
 _ZIP_DATE = (2026, 1, 1, 0, 0, 0)
 NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
