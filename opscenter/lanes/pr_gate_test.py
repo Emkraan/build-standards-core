@@ -114,6 +114,133 @@ class Evaluate(unittest.TestCase):
             g.evaluate(g.parse("```gate\nrun-success: onlyone\n```"), "o/r", run=run)[0]["met"]
         )
 
+    def test_run_success_passes_on_any_newest_green_run_however_old(self):
+        # documented: run-success has no reference point; `applied` is the kind that ties a run to a merge
+        run = runner(
+            {
+                "run list": [
+                    {
+                        "status": "completed",
+                        "conclusion": "success",
+                        "startedAt": "2020-01-01T00:00:00Z",
+                    }
+                ]
+            }
+        )
+        res = g.evaluate(g.parse("```gate\nrun-success: apply main\n```"), "o/r", run=run)
+        self.assertTrue(res[0]["met"])
+
+
+MERGED = {"state": "MERGED", "mergedAt": "2026-10-22T21:50:00Z"}
+CONF = {"apply_workflow": "apply.yml", "apply_branch": "main"}
+APPLIED = "```gate\napplied: #465\n```"
+
+
+def apply_run(rid, conclusion, started, status="completed"):
+    return {
+        "databaseId": rid,
+        "status": status,
+        "conclusion": conclusion,
+        "startedAt": started,
+        "createdAt": started,
+        "headBranch": "main",
+    }
+
+
+class Applied(unittest.TestCase):
+    def check(self, pr, runs, config=CONF):
+        calls = []
+
+        def run(args):
+            calls.append(args)
+
+            class R:
+                stdout = json.dumps(pr if args[:2] == ["pr", "view"] else runs)
+
+            return R()
+
+        res = g.evaluate(g.parse(APPLIED), "o/r", run=run, config=config)
+        return res[0], calls
+
+    def test_met_only_by_a_success_that_started_after_the_merge(self):
+        r, calls = self.check(MERGED, [apply_run(7, "success", "2026-10-22T23:50:00Z")])
+        self.assertTrue(r["met"], r)
+        self.assertIn("run 7", r["detail"])
+        run_list = next(c for c in calls if c[:2] == ["run", "list"])
+        self.assertEqual(
+            (run_list[run_list.index("--workflow") + 1], run_list[run_list.index("--branch") + 1]),
+            ("apply.yml", "main"),
+        )
+        # a run that started exactly at the merge counts
+        self.assertTrue(
+            self.check(MERGED, [apply_run(8, "success", "2026-10-22T21:50:00Z")])[0]["met"]
+        )
+
+    def test_an_old_green_run_before_the_merge_is_not_applied(self):
+        r, _ = self.check(MERGED, [apply_run(3, "success", "2026-10-22T20:00:00Z")])
+        self.assertFalse(r["met"])
+        self.assertIn("has not succeeded on main since the merge", r["detail"])
+        r, _ = self.check(MERGED, [])
+        self.assertFalse(r["met"])
+
+    def test_a_failed_run_after_the_merge_is_named(self):
+        r, _ = self.check(
+            MERGED,
+            [
+                apply_run(9, "failure", "2026-10-22T23:00:00Z"),
+                apply_run(3, "success", "2026-10-22T20:00:00Z"),
+            ],
+        )
+        self.assertFalse(r["met"])
+        self.assertIn("run 9", r["detail"])
+        self.assertIn("failure", r["detail"])
+        # an in-progress run after the merge is not a pass yet
+        r, _ = self.check(
+            MERGED, [apply_run(10, None, "2026-10-22T23:00:00Z", status="in_progress")]
+        )
+        self.assertFalse(r["met"])
+
+    def test_an_unmerged_pr_is_not_applied(self):
+        r, calls = self.check(
+            {"state": "OPEN", "mergedAt": None}, [apply_run(7, "success", "2026-10-22T23:50:00Z")]
+        )
+        self.assertFalse(r["met"])
+        self.assertIn("not merged", r["detail"])
+        r, _ = self.check({"state": "MERGED", "mergedAt": None}, [])
+        self.assertFalse(r["met"])
+        self.assertIn("merge time", r["detail"])
+
+    def test_not_configured_is_never_met_and_says_so(self):
+        for k in ("OPSCENTER_GATE_APPLY_WORKFLOW", "OPSCENTER_GATE_APPLY_BRANCH"):
+            os.environ.pop(k, None)
+        r, calls = self.check(
+            MERGED, [apply_run(7, "success", "2026-10-22T23:50:00Z")], config=None
+        )
+        self.assertFalse(r["met"])
+        self.assertIn("no apply workflow", r["detail"])
+        self.assertEqual(calls, [])
+        r, _ = self.check(MERGED, [], config={"apply_workflow": "apply.yml", "apply_branch": None})
+        self.assertFalse(r["met"])
+
+    def test_the_settings_can_come_from_the_environment(self):
+        os.environ["OPSCENTER_GATE_APPLY_WORKFLOW"] = "apply.yml"
+        os.environ["OPSCENTER_GATE_APPLY_BRANCH"] = "main"
+        try:
+            r, _ = self.check(
+                MERGED, [apply_run(7, "success", "2026-10-22T23:50:00Z")], config=None
+            )
+        finally:
+            os.environ.pop("OPSCENTER_GATE_APPLY_WORKFLOW")
+            os.environ.pop("OPSCENTER_GATE_APPLY_BRANCH")
+        self.assertTrue(r["met"], r)
+
+    def test_a_bad_argument_is_unmet(self):
+        r = g.evaluate(g.parse("```gate\napplied: soon\n```"), "o/r", config=CONF)[0]
+        self.assertFalse(r["met"])
+        self.assertIn("not a pull request number", r["detail"])
+
+
+class Consumer(unittest.TestCase):
     def test_the_consumer_adds_kinds_from_a_file(self):
         with tempfile.TemporaryDirectory() as d:
             f = Path(d) / "kinds.py"

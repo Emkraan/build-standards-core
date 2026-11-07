@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-07 (v1.161.0, the CI-only freeze exemption holds more, and the draft gate checks an apply)
+
+Ops center lanes. `lanes/freeze_ci_only.py` (opt in, policy `freeze_ci_only`) now holds four kinds of pull request it used to exempt from a change freeze: a workflow on `pull_request_target` (it runs with the base branch's permissions and secrets), a reusable workflow whose file name starts with `_`, a workflow that names a deployment environment outside an allowlist (policy `own_pr_merge.freeze_ci_environments`, null: only `terraform-plan`; an environment block or an unreadable expression is held), and a workflow whose `on:` block is malformed (the reader has no YAML library, so it is now strict and fails closed). Changed behaviour: a consumer that relied on any of these being exempt sees them held during a freeze; set `freeze_ci_environments` to admit its own CI environments. Decisions cached under the old rules are made again. `lanes/pr_gate.py` gains a built-in `applied: <number>` kind: met only when that pull request is merged and a run of the apply workflow on the apply branch that started at or after the merge succeeded; a failed run after the merge is named. The workflow and branch come from policy `own_pr_merge.gate_apply_workflow` and `gate_apply_branch` (passed by the own-PR lane to a gate plug-in whose `evaluate` takes `config`) or from `OPSCENTER_GATE_APPLY_WORKFLOW` and `OPSCENTER_GATE_APPLY_BRANCH`; null by default, and the kind is then never met and says so.
+
 ## 2026-11-07 (v1.160.0, the reports client reads the server's export and import answers)
 
 Opt in, `kit-core/reports`. The client reads an export as a list of definitions or as `{ dashboards }`, and an import answer whose `errors` are `{ index, key, message }` objects (each definition is stored or refused on its own) as well as plain strings; `importProblemText` turns one into a line.
