@@ -7,6 +7,12 @@ Two look details from the ops center adoption, both inside the hub pieces; the p
 - The hub tab working marker is 9px with a 1.6px arc turning on 900ms (was 8px, 1.5px, 800ms). It is scoped to `.hub-head .tab-badge`, so no other spinner changes. The existing 5px gap between the marker and the count stays on its right.
 - `PendingReason inline` follows the text colour of the line it sits in (it is a next step, not a warning); the block form keeps the warning colour.
 
+## 2026-11-06 (v1.137.0, the manifest client folder may be spa)
+
+Additive. `console.module.json` `client` accepts `apps/<dir>/spa` as well as `apps/<dir>/client`.
+
+- `validateManifest`, the JSON schema and `web-shell-manifest.md` take either folder name, for an app that already names its client folder `spa`. Nothing that validated before stops validating. The generator reads the field as plain data and needed no change. Tests: accepted for both names, rejected for another folder name and for a trailing path, in the TypeScript and the Python schema suites.
+
 ## 2026-11-06 (v1.136.0, an OIDC sign-in beside MSAL in the client package)
 
 `shell-packages/app-client`: `createOidcAuth(manager, options)` and `createOidcClient(manager)`. Opt in; `createAuth` and the MSAL path are unchanged.
