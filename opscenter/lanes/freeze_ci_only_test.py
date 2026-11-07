@@ -52,6 +52,38 @@ class Triggers(unittest.TestCase):
         self.assertEqual(f.triggers("on: {push: {}, pull_request: {}}\n"), {"push", "pull_request"})
         self.assertIsNone(f.triggers("name: x\njobs: {}\n"))  # no on block: unknown
 
+    def test_a_malformed_on_block_is_unknown_never_a_trigger_set(self):
+        # no YAML library: the reader is strict and anything it is not sure of reads as None (held)
+        for text in (
+            "on: [pull_request\n",  # unclosed flow list
+            "on: [pull_request]]\n",
+            "on: {pull_request: {}\n",
+            'on: "pull_request\n',  # open quote
+            "on: |\n  push\n",  # block scalar
+            "on: &a pull_request\n",  # anchor
+            "on: pull_request\non: push\n",  # repeated key
+            "on:\n  pull_request:\n push:\n",  # uneven indentation
+            "on:\n  - pull_request\n  push:\n",  # list and mapping mixed
+            "on:\n\tpull_request:\n",  # tab indentation
+            "on:\n  pull_request:\n    branches: [main\n",  # unclosed list under an event
+            "on: [pull request]\n",  # not an event name
+        ):
+            self.assertIsNone(f.triggers(text), text)
+        self.assertEqual(f.triggers("on: [pull_request] # a comment\n"), {"pull_request"})
+        self.assertEqual(
+            f.triggers("on: {pull_request: {branches: [main]}, merge_group}\n"),
+            {"pull_request", "merge_group"},
+        )
+
+    def test_environments_in_every_form(self):
+        text = (
+            "jobs:\n  a:\n    environment: prod\n"
+            "  b:\n    environment: ${{ github.event_name == 'pull_request' && 'terraform-plan' || '' }}\n"
+            "  c:\n    environment:\n      name: x\n"
+            "  d:\n    environment: ${{ inputs.target }}\n"
+        )
+        self.assertEqual(f.environments(text), {"prod", "terraform-plan", "", "<block>", "<expr>"})
+
 
 class Classify(unittest.TestCase):
     def ok(self, files, **kw):
@@ -159,6 +191,81 @@ class Classify(unittest.TestCase):
                 [".github/workflows/x.yml"], head={".github/workflows/x.yml": "name: no triggers\n"}
             )[0]
         )
+
+
+class Holds(unittest.TestCase):
+    """Each of these was exempted from a freeze before: they are held now."""
+
+    def one(self, text, path=".github/workflows/x.yml", **kw):
+        return f.classify([path], **world({path: text}), **kw)
+
+    def test_pull_request_target_is_held(self):
+        # it runs with the base branch's permissions and secrets
+        ok, why = self.one("on: pull_request_target\njobs: {}\n")
+        self.assertFalse(ok)
+        self.assertIn("pull_request_target", why)
+        ok, why = self.one("on:\n  pull_request:\n  pull_request_target:\njobs: {}\n")
+        self.assertFalse(ok, why)
+
+    def test_a_script_run_by_a_pull_request_target_workflow_is_held(self):
+        head = {
+            ".github/workflows/t.yml": "on: [pull_request_target]\njobs:\n  a:\n    steps:\n"
+            "      - run: .github/scripts/label.sh\n",
+            ".github/scripts/label.sh": "x\n",
+        }
+        ok, why = f.classify([".github/scripts/label.sh"], **world(head))
+        self.assertFalse(ok)
+        self.assertIn("pull_request_target", why)
+
+    def test_a_reusable_workflow_is_held_by_name(self):
+        ok, why = self.one(PR_WF, path=".github/workflows/_deploy.yml")
+        self.assertFalse(ok)
+        self.assertIn("reusable", why)
+        # and so is a script one runs
+        head = {
+            ".github/workflows/_deploy.yml": PR_WF.replace(
+                "scripts/check.sh", ".github/scripts/step.sh"
+            ),
+            ".github/scripts/step.sh": "x\n",
+        }
+        ok, why = f.classify([".github/scripts/step.sh"], **world(head))
+        self.assertFalse(ok)
+        self.assertIn("reusable", why)
+
+    def test_an_environment_outside_the_allowlist_is_held(self):
+        prod = PR_WF.replace("    steps:", "    environment: prod\n    steps:")
+        ok, why = self.one(prod)
+        self.assertFalse(ok)
+        self.assertIn("environment prod", why)
+        # a block or an expression it cannot read is held too
+        ok, _ = self.one(PR_WF.replace("    steps:", "    environment:\n      name: x\n    steps:"))
+        self.assertFalse(ok)
+        ok, _ = self.one(
+            PR_WF.replace("    steps:", "    environment: ${{ inputs.t }}\n    steps:")
+        )
+        self.assertFalse(ok)
+
+    def test_the_plan_environment_and_a_configured_allowlist_pass(self):
+        plan = PR_WF.replace(
+            "    steps:",
+            "    environment: ${{ github.event_name == 'pull_request' && 'terraform-plan' || '' }}\n"
+            "    steps:",
+        )
+        ok, why = self.one(plan)
+        self.assertTrue(ok, why)
+        stage = PR_WF.replace("    steps:", "    environment: ci-check\n    steps:")
+        self.assertFalse(self.one(stage)[0])
+        ok, why = self.one(stage, environments_allowed=["ci-check"])
+        self.assertTrue(ok, why)
+        # an empty allowlist admits no named environment, not even the default plan one
+        self.assertFalse(
+            self.one(plan.replace("|| ''", "|| 'terraform-plan'"), environments_allowed=[])[0]
+        )
+
+    def test_a_malformed_on_block_that_lists_only_pull_request_is_held(self):
+        ok, why = self.one("on: [pull_request\njobs: {}\n")
+        self.assertFalse(ok)
+        self.assertIn("could not be read", why)
 
 
 class Fetch(unittest.TestCase):
