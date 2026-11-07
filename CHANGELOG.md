@@ -1,11 +1,20 @@
 # Changelog
 
-## 2026-11-07 (v1.161.0, the run watches read a failed run once and pick the real error line)
+## 2026-11-07 (v1.162.0, the run watches read a failed run once and pick the real error line)
 
 `lanes/run_watches.py` (OC-8 drift watch, OC-9 main watch). Two changes to what runs today:
 - Error lines: the first `Error:` line of the failed job's log is preferred (colour codes, timestamps and a box drawing prefix dropped), else the first `##[error]` annotation; the runner's `Process completed with exit code N.` line is never returned (a log with only that line gives no error line), and the word failed in ordinary output, `FATAL` and `Traceback` no longer match. The drift item now shows every error line of each failing job (up to 3), the main item the first.
 - API budget: a failed run's jobs and logs are read once and cached by repo, run id and attempt (newest 20 kept), so a run that stays red costs one runs list per collect instead of a jobs and log read each time. A log that could not be read is not cached and is read again. The cache lives in the process by default; the optional `cache_file` config key keeps it between runs of the `items` CLI. Job logs are read with `--allow-escape-sequences` (a gh without that flag is asked again without it).
 - `collect`, `main_item` and `drift_item` take an optional `cache`; the runs list asks for `attempt`. Tests port the scenarios of the reference main and drift watch tests onto `collect()`.
+
+## 2026-11-07 (v1.161.0, a consumer can validate the manifest keys it adds)
+
+Opt in, `console-modules`. `validateManifest` and `validateRegistry` take a second argument: `keys` maps a key to a validator `(value, manifest)` that returns a problem string, a list, or nothing, and runs only when the manifest carries the key; `strictKeys: true` rejects a top-level key that is neither a core key nor registered. Closes the gap where a malformed consumer key (a jobs path) passed core validation because unknown keys are carried untouched.
+
+- Default is unchanged: with no options both functions behave as before. Typings and `web-shell-manifest.md` section 2.1 updated.
+- Tests: 3 in `kit/tests/console-modules/layout.test.js` (registered validator, strict keys, registry passes the options).
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
 
 ## 2026-11-07 (v1.160.0, the reports client reads the server's export and import answers)
 
