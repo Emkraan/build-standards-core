@@ -2138,6 +2138,10 @@ button.month-grid-chip { cursor: pointer; }
 @keyframes busy-in { from { opacity: 0; } to { opacity: 1; } }
 .busy-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-toast); pointer-events: none; animation: busy-in var(--dur-base) ease-out; }
 .busy-track { position: relative; height: 4px; overflow: hidden; background: rgb(var(--accent-rgb) / 0.14); }
+.busy-chip { position: absolute; right: var(--space-4); bottom: var(--space-3); display: flex; align-items: center; gap: var(--space-3); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3); border: 1px solid var(--border-default); border-radius: var(--radius-pill); background: var(--surface-2); color: var(--text-primary); font-size: var(--fs-label); box-shadow: var(--elev-3); pointer-events: auto; }
+.busy-cancel { font: inherit; font-weight: var(--fw-semibold); color: inherit; background: rgb(var(--accent-rgb) / 0.14); border: 0; border-radius: var(--radius-pill); padding: var(--space-1) var(--space-3); cursor: pointer; }
+.busy-cancel:hover { background: rgb(var(--accent-rgb) / 0.22); }
+.busy-cancel:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .busy-sweep { position: absolute; top: 0; bottom: 0; width: 30%; border-radius: var(--radius-pill); background: rgb(var(--accent-rgb)); animation: busy-sweep calc(var(--dur-chart) * 2) cubic-bezier(0.45, 0, 0.55, 1) infinite alternate; }
 
 /* ---- Action buttons coloured by purpose (opt in with data-act on a Button) ----
