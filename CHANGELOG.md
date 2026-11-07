@@ -1,12 +1,19 @@
 # Changelog
 
-## 2026-11-06 (v1.130.0, hub routing, run dialog and override defects)
+## 2026-11-06 (v1.131.0, hub routing, run dialog and override defects)
 
 Fixes from the consumer review of v1.125.0. Opt in pieces only; a look that worked before is unchanged.
 
 - Hub routing: a section with no items no longer loops (it resolves to the Overview and gets no tab); `hubSectionProblems` reports a section or item key used twice and the first one wins; route segments are decoded when read and encoded when written; an item the section does not have selects the first tab.
 - `RunDialog`: `RunInput.publishesWhen` and `RunSpec.publishes` decide what publishes ahead of the `dry_run` and `mode` name rule; inputs that arrive after the form opened take their defaults and keep what was typed; submit honours the same guards as the button; a refusal from the last attempt no longer locks Run (only the `refusal` prop does) and clears when an input changes; a branch name is checked for plausible characters; `onClose` is not called when the app closed the dialog first.
 - `AreaCard` sends its link through the guarded link, so an unsafe `to` never reaches the app's link component; duplicate detail lines, section keys and item keys no longer collide as React keys. `OverrideBar` and `OverrideButton` send one write at a time from the click on.
+
+## 2026-11-06 (v1.130.0, shell server rules)
+
+New `standards/web-shell-server.md`: the server rules a multi-module shell meets beyond the shared runtime, from the consumer inventory. Text only; each rule carries the proof a shell owns, and no rule is registered for enforcement yet.
+
+- Rights: the removal ceiling, a module opening on its own permission, every route gated or explained, group ids from role assignments only. Relays: a closed target list, forward the caller's token and status unchanged under an allowlist. Stores: sealed console secrets, a keyed audit chain, plain-text announcements, validated display-only external tools, per-user state keyed by lowercased identity. Health and boot: health never invented, paint from the persisted identity. Data and config: additive idempotent migrations, an unset environment is production, settings and vault references, per-item bulk results, one-process background jobs.
+- `rbac.md` section 6 and `web-api-runtime.md` section 7 gain a pointer line each. Code for the stores, the job leader and the scheduler follows in separate releases. Not run: the consumer's platform tree has no axe or live-action browser tests.
 
 ## 2026-11-06 (v1.129.0, the layout merge carries unknown manifest keys)
 

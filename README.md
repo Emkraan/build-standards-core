@@ -169,6 +169,7 @@ value of the doc's registered rules (see the rules registry below).
 | App types | `standards/web-shell-gateway.md` | The shell's own API and the gateway per tier: middleware order, route areas, the gateway token, layout and call path | web (no rules yet) |
 | App types | `standards/web-shell-auth.md` | Shell sign-in (PKCE), one scope per API, token checks, where rights are enforced, registering a permission | web (no rules yet) |
 | App types | `standards/web-shell-deploy.md` | Shell build and deploy: bundle and API pipelines, gates, the dev tier guard, fix-forward recovery | web (no rules yet) |
+| App types | `standards/web-shell-server.md` | Shell server rules: removal ceiling, own-permission modules, route gates, closed relay targets, sealed secrets, keyed audit chain, announcements, external tools, per-user state, never-invented health, persisted boot, migrations, production preflight, per-item bulk results, one-process jobs | web (no rules yet) |
 | App types | `standards/web-api-runtime.md` | Node and Express APIs behind a gateway: group caching, directory token, CORS max age and origin guard, Server-Timing, request log, telemetry, the shared runtime package | web |
 | App types | `standards/web-client-runtime.md` | Single page apps with an OIDC library: one auth boot, renewal without iframes, the API client, lazy bundles, the shared client package, the live feed strip | web |
 | App types | `standards/local-ops-app.md` | Locally hosted operations apps: contract, cost-gated analyzer, loopback server | local-ops |
