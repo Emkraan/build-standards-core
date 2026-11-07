@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-06 (v1.136.0, an OIDC sign-in beside MSAL in the client package)
+
+`shell-packages/app-client`: `createOidcAuth(manager, options)` and `createOidcClient(manager)`. Opt in; `createAuth` and the MSAL path are unchanged.
+
+- The same `createAuth` (boot, return target in state, loop guard, config-error and silent-only answers, shell and module modes, bounce, bypass) over an OIDC manager the app builds (oidc-client-ts or anything with its few methods), for a fleet that signs in through an identity broker. No OIDC dependency in the package; refresh-token renewal only, never a hidden frame; the provider callback parameters are stripped after boot; an end-session fallback for a provider without one; other-tab sign-out and user changes are seen.
+- `web-shell-auth.md` 2.1 documents it as the second sign-in shape and keeps the rule that no app in a brokered fleet wires straight to the upstream directory. Tests: 17 over a fake manager. Not run: a live provider and browser sign-in.
+
 ## 2026-11-06 (v1.135.0, owner roots ahead of main, the owner apply guard, the draft gate grammar)
 
 Gating and owner roots from rpmm23's inventory (OC-4, OC-5, OC-6, OC-19). Opt in: the hold needs the consumer's PR apply flow to record it and provider hooks to read a PR; with none, nothing changes.
