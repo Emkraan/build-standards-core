@@ -14,6 +14,8 @@ export interface StatOptions {
   /** Colour thresholds come with the definition, not from code: at or above `warnAt` the tile is amber, at or above `badAt` red, below both green. */
   warnAt?: number | undefined;
   badAt?: number | undefined;
+  /** Other options (compare, shareOf, column, ...) belong to the server and pass through. */
+  [other: string]: unknown;
 }
 
 export interface DashboardPanel {
@@ -23,7 +25,12 @@ export interface DashboardPanel {
   subtitle?: string | undefined;
   type: PanelType;
   stream: string;
-  measure: string;
+  /** The measure's name (a number tile). A chart or table names the report query in `spec` instead; one of the two is required. */
+  measure?: string | undefined;
+  /** The report query (filters, groupBy, metrics, columns, sort, limit): the server's, passed through untouched. */
+  spec?: Readonly<Record<string, unknown>> | undefined;
+  /** The date field the panel's time range applies to. */
+  timeField?: string | undefined;
   /** Width in twelfths of the grid, 1 to 12. Default 4. */
   w?: number | undefined;
   /** Height in rows of 64px for charts and tables. Default 3. */
@@ -84,6 +91,8 @@ export interface PanelResult {
   error?: string | undefined;
   stale?: boolean | undefined;
   fetchedAt?: number | undefined;
+  /** The report query behind the panel, as the server sends it, to open the rows in an explorer. Absent: no "View rows". */
+  rowsSpec?: Readonly<Record<string, unknown>> | undefined;
 }
 
 export interface FutureDated {
@@ -91,6 +100,7 @@ export interface FutureDated {
   field: string;
   rows: number;
   devices?: number | undefined;
+  rowsSpec?: Readonly<Record<string, unknown>> | undefined;
 }
 
 export interface DashboardRun {

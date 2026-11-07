@@ -1,9 +1,17 @@
 # Changelog
 
-## 2026-11-07 (v1.158.0, the dashboard routes match the kit client)
+## 2026-11-07 (v1.159.0, the dashboard routes match the kit client)
 
 - `POST /api/dashboards` and `POST /api/dashboards/<key>` take the definition as the body (the `{def}` wrapper still works). Export is a list. Import answers `{created, updated, errors: [{index, key, message}]}`: each definition is stored whole or refused with its reason, and one bad definition no longer stops the others.
 - A panel `type`, when present, is validated on the server (stat, line, area, bar, hbar, donut, table).
+
+## 2026-11-07 (v1.158.0, the reports client follows the server routes)
+
+Aligns the `kit-core/reports` client with the routes the core server registers (the registry has only GET and POST). Opt in, same entry.
+
+- `createDashboardsClient`: a save is `POST <base>/<key>` with `{ def }`, a create `POST <base>` with `{ def }`, a delete `POST <base>/<key>/delete`, a reset `POST <base>/<key>/reset`; `exportAll` unwraps `{ dashboards }`. No PUT and no DELETE.
+- A panel names a `measure` (a number tile) or a `spec` (the report query for a chart or table); one is required, `validateDefinition` says so in the server's words. Panels also carry `timeField` and any other stat option the server passes through.
+- "View rows" shows only for a panel whose result carries a `rowsSpec`, and `onRows` and `onFutureRows` hand the app that spec; a drill link can carry a `spec` instead of a `measure`.
 
 ## 2026-11-07 (v1.157.0, the optional modules at the server: routes, providers and the off state)
 
