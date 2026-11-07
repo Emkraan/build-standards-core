@@ -145,14 +145,31 @@ describe('refusals and errors', () => {
     expect(screen.getByRole('status').textContent).toContain('Already running:');
   });
 
-  it('shows a refusal thrown by the run, keeps the dialog open and keeps the reason on the button', async () => {
+  it('shows a refusal thrown by the run and keeps the dialog open, without locking the button for good', async () => {
     const onRun = vi.fn().mockRejectedValue(new RunRefusedError('Another run of this workflow is in progress.', 'running'));
     const { onClose } = open({ suggest: { version: '1' }, onRun });
     fireEvent.click(primary());
     await waitFor(() => expect(screen.getByRole('status').textContent).toContain('Another run of this workflow is in progress.'));
     expect(screen.getByRole('status').textContent).toContain('Already running:');
     expect(onClose).not.toHaveBeenCalled();
-    expect(primary().getAttribute('data-tip')).toBe('Another run of this workflow is in progress.');
+    expect(primary().getAttribute('data-tip')).toBeNull();
+  });
+
+  it('lets the same run be tried again after a refusal, and clears the refusal when an input changes', async () => {
+    const onRun = vi.fn().mockRejectedValueOnce(new RunRefusedError('busy', 'running')).mockResolvedValueOnce({});
+    const { onClose } = open({ suggest: { version: '1' }, onRun });
+    fireEvent.click(primary());
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('busy'));
+    fireEvent.click(screen.getByLabelText(/Dry run/));
+    expect(screen.queryByRole('status')).toBeNull();
+    fireEvent.click(primary(/^Run/));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(onRun).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the button waiting for a refusal the app passes in', () => {
+    open({ suggest: { version: '1' }, refusal: { kind: 'paused', reason: 'Paused until Monday.' } });
+    expect(primary().getAttribute('data-tip')).toBe('Paused until Monday.');
   });
 
   it('shows any other failure as an alert and allows another try', async () => {
@@ -204,5 +221,71 @@ describe('accessibility and styling', () => {
     const css = readFileSync(resolve(__dirname, '../src/styles/kit.css'), 'utf8');
     expect(css).toMatch(/\.run-fields \{[^}]*flex-direction: column/);
     expect(css).toMatch(/\.run-alert \{[^}]*padding:/);
+  });
+});
+
+describe('spec that publishes through another input (H2)', () => {
+  const custom: RunSpec = { inputs: [{ name: 'apply', type: 'boolean', default: false, publishesWhen: true }, { name: 'dry_run', type: 'boolean', default: false }] };
+
+  it('lets publishesWhen win over the name rule, in either direction', () => {
+    expect(runPublishes(custom, { apply: false, dry_run: false })).toBe(false);
+    expect(runPublishes(custom, { apply: true, dry_run: true })).toBe(true);
+    const mode: RunSpec = { inputs: [{ name: 'target', type: 'choice', default: 'staging', options: ['staging', 'prod'], publishesWhen: 'prod' }, { name: 'mode', type: 'string', default: 'apply' }] };
+    expect(runPublishes(mode, { target: 'staging', mode: 'apply' })).toBe(false);
+    expect(runPublishes(mode, { target: 'prod', mode: 'dry-run' })).toBe(true);
+  });
+
+  it('treats spec.publishes as always a write, and falls back to the name rule when nothing is declared', () => {
+    expect(runPublishes({ publishes: true, inputs: [] }, {})).toBe(true);
+    expect(runPublishes({ inputs: [{ name: 'dry_run', type: 'boolean', default: true }] }, { dry_run: true })).toBe(false);
+    expect(runPublishes({ inputs: [{ name: 'dry_run', type: 'boolean', default: true }] }, { dry_run: false })).toBe(true);
+  });
+
+  it('shows Run for real for a spec that always publishes', () => {
+    open({ spec: { publishes: true, inputs: [] } });
+    expect(label(/^Run/)).toBe('Run for real');
+  });
+});
+
+describe('form guards', () => {
+  it('takes defaults for inputs that arrive after the form opened and keeps what was typed', () => {
+    const first: RunSpec = { inputs: [{ name: 'version', type: 'string', default: '' }] };
+    const later: RunSpec = { inputs: [{ name: 'version', type: 'string', default: '' }, { name: 'dry_run', type: 'boolean', default: true }] };
+    const { rerender } = open({ spec: first });
+    fireEvent.change(screen.getByLabelText(/Version/), { target: { value: '9' } });
+    rerender(<RunDialog open onClose={vi.fn()} onRun={vi.fn()} title="Run release" spec={later} />);
+    expect((screen.getByLabelText(/Version/) as HTMLInputElement).value).toBe('9');
+    expect((screen.getByLabelText(/Dry run/) as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('does not run from submit while a required input is empty, and sends no branch for a main-only spec', async () => {
+    const onRun = vi.fn().mockResolvedValue({});
+    const { rerender } = open({ onRun });
+    fireEvent.click(primary());
+    expect(onRun).not.toHaveBeenCalled();
+    rerender(<RunDialog open onClose={vi.fn()} onRun={onRun} title="t" spec={{ inputs: [{ name: 'channel', type: 'choice', default: 'beta', options: ['beta'] }] }} />);
+    fireEvent.click(primary());
+    await waitFor(() => expect(onRun).toHaveBeenCalledWith({ ref: 'main', inputs: { channel: 'beta' } }));
+  });
+
+  it('waits for a branch name that is not a branch name', () => {
+    open({ suggest: { version: '1' } });
+    fireEvent.change(screen.getByLabelText(/Branch/), { target: { value: 'fix this now' } });
+    expect(primary().getAttribute('data-tip')).toMatch(/branch name/i);
+    fireEvent.change(screen.getByLabelText(/Branch/), { target: { value: 'feat/new-thing_2' } });
+    expect(primary().getAttribute('data-tip')).toBeNull();
+  });
+
+  it('does not close again when the run finishes after the app closed the dialog', async () => {
+    let finish: () => void = () => undefined;
+    const onRun = vi.fn(() => new Promise<void>((r) => { finish = r; }));
+    const onClose = vi.fn();
+    const onDone = vi.fn();
+    const { rerender } = open({ suggest: { version: '1' }, onRun, onClose, onDone });
+    fireEvent.click(primary());
+    rerender(<RunDialog open={false} onClose={onClose} onDone={onDone} onRun={onRun} title="t" spec={spec} suggest={{ version: '1' }} />);
+    await act(async () => { finish(); });
+    expect(onDone).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

@@ -1,11 +1,19 @@
 # Changelog
 
-## 2026-11-06 (v1.134.0, an OIDC sign-in beside MSAL in the client package)
+## 2026-11-06 (v1.135.0, an OIDC sign-in beside MSAL in the client package)
 
 `shell-packages/app-client`: `createOidcAuth(manager, options)` and `createOidcClient(manager)`. Opt in; `createAuth` and the MSAL path are unchanged.
 
 - The same `createAuth` (boot, return target in state, loop guard, config-error and silent-only answers, shell and module modes, bounce, bypass) over an OIDC manager the app builds (oidc-client-ts or anything with its few methods), for a fleet that signs in through an identity broker. No OIDC dependency in the package; refresh-token renewal only, never a hidden frame; the provider callback parameters are stripped after boot; an end-session fallback for a provider without one; other-tab sign-out and user changes are seen.
 - `web-shell-auth.md` 2.1 documents it as the second sign-in shape and keeps the rule that no app in a brokered fleet wires straight to the upstream directory. Tests: 17 over a fake manager. Not run: a live provider and browser sign-in.
+
+## 2026-11-06 (v1.134.0, hub routing, run dialog and override defects)
+
+Fixes from the consumer review of v1.125.0. Opt in pieces only; a look that worked before is unchanged.
+
+- Hub routing: a section with no items no longer loops (it resolves to the Overview and gets no tab); `hubSectionProblems` reports a section or item key used twice and the first one wins; route segments are decoded when read and encoded when written; an item the section does not have selects the first tab.
+- `RunDialog`: `RunInput.publishesWhen` and `RunSpec.publishes` decide what publishes ahead of the `dry_run` and `mode` name rule; inputs that arrive after the form opened take their defaults and keep what was typed; submit honours the same guards as the button; a refusal from the last attempt no longer locks Run (only the `refusal` prop does) and clears when an input changes; a branch name is checked for plausible characters; `onClose` is not called when the app closed the dialog first.
+- `AreaCard` sends its link through the guarded link, so an unsafe `to` never reaches the app's link component; duplicate detail lines, section keys and item keys no longer collide as React keys. `OverrideBar` and `OverrideButton` send one write at a time from the click on.
 
 ## 2026-11-06 (v1.133.0, roles and gate rules from the hub review)
 
