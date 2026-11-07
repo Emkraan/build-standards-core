@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-06 (v1.142.0, sessions and cards: session on it, curation, inbound files, CI test runner, page renderer)
+## 2026-11-06 (v1.143.0, sessions and cards: session on it, curation, inbound files, CI test runner, page renderer)
 
 Sessions and cards from rpmm23's inventory (OC-11, OC-12, OC-13, OC-14, OC-15, OC-21, OC-23). Opt in: every module is called by a consumer or configured by environment; `eng_backlog.py` gains behaviour for every consumer of the debt page (below).
 
@@ -11,6 +11,13 @@ Sessions and cards from rpmm23's inventory (OC-11, OC-12, OC-13, OC-14, OC-15, O
 - OC-15 `tools/ci_tests.py`: one process per test file, a live-state skip list printed every run, listed proofs that must exist.
 - OC-21 `engine/doc_render.py`: repo markdown to docs home HTML with ASCII and prose rules, a verified-against footer and a configurable internal-terms check. Written with tests (the reference had none).
 - OC-23: compared, already in `engine/handled.py` (identical module and tests apart from wording); nothing lifted.
+
+## 2026-11-06 (v1.142.0, hub tab working marker and inline pending note colour)
+
+Two look details from the ops center adoption, both inside the hub pieces; the plain `Spinner` and every other badge are unchanged.
+
+- The hub tab working marker is 9px with a 1.6px arc turning on 900ms (was 8px, 1.5px, 800ms). It is scoped to `.hub-head .tab-badge`, so no other spinner changes. The existing 5px gap between the marker and the count stays on its right.
+- `PendingReason inline` follows the text colour of the line it sits in (it is a next step, not a warning); the block form keeps the warning colour.
 
 ## 2026-11-06 (v1.141.0, a public module needs no rbac)
 

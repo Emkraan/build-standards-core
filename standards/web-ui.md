@@ -758,7 +758,7 @@ runs, never by the data source or the vendor.
 - Counts and the working state come from the app and are never decided here. An item `count` is the
   number of things that need attention, read from the one server list the rail badge also reads
  ; a section tab shows the sum of its items. Work in progress (`live`) is a
-  spinner, never a red count, and a count of zero shows nothing.
+  9px open-arc spinner (1.6px, 9/8 of --dur-spin, 900ms) with a 5px gap before the count, never a red count, and a count of zero shows nothing.
 - Old links never break: `resolveHubRoute(base, sections, section, item)` returns `overview`, the
   `item`, or a `redirect` target. A section the hub does not have is an old flat link (`<base>/<item>`)
   and redirects to the item's new path; a bare section or an unknown item redirects to the section's
@@ -1846,7 +1846,8 @@ it, and each piece renders nothing, or the plain reason, when the app has not gi
 - `PendingReason` is rule 11: between the action and the next pass of whatever re-checks the item it
   shows the server's pending line (`role="status"`) and never the reason the action removed; with no
   pending line it shows the reason; with neither it shows nothing. `inline` renders a span for a line
-  inside the card's own reason text.
+  inside the card's own reason text and takes that text's colour, since there it is a next step, not
+  a warning; the block form is in the warning colour.
 - Writes stay with the app: same-origin or loopback only, one writer, one log, the owner's own work
   only. The kit never reads or stores an override.
 
