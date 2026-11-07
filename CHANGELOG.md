@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-07 (v1.154.0, the optional reports module: the report engine, the source slot and dashboard runs)
+
+Opt in: `server/modules/reports/{query,sources,dashboards}.py`, imported only when a consumer uses them or sets `OPSCENTER_REPORTS`; no import side effect, no file or database touched until a function that needs it runs.
+
+- `query.py`: a report is a spec, never SQL. Fields are checked against the stream, values are bound parameters, and the SQL is assembled from fixed fragments, so a spec cannot reach another stream or run anything. Filters (17 operators), grouping, 8 metrics, time buckets (local day, Monday week, month), looked-up fields joined from the lookups cache, sort, limit and a truncation flag. The time zone is `OPSCENTER_REPORTS_TZ` (default UTC).
+- `sources.py`: the source slot. A panel names a stream and a measure; a source (`get_stream`, `run`, optional `options`) turns that into columns and rows. `LocalSource` reads the log intake tables.
+- `dashboards.py`: `check_dashboard` and `run_dashboard` with the range, dropdowns that narrow only panels whose stream has the field, stat panels with a comparison against the period before or a share, future-dated events kept off time panels and reported with the rows behind them, and one broken panel never taking the page down.
+
 ## 2026-11-07 (v1.153.0, the optional reports module: directory and catalog lookups)
 
 Opt in: `server/modules/reports/{directory,catalog,lookup_db}.py`, imported only when a consumer uses them or sets `OPSCENTER_REPORTS`; no import side effect (the database `OPSCENTER_REPORTS_DB` is created on first use).

@@ -1071,6 +1071,15 @@ loosens a rule above. Each row says whether the running ops center **runs as des
 differently** (and how) or has **not built** the item. A row marked `not read` was not read closely
 enough to state a fact; it is a gap in this section, not a statement that the item is absent.
 
+### 12.62 The optional reports engine (R3, the report spec, the source slot and dashboard runs)
+
+Optional (`opscenter/plans/hub-reports-plan.md`): `reports/query.py`, `reports/sources.py` and `reports/dashboards.py` are imported only when used. A report is a small structured spec, never SQL: `{match, filters, groupBy, metrics, columns, sort, limit}`; `check_spec` refuses unknown fields, operators and metrics with a reason before anything runs, values are bound parameters, and the SQL is assembled only from fixed fragments over one stream's own rows. The lookups cache (`log_directory`, `log_catalog`) is attached to the intake connection as `lk`, so a looked-up field (`@user`, `@email`, `@department`, `@title`, `@publisher`, `@store`) joins in SQL and a person falls back to the name as sent. The report time zone is `OPSCENTER_REPORTS_TZ` (default UTC); the reference had one fixed zone.
+
+- Source slot: `get_stream(key)`, `run(stream, spec)`, optional `options(stream, field, limit)`. The dashboard code never sees a store, so a second source can follow; a test runs two sources and checks the same dashboard result.
+- Dashboards: a panel runs its `spec`, or `{metrics: [measure]}` when it has only a measure (enough for a stat tile). A dropdown narrows a panel only when the panel's stream has the field. A stat compares with the period just before the range (needs a time field and a day range) or shows a share. Events dated more than a day ahead are left off every time panel and reported with a report spec that lists them. The reference's worker pool is not here; a `should_stop` callable is checked between panels.
+
+Not here: the routes that serve these, the deep link formats, and any non local source.
+
 ### 12.1 What it is
 
 A loopback single operator app: a stdlib Python HTTP server, a React single page app on the kit, file
