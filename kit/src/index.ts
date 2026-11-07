@@ -334,5 +334,5 @@ export { OverrideBar, OverrideButton, OverrideTag, PendingReason } from './shell
 export type { OverrideBarProps, OverrideButtonProps, OverrideConfirm, OverrideCover, PendingReasonProps } from './shell/Override';
 export { BusyIndicator } from './shell/BusyIndicator';
 export type { BusyIndicatorProps } from './shell/BusyIndicator';
-export { getBusyState, installBusyTracking, quietly, trackBusy, useBusy } from './lib/busy';
-export type { BusyState, BusyTrackingOptions } from './lib/busy';
+export { CANCELLED_MESSAGE, LEFT_PAGE_MESSAGE, NAV_GRACE_MS, abortStaleReads, cancelBusyReads, getBusyState, installBusyTracking, quietly, trackBusy, useBusy } from './lib/busy';
+export type { BusyState, BusyTrackingOptions, TrackOptions } from './lib/busy';
