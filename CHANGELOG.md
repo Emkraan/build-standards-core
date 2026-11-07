@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-07 (v1.178.0, Postgres with a directory token, the user directory and the user binding)
+
+Opt in, `app-server`, from the Olympus shell source (the code the owner's main gained after the earlier snapshot, K-source-refresh). Documented in `web-shell-packages.md` section 5.10.
+
+- `pgPoolConfig`, `pgEntraPassword`, `usesPgEntraAuth`, `pgUserForToken`, `entraPgClient`, `PG_ENTRA_SCOPE`; `createUserDirectory`; `createUserBinding`. The comments that named the source's own standard are reworded; no behaviour changed.
+- The internal `appServiceToken` gains an optional `timeoutMs` argument (default 5000, the old value), which `pgEntraPassword` needs; existing callers are unchanged.
+- Tests: the source's 31 (13 pool and token, 4 directory, 14 binding), with synthetic names. Two of the source's binding tests scan the consumer's own route files for the 503 and 409 call-site pattern; they stay with the consumer, since they read a tree the core does not have.
+
 ## 2026-11-07 (v1.177.0, route conformance: the proof for every route gated or stated)
 
 Test time only, SH-12 from the Olympus shell source (K-source-refresh). New package `shell-packages/route-conformance`, the engine of the test `web-shell-server.md` section 1 rule 3 asks for. Documented in `web-shell-packages.md` section 5.9.
@@ -89,6 +97,8 @@ No issue: requested by the core consolidation session (build-standards-core-inta
 =======
 <<<<<<< HEAD
 =======
+<<<<<<< HEAD
+=======
 ## 2026-11-07 (v1.168.0, shell gaps from the console redesign against Olympus)
 
 Three default compatible kit changes from the redesign's measurements (the screenshots and `measurements.json` in the private handoff repo). Nothing changes for a consumer that does not use them, except the floors, which only act where the control was too small.
@@ -127,6 +137,7 @@ Opt in, each off until configured: with none of them set the audit writes the sa
 
 `scripting-powershell.md`: the `ConvertFrom-Json` array rule now names the right cause, from the hub consumer's check against its scripts repo. Windows PowerShell 5.1 returns a JSON array from `ConvertFrom-Json` as a single object, so a pipeline wrapped in `@(...)` yields an array inside an array; assign the result, then enumerate `@($rows)`. It no longer reads as a variant of the PowerShell 7 `Invoke-RestMethod` note, which is a separate problem. The acceptance fixture (empty array, one object, several, counts 0, 1 and N) now runs on Windows PowerShell 5.1 specifically (`tests/fixtures/powershell-51/ConvertFromJsonShape.ps1`) and says so and skips on any other host, never passing in silence. Core CI has no 5.1 host, so it checks the fixture's shape and the skip; the 5.1 run is the consumer's.
 
+>>>>>>> origin/main
 ## 2026-11-07 (v1.165.0, the run watches read a failed run once and pick the real error line)
 
 `lanes/run_watches.py` (OC-8 drift watch, OC-9 main watch). Two changes to what runs today:
