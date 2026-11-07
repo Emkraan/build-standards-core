@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-06 (v1.129.0, delivery: cancelled runs, pre-push, pr-watch, release notes, shrink-only lists)
+## 2026-11-06 (v1.131.0, delivery: cancelled runs, pre-push, pr-watch, release notes, shrink-only lists)
 
 Delivery steps from the hub's gaps D2, D3, U4, U5 and the route exemption list. Opt in: new `core-ci.py` subcommands and a parameters row; the merge gate template is copied once, so only a repo that copies it again changes.
 
@@ -9,6 +9,20 @@ Delivery steps from the hub's gaps D2, D3, U4, U5 and the route exemption list. 
 - `core-ci.py pr-watch PR` (D3): watches a PR to a stop point (merged, checks failed, closed, conflict, timeout), prints a line at every change and ends with a report (rule 1.23).
 - `core-ci.py changelog-lines` (U5): release notes from `Changelog:` lines in PR bodies; docs, test, ci, chore, style and build commits ignored; one generic line when there is none (docs-and-changelog 1.10).
 - `core-ci.py list-shrinks BASE HEAD` and the parameters row `Shrink-only lists` (U3): an exemption list may lose entries and never gain one.
+
+## 2026-11-06 (v1.130.0, shell server rules)
+
+New `standards/web-shell-server.md`: the server rules a multi-module shell meets beyond the shared runtime, from the consumer inventory. Text only; each rule carries the proof a shell owns, and no rule is registered for enforcement yet.
+
+- Rights: the removal ceiling, a module opening on its own permission, every route gated or explained, group ids from role assignments only. Relays: a closed target list, forward the caller's token and status unchanged under an allowlist. Stores: sealed console secrets, a keyed audit chain, plain-text announcements, validated display-only external tools, per-user state keyed by lowercased identity. Health and boot: health never invented, paint from the persisted identity. Data and config: additive idempotent migrations, an unset environment is production, settings and vault references, per-item bulk results, one-process background jobs.
+- `rbac.md` section 6 and `web-api-runtime.md` section 7 gain a pointer line each. Code for the stores, the job leader and the scheduler follows in separate releases. Not run: the consumer's platform tree has no axe or live-action browser tests.
+
+## 2026-11-06 (v1.129.0, the layout merge carries unknown manifest keys)
+
+`shell-packages/console-modules`: `effectiveLayout` no longer drops a manifest key the contract does not name.
+
+- A consumer's own field (a `jobs` list) on a module, group, page, link or tile comes through as a deep copy on the matching output entry. Before, it vanished with no error and no test failing. `validateManifest` still ignores unknown keys.
+- A carried key never shadows a computed field (`enabled`, `account`, `basePath`); a module with no extra keys gets an identical result. `EffectiveModule` gains an index signature. Tests: 3, two of which fail on the old code. Not run: the consumer's platform tree has no axe or live-action browser tests.
 
 ## 2026-11-06 (v1.128.0, rules: smoke retries, route contracts, installs, codemods)
 

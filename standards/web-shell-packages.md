@@ -49,6 +49,12 @@ a bad row: a bad row is skipped.
 | `homeContributions(modules, hasFor)` | The Home actions and feeds whose permission the caller holds in the module's own answer. `hasFor(module)` returns that module's `has`, or `null` while the answer is not known: a module with no answer contributes nothing (fail closed). A peer id never opens a Home entry; a disabled module contributes nothing |
 | `moduleForPath(pathname, moduleIds)` | The module a path belongs to: the first segment when it names a module, else `console` |
 
+**Unknown keys are carried, not dropped.** A key the contract does not name, on a module, a group, a page, a link or a
+tile (a consumer's own `jobs` list, say), comes through `effectiveLayout` as a deep copy on the matching output
+entry, so a reader of the layout finds it. `validateManifest` ignores such keys, as the manifest standard says. A key
+that names a field the layout computes (`enabled`, `account`, `basePath` and the like) never shadows the computed value,
+and `client` stays out of the output as before.
+
 The types (`ModuleManifest`, `Overrides`, `EffectiveModule`, `NavEntry`, `TileOut` and the rest) are in
 `index.d.ts`, so a client that reads the layout is typed instead of `Record<string, any>`. Every answer is display
 only, like the rest of section 2.
@@ -236,7 +242,7 @@ export * from '@example/core-app-server';
 
 | File | Proves |
 |---|---|
-| `kit/tests/shell-console-modules.test.ts` | The validator accepts the fixtures, ignores unknown keys, rejects 24 mutations and never throws; the registry checks for source and peer ids; the launcher description fits |
+| `kit/tests/shell-console-modules.test.ts` | The validator accepts the fixtures, ignores unknown keys (and `effectiveLayout` carries them through, `kit/tests/console-modules/layout.test.js`), rejects 24 mutations and never throws; the registry checks for source and peer ids; the launcher description fits |
 | `kit/tests/console-modules/*.test.js` | The layout merge on synthetic modules: defaults and the new flag, overrides that move, rename, reorder and hide but never change what a page requires, orphans, custom links, the nav, landing and tile filters, the description order, the permission source and peer checks, Home contributions (shape, bounds, fail closed). Run by `npm run test:server` inside `kit` |
 | `kit/tests/shell-rbac.test.ts` | The ceiling, fail-closed stale ids, the wildcard rule, view-as, tab computation and the client helpers |
 | `tests/test_console_module_schema.py` | The same manifest fixtures against the JSON schema ([web-shell-manifest.md](web-shell-manifest.md)) |
