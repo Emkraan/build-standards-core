@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-07 (v1.163.0, rbac names the removal ceiling)
+
+Opt in, `rbac`. New exports `removalBeyond` and `removalCeilingMessage` (SH-3, K-source-refresh): deleting a role, an assignment or an override takes away the permissions it confers, so the caller must hold every one of them, and only a genuine wildcard holder removes the wildcard. It answers what `permissionsBeyond` answers (stale ids and unreadable text fail closed) with a message that says removal. Documented in `web-shell-packages.md` section 3; the rule itself is `rbac.md` section 3.
+
+- The source applies the ceiling in its admin routes and resolves a sign-in claim role to the system role row (its F4); both are the consumer's route code and stay there. Only the pure rule is lifted.
+- Tests: 4 in `kit/tests/shell-rbac.test.ts` (inside and above the caller's access, the wildcard, stale ids and unreadable text, parity with the grant ceiling).
+- New exports only, nothing existing changes. Typings added.
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
+
 ## 2026-11-07 (v1.162.0, the processing indicator can stop reads)
 
 Closes the gap against the hub's handoff tag (the busy bar spec): the indicator's Cancel request, the stop on leaving the page and the server run stop. A second opt in on top of `installBusyTracking`; with `cancel` off nothing changes.

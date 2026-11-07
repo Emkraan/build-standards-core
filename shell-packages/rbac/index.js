@@ -93,6 +93,27 @@ export function grantCeilingMessage(beyond) {
   return `You cannot grant permission(s) you do not hold yourself: ${shown}. Ask a super administrator.`;
 }
 
+/**
+ * The removal ceiling: deleting access is bounded like granting it. A role delete, an assignment delete and an
+ * override delete each take away the permissions the removed thing confers, so the caller must hold every one
+ * of them ("*" only for a genuine "*" holder), or a delegate could strip a Super Admin or any grant above
+ * their own. `removed` is the permission list of the thing being removed: the role's permissions for a role
+ * delete or for the assignment of that role, the stored list for an override. Returns the ids the caller does
+ * not hold (empty = allowed). A thing whose permissions cannot be read (a missing role row) is passed as
+ * undefined and counts as holding nothing, so it is allowed; the caller answers 404 for a missing row first.
+ * @param {{ removed: unknown, callerPermissions: Iterable<string>, callerIsWildcard: boolean, registry: Registry }} args
+ * @returns {string[]}
+ */
+export function removalBeyond({ removed, callerPermissions, callerIsWildcard, registry }) {
+  return permissionsBeyond({ requested: removed, callerPermissions, callerIsWildcard, registry });
+}
+
+/** @param {string[]} beyond @returns {string} */
+export function removalCeilingMessage(beyond) {
+  const shown = beyond.slice(0, 10).join(", ") + (beyond.length > 10 ? ` (+${beyond.length - 10} more)` : "");
+  return `You cannot remove access that confers permission(s) you do not hold yourself: ${shown}. Ask a super administrator.`;
+}
+
 /** @param {string[]} beyond @returns {string} */
 export function viewAsCeilingMessage(beyond) {
   const shown = beyond.slice(0, 10).join(", ") + (beyond.length > 10 ? ` (+${beyond.length - 10} more)` : "");

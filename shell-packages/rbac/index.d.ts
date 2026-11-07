@@ -14,6 +14,8 @@ export declare function expandPermissions(perms: unknown, registry: Registry): S
 export declare function accessibleTabs(perms: unknown, registry: Registry): string[];
 export declare function permissionsBeyond(args: { requested: unknown; callerPermissions: Iterable<string>; callerIsWildcard: boolean; registry: Registry }): string[];
 export declare function grantCeilingMessage(beyond: string[]): string;
+export declare function removalBeyond(args: { removed: unknown; callerPermissions: Iterable<string>; callerIsWildcard: boolean; registry: Registry }): string[];
+export declare function removalCeilingMessage(beyond: string[]): string;
 export declare function viewAsCeilingMessage(beyond: string[]): string;
 export declare function assignableRoleIds<R extends RoleLike>(roles: R[], subject: Subject): string[];
 export declare function annotateRoles<R extends RoleLike>(roles: R[], caller: Subject): Array<R & { assignable: boolean; unknownPermissions: string[] }>;
