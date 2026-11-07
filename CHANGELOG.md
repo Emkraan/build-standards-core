@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-06 (v1.126.0, delivery: cancelled runs, pre-push, pr-watch, release notes, shrink-only lists)
+## 2026-11-06 (v1.127.0, delivery: cancelled runs, pre-push, pr-watch, release notes, shrink-only lists)
 
 Delivery steps from the hub's gaps D2, D3, U4, U5 and the route exemption list. Opt in: new `core-ci.py` subcommands and a parameters row; the merge gate template is copied once, so only a repo that copies it again changes.
 
@@ -9,6 +9,13 @@ Delivery steps from the hub's gaps D2, D3, U4, U5 and the route exemption list. 
 - `core-ci.py pr-watch PR` (D3): watches a PR to a stop point (merged, checks failed, closed, conflict, timeout), prints a line at every change and ends with a report (rule 1.23).
 - `core-ci.py changelog-lines` (U5): release notes from `Changelog:` lines in PR bodies; docs, test, ci, chore, style and build commits ignored; one generic line when there is none (docs-and-changelog 1.10).
 - `core-ci.py list-shrinks BASE HEAD` and the parameters row `Shrink-only lists` (U3): an exemption list may lose entries and never gain one.
+
+## 2026-11-06 (v1.126.0, override store window and extra, problems provider healthy items)
+
+Two consumer-requested extensions. Opt in: both are optional arguments and methods; nothing that runs changes.
+
+- `override_store.py`: `set(..., window=, extra=)` stores the window id the entry was made in (its scope when none is given) and a JSON map; `entry(key, scope)` reads a live entry back, failing closed like `allowed`; `expires_at_local_midnight(tz)` gives the end of the owner's day in an IANA zone. One file, still copyable verbatim.
+- Problems provider: `headlines()` values may be a map `{headline, details, label, url}`, a new `healthy()` method adds items that are fine but carry live facts, and a source may carry `count`. This is what moving a consumer's browser-clock and accounts-feed headlines onto the server needs.
 
 ## 2026-11-02 (v1.125.0, hub and override polish from the ops center adoption)
 
