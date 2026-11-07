@@ -1947,6 +1947,9 @@ All of it sits under `server/modules/reports/`, is imported only when `OPSCENTER
 **Grants** (`grants.py`, P1 and P4). `effective(roles, user_grants, role_grants)` is the union of every matched role and the user's own grants; reports and dashboards have separate global rights (`reports.view`, `dashboards.view`) and per-object rights named by key (`report:<key>`, `dashboard:<key>`); `GrantStore.on_delete` and `sweep` remove a grant whose object is gone, so a recreated key never inherits an old role's access.
 
 **Preview** (`view_as.py`, P3). `ViewAs(allowed_posts).check(method, path)` refuses every write with "Preview is read-only." except a pinned allowlist of read-only query POSTs (an exact path or a `*` segment); reads always pass.
+### 12.57 The optional reports module (R9, the CSV formula guard)
+
+The reports module is optional and never mandatory (`opscenter/plans/hub-reports-plan.md`): nothing under `server/modules/reports/` is imported by the server unless a consumer sets `OPSCENTER_REPORTS`, and a consumer that does not use it loads, pays for and sees none of it. `reports/export_csv.py` is the first part, and it is a plain helper usable with no module at all: `guard`, `cell` and `to_csv` neutralise a text value that starts with `=`, `+`, `-`, `@`, a tab or a carriage return with a leading apostrophe (inside the quotes when the cell is quoted), leave numbers, booleans and None alone, quote commas, quotes and line breaks with the quotes doubled, and end lines with CRLF. Every CSV download goes through it (web-api-runtime 9.2).
 
 ### 12.54 Owner roots ahead of main, the owner apply guard and the draft gate grammar
 

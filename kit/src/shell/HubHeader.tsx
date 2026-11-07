@@ -123,6 +123,8 @@ export interface HubHeaderProps {
   sections?: readonly HubSection[] | undefined;
   /** A flat hub with a single tab row: one tab per item, route `<base>/<item>`, no sections and no second row. Used instead of `sections`; the current tab is `item`. */
   tabs?: readonly HubItem[] | undefined;
+  /** With `tabs`: the key of the index tab. Its route is `<base>` itself, not `<base>/<key>`, and it is the tab selected when the route has no item. Default the first tab selects with no item but keeps its `<base>/<key>` path. */
+  indexKey?: string | undefined;
   /** Current section segment from the route. Omit on the Overview. */
   section?: string | undefined;
   /** Current item segment from the route. */
@@ -155,11 +157,11 @@ function sum(items: readonly HubItem[]): number | undefined {
   return n > 0 ? n : undefined;
 }
 
-function FlatHubHeader({ title, subtitle, eyebrow, status, base, tabs, item, onNavigate }: Pick<HubHeaderProps, 'title' | 'subtitle' | 'eyebrow' | 'status' | 'item'> & { base: string; onNavigate: (path: string) => void; tabs: readonly HubItem[] }) {
+function FlatHubHeader({ title, subtitle, eyebrow, status, base, tabs, item, indexKey, onNavigate }: Pick<HubHeaderProps, 'title' | 'subtitle' | 'eyebrow' | 'status' | 'item' | 'indexKey'> & { base: string; onNavigate: (path: string) => void; tabs: readonly HubItem[] }) {
   const root = base.replace(/\/+$/, '');
-  const items: TabItem[] = tabs.map((t) => ({ id: `${root}/${seg(t.key)}`, label: t.label, badge: badge(t.count, t.live) }));
+  const items: TabItem[] = tabs.map((t) => ({ id: t.key === indexKey ? root || '/' : `${root}/${seg(t.key)}`, label: t.label, badge: badge(t.count, t.live) }));
   const cur = unseg(item);
-  const value = tabs.some((t) => t.key === cur) ? `${root}/${seg(cur ?? '')}` : (items[0]?.id ?? '');
+  const value = items[tabs.findIndex((t) => t.key === cur)]?.id ?? items[Math.max(0, tabs.findIndex((t) => t.key === indexKey))]?.id ?? '';
   return (
     <div className="hub-head">
       <PageHeader eyebrow={eyebrow} title={title} subtitle={subtitle} status={status} />
@@ -178,6 +180,7 @@ export function HubHeader({
   base = '/',
   sections = [],
   tabs,
+  indexKey,
   section,
   item,
   onNavigate = noop,
@@ -191,7 +194,7 @@ export function HubHeader({
       </div>
     );
   }
-  if (tabs) return <FlatHubHeader {...{ title, subtitle, eyebrow, status, base, tabs, item, onNavigate }} />;
+  if (tabs) return <FlatHubHeader {...{ title, subtitle, eyebrow, status, base, tabs, item, indexKey, onNavigate }} />;
   warnOnce(sections);
   const root = base.replace(/\/+$/, '') || '/';
   const pre = root === '/' ? '' : root;
