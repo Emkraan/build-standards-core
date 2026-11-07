@@ -1,11 +1,18 @@
 # Changelog
 
-## 2026-11-06 (v1.141.0, hub tab working marker and inline pending note colour)
+## 2026-11-06 (v1.142.0, hub tab working marker and inline pending note colour)
 
 Two look details from the ops center adoption, both inside the hub pieces; the plain `Spinner` and every other badge are unchanged.
 
 - The hub tab working marker is 9px with a 1.6px arc turning on 900ms (was 8px, 1.5px, 800ms). It is scoped to `.hub-head .tab-badge`, so no other spinner changes. The existing 5px gap between the marker and the count stays on its right.
 - `PendingReason inline` follows the text colour of the line it sits in (it is a next step, not a warning); the block form keeps the warning colour.
+
+## 2026-11-06 (v1.141.0, a public module needs no rbac)
+
+Opt in. A manifest that declares `"public": true` may omit `rbac`, and its pages may list an empty `requires`.
+
+- `validateManifest`, the JSON schema, the typings and `web-shell-manifest.md` 2.3: with `public: true` no `rbac` is needed and a page's `requires` may be empty (open to every caller); a declared `rbac` and any non-empty `requires` are still validated. `public` must be a boolean. Without `public: true` nothing changes: `rbac` and a non-empty `requires` stay required, with the same messages.
+- `effectiveLayout` gives a public module `public: true` and `rbac: null` (typed non-null so a consumer with no public module compiles unchanged); a module that is not public gets no `public` key and its `rbac` object as before. `validateRegistry` refuses a `permissionSource` or a peer id that names a public module, since it has no permission read. Tests: 8 across the module, validator and schema suites; five fail on the old code. Not run: a shell rendering a public module.
 
 ## 2026-11-07 (v1.140.0, a test race fix)
 

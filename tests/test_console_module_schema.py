@@ -54,6 +54,7 @@ def check(schema, value, root, path="$"):
             "object": isinstance(value, dict),
             "array": isinstance(value, list),
             "integer": isinstance(value, int) and not isinstance(value, bool),
+            "boolean": isinstance(value, bool),
         }[t]
         if not ok:
             return out + [f"{path}: not a {t}"]
@@ -152,6 +153,24 @@ class ConsoleModuleSchema(unittest.TestCase):
             m["client"] = "apps/alerts/" + folder
             self.assertEqual(self.problems(m), [])
 
+    def test_public_module_may_omit_rbac_and_requires(self):
+        m = self.load("alerts.module.json")
+        m["public"] = True
+        del m["rbac"]
+        for page in m["pages"]:
+            page["requires"] = []
+        self.assertEqual(self.problems(m), [])
+
+    def test_a_module_that_is_not_public_still_needs_rbac_and_requires(self):
+        m = self.load("alerts.module.json")
+        del m["rbac"]
+        self.assertTrue(self.problems(m))
+        m["public"] = False
+        self.assertTrue(self.problems(m))
+        m = self.load("alerts.module.json")
+        m["pages"][0]["requires"] = []
+        self.assertTrue(self.problems(m))
+
     def test_unknown_keys_pass_at_every_level(self):
         m = self.load("alerts.module.json")
         m["x-other"] = 1
@@ -180,6 +199,7 @@ class ConsoleModuleSchema(unittest.TestCase):
             "bad icon": lambda m: m.update(icon="megaphone"),
             "negative order": lambda m: m.update(order=-1),
             "wrong client": lambda m: m.update(client="packages/x"),
+            "public that is not a boolean": lambda m: m.update(public="yes"),
             "client folder neither client nor spa": lambda m: m.update(client="apps/alerts/web"),
             "client with a trailing path": lambda m: m.update(client="apps/alerts/spa/src"),
             "non ASCII name": lambda m: m.update(name="Caf" + chr(0xE9)),
