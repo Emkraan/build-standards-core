@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-07 (v1.151.0, the export entry: formula safe CSV and a spreadsheet workbook)
+
+A new optional entry, `kit-core/export`, with no dependency; an app that exports nothing never loads it. Lifted from the hub tool features (R5 and R9), made generic.
+
+- `csvCell`, `toCsv`, `downloadCsv`: every cell quoted, a text cell starting with = + - @ tab or CR gets a leading apostrophe, real numbers stay numeric, UTF-8 byte order mark on download.
+- `buildXlsx`, `downloadXlsx`: a workbook with a tab per table, bold frozen header, sized columns, numbers that stay numbers, text as inline strings (never formulas) and an optional Excel table. Written by a store-only zip (no compression library); pass `zip` to compress.
+- Not lifted: pivot tables. A hand-written pivot part passes the Open XML check yet crashes the spreadsheet app on open, so none ships until a generated file has been opened in the app on Mac and Windows.
+
 ## 2026-11-07 (v1.150.0, one processing indicator, action buttons by purpose, chart theme test)
 
 Lifts from the consumer inventory. All opt in: `installBusyTracking` is never called for you, and `data-act` only affects a button that carries it.
