@@ -54,7 +54,7 @@ jobs:
     # the same on every run. Keep the tag equal to the @playwright/test version in kit/package.json
     # (Playwright refuses to start when they differ). The baselines are made in this image only.
     container:
-      image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+      image: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e6da6d2674e5e89fa16516cb37d6fdd91372273d
       options: --ipc=host
     defaults:
       run:
@@ -66,7 +66,7 @@ jobs:
           fetch-depth: 0
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       # The image ships node, setup-node adds the npm cache so a registry hiccup does not fail the gate.
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
@@ -87,14 +87,14 @@ jobs:
       # missing (a new specimen), so a first set can be committed from a pull request.
       - name: Upload the baselines
         if: ${{ always() && (steps.update.outcome == 'success' || steps.compare.outcome == 'failure') }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: visual-baselines
           path: kit/visual/baselines/linux
           if-no-files-found: error
       - name: Upload the report and diffs
         if: ${{ always() && steps.compare.outcome == 'failure' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: visual-report
           path: |
@@ -104,7 +104,7 @@ jobs:
       # The built gallery, so a reviewer can open the reference without building it.
       - name: Upload the gallery
         if: ${{ github.event_name == 'pull_request' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: kit-gallery
           path: kit/dist-gallery
