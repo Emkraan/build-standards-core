@@ -12,6 +12,7 @@ core already states the rule.
 | Module contract (`console-modules`) | The per-module manifest ([web-shell-manifest.md](web-shell-manifest.md)): the validator, the registry checks, the permission source and peer helpers, the layout merge with its typed contracts, the generated registry and its staleness check | Code: `shell-packages/console-modules/`. The generator is `kit/scripts/build-registry.mjs` ([web-shell.md](web-shell.md) section 3) |
 | RBAC core (`rbac`) | What permission data means: accessible tabs, the grant ceiling, assignable roles, view-as, client access helpers | Code: `shell-packages/rbac/` |
 | Client package (`app-client`) | One sign-in boot, token renewal, the API client and its cache, resource hooks, the live feed strip | Code: `shell-packages/app-client/` (TypeScript source). Rules: [web-client-runtime.md](web-client-runtime.md) sections 1 to 3, 5 and 6, [web-shell.md](web-shell.md) section 8 |
+| Health package (`health`) | The two read patterns behind a status page: a stale-while-revalidate reader and the public liveness route | Code: `shell-packages/health/`. Opt in. Rules: section 5.11 |
 | Route conformance (`route-conformance`) | The proof for [web-shell-server.md](web-shell-server.md) section 1 rule 3: plain functions a consumer's own test calls | Code: `shell-packages/route-conformance/`. Test time only. Rules: section 5.9 |
 | Home pins package (`home-pins`) | The server side of a person's pinned pages: per person, only pages the manifests declare | Code: `shell-packages/home-pins/`. Opt in. Rules: section 5.8 |
 | External tools package (`external-tools`) | Tools that live outside the shell's repository, kept in data and shown in the launcher: validation, who may see a tool, the audited admin routes | Code: `shell-packages/external-tools/`. Opt in. Rules: section 5.7 |
@@ -253,6 +254,12 @@ export * from '@example/core-app-server';
    from the preset in force, so the same assertions hold under any naming. The core runs it in CI against
    `kit/tests/app-server/consumer-preset.example.json`; a consumer points it at its own preset file.
 
+### 5.11 Health reads
+
+Opt in. A status page must never wait on the thing it reports on: a slow or failing probe would take the page down with it.
+
+- `createSwrReader({ read, staleMs, now, log, onError })` answers from the last reading and never waits. `get()` answers `{ value, at, ageMs, refreshing, lastError }` at once (`value` is null and `ageMs` null before the first reading, which the page shows as "not checked yet" and never as healthy), and starts one refresh in the background when there is no reading or it is older than `staleMs` (default 30 s). A pass already running is shared, so any number of callers cause one read; a failed refresh keeps the last good reading with its real age, records `lastError`, logs it and never rejects; `refresh()` forces a pass and resolves when it is done.
+- `healthRoute(router, { version, critical, info, env, path, log })` mounts the public liveness route (no auth: it is for uptime monitors and the console, and it is the safety valve of a fail-soft boot, where a startup task that failed does not exit the process and this route says which subsystem is down). Each `critical` check answers `{ ok, ... }`; a check that answers not ok or throws makes the status `degraded` and the answer a 503. `info` readings never change the status. In production a failed check puts `error: "Unreachable"` on the wire and the real message only in the log, because the raw text can name a host, an account or a database. Mount it before the sign-in check and list it as a public path in the route conformance check (section 5.9).
 ### 5.10 Postgres with a directory token, user directory and user binding
 
 Opt in. A shell API with no database password, and grants that follow the person rather than their sign-in name.

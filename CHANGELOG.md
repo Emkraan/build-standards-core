@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-07 (v1.179.0, health reads: the stale-while-revalidate reader and the liveness route)
+
+Opt in, SH-11 from the Olympus shell source (K-source-refresh), the generic part. New package `shell-packages/health`. Documented in `web-shell-packages.md` section 5.11.
+
+- `createSwrReader` (answer from the last reading, one refresh at a time, keep the last good reading through a failed refresh, report its age) and `healthRoute` (public per-subsystem liveness, 503 only when a critical one is down, no raw error text in production). The source's estate page reads Azure Resource Graph and probes the owner's own apps (a subscription id and product names in its code), its tools directory reads that estate, and its health route is bound to its own database and secret box; those are the owner's product code and are not lifted. The read pattern all three share is.
+- Tests: 9 (the source's estate and tools tests exercise the owner's own probes, so these were written for the two primitives).
+
 ## 2026-11-07 (v1.178.0, Postgres with a directory token, the user directory and the user binding)
 
 Opt in, `app-server`, from the Olympus shell source (the code the owner's main gained after the earlier snapshot, K-source-refresh). Documented in `web-shell-packages.md` section 5.10.
@@ -44,6 +51,8 @@ Opt in, new package `shell-packages/announcements` from the Olympus shell source
 
 No issue: requested by the core consolidation session (build-standards-core-intake#117).
 
+<<<<<<< HEAD
+=======
 <<<<<<< HEAD
 =======
 <<<<<<< HEAD
@@ -137,6 +146,7 @@ Opt in, each off until configured: with none of them set the audit writes the sa
 
 `scripting-powershell.md`: the `ConvertFrom-Json` array rule now names the right cause, from the hub consumer's check against its scripts repo. Windows PowerShell 5.1 returns a JSON array from `ConvertFrom-Json` as a single object, so a pipeline wrapped in `@(...)` yields an array inside an array; assign the result, then enumerate `@($rows)`. It no longer reads as a variant of the PowerShell 7 `Invoke-RestMethod` note, which is a separate problem. The acceptance fixture (empty array, one object, several, counts 0, 1 and N) now runs on Windows PowerShell 5.1 specifically (`tests/fixtures/powershell-51/ConvertFromJsonShape.ps1`) and says so and skips on any other host, never passing in silence. Core CI has no 5.1 host, so it checks the fixture's shape and the skip; the 5.1 run is the consumer's.
 
+>>>>>>> origin/main
 >>>>>>> origin/main
 ## 2026-11-07 (v1.165.0, the run watches read a failed run once and pick the real error line)
 
