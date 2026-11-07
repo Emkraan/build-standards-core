@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-11-07 (v1.162.0, the audit chain and the sealed settings, with tests)
+
+Opt in, two new packages from the Olympus shell source (SH-4 and SH-5, K-source-refresh). Documented in `web-shell-packages.md` section 5.5.
+
+- `shell-packages/audit`: `createAudit` (write, transaction, list, listAll, count, stats, `verify`) over a Postgres `audit_log` with the HMAC hash chain, plus `stableStringify`, `canonicalizeEntry`, `csvCell` and `clientPublicIp`. The source was a CommonJS module bound to the shell's pool; here the database, the environment, the HMAC variable name (`hmacEnv`) and the address reader are options, and the chain queue is per `createAudit`. The audit log schema is in the file header.
+- `shell-packages/settings`: `createSecretbox` (AES-256-GCM, HKDF) and `createAppSettings`. `info`, which the source fixed to its own label, is now a required option: a consumer that already stores sealed values passes its old label to keep reading them.
+- One behaviour change from the source, in `open`: a sealed value with more than four segments now opens to `null` (the source ignored the extra segments). `seal` only ever writes four.
+- The source had no test for the secret box or the settings and only a smoke test for `verify`. Written here: 18 for the audit chain (intact, edited, removed, reordered, deleted head, key mode, wrong key, concurrent writes, non-fatal write, both transaction outcomes, the address reader, `csvCell`) and 8 for the settings, all in `test:server`, on in-memory fakes of the tables, not a real Postgres.
+- New exports only, nothing existing changes. Typings added.
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
+
 ## 2026-11-07 (v1.161.0, a consumer can validate the manifest keys it adds)
 
 Opt in, `console-modules`. `validateManifest` and `validateRegistry` take a second argument: `keys` maps a key to a validator `(value, manifest)` that returns a problem string, a list, or nothing, and runs only when the manifest carries the key; `strictKeys: true` rejects a top-level key that is neither a core key nor registered. Closes the gap where a malformed consumer key (a jobs path) passed core validation because unknown keys are carried untouched.

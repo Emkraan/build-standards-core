@@ -12,6 +12,8 @@ core already states the rule.
 | Module contract (`console-modules`) | The per-module manifest ([web-shell-manifest.md](web-shell-manifest.md)): the validator, the registry checks, the permission source and peer helpers, the layout merge with its typed contracts, the generated registry and its staleness check | Code: `shell-packages/console-modules/`. The generator is `kit/scripts/build-registry.mjs` ([web-shell.md](web-shell.md) section 3) |
 | RBAC core (`rbac`) | What permission data means: accessible tabs, the grant ceiling, assignable roles, view-as, client access helpers | Code: `shell-packages/rbac/` |
 | Client package (`app-client`) | One sign-in boot, token renewal, the API client and its cache, resource hooks, the live feed strip | Code: `shell-packages/app-client/` (TypeScript source). Rules: [web-client-runtime.md](web-client-runtime.md) sections 1 to 3, 5 and 6, [web-shell.md](web-shell.md) section 8 |
+| Audit package (`audit`) | A Postgres audit log with a tamper-evident hash chain: write, transaction, reads, `verify` | Code: `shell-packages/audit/`. Opt in. Rules: section 5.5 |
+| Settings package (`settings`) | A sealed secret box and plain application settings the console edits at runtime | Code: `shell-packages/settings/`. Opt in. Rules: section 5.5 |
 | Server package (`app-server`) | Group cache, directory token, CORS and origin guard, Server-Timing, gateway token check, request telemetry with its export retry, What's new handler | Code: `shell-packages/app-server/`. Rules: [web-api-runtime.md](web-api-runtime.md) sections 1 to 7 |
 
 The code is plain ESM with hand-written `.d.ts` files, no runtime dependency and no build step, so a CommonJS
@@ -239,6 +241,27 @@ export * from '@example/core-app-server';
    from the preset in force, so the same assertions hold under any naming. The core runs it in CI against
    `kit/tests/app-server/consumer-preset.example.json`; a consumer points it at its own preset file.
 
+### 5.5 Audit log and settings
+
+Opt in. Three small factories a tool's API takes when it keeps its own audit log or lets the console edit its settings.
+Each takes the database as `{ query(text, params) }` (the audit log also `getClient()` for transactions) and reads its
+environment from an `env` option that defaults to `process.env`.
+
+`createAudit({ db, env, hmacEnv, clientIp, log })` (`shell-packages/audit`) writes entries to the consumer's
+`audit_log` table (the columns are listed at the top of the file) and chains them:
+
+- Each entry's hash is HMAC-SHA256 over the canonical JSON of the entry including the previous hash. The canonical form sorts object keys recursively, because the actor, details and context are stored as `jsonb`, which does not keep key order. The key is the variable named by `hmacEnv` (default `AUDIT_HMAC_SECRET`); without it the hash is plain SHA-256 so a dev database still chains, and `verify` reports `secretMode`.
+- `write` is non-fatal: a logging failure resolves `null` and never breaks the mutation that triggered it. `transaction(work)` runs a change and its audit entries in one database transaction: `work(client, record)` makes its changes through `client` and calls `record` per entry, which throws on failure and rolls the change back. A returned `{ rollback: true }` rolls back too. A change that must not exist without its audit record uses `transaction`.
+- Writes are serialised by an in-process queue (a failed write does not stop the ones behind it), so two concurrent requests never chain off the same previous hash and fork the chain. The queue is per process: run one writer process, or add a cross-process lock around `write`.
+- Only the actor's email, name and object id are stored, never the token claims or groups. The caller address comes from `clientIp` (default `clientPublicIp`: strips the source port a platform proxy appends and the IPv4 mapping); never the first `X-Forwarded-For` entry, which the caller controls.
+- `verify` walks the chain in order and reports the first break: an entry edited after it was written, an entry removed or reordered, and a deleted head (the first surviving entry must link to the genesis hash). Rows with no hash (written before the chain) are skipped.
+- `csvCell` quotes an export cell and puts a leading apostrophe before `=`, `+`, `-`, `@`, tab or carriage return, so a spreadsheet does not run text written by whoever the entry is about.
+
+`createSecretbox({ info, masterEnv, env })` and `createAppSettings({ db, ttlMs, now })` (`shell-packages/settings`):
+
+- The secret box is AES-256-GCM with a key derived by HKDF from a master (the variable named by `masterEnv`, default `SECRETBOX_MASTER_KEY`). `info` is required and domain-separates the derivation, so one master backs several purposes; it must stay fixed because changing it orphans every stored secret. The sealed form is `v1.<iv>.<tag>.<ct>`. `open` answers `null` for no master, a wrong key, a tampered or malformed value and a value with extra segments, and never throws; callers treat `null` as not configured. Rotating the master means re-entering the secrets.
+- App settings are one `jsonb` value per name in an `app_settings` table, read through a cache of `ttlMs` (default 30 s) that a write to the same name clears. Secrets never go there: seal them and store the sealed string.
+
 ## 6. Tests
 
 | File | Proves |
@@ -248,6 +271,8 @@ export * from '@example/core-app-server';
 | `kit/tests/shell-rbac.test.ts` | The ceiling, fail-closed stale ids, the wildcard rule, view-as, tab computation and the client helpers |
 | `tests/test_console_module_schema.py` | The same manifest fixtures against the JSON schema ([web-shell-manifest.md](web-shell-manifest.md)) |
 | `kit/tests/app-client/*.test.ts` | The OIDC sign-in over a fake manager (callback and state routing, parameter stripping, refresh-only renewal, granted scopes, end-session fallback, account changes), and the sign-in boot (silent, redirect, loop guard, return target, module bounce, configuration errors), the API client (token, errors, single flight, cache, 401 handling, persistence), the store, `useResource` and the feed strip, with a fake MSAL client |
+| `kit/tests/audit/*.test.js` | The chain on an in-memory log: links off the genesis hash, intact verifies, an edited entry, a removed one, a reordered pair and a deleted head each break it, the key mode, concurrent writes never fork, a failed write is non-fatal and the queue survives, transactions commit and roll back, `csvCell`, the caller address |
+| `kit/tests/settings/*.test.js` | The secret box round trip, no master, wrong master, wrong `info`, tampered and malformed values, and the settings cache (ttl, write clears, fallback) |
 | `kit/tests/app-server/*.test.js` | The group cache (TTL, bound, single flight, fail closed, scoped lists), CORS and the origin guard, Server-Timing and route naming on real Express apps, the request telemetry (settings, record mapping, flush and close) and its export retry, the release notes handler, and the gateway token check against a local signing key, including a custom header, role and request property and the consumer preset. Run by `npm run test:server` inside `kit`, and again under a consumer preset by `npm run test:server:consumer` |
 
 The kit workflow runs on a change under `shell-packages/` or the manifest fixtures.
