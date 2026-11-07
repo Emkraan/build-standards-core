@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-06 (v1.139.0, the Kong gateway option and the minimal console module)
+
+Text only, `standards/web-shell-gateway.md`, from a consumer's shell move.
+
+- New 4.1 documents a gateway that mints no token (Kong): routing by path prefix, who may reach an API, the bearer token validated by the API itself, what `scopeEnv` and the scope value are, and exactly what `gatewayGuard` does and does not enforce (it checks the gateway token only; under Kong mount it with `enforce: false` or leave it out).
+- Section 1 records the shell-owned console module (launcher, Home and one `/me` aggregation answering `rbac.me`) as an allowed pattern for a consumer with no console API. It needs no code in the packages. A module with no `rbac` at all is not covered: the manifest still requires it.
+
 ## 2026-11-06 (v1.138.0, a consumer can refresh its own visual baselines)
 
 `kit/scripts/visual-update.mjs` takes a project root. Default behaviour for the core kit is unchanged.
