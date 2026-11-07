@@ -8,7 +8,7 @@
    beside the button, never in a dialog left open. */
 
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useConfirm } from '../overlays/dialogs';
 import { Badge } from '../primitives/marks';
 import { Button } from '../primitives/Button';
@@ -70,20 +70,27 @@ export function OverrideBar({ title, gate, detail, on = false, switchLabel, swit
   const { confirm: ask, dialog } = useConfirm();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inFlight = useRef(false);
   if (!gate) return null;
   const flip = async (next: boolean) => {
-    if (next) {
-      const ok = await ask({ title: confirm.title, body: confirm.body, confirmLabel: confirm.confirmLabel ?? 'Turn on', danger: true });
-      if (!ok) return;
-    }
-    setBusy(true);
-    setError(null);
+    if (inFlight.current) return;
+    inFlight.current = true;
     try {
-      await onToggle(next);
-    } catch (e) {
-      setError(errorText(e));
+      if (next) {
+        const ok = await ask({ title: confirm.title, body: confirm.body, confirmLabel: confirm.confirmLabel ?? 'Turn on', danger: true });
+        if (!ok) return;
+      }
+      setBusy(true);
+      setError(null);
+      try {
+        await onToggle(next);
+      } catch (e) {
+        setError(errorText(e));
+      } finally {
+        setBusy(false);
+      }
     } finally {
-      setBusy(false);
+      inFlight.current = false;
     }
   };
   return (
@@ -136,21 +143,29 @@ export function OverrideButton({ held, cover, label, undoLabel, busyLabel = 'Wor
   const { confirm: ask, dialog } = useConfirm();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inFlight = useRef(false);
   if (cover === 'all' || (!held && cover !== 'item')) return null;
   const undo = cover === 'item';
   const go = async () => {
-    if (!undo) {
-      const ok = await ask({ title: confirm.title, body: confirm.body, confirmLabel: confirm.confirmLabel ?? label, danger: true });
-      if (!ok) return;
-    }
-    setBusy(true);
-    setError(null);
+    // One write at a time, from the click on: a second click while the confirm is open or the write runs does nothing.
+    if (inFlight.current) return;
+    inFlight.current = true;
     try {
-      await onSet(undo ? false : true);
-    } catch (e) {
-      setError(errorText(e));
+      if (!undo) {
+        const ok = await ask({ title: confirm.title, body: confirm.body, confirmLabel: confirm.confirmLabel ?? label, danger: true });
+        if (!ok) return;
+      }
+      setBusy(true);
+      setError(null);
+      try {
+        await onSet(!undo);
+      } catch (e) {
+        setError(errorText(e));
+      } finally {
+        setBusy(false);
+      }
     } finally {
-      setBusy(false);
+      inFlight.current = false;
     }
   };
   return (

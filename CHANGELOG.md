@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-06 (v1.130.0, sessions and cards: session on it, curation, inbound files, CI test runner, page renderer)
+## 2026-11-06 (v1.136.0, sessions and cards: session on it, curation, inbound files, CI test runner, page renderer)
 
 Sessions and cards from rpmm23's inventory (OC-11, OC-12, OC-13, OC-14, OC-15, OC-21, OC-23). Opt in: every module is called by a consumer or configured by environment; `eng_backlog.py` gains behaviour for every consumer of the debt page (below).
 
@@ -11,6 +11,59 @@ Sessions and cards from rpmm23's inventory (OC-11, OC-12, OC-13, OC-14, OC-15, O
 - OC-15 `tools/ci_tests.py`: one process per test file, a live-state skip list printed every run, listed proofs that must exist.
 - OC-21 `engine/doc_render.py`: repo markdown to docs home HTML with ASCII and prose rules, a verified-against footer and a configurable internal-terms check. Written with tests (the reference had none).
 - OC-23: compared, already in `engine/handled.py` (identical module and tests apart from wording); nothing lifted.
+
+## 2026-11-06 (v1.135.0, owner roots ahead of main, the owner apply guard, the draft gate grammar)
+
+Gating and owner roots from rpmm23's inventory (OC-4, OC-5, OC-6, OC-19). Opt in: the hold needs the consumer's PR apply flow to record it and provider hooks to read a PR; with none, nothing changes.
+
+- OC-6, `owner_roots.py`: `set_pr_hold` records a root a PR applied from its branch; main's plan that would destroy it is marked "ahead of main, waiting on #N" and Apply is refused by the server and the worker; the hold clears when main contains the merge commit or the PR closes; an unreadable PR keeps it. Hooks `pr_state`, `contains`, `pr_url`, `owner_name`.
+- OC-5, the owner apply guard: `guard_refusal` and `owner_roots.py guard <name> <tier>` (exit 3) refuse a saved plan that deletes an address an open PR applied, whether or not the card was marked.
+- OC-19, `ahead_items`: an Action Center item for a PR left ahead of main for more than two days (`OWNER_ROOTS_AHEAD_CARD_S`).
+- OC-8 and OC-9, `lanes/run_watches.py`: a main watch (the newest completed run of a deploy or apply workflow on main raises one item with the failed job, its first error line and the run link; a later success closes it; cancelled and skipped runs count neither way) and a drift watch (the newest N scheduled runs all failed: one item naming each failing job; manual and branch runs never count). A watch that cannot be read is an item, never clear.
+- RL-1 and RL-2, `server/modules/status_source.py`: a missing, stale, unreadable or malformed status file reads as unknown, never in sync; a collector that loses its sign-in keeps its last reading marked stale and exits non-zero after the lapse limit (240 minutes).
+- OC-4, `lanes/pr_gate.py`: the draft gate block grammar the own-PR lane's gate plug-in loads, with two built-in kinds and a consumer kinds file. Written from the inventory text and test names, not from reference code; the branch-apply flow and the detection of an unrecorded branch apply are not lifted.
+
+## 2026-11-06 (v1.134.0, hub routing, run dialog and override defects)
+
+Fixes from the consumer review of v1.125.0. Opt in pieces only; a look that worked before is unchanged.
+
+- Hub routing: a section with no items no longer loops (it resolves to the Overview and gets no tab); `hubSectionProblems` reports a section or item key used twice and the first one wins; route segments are decoded when read and encoded when written; an item the section does not have selects the first tab.
+- `RunDialog`: `RunInput.publishesWhen` and `RunSpec.publishes` decide what publishes ahead of the `dry_run` and `mode` name rule; inputs that arrive after the form opened take their defaults and keep what was typed; submit honours the same guards as the button; a refusal from the last attempt no longer locks Run (only the `refusal` prop does) and clears when an input changes; a branch name is checked for plausible characters; `onClose` is not called when the app closed the dialog first.
+- `AreaCard` sends its link through the guarded link, so an unsafe `to` never reaches the app's link component; duplicate detail lines, section keys and item keys no longer collide as React keys. `OverrideBar` and `OverrideButton` send one write at a time from the click on.
+
+## 2026-11-06 (v1.133.0, roles and gate rules from the hub review)
+
+Text only, from the hub consumer's inventory. Standards: `rbac.md`, `ci-cd-release.md`, `scripting-powershell.md`.
+
+- `rbac.md`: grants follow their report or dashboard (removed on delete, swept after seeding); the View-As preview allows a pinned list of read-only query POSTs only; the Roles page gives a tool with its own area its own heading and lists every tool.
+- `ci-cd-release.md` 2.2: the local gate merges `origin/main` and runs every CI check, including the CI-only scripts, from one command.
+- `scripting-powershell.md`: do not wrap `ConvertFrom-Json` output in `@(...)` in the same expression. Already in core and recorded as such: the additive union of grants, route contracts, changelog lines from PR bodies, and the kit action-button styling.
+
+## 2026-11-06 (v1.132.0, the freeze lane: human bypass, CI-only exemption, GraphQL labeler, stale green)
+
+Four own-PR lane additions from rpmm23's inventory (OC-1, OC-2, OC-3, OC-16). Opt in: the bypass needs a store and a PR read (null default, the freeze holds), the CI-only exemption is off by default (`freeze_ci_only`); the labeler and stale-green changes take effect for every lane.
+
+- `lanes/freeze_bypass.py` (OC-1): one PR for this window only, or all own PRs until the next midnight in the owner's zone, on the override store: window-scoped, expiry read on every read, fail closed, own open PRs only, every change logged, a bypass logged once per head by the lane.
+- `lanes/freeze_ci_only.py` (OC-2): a PR that only changes how CI checks pull requests is not held by a freeze; both sides of each changed workflow, every workflow that names a changed script (also through another script), anything unreadable held. Written from the inventory description, not from reference code.
+- `override_by_me` (OC-3) reads the newest labeler from the GraphQL timeline; the REST events list truncates at about 300 entries. A read error is not an override.
+- `unstick` (OC-16): a ready PR the lane never merged gets its CI run re-run once per head after `stale_ready_min` minutes, then one alert.
+
+## 2026-11-06 (v1.131.0, delivery: cancelled runs, pre-push, pr-watch, release notes, shrink-only lists)
+
+Delivery steps from the hub's gaps D2, D3, U4, U5 and the route exemption list. Opt in: new `core-ci.py` subcommands and a parameters row; the merge gate template is copied once, so only a repo that copies it again changes.
+
+- Cancelled runs (D2): `core-ci.py ready SHA` reads the newest run of each check and treats a cancelled one as wait, not failure; `--rerun-cancelled` re-runs a head whose runs were cancelled, at most 3 attempts per workflow run. `wait-checks` and the progress counts agree. The `automerge.yml` template uses it, so a cancelled run no longer stalls a PR until someone re-runs it (rule pr-review-and-merge 1.22).
+- `core-ci.py pre-push` (U4): fails unless the branch contains the latest default branch, then runs commitlint, attribution with the private term guard, identity, ascii, changelog, changelog-entries and repo-checks locally (rule 1.21).
+- `core-ci.py pr-watch PR` (D3): watches a PR to a stop point (merged, checks failed, closed, conflict, timeout), prints a line at every change and ends with a report (rule 1.23).
+- `core-ci.py changelog-lines` (U5): release notes from `Changelog:` lines in PR bodies; docs, test, ci, chore, style and build commits ignored; one generic line when there is none (docs-and-changelog 1.10).
+- `core-ci.py list-shrinks BASE HEAD` and the parameters row `Shrink-only lists` (U3): an exemption list may lose entries and never gain one.
+
+## 2026-11-06 (v1.130.0, shell server rules)
+
+New `standards/web-shell-server.md`: the server rules a multi-module shell meets beyond the shared runtime, from the consumer inventory. Text only; each rule carries the proof a shell owns, and no rule is registered for enforcement yet.
+
+- Rights: the removal ceiling, a module opening on its own permission, every route gated or explained, group ids from role assignments only. Relays: a closed target list, forward the caller's token and status unchanged under an allowlist. Stores: sealed console secrets, a keyed audit chain, plain-text announcements, validated display-only external tools, per-user state keyed by lowercased identity. Health and boot: health never invented, paint from the persisted identity. Data and config: additive idempotent migrations, an unset environment is production, settings and vault references, per-item bulk results, one-process background jobs.
+- `rbac.md` section 6 and `web-api-runtime.md` section 7 gain a pointer line each. Code for the stores, the job leader and the scheduler follows in separate releases. Not run: the consumer's platform tree has no axe or live-action browser tests.
 
 ## 2026-11-06 (v1.129.0, the layout merge carries unknown manifest keys)
 

@@ -4,7 +4,7 @@ import axe from 'axe-core';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { HubHeader, hubPath, resolveHubRoute } from '../src';
+import { HubHeader, hubPath, hubSectionProblems, resolveHubRoute } from '../src';
 import type { HubSection } from '../src';
 
 const sections: HubSection[] = [
@@ -35,6 +35,55 @@ describe('resolveHubRoute', () => {
     expect(resolveHubRoute('/p', sections, 'automation')).toEqual({ kind: 'redirect', to: '/p/automation/jobs' });
     expect(resolveHubRoute('/p', sections, 'automation', 'missing')).toEqual({ kind: 'redirect', to: '/p/automation/jobs' });
     expect(resolveHubRoute('/p', sections, 'unknown-thing')).toEqual({ kind: 'redirect', to: '/p' });
+  });
+});
+
+describe('routing edge cases (H1 and the hub routing set)', () => {
+  const empty: HubSection[] = [{ key: 'none', label: 'None', items: [] }, ...sections];
+
+  it('never loops on a section with no items: hubPath and resolveHubRoute both land on the Overview', () => {
+    expect(hubPath('/p', empty, 'none')).toBe('/p');
+    const r = resolveHubRoute('/p', empty, 'none');
+    expect(r).toEqual({ kind: 'redirect', to: '/p' });
+    // following the redirect is the Overview, not another redirect
+    expect(resolveHubRoute('/p', empty)).toEqual({ kind: 'overview' });
+  });
+
+  it('decodes raw route segments and encodes keys it writes', () => {
+    const odd: HubSection[] = [{ key: 'a b', label: 'A B', items: [{ key: 'x/y', label: 'XY' }] }];
+    expect(hubPath('/p', odd, 'x/y')).toBe('/p/a%20b/x%2Fy');
+    const r = resolveHubRoute('/p', odd, 'a%20b', 'x%2Fy');
+    expect(r.kind).toBe('item');
+    expect(resolveHubRoute('/p', odd, 'a b', 'x/y').kind).toBe('item');
+    expect(resolveHubRoute('/p', odd, '%E0%A4%A', undefined).kind).toBe('redirect');
+  });
+
+  it('reports a key used twice, and keeps the first in every helper', () => {
+    const dup: HubSection[] = [
+      { key: 'a', label: 'A', items: [{ key: 'one', label: 'One' }, { key: 'one', label: 'One again' }] },
+      { key: 'a', label: 'A again', items: [{ key: 'two', label: 'Two' }] },
+      { key: 'one', label: 'Clash', items: [{ key: 'three', label: 'Three' }] },
+    ];
+    const problems = hubSectionProblems(dup);
+    expect(problems).toEqual(expect.arrayContaining(['section key "a" is used twice', 'item key "one" is used twice', 'item key "one" is also a section key']));
+    expect(hubSectionProblems(sections)).toEqual([]);
+    expect(hubPath('/p', dup, 'one')).toBe('/p/a/one');
+  });
+
+  it('shows no tab for an empty section and one tab for a section key used twice', () => {
+    render(<HubHeader title="Platform" base="/platform" sections={[...empty, { ...sections[0]!, label: 'Builds again' }]} onNavigate={vi.fn()} />);
+    expect(screen.getAllByRole('tab').map((t) => (t.textContent ?? '').replace(/working|\d+$/g, ''))).toEqual(['Overview', 'Builds and releases', 'Automation', 'Cost']);
+  });
+
+  it('selects the first item tab when the route names an item the section does not have', () => {
+    render(<HubHeader title="Platform" base="/platform" sections={sections} section="builds" item="nope" onNavigate={vi.fn()} />);
+    const tabs = within(screen.getByRole('tablist', { name: 'Builds and releases items' })).getAllByRole('tab');
+    expect(tabs.filter((t) => t.getAttribute('aria-selected') === 'true').map((t) => t.textContent)).toEqual(['Alpha']);
+  });
+
+  it('selects the item for an encoded route segment', () => {
+    render(<HubHeader title="Team" base="/team" tabs={[{ key: 'a b', label: 'AB' }, { key: 'c', label: 'C' }]} item="a%20b" onNavigate={vi.fn()} />);
+    expect(screen.getByRole('tab', { name: 'AB' }).getAttribute('aria-selected')).toBe('true');
   });
 });
 

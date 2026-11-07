@@ -103,6 +103,9 @@ $TrialRun = -not (([string]$TrialRun).Trim().ToLowerInvariant() -in @('false', '
 - `Invoke-RestMethod` on PowerShell 7 can return a top-level JSON array as one object. Assign the
   result first, then enumerate `@($rows)`. Mocks must reproduce the same shape.
 - An `if` used as an expression unrolls a one-element array to a scalar. Write `@(if ($c) { $list })`.
+- Do not wrap `ConvertFrom-Json` output in `@(...)` in the same expression: assign the result first, then enumerate
+  `@($rows)` as above, so a JSON array and a single object end up in the same shape. **Acceptance (test):** a
+  fixture with an empty array, one object and several objects gives `.Count` of 0, 1 and N.
 - `ConvertFrom-Json` turns ISO 8601 strings into dates and `ConvertTo-Csv` writes them in the host
   culture. Emit dates as `ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')`.
 - In double-quoted strings write `${Name}:` when a colon follows a variable.
