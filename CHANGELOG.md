@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-07 (v1.174.0, the announcements store and routes)
+
+Opt in, new package `shell-packages/announcements` from the Olympus shell source (SH-9, K-source-refresh). Documented in `web-shell-packages.md` section 5.6.
+
+- `validate`, `cleanText`, `cleanHref`, `toApi`, `stateOf`, `STATE_SQL`; `createAnnouncements({ db })` with the cached `listActive` and `invalidate`; `announcementRoutes(router, { db, audit, store, manage, caller })` for the audited admin routes. The source was CommonJS bound to the shell's pool, audit and permission modules; here each is an option, and `manage` is the consumer's gate (the source's permission id stays the consumer's). The audit option takes the `transaction` of `shell-packages/audit` or any object with the same shape.
+- The feed route that reads the announcements and the client panel stay in the consumer (the feed also folds in the consumer's own health items).
+- Tests: 14, adapted from the source's announcement tests (its feed tests stay with the consumer): validation, the states, every route gated, audited writes, the 503 rollback on every write, the retried create and the 409, check violations, the cache.
+- New package only, nothing existing changes. Typings added.
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
+
 ## 2026-11-07 (v1.173.0, rbac names the removal ceiling)
 
 Opt in, `rbac`. New exports `removalBeyond` and `removalCeilingMessage` (SH-3, K-source-refresh): deleting a role, an assignment or an override takes away the permissions it confers, so the caller must hold every one of them, and only a genuine wildcard holder removes the wildcard. It answers what `permissionsBeyond` answers (stale ids and unreadable text fail closed) with a message that says removal. Documented in `web-shell-packages.md` section 3; the rule itself is `rbac.md` section 3.
