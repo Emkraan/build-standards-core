@@ -1,12 +1,80 @@
 # Changelog
 
-## 2026-11-07 (v1.164.0, the documentation drift feed, a provider slot)
+## 2026-11-07 (v1.171.0, the documentation drift feed, a provider slot)
 
 Opt in: `OPSCENTER_DOCS_DRIFT_PROVIDER` (`path/to/file.py:ClassName`). Without it there is no route and nothing is imported (a null slot hides the tab).
 
 - `server/modules/docs_drift.py`: the core owns the summary shape (counts by status and basis, the 40 pages most behind, the pages with no verdict, per app README and changelog facts, the write preview filtered and trimmed), the status vocabulary (closed sets, an unknown value is kept), the cache (900 s), the one background refresh a GET starts (a GET never waits on the source) and the three routes.
 - The consumer owns where the report comes from: `docs_drift_source(now)`, optional `docs_drift_latest_run()` (the same run id means no second fetch) and `docs_drift_dispatch()` (absent: Run now answers 501; a refusal answers 409 with its reason). A failed fetch keeps the last good data and names the error.
 - `authorize(headers, action, key)` gates all three routes (`docs-drift.read`, `docs-drift.run`) and refuses everything until a provider supplies it.
+
+## 2026-11-07 (v1.170.0, the sprint trend and the closed sprint view)
+
+- `tracker/sprint_trend.py` (new, pure): the trend rows (the last six closed sprints oldest first, then the active one: items, done today, points, points done, carried into a later sprint), the recent closed sprint list (one per id, newest first, at most 12) and the id allow list for the per sprint view (400 for a non number, 404 for an id that is not a recent closed sprint). A sprint the source cannot read fails the trend instead of reading as empty.
+- `tracker/work.py`: `closed_sprints`, `sprint_trend` and `sprint(sprint_id)` read the Sprint field through the driver as the sprint view already does. The optional source `OPSCENTER_TRACKER_SPRINT_PROVIDER` (`tracker_closed_sprints(limit)`, `tracker_sprint_items(sprint_id)`) replaces that read for a tracker without such a field.
+- Routes: `GET /api/jira/sprints`, `GET /api/jira/sprint-trend`, `GET /api/jira/sprint?id=`. The first two are new; the third answers the active sprint exactly as before when `id` is absent.
+- "Done" is what the tracker shows today: there is no committed at start snapshot (a source can give one as `committed`).
+
+## 2026-11-07 (v1.169.0, the audit chain and the sealed settings, with tests)
+
+Opt in, two new packages from the Olympus shell source (SH-4 and SH-5, K-source-refresh). Documented in `web-shell-packages.md` section 5.5.
+
+- `shell-packages/audit`: `createAudit` (write, transaction, list, listAll, count, stats, `verify`) over a Postgres `audit_log` with the HMAC hash chain, plus `stableStringify`, `canonicalizeEntry`, `csvCell` and `clientPublicIp`. The source was a CommonJS module bound to the shell's pool; here the database, the environment, the HMAC variable name (`hmacEnv`) and the address reader are options, and the chain queue is per `createAudit`. The audit log schema is in the file header.
+- `shell-packages/settings`: `createSecretbox` (AES-256-GCM, HKDF) and `createAppSettings`. `info`, which the source fixed to its own label, is now a required option: a consumer that already stores sealed values passes its old label to keep reading them.
+- One behaviour change from the source, in `open`: a sealed value with more than four segments now opens to `null` (the source ignored the extra segments). `seal` only ever writes four.
+- The source had no test for the secret box or the settings and only a smoke test for `verify`. Written here: 18 for the audit chain (intact, edited, removed, reordered, deleted head, key mode, wrong key, concurrent writes, non-fatal write, both transaction outcomes, the address reader, `csvCell`) and 8 for the settings, all in `test:server`, on in-memory fakes of the tables, not a real Postgres.
+- New exports only, nothing existing changes. Typings added.
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
+
+## 2026-11-07 (v1.168.0, shell gaps from the console redesign against Olympus)
+
+Three default compatible kit changes from the redesign's measurements (the screenshots and `measurements.json` in the private handoff repo). Nothing changes for a consumer that does not use them, except the floors, which only act where the control was too small.
+
+- Card surface: `.card` reads `--card-bg` (default `--surface-1`, so unchanged). `data-card-surface="raised"` on any ancestor, or `--card-bg: var(--surface-2)`, puts cards one step up in the light theme (the soft blue-white `#f3f6fb` instead of white). In the dark theme the Olympus card already equals `--surface-1`.
+- The sidebar pin control is a target of at least 24px whatever its icon size (`.rail-pin` floor in `kit.css`, so it holds without the hub layer's padding).
+- The header search trigger keeps its own width: `.search-btn` does not shrink and `.header-center` will not go below its content, so a long title ellipsizes first.
+- Checked and not changed: the tool launcher already respects `prefers-reduced-motion` (nothing moves on its own), pauses on hover, focus and interaction, has a stop button, and `autoAdvanceMs: 0` turns it off. Olympus's copy of the launcher is byte identical to core's, so there is no difference to match.
+
+## 2026-11-07 (v1.168.0, dark launches: a launch can name its own job)
+
+- Registry key `job` (optional) on a dark launch. When several launches share one workflow, the dry run passes on that launch's job only, so an unrelated failing job in the same workflow no longer blocks Enable, and a skipped or missing job is never a pass. A malformed job name fails the whole registry closed (503), like any other bad entry. A launch without `job` behaves exactly as before and reads no job data.
+- The dry run in the card names the job it judged on. The live automation tab itself (an enabled launch leaves the Action Center and lives on its own tab, acting first) needs no new data: the cards already carry it.
+
+## 2026-11-07 (v1.167.0, the documentation audit gains rules R13, R15 and R16)
+
+Opt in, each off until configured: with none of them set the audit writes the same store as before (no extra internal thing appears).
+
+- R13 (retired but still marked Live): a page whose banner, status row or title says retired while a status badge or Status line still says Live, plus the home of every registry thing with `status: retired`. Runs when `dup_roots` is set or the registry has a retired thing. A truncated or malformed search fails closed.
+- R15 (retired or merged page outside the Archive): runs only when the registry sets `archive_page`; walks the real parent chain (the search lags a move), skips children that move with their parent.
+- R16 (backup mirror behind live code): config `mirror` (`repo`, `repo_slug`, `map` of `{repo_prefix, live_dir}`, `grace_hours` 30, `sync_pr_hours` 24). A file is drift only once unchanged for the grace window and its git blob sha differs from the mirror's main; a sync pull request open too long is named; an unreadable mirror is one line, never a pass.
+- The three surface on the Knowledge page only (low severity, pseudo things `_retired_live`, `_archive`, `_backup`), never on the Action Center. The consumer-only moved-page rule (R14) stays out.
+
+## 2026-11-07 (v1.166.0, the owner apply guard fails closed and covers open PRs)
+
+`opscenter/server/modules/owner_roots.py`.
+
+- Behaviour change: `owner_roots.py guard <name> <tier>` fails closed. A corrupt or unreadable status file refuses (exit 3, the cause printed), and so does a missing one unless `--allow-missing-status` is given. An install that runs the guard but never recorded a hold, and so has no status file, must add that flag or plan once first.
+- `guard ... --allow-pr N` (repeatable) skips a PR meant to lose its objects. Bad guard arguments exit 2.
+- An address matches with or without an index suffix on either side: a hold of `x.a` covers a delete of `x.a["k"]` and a hold of `x.a["k"]` covers a delete of `x.a`. Two different instances never match. This applies to the ahead of main mark and the guard.
+- Opt in provider hooks, null by default: `open_pr_addresses(root)` (the guard and the Apply refusal also refuse a delete of an address an open PR declares, and refuse when that read fails), `detect_ahead(root)` (a root with no hold record whose main plan destroys what an open PR holds gets a detected hold), `is_protection(id)` (a lock the plan itself deletes is left out of the deletes handed to the lift), `retry_kinds()` (the apply is retried after a lift when the failure is one of the provider's own error kinds, not only when the output says retry), and a third `before_apply` parameter, a private directory to record the lift in before the first lift. An exception from `before_apply` that carries a `state` attribute reaches `after_apply`, so a partial lift is restored.
+- Behaviour change: the lift lag retry needs a non empty state from `before_apply` (it used to be any state that is not None), so nothing lifted means no retry.
+- Terminal apply logging: `owner_roots.py --log-start --root <name>:<tier> --sha <sha> [--by <account>]` and `--log-done ... [--result <text>]` append `owner_apply_started` and `owner_apply_done` in the module's own record shape. `--by` defaults to the provider's expected identity.
+
+## 2026-11-07 (v1.162.0, script rule U6: the cause is Windows PowerShell 5.1)
+
+`scripting-powershell.md`: the `ConvertFrom-Json` array rule now names the right cause, from the hub consumer's check against its scripts repo. Windows PowerShell 5.1 returns a JSON array from `ConvertFrom-Json` as a single object, so a pipeline wrapped in `@(...)` yields an array inside an array; assign the result, then enumerate `@($rows)`. It no longer reads as a variant of the PowerShell 7 `Invoke-RestMethod` note, which is a separate problem. The acceptance fixture (empty array, one object, several, counts 0, 1 and N) now runs on Windows PowerShell 5.1 specifically (`tests/fixtures/powershell-51/ConvertFromJsonShape.ps1`) and says so and skips on any other host, never passing in silence. Core CI has no 5.1 host, so it checks the fixture's shape and the skip; the 5.1 run is the consumer's.
+
+## 2026-11-07 (v1.165.0, the run watches read a failed run once and pick the real error line)
+
+`lanes/run_watches.py` (OC-8 drift watch, OC-9 main watch). Two changes to what runs today:
+- Error lines: the first `Error:` line of the failed job's log is preferred (colour codes, timestamps and a box drawing prefix dropped), else the first `##[error]` annotation; the runner's `Process completed with exit code N.` line is never returned (a log with only that line gives no error line), and the word failed in ordinary output, `FATAL` and `Traceback` no longer match. The drift item now shows every error line of each failing job (up to 3), the main item the first.
+- API budget: a failed run's jobs and logs are read once and cached by repo, run id and attempt (newest 20 kept), so a run that stays red costs one runs list per collect instead of a jobs and log read each time. A log that could not be read is not cached and is read again. The cache lives in the process by default; the optional `cache_file` config key keeps it between runs of the `items` CLI. Job logs are read with `--allow-escape-sequences` (a gh without that flag is asked again without it).
+- `collect`, `main_item` and `drift_item` take an optional `cache`; the runs list asks for `attempt`. Tests port the scenarios of the reference main and drift watch tests onto `collect()`.
+
+## 2026-11-07 (v1.164.0, the CI-only freeze exemption holds more, and the draft gate checks an apply)
+
+Ops center lanes. `lanes/freeze_ci_only.py` (opt in, policy `freeze_ci_only`) now holds four kinds of pull request it used to exempt from a change freeze: a workflow on `pull_request_target` (it runs with the base branch's permissions and secrets), a reusable workflow whose file name starts with `_`, a workflow that names a deployment environment outside an allowlist (policy `own_pr_merge.freeze_ci_environments`, null: only `terraform-plan`; an environment block or an unreadable expression is held), and a workflow whose `on:` block is malformed (the reader has no YAML library, so it is now strict and fails closed). Changed behaviour: a consumer that relied on any of these being exempt sees them held during a freeze; set `freeze_ci_environments` to admit its own CI environments. Decisions cached under the old rules are made again. `lanes/pr_gate.py` gains a built-in `applied: <number>` kind: met only when that pull request is merged and a run of the apply workflow on the apply branch that started at or after the merge succeeded; a failed run after the merge is named. The workflow and branch come from policy `own_pr_merge.gate_apply_workflow` and `gate_apply_branch` (passed by the own-PR lane to a gate plug-in whose `evaluate` takes `config`) or from `OPSCENTER_GATE_APPLY_WORKFLOW` and `OPSCENTER_GATE_APPLY_BRANCH`; null by default, and the kind is then never met and says so.
 
 ## 2026-11-07 (v1.163.0, rbac matches a stored user row by directory object id)
 
