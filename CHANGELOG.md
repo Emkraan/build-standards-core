@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-07 (v1.163.0, the jobs package and the job leader)
+## 2026-11-07 (v1.164.0, the jobs package and the job leader)
 
 Opt in, two new pieces from the Olympus shell source: `shell-packages/jobs` (`createScheduler`, `jobRoutes`, the cron and Automation Account schedule helpers) and `createJobLeader` plus `jobLockKey` in `app-server`. Documented in `web-shell-packages.md` section 5.4.
 
@@ -10,6 +10,13 @@ Opt in, two new pieces from the Olympus shell source: `shell-packages/jobs` (`cr
 - Tests: 17 for the jobs package (the source's 16, plus the `offEnv` one) and 10 for the leader (the source's 9, plus the prefix one), added to `test:server`.
 
 No issue: requested by the core consolidation session (build-standards-core-intake#117, SH-15).
+
+## 2026-11-07 (v1.163.0, rbac matches a stored user row by directory object id)
+
+Opt in, `rbac`. New exports `cleanOid`, `userRowMatches` and `pickUserRow` from the Olympus shell source (SH-3 family, K-source-refresh): a grant to a person binds to their directory object id, the email stays a label and is the match only for rows with no object id. A caller whose token has no object id matches only rows that have none (fail closed); `pickUserRow` prefers the row bound to the id whatever the row order. Documented in `web-shell-packages.md` section 3.
+
+- New exports only, nothing existing changes; typings added.
+- Tests: the source's 5 (`kit/tests/rbac/oid-binding.test.js`, example addresses in place of the source's), run in `test:server`.
 
 ## 2026-11-07 (v1.162.0, the processing indicator can stop reads)
 
