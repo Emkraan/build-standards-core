@@ -618,6 +618,24 @@ function RunPane({ title, spec, refusal }: { title: string; spec: RunSpec; refus
   );
 }
 
+function HeaderLongTitleSpecimen() {
+  return (
+    <div className="gallery-hub-demo" style={{ maxWidth: 640 }}>
+      <Header title="Quarterly operations review for the platform and every tool it runs" subtitle="A title long enough to push on the search control" menuLabel="Open navigation">
+        <SearchTrigger />
+      </Header>
+      <article className="card" data-testid="card-surface">
+        <p className="gallery-note">A card on the default surface, and the raised one below.</p>
+      </article>
+      <div data-card-surface="raised">
+        <article className="card" data-testid="card-raised">
+          <p className="gallery-note">data-card-surface="raised" puts a card one step up in the light theme.</p>
+        </article>
+      </div>
+    </div>
+  );
+}
+
 function HubHeaderFlatSpecimen() {
   const [item, setItem] = useState('actions');
   const tabs = [{ key: 'actions', label: 'Actions', count: 2 }, { key: 'reviews', label: 'Reviews', live: true }, { key: 'team', label: 'Team' }];
@@ -2624,7 +2642,7 @@ function ShellSwitcherSpecimen() {
 function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[]; version: string }) {
   const [accent, setAccent] = useState<AppAccent>('cobalt');
   const [paletteResult, setPaletteResult] = useState('');
-  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars', 'hub-header', 'hub-overview', 'run-dialog', 'hub-header-flat', 'override', 'action-buttons', 'dashboard', 'dashboard-editor'];
+  const sections = ['theme', 'theme-system', 'buttons', 'marks', 'working', 'stat-tiles', 'stats', 'choices', 'tabs', 'fields', 'table', 'phone-cards', 'empty', 'overlays', 'chrome', 'confirm-action', 'search-routing', 'account-actions', 'charts', 'selection', 'states', 'form-sections', 'data-charts', 'graph', 'api-reference', 'surfaces', 'hub-home', 'facts', 'markdown', 'shell-switcher', 'record-preview', 'page-crash', 'palette-tiles', 'art-mark', 'filter-bulk', 'list-split', 'lane-board', 'palette-rank', 'tile-edge', 'freshness', 'month-grid', 'tips', 'when', 'page-help', 'stepper', 'timeline', 'context-panel', 'matrix-grid', 'month-grid-bars', 'hub-header', 'hub-overview', 'run-dialog', 'hub-header-flat', 'override', 'action-buttons', 'dashboard', 'dashboard-editor', 'header-long-title'];
   const paletteItems: PaletteItem[] = sections.map((s) => ({
     id: s,
     label: s.replace('-', ' ').replace(/^./, (c) => c.toUpperCase()),
@@ -2905,6 +2923,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="dashboard-editor" title="Dashboard editor (definition as JSON)">
           <DashboardEditorSpecimen />
+        </Specimen>
+        <Specimen id="header-long-title" title="Header with a long title, and the card surface">
+          <HeaderLongTitleSpecimen />
         </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">

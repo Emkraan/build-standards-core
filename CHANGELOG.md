@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-07 (v1.166.0, shell gaps from the console redesign against Olympus)
+
+Three default compatible kit changes from the redesign's measurements (the screenshots and `measurements.json` in the private handoff repo). Nothing changes for a consumer that does not use them, except the floors, which only act where the control was too small.
+
+- Card surface: `.card` reads `--card-bg` (default `--surface-1`, so unchanged). `data-card-surface="raised"` on any ancestor, or `--card-bg: var(--surface-2)`, puts cards one step up in the light theme (the soft blue-white `#f3f6fb` instead of white). In the dark theme the Olympus card already equals `--surface-1`.
+- The sidebar pin control is a target of at least 24px whatever its icon size (`.rail-pin` floor in `kit.css`, so it holds without the hub layer's padding).
+- The header search trigger keeps its own width: `.search-btn` does not shrink and `.header-center` will not go below its content, so a long title ellipsizes first.
+- Checked and not changed: the tool launcher already respects `prefers-reduced-motion` (nothing moves on its own), pauses on hover, focus and interaction, has a stop button, and `autoAdvanceMs: 0` turns it off. Olympus's copy of the launcher is byte identical to core's, so there is no difference to match.
+
 ## 2026-11-07 (v1.162.0, script rule U6: the cause is Windows PowerShell 5.1)
 
 `scripting-powershell.md`: the `ConvertFrom-Json` array rule now names the right cause, from the hub consumer's check against its scripts repo. Windows PowerShell 5.1 returns a JSON array from `ConvertFrom-Json` as a single object, so a pipeline wrapped in `@(...)` yields an array inside an array; assign the result, then enumerate `@($rows)`. It no longer reads as a variant of the PowerShell 7 `Invoke-RestMethod` note, which is a separate problem. The acceptance fixture (empty array, one object, several, counts 0, 1 and N) now runs on Windows PowerShell 5.1 specifically (`tests/fixtures/powershell-51/ConvertFromJsonShape.ps1`) and says so and skips on any other host, never passing in silence. Core CI has no 5.1 host, so it checks the fixture's shape and the skip; the 5.1 run is the consumer's.
