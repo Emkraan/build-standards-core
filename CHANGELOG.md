@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-06 (v1.136.0, a consumer can refresh its own visual baselines)
+
+`kit/scripts/visual-update.mjs` takes a project root. Default behaviour for the core kit is unchanged.
+
+- New options: `--root` (the consumer's Playwright project), `--baselines`, `--build`, `--workflow` and `--artifact`, so a consumer refreshes its own baselines against the kit it syncs with the same pinned image, the same full-set replacement and the same CI-first rule. A typo or a missing value now stops with a usage error before any CI run or container starts. The Docker run for another root mounts the repository, works inside the root and keeps `node_modules` in a volume of its own. Documented in the README beside the kit's gate.
+- `parseArgs` and `dockerArgs` are exported with typings; the Docker command for the kit itself is asserted identical to the old one. Tests: 9. Not run: a real CI or Docker baseline refresh on a consumer.
+
 ## 2026-11-06 (v1.134.0, the manifest client folder may be spa)
 
 Additive. `console.module.json` `client` accepts `apps/<dir>/spa` as well as `apps/<dir>/client`.
