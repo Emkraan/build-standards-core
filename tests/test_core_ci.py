@@ -503,6 +503,133 @@ class RepoChecksGate(Overlay):
         self.assertEqual(rc, 0, out)
 
 
+class DeliverySteps(Overlay):
+    """pre-push, pr-watch, changelog-lines and list-shrinks."""
+
+    def setUp(self):
+        super().setUp()
+        self.mod = load("core_ci_delivery", "templates/overlay/scripts/core-ci.py")
+
+    # ---- pr-watch: every stop point, and a report at the end
+    def watch(self, reads, timeout=100, interval=10):
+        it = iter(reads)
+        clock = {"t": 0}
+        out = []
+
+        def sleep(sec):
+            clock["t"] += sec
+
+        code, report = self.mod.watch_pr(
+            lambda: next(it),
+            timeout,
+            interval,
+            sleep=sleep,
+            clock=lambda: clock["t"],
+            out=out.append,
+        )
+        return code, report, out
+
+    def read(
+        self,
+        state="OPEN",
+        merged=False,
+        mergeable="MERGEABLE",
+        verdict="wait",
+        detail="running: ci",
+    ):
+        return {
+            "state": state,
+            "merged": merged,
+            "mergeable": mergeable,
+            "checks": (verdict, detail),
+        }
+
+    def test_pr_watch_stops_at_merged_with_a_report(self):
+        code, report, out = self.watch(
+            [self.read(), self.read(), self.read("MERGED", True, None, "green", "3 check(s) green")]
+        )
+        self.assertEqual(code, 0)
+        self.assertIn("merged", report)
+        self.assertEqual(len(out), 2)  # a line only when the state changed
+
+    def test_pr_watch_stops_on_failed_checks_conflict_closed_and_timeout(self):
+        code, report, _ = self.watch([self.read(verdict="fail", detail="failed: ci")])
+        self.assertEqual((code, "failed: ci" in report), (1, True))
+        code, report, _ = self.watch([self.read(mergeable="CONFLICTING")])
+        self.assertEqual((code, "merge the base branch in" in report), (4, True))
+        code, report, _ = self.watch([self.read("CLOSED", False)])
+        self.assertEqual((code, "closed without merging" in report), (3, True))
+        code, report, _ = self.watch([self.read()] * 50, timeout=60, interval=20)
+        self.assertEqual((code, "stopped after 1 min" in report), (5, True))
+
+    # ---- changelog-lines
+    def test_changelog_lines_come_from_changelog_lines_in_the_message_bodies(self):
+        self.commit(
+            "feat(x): a\n\nBody.\nChangelog: Reports open with a filter bar.", {"a.txt": "1\n"}
+        )
+        self.commit("fix: b\n\nchangelog: A retry no longer loops.", {"b.txt": "1\n"})
+        self.commit("docs: c\n\nChangelog: ignored, a docs commit", {"c.txt": "1\n"})
+        self.commit("chore: d\n\nChangelog: ignored, a chore commit", {"d.txt": "1\n"})
+        self.commit("feat: e", {"e.txt": "1\n"})  # no line: nothing from it
+        rc, out = self.ci("changelog-lines")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("- Reports open with a filter bar.", out)
+        self.assertIn("- A retry no longer loops.", out)
+        self.assertNotIn("ignored", out)
+
+    def test_changelog_lines_with_none_gives_one_generic_line(self):
+        self.commit("feat: nothing to say", {"a.txt": "1\n"})
+        rc, out = self.ci("changelog-lines")
+        self.assertEqual((rc, out), (0, "- Maintenance and internal changes."))
+
+    # ---- list-shrinks
+    def test_a_shrink_only_list_may_lose_entries_and_never_gain_one(self):
+        base = self.commit("chore: list", {"ex.txt": "# exemptions\nroutes/a\nroutes/b\n"})
+        shrunk = self.commit("chore: shrink", {"ex.txt": "# exemptions\nroutes/a\n"})
+        grown = self.commit("chore: grow", {"ex.txt": "# exemptions\nroutes/a\nroutes/c\n"})
+        rc, out = self.ci("list-shrinks", base, shrunk, "ex.txt")
+        self.assertEqual(rc, 0, out)
+        rc, out = self.ci("list-shrinks", shrunk, grown, "ex.txt")
+        self.assertEqual(rc, 1)
+        self.assertIn("new entry 'routes/c'", out)
+        rc, out = self.ci("list-shrinks", base, grown)
+        self.assertEqual(rc, 0)
+        self.assertIn("skip list-shrinks", out)
+
+    # ---- pre-push
+    def test_pre_push_needs_the_latest_main_and_every_check(self):
+        git(self.repo, "checkout", "-q", "-b", "feature")
+        self.commit("feat: mine", {"mine.txt": "1\n"})
+        git(self.repo, "checkout", "-q", "main")
+        self.commit("feat: theirs", {"theirs.txt": "1\n"})
+        git(self.repo, "checkout", "-q", "feature")
+        rc, out = self.ci("pre-push", "--base", "main", "--skip-fetch")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("does not contain main; merge main first", out)
+        git(self.repo, "merge", "-q", "-m", "chore: merge main", "main")
+        rc, out = self.ci("pre-push", "--base", "main", "--skip-fetch")
+        self.assertEqual(rc, 0, out)
+        for name in (
+            "commitlint",
+            "attribution",
+            "identity",
+            "ascii",
+            "changelog-entries",
+            "repo-checks",
+        ):
+            self.assertIn(f"pre-push: {name}", out)
+        self.assertIn("7 of 7 check(s) passed", out)
+
+    def test_pre_push_runs_the_attribution_and_identity_scripts(self):
+        self.commit("feat: ok", {"a.txt": "1\n"})
+        self.commit(
+            "fix: by %s\n\nCo-Authored-By: %s <x@example.com>" % (WORD, WORD), {"b.txt": "1\n"}
+        )
+        rc, out = self.ci("pre-push", "--base", self.base, "--skip-fetch")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("failed: attribution", out)
+
+
 class KitPeers(Overlay):
     def kit(self, extra=None):
         files = {
@@ -630,6 +757,86 @@ class RequiredChecks(Overlay):
             any("merge gate does not require" in p and "core-checks" in p for p in rep["problems"]),
             rep["problems"],
         )
+
+    def test_a_cancelled_run_is_neither_green_nor_a_failure(self):
+        v = self.mod.checks_verdict
+        self.assertEqual(v([("a", "completed", "cancelled")], [], [])[0], "wait")
+        self.assertIn("cancelled", v([("a", "completed", "cancelled")], [], [])[1])
+        self.assertEqual(
+            v([("a", "completed", "cancelled"), ("b", "completed", "failure")], [], [])[0], "fail"
+        )
+        self.assertEqual(
+            v([("a", "completed", "cancelled"), ("b", "in_progress", None)], [], [])[0], "wait"
+        )
+        self.assertEqual(self.mod.check_counts([("a", "completed", "cancelled")], []), (0, 1, 0))
+
+    def test_rerun_cancelled_reruns_the_newest_cancelled_run_of_a_workflow_up_to_the_limit(self):
+        calls = []
+
+        def run(args):
+            calls.append(args)
+
+            class R:
+                returncode = 0
+                stdout = json.dumps(
+                    [
+                        {
+                            "databaseId": 10,
+                            "conclusion": "cancelled",
+                            "attempt": 1,
+                            "workflowName": "ci",
+                            "status": "completed",
+                        },
+                        {
+                            "databaseId": 11,
+                            "conclusion": "success",
+                            "attempt": 1,
+                            "workflowName": "ci",
+                            "status": "completed",
+                        },
+                        {
+                            "databaseId": 20,
+                            "conclusion": "cancelled",
+                            "attempt": 1,
+                            "workflowName": "e2e",
+                            "status": "completed",
+                        },
+                        {
+                            "databaseId": 30,
+                            "conclusion": "cancelled",
+                            "attempt": 3,
+                            "workflowName": "lint",
+                            "status": "completed",
+                        },
+                        {
+                            "databaseId": 40,
+                            "conclusion": None,
+                            "attempt": 1,
+                            "workflowName": "build",
+                            "status": "in_progress",
+                        },
+                    ]
+                )
+
+            return R()
+
+        done = self.mod.rerun_cancelled("o/r", "abc", run)
+        self.assertEqual(
+            done, [20]
+        )  # ci was replaced by a green run, lint is out of attempts, build is running
+        self.assertIn(["run", "rerun", "20", "-R", "o/r"], calls)
+        self.assertFalse(
+            any(c[:2] == ["run", "rerun"] and c[2] in ("10", "30", "40") for c in calls)
+        )
+
+    def test_the_automerge_template_reads_the_head_through_ready_and_may_rerun(self):
+        text = (ROOT / "templates/overlay/.github/workflows/automerge.yml").read_text()
+        self.assertIn('core-ci.py" ready "$sha"', text)
+        self.assertIn("--rerun-cancelled", text)
+        self.assertIn("actions: write", text)
+        self.assertNotIn(
+            '$3 != "success"', text
+        )  # the inline conclusion filter that counted cancelled as failed is gone
 
     def test_verdict_and_wait(self):
         v = self.mod.checks_verdict
