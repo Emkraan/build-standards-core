@@ -47,11 +47,11 @@ class Render(unittest.TestCase):
         self.assertEqual(d.sanitize_check(out), [])
 
     def test_non_ascii_punctuation_is_normalized(self):
-        out = d.render("## T\n\nIt’s a “quote” — and an arrow → here…\n")
+        out = d.render("## T\n\nIt\u2019s a \u201cquote\u201d \u2014 and an arrow \u2192 here\u2026\n")
         self.assertTrue(out.isascii())
         self.assertIn("It's", out)
         self.assertIn("-&gt;", out)
-        self.assertEqual(d.to_ascii("a b"), "a b")
+        self.assertEqual(d.to_ascii("a\u00a0b"), "a b")
 
     def test_render_turns_a_prose_semicolon_into_a_comma_and_the_check_reports_one_that_is_left(
         self,
@@ -64,7 +64,7 @@ class Render(unittest.TestCase):
         self.assertIn(
             "back-to-back <hr> (renders as a double line)", d.sanitize_check("<p>x</p><hr>\n<hr>")
         )
-        self.assertTrue(any(p.startswith("non-ASCII") for p in d.sanitize_check("<p>☃</p>")))
+        self.assertTrue(any(p.startswith("non-ASCII") for p in d.sanitize_check("<p>\u2603</p>")))
 
     def test_internal_terms_come_from_configuration(self):
         self.assertEqual(d.sanitize_check("<p>see the Runbook Tool</p>"), [])

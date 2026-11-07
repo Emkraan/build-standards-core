@@ -184,7 +184,7 @@ class Items(unittest.TestCase):
         self.assertFalse(f.dismiss("chat:none", "x"))
 
     def test_items_are_ascii(self):
-        f.harvest_messages([chat(text="it’s “broken” — see")], "chat")
+        f.harvest_messages([chat(text="it\u2019s \u201cbroken\u201d \u2014 see")], "chat")
         for v in f.action_items(NOW)[0].values():
             self.assertTrue(json.dumps(v).isascii())
 
