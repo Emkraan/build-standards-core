@@ -105,7 +105,7 @@ class Harvest(unittest.TestCase):
         }
         share = {
             "id": "x2",
-            "from_addr": "noreply@example.com",
+            "from_addr": "noreply@docs.example.com",
             "from_name": "Alex Doe via Docs",
             "subject": "Alex shared 'Plan.docx' with you",
             "received": "2026-11-06T09:30:00Z",
