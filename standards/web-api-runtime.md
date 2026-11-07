@@ -146,3 +146,7 @@ flood each fail; the dev identity is refused when the environment is unset or `s
 - [ ] Lightweight exporter, not the all-in-one distribution.
 - [ ] One shared runtime package, no runtime dependencies.
 - [ ] Bearer rules written, dev identity only in development or test.
+
+## 9. Route contracts
+
+1. **Every route has a contract, the API reference is generated and checked, and the exemption list only shrinks.** A contract names a route's method and path, who may call it, its input and its answers, and is bound to the handler where the route is declared. The API reference is generated from the contracts and a CI step fails when it differs from the committed copy. A route that predates the rule sits on an exemption list; a new route never joins it, so the list only shrinks to zero (`core-ci.py list-shrinks` fails a pull request that adds an entry, the parameters row `Shrink-only lists` names the file). **Acceptance (test):** a route with no contract fails the coverage check, a generated reference that differs fails, and a pull request that adds an exemption fails `list-shrinks`.

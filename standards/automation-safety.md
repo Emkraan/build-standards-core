@@ -48,6 +48,12 @@ Related: [PR Review and Merge](pr-review-and-merge.md), [Live Actions](live-acti
 10. **Human gates stay human.** Automation never approves its own work, bypasses a red required check, applies a delete or grants access on the owner's behalf. It prepares the evidence and a button, and the owner's click is the sign-off. One standing exception, recorded as the owner's decision (2026-10-21): the bounded own-PR merge lane (section 8) may bypass the approval count on the owner's own pull requests, and nothing else.
     - Prevents: automation turning a review into a formality.
     - Acceptance (review): every bypass or privileged call is reachable only from an owner action, or is the bounded own-PR lane's approval-count bypass, logged per merge.
+11. **An installer replaces a script by renaming a new file into place.** An installer or updater replaces a script by writing a new file beside it and renaming it over the old one, and never overwrites a script that may be running. A shell reads a script incrementally from its open file, so rewriting it in place changes the running copy halfway through.
+   - Prevents: a running job that reads half of an old script and half of a new one after an install, and a failure nobody can reproduce.
+   - Acceptance (repo check RC026): repo check RC026 reports an install or deploy shell script that writes a shell or Python file in place with no rename.
+12. **An automatic lint fix comes from an AST codemod or a vetted rule list.** An unattended lint fix is limited to a short list of rules that cannot change behaviour, comes from a codemod that reads the syntax tree and never a regular expression, and a finding it refuses still reaches the pull request. A tool with no autofix is listed in the fix table, not skipped.
+   - Prevents: a nightly fix that rewrites code by pattern, changes behaviour and is merged because it looked mechanical, and findings that vanish because the fixer would not touch them.
+   - Acceptance (repo check RC027): repo check RC027 reports a codemod or autofix script that rewrites code with a regular expression or sed.
 
 ## 2. Ownership and direction
 

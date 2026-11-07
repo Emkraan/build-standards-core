@@ -1461,6 +1461,36 @@
       "acceptance": "With the switch on, a green owner pull request with no hold merges and logs the bypass; a red or pending check, a freeze, a hold label, an escalation or another author leaves it unmerged; with the switch off nothing merges."
     },
     {
+      "id": "automation-safety.1.11",
+      "ref": "automation-safety.md 1.11",
+      "title": "An installer replaces a script by renaming a new file into place",
+      "statement": "An installer or updater replaces a script by writing a new file beside it and renaming it over the old one, and never overwrites a script that may be running. A shell reads a script incrementally from its open file, so rewriting it in place changes the running copy halfway through.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "repo-check",
+        "id": "RC026"
+      },
+      "acceptance": "repo check RC026 reports an install or deploy shell script that writes a script file in place with no rename."
+    },
+    {
+      "id": "automation-safety.1.12",
+      "ref": "automation-safety.md 1.12",
+      "title": "An automatic lint fix comes from an AST codemod or a vetted rule list",
+      "statement": "An unattended lint fix is limited to a short list of rules that cannot change behaviour, comes from a codemod that reads the syntax tree and never a regular expression, and a finding it refuses still reaches the pull request. A tool with no autofix is listed in the fix table, not skipped.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "repo-check",
+        "id": "RC027"
+      },
+      "acceptance": "repo check RC027 reports a codemod or autofix script that rewrites code with a regular expression or sed."
+    },
+    {
       "id": "pr-review-and-merge.1.1",
       "ref": "pr-review-and-merge.md 1.1",
       "title": "Commit only the files you changed, by name",
@@ -2869,6 +2899,20 @@
       "acceptance": "repo check RC013 reports every stateful deploy workflow that does not re-run CI or wait on a CI job, or that has no health check."
     },
     {
+      "id": "ci-cd-release.6.1",
+      "ref": "ci-cd-release.md 6.1",
+      "title": "The post-deploy smoke retries for a bounded window, then fails",
+      "statement": "The post-deploy smoke retries for a bounded window (default 5 minutes), passes on the first good answer and fails when the window ends, naming each attempt. A deploy that stays red raises one alert through the notification path.",
+      "level": "must",
+      "applies_to": [
+        "all"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a smoke that fails twice and then answers passes; one that never answers fails after the window with each attempt listed and raises one alert."
+    },
+    {
       "id": "ci-cd-release.7",
       "ref": "ci-cd-release.md 7",
       "title": "Rollback rebuilds a tag through the same gate",
@@ -3564,6 +3608,20 @@
         "kind": "test"
       },
       "acceptance": "A token signed with another algorithm, a wrong audience and an unknown key id flood each fail; the dev identity is refused when the environment is unset or staging."
+    },
+    {
+      "id": "web-api-runtime.9.1",
+      "ref": "web-api-runtime.md 9.1",
+      "title": "Every route has a contract and the exemption list only shrinks",
+      "statement": "Every route has a contract bound to its handler, the API reference is generated from the contracts and checked in CI, and the exemption list for older routes only shrinks to zero.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a route with no contract fails the coverage check, a generated reference that differs fails, and a pull request that adds an exemption fails core-ci.py list-shrinks."
     },
     {
       "id": "web-client-runtime.1.1",

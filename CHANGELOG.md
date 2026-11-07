@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-06 (v1.127.0, delivery: cancelled runs, pre-push, pr-watch, release notes, shrink-only lists)
+## 2026-11-06 (v1.129.0, delivery: cancelled runs, pre-push, pr-watch, release notes, shrink-only lists)
 
 Delivery steps from the hub's gaps D2, D3, U4, U5 and the route exemption list. Opt in: new `core-ci.py` subcommands and a parameters row; the merge gate template is copied once, so only a repo that copies it again changes.
 
@@ -9,6 +9,15 @@ Delivery steps from the hub's gaps D2, D3, U4, U5 and the route exemption list. 
 - `core-ci.py pr-watch PR` (D3): watches a PR to a stop point (merged, checks failed, closed, conflict, timeout), prints a line at every change and ends with a report (rule 1.23).
 - `core-ci.py changelog-lines` (U5): release notes from `Changelog:` lines in PR bodies; docs, test, ci, chore, style and build commits ignored; one generic line when there is none (docs-and-changelog 1.10).
 - `core-ci.py list-shrinks BASE HEAD` and the parameters row `Shrink-only lists` (U3): an exemption list may lose entries and never gain one.
+
+## 2026-11-06 (v1.128.0, rules: smoke retries, route contracts, installs, codemods)
+
+Four rules from the consumers' inventories, with two repo checks. Opt in: the rules are reported by core-status; RC026 and RC027 run on the local-ops stack only and fail a PR only where a consumer sets the `Repo checks gate` row.
+
+- ci-cd-release 6.1: the post-deploy smoke retries for a bounded window (default 5 minutes), then fails; a deploy that stays red raises one alert.
+- web-api-runtime 9.1: every route has a contract, the reference is generated and checked, and the exemption list only shrinks (`core-ci.py list-shrinks`).
+- automation-safety 1.11 and RC026: an installer replaces a script by renaming a new file into place, never overwrites one that may be running.
+- automation-safety 1.12 and RC027: an unattended lint fix comes from an AST codemod or a vetted rule list; a codemod that rewrites by regular expression, or an autofix script that edits files in place with sed, is flagged.
 
 ## 2026-11-06 (v1.126.0, override store window and extra, problems provider healthy items)
 
