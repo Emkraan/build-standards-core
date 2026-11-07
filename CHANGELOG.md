@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-07 (v1.177.0, route conformance: the proof for every route gated or stated)
+
+Test time only, SH-12 from the Olympus shell source (K-source-refresh). New package `shell-packages/route-conformance`, the engine of the test `web-shell-server.md` section 1 rule 3 asks for. Documented in `web-shell-packages.md` section 5.9.
+
+- `routeTable`, `checkRoutes`, `checkGates`, `checkAuthOrder`, `checkNoLiteralKeys`, `checkNoErrorDetail`, `DEFAULT_GATE`. The source was one test file hard coded to its own routes and files; here each check is a function over a folder or a source string and answers a list of problems, so a consumer writes its own allowlist and pinned files and calls them.
+- Beyond the source: a reason that is empty fails, `minRoutes` catches a moved routes folder, the router name and the gate pattern are options, and a public path list replaces the fixed one. The source's classification of its own routes stays in its test.
+- Tests: 12, each check driven on fixture sources written to a temp folder so every failure branch runs (the source's test ran only against its own tree, where nothing was failing).
+
 ## 2026-11-07 (v1.176.0, home pins: the server routes and the client stores)
 
 Opt in, SH-13 from the Olympus shell source (K-source-refresh). Documented in `web-shell-packages.md` section 5.8 and the client table in section 4.
@@ -28,6 +36,8 @@ Opt in, new package `shell-packages/announcements` from the Olympus shell source
 
 No issue: requested by the core consolidation session (build-standards-core-intake#117).
 
+<<<<<<< HEAD
+=======
 <<<<<<< HEAD
 =======
 ## 2026-11-07 (v1.173.0, rbac names the removal ceiling)
@@ -124,6 +134,7 @@ Opt in, each off until configured: with none of them set the audit writes the sa
 - API budget: a failed run's jobs and logs are read once and cached by repo, run id and attempt (newest 20 kept), so a run that stays red costs one runs list per collect instead of a jobs and log read each time. A log that could not be read is not cached and is read again. The cache lives in the process by default; the optional `cache_file` config key keeps it between runs of the `items` CLI. Job logs are read with `--allow-escape-sequences` (a gh without that flag is asked again without it).
 - `collect`, `main_item` and `drift_item` take an optional `cache`; the runs list asks for `attempt`. Tests port the scenarios of the reference main and drift watch tests onto `collect()`.
 
+>>>>>>> origin/main
 >>>>>>> origin/main
 >>>>>>> origin/main
 ## 2026-11-07 (v1.164.0, the CI-only freeze exemption holds more, and the draft gate checks an apply)

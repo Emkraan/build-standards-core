@@ -12,6 +12,7 @@ core already states the rule.
 | Module contract (`console-modules`) | The per-module manifest ([web-shell-manifest.md](web-shell-manifest.md)): the validator, the registry checks, the permission source and peer helpers, the layout merge with its typed contracts, the generated registry and its staleness check | Code: `shell-packages/console-modules/`. The generator is `kit/scripts/build-registry.mjs` ([web-shell.md](web-shell.md) section 3) |
 | RBAC core (`rbac`) | What permission data means: accessible tabs, the grant ceiling, assignable roles, view-as, client access helpers | Code: `shell-packages/rbac/` |
 | Client package (`app-client`) | One sign-in boot, token renewal, the API client and its cache, resource hooks, the live feed strip | Code: `shell-packages/app-client/` (TypeScript source). Rules: [web-client-runtime.md](web-client-runtime.md) sections 1 to 3, 5 and 6, [web-shell.md](web-shell.md) section 8 |
+| Route conformance (`route-conformance`) | The proof for [web-shell-server.md](web-shell-server.md) section 1 rule 3: plain functions a consumer's own test calls | Code: `shell-packages/route-conformance/`. Test time only. Rules: section 5.9 |
 | Home pins package (`home-pins`) | The server side of a person's pinned pages: per person, only pages the manifests declare | Code: `shell-packages/home-pins/`. Opt in. Rules: section 5.8 |
 | External tools package (`external-tools`) | Tools that live outside the shell's repository, kept in data and shown in the launcher: validation, who may see a tool, the audited admin routes | Code: `shell-packages/external-tools/`. Opt in. Rules: section 5.7 |
 | Announcements package (`announcements`) | Platform announcements for the console feed strip: validation, the cached active read, the audited admin routes | Code: `shell-packages/announcements/`. Opt in. Rules: section 5.6 |
@@ -250,6 +251,19 @@ export * from '@example/core-app-server';
    from the preset in force, so the same assertions hold under any naming. The core runs it in CI against
    `kit/tests/app-server/consumer-preset.example.json`; a consumer points it at its own preset file.
 
+### 5.9 Route conformance
+
+Test time only. [web-shell-server.md](web-shell-server.md) section 1 rule 3 says every server route carries a
+server-side permission gate or a stated reason, and that a test proves it. `shell-packages/route-conformance` is that
+test's engine: each function reads the route sources and answers a list of problem strings, empty when the code
+conforms, so the consumer's test is `assert.deepEqual(checkRoutes({ routesDir, allow }), [])`.
+
+- `checkRoutes({ routesDir, allow })` fails a route that has neither a gate (`requirePermission(`, `requireAnyPermission(` or `requireWildcard(` by default; `gate` replaces the pattern) nor a reason in `allow`, a route declaration the parser could not read (a computed path, a router under another name: reported, never skipped, so the table cannot silently shrink), a reason that is empty, and a reason listed for a route that no longer exists. `minRoutes` catches a routes folder that moved.
+- `checkGates(table, file, expected)` pins one file's routes to an exact set, each on its own gate (a console layout write on its own permission, an admin route on the wildcard). A route added to the file fails until it is classified; a route moved to a broader gate fails.
+- `checkAuthOrder({ indexSource })` fails a router mounted before the sign-in check, and any path before it that is not in `publicPaths` (default `/api/`, `/api/health`, `/api/version`).
+- `checkNoLiteralKeys(dirs)` fails a literal string as an HMAC key. `checkNoErrorDetail(file)` fails a permission middleware that answers 500 with a `details:` field.
+
+The parser reads `router.<verb>("<path>", ...)` declarations on one router variable (default `router`; the `router` option renames it) from the `.js`, `.mjs` and `.cjs` files of one folder. It does not run the server, so a gate applied by a mount (`app.use("/api/x", gate, router)`) is not seen: list those routes in `allow` with that reason.
 ### 5.8 Home pins
 
 Opt in. `homePinRoutes(router, { db, gate, caller, modules, max })` (`shell-packages/home-pins`) mounts `GET /pins`,
