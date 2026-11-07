@@ -2000,3 +2000,19 @@ an export, each route the client calls, the editor's problems and disabled Save,
 save, the preview, reset and delete only where they apply, and axe; the gallery specimen
 `dashboard-editor` carries baselines in both themes.
 
+### Shell details: card surface, pin target, header search
+
+- **Card surface.** A card reads `--card-bg`, which defaults to `--surface-1`. A consumer whose cards sit
+  one step up in the light theme sets `--card-bg: var(--surface-2)`, or puts `data-card-surface="raised"`
+  on any ancestor; nothing else about the card changes, and the default look is unchanged.
+- **Targets.** The sidebar pin control is at least 24 by 24 pixels whatever its icon size.
+- **Header search.** The search trigger never shrinks below its own width. A long title gives way first
+  and ends in an ellipsis; the title block is the flexible part of the header, the search is not.
+- **The tool launcher** moves on its own only while the person is not hovering, focusing or interacting
+  with it, never under `prefers-reduced-motion`, and always has a stop button; `autoAdvanceMs: 0` turns
+  it off.
+
+**Acceptance:** a browser test measures the search trigger against its natural width with a long title,
+the card colours under both surfaces in the light theme, and the pin target at 24 pixels with a
+12 by 16 icon; the launcher's motion rules are covered by its component tests.
+
