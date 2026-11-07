@@ -140,6 +140,8 @@ body { font-family: var(--font-sans); color: var(--text-primary); }
 }
 .sidebar-brand-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--fw-bold); color: var(--text-primary); }
 .rail-pin:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+/* A target of at least 24px whatever the icon size, so the control stays reachable without the hub layer's padding. */
+.rail-pin { box-sizing: border-box; min-inline-size: 24px; min-block-size: 24px; align-items: center; justify-content: center; padding: 5px; }
 .sidebar-nav { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; padding: var(--space-2); }
 .nav-section + .nav-section { margin-top: var(--space-3); }
 .nav-group-label {
@@ -221,11 +223,13 @@ body { font-family: var(--font-sans); color: var(--text-primary); }
   min-height: var(--topbar-h); padding: 0 var(--space-6); background: rgb(var(--canvas-rgb) / 0.86);
   backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-subtle);
 }
-.header-titles { min-width: 0; }
+.header-titles { min-width: 0; flex: 0 1 auto; }
 .header-title, .header-sub { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .header-title { font-weight: var(--fw-semibold); color: var(--text-primary); }
 .header-sub { font-size: var(--fs-label); color: var(--text-secondary); }
-.header-center { display: flex; flex: 1; justify-content: center; min-width: 0; }
+.header-center { display: flex; flex: 1 1 auto; justify-content: center; min-width: min-content; }
+/* The search trigger never shrinks below its own width: a long title gives way first (it ellipsizes). */
+.search-btn { flex: none; }
 .header-actions { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; }
 .hub-btn {
   display: inline-flex; align-items: center; gap: var(--space-2); min-height: 32px; padding: 0 var(--space-3);
@@ -287,9 +291,12 @@ body { font-family: var(--font-sans); color: var(--text-primary); }
 }
 
 /* ---- Card ---- */
+/* The card surface. Default: the first raised surface. A consumer whose cards sit one step up in the light theme
+   (the soft blue-white instead of white) sets `--card-bg`, or puts data-card-surface="raised" on any ancestor. */
+[data-card-surface="raised"] { --card-bg: var(--surface-2); }
 .card {
   position: relative; min-width: 0; padding: var(--space-5); border-radius: var(--radius-xl);
-  border: 1px solid var(--border-default); background-color: var(--surface-1); box-shadow: var(--elev-1);
+  border: 1px solid var(--border-default); background-color: var(--card-bg, var(--surface-1)); box-shadow: var(--elev-1);
   background-image: var(--card-sheen); color: var(--text-primary);
 }
 .card-elevated { box-shadow: var(--elev-3); }
