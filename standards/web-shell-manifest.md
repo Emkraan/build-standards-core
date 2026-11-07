@@ -13,7 +13,7 @@ manifest carries on top of the seven kit keys, and the rules around them.
 
 One file per module, `apps/<dir>/console.module.json`. A second module hosted inside an app lives in
 `apps/<dir>/modules/<id>/console.module.json`: the folder name equals `id` and `client` equals
-`apps/<dir>/client`. The file is plain ASCII (tab, LF, CR and 0x20 to 0x7e); any other byte stops the
+`apps/<dir>/client` (or `apps/<dir>/spa`). The file is plain ASCII (tab, LF, CR and 0x20 to 0x7e); any other byte stops the
 generator. A `$schema` key is an editor hint, deleted before validation and never written to the registry.
 
 The generator reads every manifest and writes it, untouched apart from `$schema`, into the generated
@@ -56,7 +56,7 @@ draws the fallback), an order is an integer from 0 to 100000.
 | `accent` | yes | `brand`, `amber`, `blue`, `cyan`, `fuchsia`, `gold`, `green`, `indigo`, `orange`, `red`, `rose`, `teal` or `violet` | Becomes `data-app-accent` while the module is active |
 | `icon` | yes | icon name | Launcher and rail switch icon |
 | `order` | yes | order | Position in the launcher and the registry; lower first |
-| `client` | yes | `^apps/[a-z0-9-]+/client$` | The client package that draws the module; its own stylesheet is scoped from it ([web-shell.md](web-shell.md) section 5) |
+| `client` | yes | `^apps/[a-z0-9-]+/(client\|spa)$` | The client package that draws the module (the folder is `client`, or `spa` for an app that already names it so); its own stylesheet is scoped from it ([web-shell.md](web-shell.md) section 5) |
 | `api`, `rbac` | yes | sections 2.2 and 2.3 | Where the module's API is and how the shell reads the caller's permissions |
 | `groups`, `pages`, `links`, `tiles` | yes | arrays, may be empty | Sections 2.4 to 2.7 |
 | `landing` | no | each entry is a declared page route | Ordered routes to land on; the first one the caller can open wins |
@@ -177,7 +177,7 @@ validator. A host that has no such validator runs them as a `--validate-with` ho
 | `pages[].group` and `links[].group` name a declared group | manifest |
 | Page `route`, group `key`, `dashboard/key` of a tile, and home action and feed keys are unique; item `key` is unique among pages and links | manifest |
 | `home.actions[].route` and every `landing` entry is a declared page route | manifest |
-| `client` equals `apps/<dir>/client` of the folder that holds the file; `id` equals the folder for `modules/<id>/` | file |
+| `client` equals `apps/<dir>/client` or `apps/<dir>/spa` of the folder that holds the file; `id` equals the folder for `modules/<id>/` | file |
 | The registry holds one of each `id` and holds the `console` module | registry |
 | A `permissionSource` target exists, owns its permissions (no chains), and has the same `shape`, `base`, `me`, `api.gateway`, `api.prefix` and `api.scopeEnv` | registry |
 | A peer id names a module that exists, owns its permissions, is not shape `console`, and is neither the module itself nor its permission source | registry |
