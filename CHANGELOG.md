@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-07 (v1.162.0, the jobs package and the job leader)
+## 2026-11-07 (v1.163.0, the jobs package and the job leader)
 
 Opt in, two new pieces from the Olympus shell source: `shell-packages/jobs` (`createScheduler`, `jobRoutes`, the cron and Automation Account schedule helpers) and `createJobLeader` plus `jobLockKey` in `app-server`. Documented in `web-shell-packages.md` section 5.4.
 
@@ -10,6 +10,14 @@ Opt in, two new pieces from the Olympus shell source: `shell-packages/jobs` (`cr
 - Tests: 17 for the jobs package (the source's 16, plus the `offEnv` one) and 10 for the leader (the source's 9, plus the prefix one), added to `test:server`.
 
 No issue: requested by the core consolidation session (build-standards-core-intake#117, SH-15).
+
+## 2026-11-07 (v1.162.0, the processing indicator can stop reads)
+
+Closes the gap against the hub's handoff tag (the busy bar spec): the indicator's Cancel request, the stop on leaving the page and the server run stop. A second opt in on top of `installBusyTracking`; with `cancel` off nothing changes.
+
+- `installBusyTracking({ cancel: true, keepAcrossRoutes, runs })`: a counted read carries a signal of its own joined with the caller's. `cancelBusyReads()` stops every stoppable read with `Request cancelled`; `abortStaleReads(route)` stops reads that outlived their route after 1.5 s of grace (`The page was left before the request finished`); a hidden page stops them all. Writes are never stopped. `runs` tags the server's stoppable runs with an id header and tells the server on every stop (a beacon, then a keepalive POST).
+- `BusyIndicator`: a chip with the elapsed seconds after 5 s and, while a stoppable read is in flight, a Cancel request button; the bar itself still takes no input. `route`, `cancelAfterMs`, `cancelLabel` and `onCancel` are props.
+- `BusyState` gains `cancellable`; `CANCELLED_MESSAGE`, `LEFT_PAGE_MESSAGE` and `NAV_GRACE_MS` are exported.
 
 ## 2026-11-07 (v1.161.0, a consumer can validate the manifest keys it adds)
 
