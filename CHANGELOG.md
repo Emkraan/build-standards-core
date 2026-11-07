@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-07 (v1.165.0, route conformance: the proof for every route gated or stated)
+
+Test time only, SH-12 from the Olympus shell source (K-source-refresh). New package `shell-packages/route-conformance`, the engine of the test `web-shell-server.md` section 1 rule 3 asks for. Documented in `web-shell-packages.md` section 5.9.
+
+- `routeTable`, `checkRoutes`, `checkGates`, `checkAuthOrder`, `checkNoLiteralKeys`, `checkNoErrorDetail`, `DEFAULT_GATE`. The source was one test file hard coded to its own routes and files; here each check is a function over a folder or a source string and answers a list of problems, so a consumer writes its own allowlist and pinned files and calls them.
+- Beyond the source: a reason that is empty fails, `minRoutes` catches a moved routes folder, the router name and the gate pattern are options, and a public path list replaces the fixed one. The source's classification of its own routes stays in its test.
+- Tests: 12, each check driven on fixture sources written to a temp folder so every failure branch runs (the source's test ran only against its own tree, where nothing was failing).
+- New package only, nothing existing changes. Typings added.
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
+
 ## 2026-11-07 (v1.164.0, the CI-only freeze exemption holds more, and the draft gate checks an apply)
 
 Ops center lanes. `lanes/freeze_ci_only.py` (opt in, policy `freeze_ci_only`) now holds four kinds of pull request it used to exempt from a change freeze: a workflow on `pull_request_target` (it runs with the base branch's permissions and secrets), a reusable workflow whose file name starts with `_`, a workflow that names a deployment environment outside an allowlist (policy `own_pr_merge.freeze_ci_environments`, null: only `terraform-plan`; an environment block or an unreadable expression is held), and a workflow whose `on:` block is malformed (the reader has no YAML library, so it is now strict and fails closed). Changed behaviour: a consumer that relied on any of these being exempt sees them held during a freeze; set `freeze_ci_environments` to admit its own CI environments. Decisions cached under the old rules are made again. `lanes/pr_gate.py` gains a built-in `applied: <number>` kind: met only when that pull request is merged and a run of the apply workflow on the apply branch that started at or after the merge succeeded; a failed run after the merge is named. The workflow and branch come from policy `own_pr_merge.gate_apply_workflow` and `gate_apply_branch` (passed by the own-PR lane to a gate plug-in whose `evaluate` takes `config`) or from `OPSCENTER_GATE_APPLY_WORKFLOW` and `OPSCENTER_GATE_APPLY_BRANCH`; null by default, and the kind is then never met and says so.
