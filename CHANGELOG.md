@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-06 (v1.137.0, sessions and cards: session on it, curation, inbound files, CI test runner, page renderer)
+## 2026-11-06 (v1.141.0, sessions and cards: session on it, curation, inbound files, CI test runner, page renderer)
 
 Sessions and cards from rpmm23's inventory (OC-11, OC-12, OC-13, OC-14, OC-15, OC-21, OC-23). Opt in: every module is called by a consumer or configured by environment; `eng_backlog.py` gains behaviour for every consumer of the debt page (below).
 
@@ -12,6 +12,34 @@ Sessions and cards from rpmm23's inventory (OC-11, OC-12, OC-13, OC-14, OC-15, O
 - OC-21 `engine/doc_render.py`: repo markdown to docs home HTML with ASCII and prose rules, a verified-against footer and a configurable internal-terms check. Written with tests (the reference had none).
 - OC-23: compared, already in `engine/handled.py` (identical module and tests apart from wording); nothing lifted.
 
+## 2026-11-07 (v1.140.0, a test race fix)
+
+Test only: `pool_view_test` no longer races the background refresh threads of the previous test, which wrote a stale answer into the cache after it was cleared and failed `test_a_failed_read_is_unknown_never_a_pass` now and then in CI.
+
+## 2026-11-06 (v1.139.0, the Kong gateway option and the minimal console module)
+
+Text only, `standards/web-shell-gateway.md`, from a consumer's shell move.
+
+- New 4.1 documents a gateway that mints no token (Kong): routing by path prefix, who may reach an API, the bearer token validated by the API itself, what `scopeEnv` and the scope value are, and exactly what `gatewayGuard` does and does not enforce (it checks the gateway token only; under Kong mount it with `enforce: false` or leave it out).
+- Section 1 records the shell-owned console module (launcher, Home and one `/me` aggregation answering `rbac.me`) as an allowed pattern for a consumer with no console API. It needs no code in the packages. A module with no `rbac` at all is not covered: the manifest still requires it.
+
+## 2026-11-06 (v1.138.0, a consumer can refresh its own visual baselines)
+
+`kit/scripts/visual-update.mjs` takes a project root. Default behaviour for the core kit is unchanged.
+
+- New options: `--root` (the consumer's Playwright project), `--baselines`, `--build`, `--workflow` and `--artifact`, so a consumer refreshes its own baselines against the kit it syncs with the same pinned image, the same full-set replacement and the same CI-first rule. A typo or a missing value now stops with a usage error before any CI run or container starts. The Docker run for another root mounts the repository, works inside the root and keeps `node_modules` in a volume of its own. Documented in the README beside the kit's gate.
+- `parseArgs` and `dockerArgs` are exported with typings; the Docker command for the kit itself is asserted identical to the old one. Tests: 9. Not run: a real CI or Docker baseline refresh on a consumer.
+
+## 2026-11-06 (v1.134.0, the manifest client folder may be spa)
+
+## 2026-11-06 (v1.137.0, the manifest client folder may be spa)
+
+Additive. `console.module.json` `client` accepts `apps/<dir>/spa` as well as `apps/<dir>/client`.
+
+- `validateManifest`, the JSON schema and `web-shell-manifest.md` take either folder name, for an app that already names its client folder `spa`. Nothing that validated before stops validating. The generator reads the field as plain data and needed no change. Tests: accepted for both names, rejected for another folder name and for a trailing path, in the TypeScript and the Python schema suites.
+
+<<<<<<< HEAD
+=======
 ## 2026-11-06 (v1.136.0, an OIDC sign-in beside MSAL in the client package)
 
 `shell-packages/app-client`: `createOidcAuth(manager, options)` and `createOidcClient(manager)`. Opt in; `createAuth` and the MSAL path are unchanged.
@@ -38,6 +66,7 @@ Fixes from the consumer review of v1.125.0. Opt in pieces only; a look that work
 - `RunDialog`: `RunInput.publishesWhen` and `RunSpec.publishes` decide what publishes ahead of the `dry_run` and `mode` name rule; inputs that arrive after the form opened take their defaults and keep what was typed; submit honours the same guards as the button; a refusal from the last attempt no longer locks Run (only the `refusal` prop does) and clears when an input changes; a branch name is checked for plausible characters; `onClose` is not called when the app closed the dialog first.
 - `AreaCard` sends its link through the guarded link, so an unsafe `to` never reaches the app's link component; duplicate detail lines, section keys and item keys no longer collide as React keys. `OverrideBar` and `OverrideButton` send one write at a time from the click on.
 
+>>>>>>> origin/main
 ## 2026-11-06 (v1.133.0, roles and gate rules from the hub review)
 
 Text only, from the hub consumer's inventory. Standards: `rbac.md`, `ci-cd-release.md`, `scripting-powershell.md`.
