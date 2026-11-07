@@ -1564,6 +1564,79 @@ def rc025(repo):
     return out
 
 
+INSTALL_PATH = re.compile(r"install|deploy|setup|update|upgrade", re.I)
+SCRIPT_TARGET = r"[^\s\"';|&]*\.(?:sh|bash|py)\b"
+IN_PLACE_WRITE = re.compile(
+    r"^\s*(?:cp|install|rsync)\b[^#|;&]*?\s(" + SCRIPT_TARGET + r")[\"']?\s*$"
+    r"|^\s*(?:cat|echo|printf)\b[^#|;&]*>\s*(" + SCRIPT_TARGET + r")"
+    r"|^\s*tee\b[^#|;&]*?\s(" + SCRIPT_TARGET + r")"
+)
+STAGED = re.compile(r"\.(?:new|tmp|partial|staged)\b|\$\{?(?:tmp|TMP|new|NEW|staged)|mktemp")
+
+
+def rc026(repo):
+    """An installer replaces a script by renaming a new file into place (automation-safety.md 1.11): an install, deploy or
+    update shell script that writes a shell or Python file at its final name, with no rename (mv) anywhere in the file."""
+    out = []
+    for p in repo.select(exts=(".sh", ".bash"), tests=False):
+        if not INSTALL_PATH.search(p):
+            continue
+        text = repo.text(p)
+        lines = text.splitlines()
+        if re.search(r"^\s*(?:mv|ln\s+-[a-z]*f[a-z]*)\s", text, re.M):
+            continue
+        for i, ln in enumerate(lines):
+            if is_comment(ln) or skipped(lines, i):
+                continue
+            m = IN_PLACE_WRITE.search(ln)
+            target = next((g for g in m.groups() if g), "") if m else ""
+            if target and not STAGED.search(target) and not STAGED.search(ln):
+                out.append(
+                    (
+                        p,
+                        i + 1,
+                        "a script is written in place; write a new file beside it and rename it over the old one",
+                    )
+                )
+    return out
+
+
+CODEMOD_PATH = re.compile(r"codemod", re.I)
+FIXER_PATH = re.compile(r"auto-?fix|lint-?fix|fixer", re.I)
+REGEX_REWRITE = re.compile(r"\bre\.(?:sub|subn)\(|\.replace\(\s*/|\.replaceAll\(\s*/")
+IN_PLACE_EDIT = re.compile(r"\bsed\s+-i|\bperl\s+-[a-z]*p[a-z]*i")
+
+
+def rc027(repo):
+    """An automatic lint fix is an AST codemod (automation-safety.md 1.12): a script named codemod that rewrites code with a
+    regular expression, and a fix, autofix or lint-fix script that edits files in place with sed or perl, are flagged. A
+    regular expression that only normalises text in an autofix lane (a key, a catalog line) is not a code rewrite."""
+    out = []
+    for p in repo.select(exts=(".py", ".js", ".mjs", ".ts", ".sh"), tests=False):
+        pat = (
+            REGEX_REWRITE
+            if CODEMOD_PATH.search(p)
+            else IN_PLACE_EDIT
+            if FIXER_PATH.search(p)
+            else None
+        )
+        if pat is None:
+            continue
+        lines = repo.text(p).splitlines()
+        for i, ln in enumerate(lines):
+            if is_comment(ln) or skipped(lines, i):
+                continue
+            if pat.search(ln) or (pat is REGEX_REWRITE and IN_PLACE_EDIT.search(ln)):
+                out.append(
+                    (
+                        p,
+                        i + 1,
+                        "a codemod rewrites code with a regular expression or sed; read the syntax tree instead, or list the rule as vetted",
+                    )
+                )
+    return out
+
+
 ROUTE_PATH = re.compile(r"""<Route\b[^>]*?\bpath=["'{`]+([^"'`}]+)""")
 LOCK_NAME = "routes.lock.json"
 
@@ -1647,6 +1720,8 @@ CHECKS = {
     "RC023": ("client-side count, age or duration threshold", "ops-center-layout.md 1.4", rc023),
     "RC024": ("route removed without a redirect", "ops-center-layout.md 1.9", rc024),
     "RC025": ("override fails open or is turned off by a job", "ops-center-layout.md 1.10", rc025),
+    "RC026": ("a script is installed in place", "automation-safety.md 1.11", rc026),
+    "RC027": ("a codemod rewrites by regular expression", "automation-safety.md 1.12", rc027),
 }
 
 
