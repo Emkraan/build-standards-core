@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-06 (v1.133.0, roles and gate rules from the hub review)
+
+Text only, from the hub consumer's inventory. Standards: `rbac.md`, `ci-cd-release.md`, `scripting-powershell.md`.
+
+- `rbac.md`: grants follow their report or dashboard (removed on delete, swept after seeding); the View-As preview allows a pinned list of read-only query POSTs only; the Roles page gives a tool with its own area its own heading and lists every tool.
+- `ci-cd-release.md` 2.2: the local gate merges `origin/main` and runs every CI check, including the CI-only scripts, from one command.
+- `scripting-powershell.md`: do not wrap `ConvertFrom-Json` output in `@(...)` in the same expression. Already in core and recorded as such: the additive union of grants, route contracts, changelog lines from PR bodies, and the kit action-button styling.
+
 ## 2026-11-06 (v1.132.0, the freeze lane: human bypass, CI-only exemption, GraphQL labeler, stale green)
 
 Four own-PR lane additions from rpmm23's inventory (OC-1, OC-2, OC-3, OC-16). Opt in: the bypass needs a store and a PR read (null default, the freeze holds), the CI-only exemption is off by default (`freeze_ci_only`); the labeler and stale-green changes take effect for every lane.
