@@ -2,7 +2,7 @@
 definitions_test.py
 Purpose: Definitions are data: shipped defaults are seeded by version; an unedited copy is replaced when the version rises; an edited
          copy is never overwritten; an edit can be reset to the shipped copy; an export round trips through an import; a bad
-         definition (a bad key, no title, a panel with no stream or measure, too many panels, not JSON) is refused whole and stores
+         definition (a bad key, no title, a panel with no stream, or with neither a measure nor a spec, too many panels, not JSON) is refused whole and stores
          nothing; a missing or broken store reads as empty.
 Run:     python3 definitions_test.py
 """
@@ -94,6 +94,7 @@ class Store(unittest.TestCase):
             json.dumps({"key": "x", "title": "t", "panels": "no"}),
             json.dumps(dash(panels=[{"title": "p", "stream": "", "measure": "m"}])),
             json.dumps(dash(panels=[{"title": "p", "stream": "s"}])),
+            json.dumps(dash(panels=[{"title": "p", "stream": "s", "spec": "not an object"}])),
             json.dumps(
                 dash(panels=[{"title": "p", "stream": "s", "measure": "m"}] * (d.MAX_PANELS + 1))
             ),

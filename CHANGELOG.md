@@ -1,12 +1,23 @@
 # Changelog
 
-## 2026-11-07 (v1.157.0, the reports client follows the server routes)
+## 2026-11-07 (v1.158.0, the reports client follows the server routes)
 
 Aligns the `kit-core/reports` client with the routes the core server registers (the registry has only GET and POST). Opt in, same entry.
 
 - `createDashboardsClient`: a save is `POST <base>/<key>` with `{ def }`, a create `POST <base>` with `{ def }`, a delete `POST <base>/<key>/delete`, a reset `POST <base>/<key>/reset`; `exportAll` unwraps `{ dashboards }`. No PUT and no DELETE.
 - A panel names a `measure` (a number tile) or a `spec` (the report query for a chart or table); one is required, `validateDefinition` says so in the server's words. Panels also carry `timeField` and any other stat option the server passes through.
 - "View rows" shows only for a panel whose result carries a `rowsSpec`, and `onRows` and `onFutureRows` hand the app that spec; a drill link can carry a `spec` instead of a `measure`.
+
+## 2026-11-07 (v1.157.0, the optional modules at the server: routes, providers and the off state)
+
+Opt in: `OPSCENTER_LOG_INTAKE` and `OPSCENTER_REPORTS`. With neither set nothing is imported, no route or background task is added and no file is created (a test runs a fresh interpreter and checks the module list).
+
+- `server/optional.py` registers only the modules that are on; `routes.build()` calls it last.
+- Log intake routes: the device post `POST /api/log-streams/<key>/ingest` (key through the provider's `verify_key`, null refuses every key; `Retry-After` kept), stream list, read, create, update, schema (dry run and confirm), delete, the sink checks and the marked test row. Two background tasks: the forwarder flush (only with a sink) and retention.
+- Reports routes: dashboards list, save, delete, reset, export, import (a bad definition refuses the whole batch) and run, plus an ad hoc report query. Shipped dashboards seed by version from the provider; an edited copy is never overwritten.
+- Providers (`OPSCENTER_LOG_INTAKE_PROVIDER`, `OPSCENTER_REPORTS_PROVIDER`, `path/to/file.py:ClassName`, every method optional). `authorize(headers, action, key)` gates every admin and dashboard route and has a null default that refuses everything, so a route is closed until a consumer says who may use it.
+- Writes are POST (the registry has no PUT or DELETE). A panel may carry a `spec` instead of a `measure` (definitions validation).
+- To confirm with the reference owner: a new stream keeps its sink data for 180 days by default (the reference code and its test say 180); its inventory text said 90. The report time zone defaults to UTC (`OPSCENTER_REPORTS_TZ`).
 
 ## 2026-11-07 (v1.156.0, dashboards: the editor, definitions import and export, the client)
 
