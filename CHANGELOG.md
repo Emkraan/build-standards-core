@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-11-07 (v1.165.0, home pins: the server routes and the client stores)
+
+Opt in, SH-13 from the Olympus shell source (K-source-refresh). Documented in `web-shell-packages.md` section 5.8 and the client table in section 4.
+
+- `shell-packages/home-pins`: `homePinRoutes`, `validatePin`, `declaredRoutes`, `MAX_PINS`. The source route was bound to the shell's pool, permission module and manifest registry; here the database, the gate, the caller and the manifests are options.
+- `app-client`: `createServerPinsStore` (the shape of the kit's `PinsStore`, over the pins routes) and `createRecents` (per account, in this browser). The source stores were module singletons bound to the shell's API client and account module; here each is a factory over a request function, a key prefix and an account reader, and `createServerPinsStore` gains `reset` and drops the answer of a read started before it.
+- The header button and the Home block stay the kit's (`PinButton`, `HomeBlocks`); the source's own copies are the consumer's to retire.
+- Tests: 8 for the routes (the source's, adapted, plus the limit option and a missing email) and 11 for the client stores. `test:server` runs `tests/*/*.test.js`.
+- New exports only, nothing existing changes. Typings added.
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
+
 ## 2026-11-07 (v1.164.0, the CI-only freeze exemption holds more, and the draft gate checks an apply)
 
 Ops center lanes. `lanes/freeze_ci_only.py` (opt in, policy `freeze_ci_only`) now holds four kinds of pull request it used to exempt from a change freeze: a workflow on `pull_request_target` (it runs with the base branch's permissions and secrets), a reusable workflow whose file name starts with `_`, a workflow that names a deployment environment outside an allowlist (policy `own_pr_merge.freeze_ci_environments`, null: only `terraform-plan`; an environment block or an unreadable expression is held), and a workflow whose `on:` block is malformed (the reader has no YAML library, so it is now strict and fails closed). Changed behaviour: a consumer that relied on any of these being exempt sees them held during a freeze; set `freeze_ci_environments` to admit its own CI environments. Decisions cached under the old rules are made again. `lanes/pr_gate.py` gains a built-in `applied: <number>` kind: met only when that pull request is merged and a run of the apply workflow on the apply branch that started at or after the merge succeeded; a failed run after the merge is named. The workflow and branch come from policy `own_pr_merge.gate_apply_workflow` and `gate_apply_branch` (passed by the own-PR lane to a gate plug-in whose `evaluate` takes `config`) or from `OPSCENTER_GATE_APPLY_WORKFLOW` and `OPSCENTER_GATE_APPLY_BRANCH`; null by default, and the kind is then never met and says so.
