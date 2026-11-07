@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-07 (v1.164.0, the external tools store and routes)
+
+Opt in, new package `shell-packages/external-tools` from the Olympus shell source (SH-10, K-source-refresh). Documented in `web-shell-packages.md` section 5.7.
+
+- `validateTool`, `toTool`, `publicTool`, `auditShape`, `visibleTools`, `externalToolRoutes`, `Invalid`, `HUES`, `MAX_TOOLS`, `ID_RE`. The source was CommonJS bound to the shell's pool, audit, RBAC registry and group resolver; here the registry (`permissions`), the gate (`manage`), the group lookup (`callerGroups`) and the permission read (`callerHasPermission`) are options. `HUES` is a local copy of the `console-modules` list (a test holds them equal) so the package copies on its own.
+- The launcher client, the Console admin page and the permission id stay in the consumer.
+- Tests: 60 (the source's 16 route tests and its 41 field cases, adapted, plus 4 for the pure parts and the hue list); the source's registry, seed and migration tests stay with the consumer. `test:server` now runs `tests/*/*.test.js`, so a new test folder needs no `package.json` edit.
+- New package only, nothing existing changes. Typings added.
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
+
 ## 2026-11-07 (v1.163.0, rbac matches a stored user row by directory object id)
 
 Opt in, `rbac`. New exports `cleanOid`, `userRowMatches` and `pickUserRow` from the Olympus shell source (SH-3 family, K-source-refresh): a grant to a person binds to their directory object id, the email stays a label and is the match only for rows with no object id. A caller whose token has no object id matches only rows that have none (fail closed); `pickUserRow` prefers the row bound to the id whatever the row order. Documented in `web-shell-packages.md` section 3.
