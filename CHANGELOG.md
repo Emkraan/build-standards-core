@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-07 (v1.143.0, KeepRedirect and the flat hub index tab)
+
+Opt in: a consumer that does not import them sees nothing.
+
+- `KeepRedirect` and `redirectTarget`: a redirect for a moved route that keeps the query string and hash (layout standard rule 9). Router free (`onRedirect`), same-site paths only, so a redirect built from data cannot leave the site.
+- `HubHeader` with `tabs` takes `indexKey`: the index tab's route is `<base>` itself (not `<base>/<key>`) and it is the tab selected when the route has no item.
+
 ## 2026-11-06 (v1.142.0, hub tab working marker and inline pending note colour)
 
 Two look details from the ops center adoption, both inside the hub pieces; the plain `Spinner` and every other badge are unchanged.
