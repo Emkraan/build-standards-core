@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-08 (v1.188.0, the nightly moves a core clone left on a clean, pushed branch back to main)
+
+Template change, takes effect in a consumer on its next nightly pull.
+
+- `hermes/nightly.py`: the pull step is a fast-forward of main, so a core clone left on a feature branch (as `feat/kit-context-panel` was on 2026-10-28) failed every night with "Not possible to fast-forward". When the clone is on a branch other than main, the tree is clean (untracked files aside) and the branch has nothing its upstream lacks, the nightly now checks out main with one log line and pulls. With local edits, an unpushed commit, no upstream or a detached HEAD it changes nothing and fails with the recovery command `git -C <clone> checkout main`. `--check` reports what it would do and changes nothing.
+- `tests/test_nightly_branch.py` covers the move, untracked files, a dirty tree, an unpushed commit, no upstream, a detached HEAD, check mode and a clone already on main. `CONSUMING.md` section 6 describes it.
+
+Refs #118
+
 ## 2026-11-08 (v1.187.0, lint-sweep label renamed to source:lint-sweep)
 
 Consumer effect: `lint-sweep.yml` is a core-managed template, so a consumer picks the change up on its next core sync (no manual step).

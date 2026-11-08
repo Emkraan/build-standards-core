@@ -443,6 +443,11 @@ remote and never writes to another account's issue.
 - If the nightly pull is blocked by local changes you did not make (generated files), run `git status`,
   `git restore` those files and run the job again. Never commit in this clone.
 
+**Left on a branch.** If the clone was left on a branch other than `main`, the nightly checks out
+`main` with one log line when the working tree is clean and the branch has nothing its upstream
+lacks. With local edits, an unpushed commit, no upstream or a detached HEAD it changes nothing and
+fails with the recovery command `git -C ~/GitHub/build-standards-core checkout main`.
+
 **History rewritten.** If the core's history was rewritten (the clone shows "ahead N, behind M"
 against `origin/main` and `git merge-base HEAD origin/main` finds no common commit), a
 fast-forward can never succeed again and a plain `git fetch` may fail on moved tags. The nightly
