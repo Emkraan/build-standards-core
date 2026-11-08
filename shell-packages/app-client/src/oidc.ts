@@ -109,7 +109,7 @@ export function createOidcClient(manager: OidcManagerLike, options: OidcClientOp
     }
     setUser(user);
     const after = current?.profile.sub ?? null;
-    if (before !== after) emit(after ? EventType.LOGIN_SUCCESS : EventType.ACCOUNT_REMOVED);
+    if (before !== after) emit(after ? EventType.LOGIN_SUCCESS : EventType.LOGOUT_SUCCESS);
   }
 
   const covers = (user: OidcUser, scopes: string[]): boolean => {
@@ -127,7 +127,7 @@ export function createOidcClient(manager: OidcManagerLike, options: OidcClientOp
       });
       manager.events.addUserUnloaded(() => {
         setUser(null);
-        emit(EventType.ACCOUNT_REMOVED);
+        emit(EventType.LOGOUT_SUCCESS);
       });
       try {
         win?.addEventListener('storage', () => void refresh());
