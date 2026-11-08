@@ -18,9 +18,9 @@ name: core-ci
 #   the check name `core-checks` is the one the merge gate reads, and an edit that starts seconds after
 #   a push cancels that push's run through the concurrency group. A lighter edit run would then report
 #   a green `core-checks` for a commit whose full checks were cancelled or had failed.
-#   push to the default branch: only core-secret-scan, the one check that covers a commit that lands
-#   without a pull request. The merge gate requires an up to date head, so re-running the rest after
-#   the merge would re-test the tree the pull request run proved.
+#   push to the default branch: not a trigger. The rulesets allow a change to land only through a pull
+#   request, and the merge gate requires an up to date head, so a run after the merge would re-test the
+#   tree the pull request run proved (one run per merge, for nothing).
 #
 # Configure: OVERLAY is the overlay folder relative to the repo root ("." when it is the root).
 # scripts/sync-core.py refreshes this file on every sync and keeps the repo's OVERLAY value.
@@ -34,8 +34,6 @@ on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
   merge_group:
-  push:
-    branches: [main]
 permissions:
   contents: read
 concurrency:
