@@ -34,7 +34,7 @@ scripts. `standards-local/` is the one consumer-owned folder in the overlay.
 `.github/workflows/lint-sweep.yml` is copied like `core-ci.yml` (a sync refreshes it and keeps
 its `OVERLAY` value at the top). Every Monday, and on demand, it runs the overlay's UI lint and script lint over the configured
 paths and the repo's own full-tree lint from the parameters row `Lint sweep command` (empty: only the
-overlay lints). While it fails it keeps one issue labelled `lint-sweep` open: it creates the issue
+overlay lints). While it fails it keeps one issue labelled `source:lint-sweep` open: it creates the issue
 the first time, then edits that issue's body and comments on it, and never opens a second one; the
 first green sweep closes it. It needs `issues: write` on its one job and nothing else. With
 `core-status.py --ci` its latest run proves ci-cd-release.md 2.1.

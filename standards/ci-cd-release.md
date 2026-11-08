@@ -234,8 +234,8 @@ failing unnoticed until someone touches them. A repo with a lint step **should**
 template `lint-sweep.yml` (templates/overlay): once a week it lints the whole tree (the overlay's UI
 and script lint over the configured paths, plus the repo's own full-tree command from the
 parameters row "Lint sweep command"), and while the sweep fails it keeps exactly one open issue
-labelled `lint-sweep`: it opens it on the first failure, updates the same issue on every later
-failure, never opens a second, and closes it on the first green sweep. Its actions are SHA-pinned and
+labelled `source:lint-sweep`: it opens it on the first failure, updates the same issue on every later
+failure, never opens a second, and closes it on the first green sweep (the lookup also accepts the former label `lint-sweep` while existing issues are renamed). Its actions are SHA-pinned and
 it runs on `CORE_CI_RUNNER` like the other templates. A runner need not carry Node: when the repo is
 a web stack and sets a sweep command, the job sets up Node at the repo's Node major (lts/* when none
 is pinned), enables corepack so `package.json` "packageManager" decides the package manager, and

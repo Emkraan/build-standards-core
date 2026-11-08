@@ -2933,7 +2933,7 @@
       "id": "ci-cd-release.2.1",
       "ref": "ci-cd-release.md 2.1",
       "title": "A weekly full-tree lint sweep keeps one issue",
-      "statement": "A repo with a lint step runs a weekly lint of the whole tree (template lint-sweep.yml) that opens one issue labelled lint-sweep on the first failure, updates that same issue on later failures, never opens a second, and closes it on the first green sweep.",
+      "statement": "A repo with a lint step runs a weekly lint of the whole tree (template lint-sweep.yml) that opens one issue labelled source:lint-sweep on the first failure, updates that same issue on later failures, never opens a second, and closes it on the first green sweep.",
       "level": "should",
       "applies_to": [
         "all"
