@@ -41,7 +41,7 @@ function fakeMsal(accounts: AccountInfo[] = [ACCOUNT], redirect: unknown = null)
     loginRedirect: vi.fn(async () => undefined),
     logoutRedirect: vi.fn(async () => undefined),
     ssoSilent: vi.fn(async () => {
-      throw new InteractionRequiredAuthError('interaction_required');
+      throw new InteractionRequiredAuthError('interaction_required', 'test-correlation-id');
     }),
     addEventCallback: (cb) => {
       cbs.push(cb);
@@ -314,17 +314,17 @@ describe('createAuth tokens', () => {
   }
 
   it('an expired refresh token redirects for a new one instead of failing the call', async () => {
-    await expectRedirect(new InteractionRequiredAuthError('refresh_token_expired'));
-    await expectRedirect(new InteractionRequiredAuthError('no_tokens_found'));
+    await expectRedirect(new InteractionRequiredAuthError('refresh_token_expired', 'test-correlation-id'));
+    await expectRedirect(new InteractionRequiredAuthError('no_tokens_found', 'test-correlation-id'));
   });
 
   it('a plain invalid_grant from Entra on the refresh redirects for a known session expiry', async () => {
-    await expectRedirect(new ServerError('invalid_grant', 'AADSTS700084: The refresh token was issued to a single page app'));
-    await expectRedirect(new ServerError('invalid_grant', 'AADSTS700082: The refresh token has expired due to inactivity'));
-    await expectRedirect(new ServerError('invalid_grant', 'expired', undefined, '50173'));
-    await expectRedirect(new ServerError('invalid_grant', 'AADSTS50133: Session is invalid due to expiration or recent password change'));
-    await expectRedirect(new ServerError('invalid_grant', 'AADSTS70043: The refresh token has expired or is invalid due to sign-in frequency checks'));
-    await expectRedirect(new ServerError('invalid_grant', 'no code in the text', 'bad_token'));
+    await expectRedirect(new ServerError('invalid_grant', 'test-correlation-id', 'AADSTS700084: The refresh token was issued to a single page app'));
+    await expectRedirect(new ServerError('invalid_grant', 'test-correlation-id', 'AADSTS700082: The refresh token has expired due to inactivity'));
+    await expectRedirect(new ServerError('invalid_grant', 'test-correlation-id', 'expired', undefined, '50173'));
+    await expectRedirect(new ServerError('invalid_grant', 'test-correlation-id', 'AADSTS50133: Session is invalid due to expiration or recent password change'));
+    await expectRedirect(new ServerError('invalid_grant', 'test-correlation-id', 'AADSTS70043: The refresh token has expired or is invalid due to sign-in frequency checks'));
+    await expectRedirect(new ServerError('invalid_grant', 'test-correlation-id', 'no code in the text', 'bad_token'));
   });
 
   it('an invalid_grant that is a configuration problem is reported, never redirected', async () => {
@@ -336,7 +336,7 @@ describe('createAuth tokens', () => {
       'AADSTS50105: The signed in user is not assigned to a role for the application',
     ]) {
       const msal = fakeMsal();
-      msal.acquireTokenSilent.mockRejectedValueOnce(new ServerError('invalid_grant', message));
+      msal.acquireTokenSilent.mockRejectedValueOnce(new ServerError('invalid_grant', 'test-correlation-id', message));
       const { auth } = make(msal);
       await auth.boot();
       await expect(auth.acquireToken()).rejects.toMatchObject({ errorCode: 'invalid_grant', code: 'sign_in_config' });
@@ -349,7 +349,7 @@ describe('createAuth tokens', () => {
     const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     try {
       const msal = fakeMsal();
-      msal.acquireTokenSilent.mockRejectedValue(new ServerError('invalid_grant', 'AADSTS65001: consent'));
+      msal.acquireTokenSilent.mockRejectedValue(new ServerError('invalid_grant', 'test-correlation-id', 'AADSTS65001: consent'));
       const { auth } = make(msal);
       await auth.boot();
       for (let i = 0; i < 3; i += 1) {
@@ -364,13 +364,13 @@ describe('createAuth tokens', () => {
   });
 
   it('an invalid_grant with no code or an unlisted code gets one guarded redirect, so it never strands the user', async () => {
-    await expectRedirect(new ServerError('invalid_grant', 'invalid_grant with no code'));
-    await expectRedirect(new ServerError('invalid_grant', 'AADSTS9999999: a code added later'));
+    await expectRedirect(new ServerError('invalid_grant', 'test-correlation-id', 'invalid_grant with no code'));
+    await expectRedirect(new ServerError('invalid_grant', 'test-correlation-id', 'AADSTS9999999: a code added later'));
   });
 
   it('a silent-only caller reads any invalid_grant as interaction required, so a side read gets its 401', async () => {
     const msal = fakeMsal();
-    msal.acquireTokenSilent.mockRejectedValueOnce(new ServerError('invalid_grant', 'AADSTS65001: consent'));
+    msal.acquireTokenSilent.mockRejectedValueOnce(new ServerError('invalid_grant', 'test-correlation-id', 'AADSTS65001: consent'));
     const { auth } = make(msal);
     await auth.boot();
     await expect(auth.acquireToken('api://other/x', { interactive: false })).rejects.toMatchObject({ errorCode: 'invalid_grant', interactionRequired: true });
@@ -400,7 +400,7 @@ describe('createAuth tokens', () => {
     try {
       // The session expired and the redirect ran (the page left).
       const before = fakeMsal();
-      before.acquireTokenSilent.mockRejectedValue(new InteractionRequiredAuthError('consent_required', 'AADSTS65001: consent'));
+      before.acquireTokenSilent.mockRejectedValue(new InteractionRequiredAuthError('consent_required', 'test-correlation-id', 'AADSTS65001: consent'));
       const first = make(before);
       await first.auth.boot();
       void first.auth.acquireToken().catch(() => undefined);
@@ -408,7 +408,7 @@ describe('createAuth tokens', () => {
       expect(before.acquireTokenRedirect).toHaveBeenCalledTimes(1);
       // The page came back (a new page, same tab session) and the token still needs interaction.
       const after = fakeMsal();
-      after.acquireTokenSilent.mockRejectedValue(new InteractionRequiredAuthError('consent_required', 'AADSTS65001: consent'));
+      after.acquireTokenSilent.mockRejectedValue(new InteractionRequiredAuthError('consent_required', 'test-correlation-id', 'AADSTS65001: consent'));
       const { auth } = make(after);
       await auth.boot();
       const again = await auth.acquireToken().catch((e: unknown) => e);
@@ -435,7 +435,7 @@ describe('createAuth tokens', () => {
     vi.useFakeTimers();
     try {
       const msal = fakeMsal();
-      msal.acquireTokenSilent.mockRejectedValue(new InteractionRequiredAuthError('interaction_required'));
+      msal.acquireTokenSilent.mockRejectedValue(new InteractionRequiredAuthError('interaction_required', 'test-correlation-id'));
       const { auth } = make(msal);
       await auth.boot();
       const first = auth.acquireToken().catch((e: unknown) => e);
@@ -453,7 +453,7 @@ describe('createAuth tokens', () => {
 
   it('a redirect that joined another interaction still counts toward the loop guard', async () => {
     const msal = fakeMsal();
-    msal.acquireTokenSilent.mockRejectedValueOnce(new InteractionRequiredAuthError('interaction_required'));
+    msal.acquireTokenSilent.mockRejectedValueOnce(new InteractionRequiredAuthError('interaction_required', 'test-correlation-id'));
     msal.acquireTokenRedirect.mockRejectedValueOnce(Object.assign(new Error('busy'), { errorCode: 'interaction_in_progress' }));
     const { auth } = make(msal);
     await auth.boot();
@@ -466,7 +466,7 @@ describe('createAuth tokens', () => {
   it('ignores a loop guard stamp from the future', async () => {
     window.sessionStorage.setItem('test:login-attempt-at:token:api://x/access_as_user', String(Date.now() + 3_600_000));
     const msal = fakeMsal();
-    msal.acquireTokenSilent.mockRejectedValueOnce(new InteractionRequiredAuthError('interaction_required'));
+    msal.acquireTokenSilent.mockRejectedValueOnce(new InteractionRequiredAuthError('interaction_required', 'test-correlation-id'));
     const { auth } = make(msal);
     await auth.boot();
     void auth.acquireToken().catch(() => undefined);
@@ -476,7 +476,7 @@ describe('createAuth tokens', () => {
 
   it('a redirect that fails to start does not count toward the loop guard', async () => {
     const msal = fakeMsal();
-    msal.acquireTokenSilent.mockRejectedValue(new InteractionRequiredAuthError('interaction_required'));
+    msal.acquireTokenSilent.mockRejectedValue(new InteractionRequiredAuthError('interaction_required', 'test-correlation-id'));
     msal.acquireTokenRedirect.mockRejectedValue(Object.assign(new Error('in a frame'), { errorCode: 'redirect_in_iframe' }));
     const { auth } = make(msal);
     await auth.boot();
@@ -493,7 +493,7 @@ describe('createAuth tokens', () => {
     expect(await auth.acquireToken()).toBe('tok');
     expect(window.sessionStorage.getItem('test:login-attempt-at:token:api://x/access_as_user')).toBeNull();
     // Now an expiry redirects again instead of reporting a loop.
-    msal.acquireTokenSilent.mockRejectedValueOnce(new InteractionRequiredAuthError('interaction_required'));
+    msal.acquireTokenSilent.mockRejectedValueOnce(new InteractionRequiredAuthError('interaction_required', 'test-correlation-id'));
     void auth.acquireToken().catch(() => undefined);
     await new Promise((r) => setTimeout(r, 0));
     expect(msal.acquireTokenRedirect).toHaveBeenCalledTimes(1);
@@ -501,7 +501,7 @@ describe('createAuth tokens', () => {
 
   it('a token call waits on a 401 sign-in that is already running instead of starting a redirect', async () => {
     const msal = fakeMsal();
-    msal.acquireTokenSilent.mockRejectedValue(new InteractionRequiredAuthError('interaction_required'));
+    msal.acquireTokenSilent.mockRejectedValue(new InteractionRequiredAuthError('interaction_required', 'test-correlation-id'));
     const { auth } = make(msal);
     await auth.boot();
     void auth.loginOn401().catch(() => undefined);
@@ -517,13 +517,13 @@ describe('createAuth tokens', () => {
 
   it('an iframe renewal timeout redirects instead of surfacing as an API timeout', async () => {
     for (const code of ['monitor_window_timeout', 'empty_window_error', 'hash_empty_error', 'hash_does_not_contain_known_properties', 'block_iframe_reload']) {
-      await expectRedirect(new BrowserAuthError(code));
+      await expectRedirect(new BrowserAuthError(code, 'test-correlation-id'));
     }
   });
 
   it('other server errors are rethrown without a redirect', async () => {
     const msal = fakeMsal();
-    msal.acquireTokenSilent.mockRejectedValueOnce(new ServerError('temporarily_unavailable'));
+    msal.acquireTokenSilent.mockRejectedValueOnce(new ServerError('temporarily_unavailable', 'test-correlation-id'));
     const { auth } = make(msal);
     await auth.boot();
     await expect(auth.acquireToken()).rejects.toMatchObject({ errorCode: 'temporarily_unavailable' });
@@ -532,7 +532,7 @@ describe('createAuth tokens', () => {
 
   it('a silent-only probe flags an iframe renewal timeout as interaction required', async () => {
     const msal = fakeMsal();
-    msal.acquireTokenSilent.mockRejectedValueOnce(new BrowserAuthError('monitor_window_timeout'));
+    msal.acquireTokenSilent.mockRejectedValueOnce(new BrowserAuthError('monitor_window_timeout', 'test-correlation-id'));
     const { auth } = make(msal);
     await auth.boot();
     await expect(auth.acquireToken('api://other/x', { interactive: false })).rejects.toMatchObject({ interactionRequired: true });
@@ -541,7 +541,7 @@ describe('createAuth tokens', () => {
 
   it('a network failure is not a sign-in problem and is rethrown without a redirect', async () => {
     const msal = fakeMsal();
-    msal.acquireTokenSilent.mockRejectedValueOnce(new BrowserAuthError('no_network_connectivity'));
+    msal.acquireTokenSilent.mockRejectedValueOnce(new BrowserAuthError('no_network_connectivity', 'test-correlation-id'));
     const { auth } = make(msal);
     await auth.boot();
     await expect(auth.acquireToken()).rejects.toMatchObject({ errorCode: 'no_network_connectivity' });
@@ -550,7 +550,7 @@ describe('createAuth tokens', () => {
 
   it('redirects only on interaction required, carrying the page as state', async () => {
     const msal = fakeMsal();
-    msal.acquireTokenSilent.mockRejectedValueOnce(new InteractionRequiredAuthError('interaction_required'));
+    msal.acquireTokenSilent.mockRejectedValueOnce(new InteractionRequiredAuthError('interaction_required', 'test-correlation-id'));
     const { auth } = make(msal);
     await auth.boot();
     let settled = false;
@@ -565,7 +565,7 @@ describe('createAuth tokens', () => {
     vi.useFakeTimers();
     try {
       const msal = fakeMsal();
-      msal.acquireTokenSilent.mockRejectedValueOnce(new InteractionRequiredAuthError('interaction_required'));
+      msal.acquireTokenSilent.mockRejectedValueOnce(new InteractionRequiredAuthError('interaction_required', 'test-correlation-id'));
       const { auth } = make(msal);
       await auth.boot();
       const p = auth.acquireToken();
@@ -581,7 +581,7 @@ describe('createAuth tokens', () => {
 
   it('concurrent calls that need interaction share one redirect instead of failing', async () => {
     const msal = fakeMsal();
-    msal.acquireTokenSilent.mockRejectedValue(new InteractionRequiredAuthError('interaction_required'));
+    msal.acquireTokenSilent.mockRejectedValue(new InteractionRequiredAuthError('interaction_required', 'test-correlation-id'));
     // MSAL rejects every redirect after the first.
     msal.acquireTokenRedirect.mockImplementation(async () => {
       if (msal.acquireTokenRedirect.mock.calls.length > 1) throw Object.assign(new Error('busy'), { errorCode: 'interaction_in_progress' });
@@ -609,13 +609,13 @@ describe('createAuth tokens', () => {
     const A = 'api://x/access_as_user';
     const B = 'api://other/x';
     const needsB = (req: { scopes: string[] }) => {
-      if (req.scopes[0] === B) throw new InteractionRequiredAuthError('consent_required', 'AADSTS65001: consent');
+      if (req.scopes[0] === B) throw new InteractionRequiredAuthError('consent_required', 'test-correlation-id', 'AADSTS65001: consent');
       return { accessToken: 'tok-a' };
     };
     try {
       // Page 1: scope A starts a redirect, scope B joins it.
       const page1 = fakeMsal();
-      page1.acquireTokenSilent.mockRejectedValue(new InteractionRequiredAuthError('interaction_required'));
+      page1.acquireTokenSilent.mockRejectedValue(new InteractionRequiredAuthError('interaction_required', 'test-correlation-id'));
       const one = make(page1);
       await one.auth.boot();
       void one.auth.acquireToken(A).catch(() => undefined);
@@ -658,7 +658,7 @@ describe('createAuth tokens', () => {
     try {
       window.sessionStorage.setItem('test:login-attempt-at:token:api://other/x', String(Date.now()));
       const msal = fakeMsal();
-      msal.acquireTokenSilent.mockRejectedValue(new InteractionRequiredAuthError('interaction_required'));
+      msal.acquireTokenSilent.mockRejectedValue(new InteractionRequiredAuthError('interaction_required', 'test-correlation-id'));
       const { auth } = make(msal);
       await auth.boot();
       void auth.acquireToken().catch(() => undefined);
@@ -674,7 +674,7 @@ describe('createAuth tokens', () => {
     vi.useFakeTimers();
     try {
       const msal = fakeMsal();
-      msal.acquireTokenSilent.mockRejectedValue(new InteractionRequiredAuthError('interaction_required'));
+      msal.acquireTokenSilent.mockRejectedValue(new InteractionRequiredAuthError('interaction_required', 'test-correlation-id'));
       const { auth } = make(msal);
       await auth.boot();
       const a = auth.acquireToken().catch((e: unknown) => e);
@@ -693,7 +693,7 @@ describe('createAuth tokens', () => {
 
   it('an interaction_in_progress from a second MSAL copy (matched by code) also waits', async () => {
     const msal = fakeMsal();
-    msal.acquireTokenSilent.mockRejectedValueOnce(new InteractionRequiredAuthError('interaction_required'));
+    msal.acquireTokenSilent.mockRejectedValueOnce(new InteractionRequiredAuthError('interaction_required', 'test-correlation-id'));
     msal.acquireTokenRedirect.mockRejectedValueOnce(Object.assign(new Error('busy'), { name: 'BrowserAuthError', errorCode: 'interaction_in_progress' }));
     const { auth } = make(msal);
     await auth.boot();
@@ -705,7 +705,7 @@ describe('createAuth tokens', () => {
 
   it('waits on a sign-in that is already running instead of rejecting', async () => {
     const msal = fakeMsal();
-    msal.acquireTokenSilent.mockRejectedValueOnce(new InteractionRequiredAuthError('interaction_required'));
+    msal.acquireTokenSilent.mockRejectedValueOnce(new InteractionRequiredAuthError('interaction_required', 'test-correlation-id'));
     msal.acquireTokenRedirect.mockRejectedValueOnce(Object.assign(new Error('busy'), { errorCode: 'interaction_in_progress' }));
     const { auth } = make(msal);
     await auth.boot();
@@ -717,7 +717,7 @@ describe('createAuth tokens', () => {
 
   it('a silent-only probe throws interactionRequired instead of redirecting', async () => {
     const msal = fakeMsal();
-    msal.acquireTokenSilent.mockRejectedValueOnce(new InteractionRequiredAuthError('interaction_required'));
+    msal.acquireTokenSilent.mockRejectedValueOnce(new InteractionRequiredAuthError('interaction_required', 'test-correlation-id'));
     const { auth } = make(msal);
     await auth.boot();
     await expect(auth.acquireToken('api://other/x', { interactive: false })).rejects.toMatchObject({ interactionRequired: true });

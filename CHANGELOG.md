@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-08 (v1.182.0, the app client moves to MSAL Browser v5)
+
+Dependency major, `@azure/msal-browser` 3 to 5, with the code changes it needs. Renovate branch renovate/major-azure-ad-microsoft-authentication-library-for-js-monorepo (#163).
+
+- `shell-packages/app-client/src/auth.ts`: `navigateToLoginRequestUrl` and `storeAuthStateInCookie` are removed from the MSAL configuration (v5 no longer has either; v5 never navigates back to the login request URL, which is what `false` meant here, and cookie auth state is gone). The account-change callback listens for `LOGOUT_SUCCESS`, `LOGIN_SUCCESS` and `ACTIVE_ACCOUNT_CHANGED`, since v5 removed `ACCOUNT_ADDED` and `ACCOUNT_REMOVED`; the storage and focus listeners still re-check the account as the cross-tab fallback.
+- `shell-packages/app-client/src/oidc.ts`: the OIDC adapter emits `LOGOUT_SUCCESS` where it emitted `ACCOUNT_REMOVED`.
+- The id-token expiry safeguards are unchanged: `acquireTokenSilent` does not check id-token expiry, so the explicit expiry check stays.
+- Tests: `tests/app-client/auth.test.ts` passes the now-required correlation id to `InteractionRequiredAuthError`, `BrowserAuthError` and `ServerError`.
+
+No issue: Renovate major update, supersedes the failing automatic bump in #163.
+
 ## 2026-11-08 (v1.181.0, the repository's Renovate config turns the Dependency Dashboard off)
 
 Record fix. `renovate.json` sets `dependencyDashboard: false`; no shipped standard changes.
