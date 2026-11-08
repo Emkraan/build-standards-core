@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-08 (v1.181.0, the app client moves to MSAL Browser v5)
+## 2026-11-08 (v1.182.0, the app client moves to MSAL Browser v5)
 
 Dependency major, `@azure/msal-browser` 3 to 5, with the code changes it needs. Renovate branch renovate/major-azure-ad-microsoft-authentication-library-for-js-monorepo (#163).
 
@@ -10,6 +10,14 @@ Dependency major, `@azure/msal-browser` 3 to 5, with the code changes it needs. 
 - Tests: `tests/app-client/auth.test.ts` passes the now-required correlation id to `InteractionRequiredAuthError`, `BrowserAuthError` and `ServerError`.
 
 No issue: Renovate major update, supersedes the failing automatic bump in #163.
+
+## 2026-11-08 (v1.181.0, the repository's Renovate config turns the Dependency Dashboard off)
+
+Record fix. `renovate.json` sets `dependencyDashboard: false`; no shipped standard changes.
+
+- The Dependency Dashboard issue is disabled fleet-wide by operator decision 2026-11-08 (zero open issues); Renovate behavior is otherwise unchanged.
+
+No issue: operator order 2026-11-08.
 
 ## 2026-11-07 (v1.180.0, the changelog and the tags agree, and a check holds them to it)
 
