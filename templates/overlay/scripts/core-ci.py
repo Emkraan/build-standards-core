@@ -433,15 +433,44 @@ def commits(base: str, head: str) -> list:
     return out
 
 
+HEADER_MAX = 100
+
+
+def commit_findings(subject: str, message: str) -> list:
+    """The rules of @commitlint/config-conventional that a consumer's own commitlint
+    config keeps: type-enum, type-case, scope-case lower-case, subject-empty,
+    subject-full-stop never, header-max-length 100, body-leading-blank. Subject case and
+    body line length are off."""
+    out = []
+    m = CC.match(subject)
+    if not m:
+        return ["subject is not a Conventional Commit"]
+    if len(subject) > HEADER_MAX:
+        out.append(f"header is {len(subject)} characters, the limit is {HEADER_MAX}")
+    if subject.rstrip().endswith("."):
+        out.append("subject must not end with a full stop")
+    if m.group(1) != m.group(1).lower():
+        out.append("type must be lower case")
+    scope = m.group(2)
+    if scope and scope[1:-1] != scope[1:-1].lower():
+        out.append("scope must be lower case")
+    lines = message.split("\n")
+    if len(lines) > 1 and lines[1].strip():
+        out.append("body must be separated from the header by a blank line")
+    return out
+
+
 def cmd_commitlint(argv: list) -> int:
     if len(argv) < 2:
         say("usage: core-ci.py commitlint BASE HEAD")
         return 2
-    bad = [c for c in commits(argv[0], argv[1]) if not CC.match(c[1])]
-    for c in bad:
-        say(f"::error::commitlint: commit {c[0][:8]} subject is not a Conventional Commit")
-    say(f"commitlint: {len(bad)} bad subject(s)")
-    return 1 if bad else 0
+    n = 0
+    for c in commits(argv[0], argv[1]):
+        for f in commit_findings(c[1], c[2]):
+            n += 1
+            say(f"::error::commitlint: commit {c[0][:8]} {f}")
+    say(f"commitlint: {n} bad subject(s)")
+    return 1 if n else 0
 
 
 def attribution_hits(text: str) -> list:
