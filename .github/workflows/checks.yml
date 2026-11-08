@@ -77,7 +77,7 @@ jobs:
           HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         run: python3 templates/overlay/scripts/core-ci.py secret-scan "$BASE" "$HEAD" --gitleaks "$RUNNER_TEMP/bin/gitleaks"
       # Ruff, pinned, both commands, against [tool.ruff] in pyproject.toml.
-      - run: python3 -m pip install --quiet ruff==0.16.6
+      - run: python3 -m pip install --quiet ruff==0.17.4
       - run: ruff check .
       - run: ruff format --check .
       # The people module's .docx export test runs here instead of skipping.
