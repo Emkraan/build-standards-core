@@ -321,7 +321,9 @@ class Run:
             return True
         rc, out = sh(["git", "-C", c, "checkout", "--quiet", "main"])
         if rc != 0:  # no local main yet: create it from the remote one
-            rc, out = sh(["git", "-C", c, "checkout", "--quiet", "-b", "main", "--track", "origin/main"])
+            rc, out = sh(
+                ["git", "-C", c, "checkout", "--quiet", "-b", "main", "--track", "origin/main"]
+            )
         if rc != 0:
             self.problems.append(
                 f"core clone is on branch {branch} and checking out main failed: {out[-200:]}. "
