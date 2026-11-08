@@ -1826,7 +1826,7 @@ is provisional: the core assigns the final numbers when it merges.
 
 **Acceptance:** `lint/ui_lint.py` reports no UI011, UI012 or UI013 finding in the app. Rules 3 to 7 are
 checked in design review of each page. The kit tests `help-tips`, `help-time`, `help-drawer`,
-`help-process` and `tooltip-shell` prove the parts, and `a11y.test.tsx` runs axe with the Help drawer
+`help-process` and `tooltip-shell` prove the parts, and `a11y.light.test.tsx` and `a11y.dark.test.tsx` run axe with the Help drawer
 open.
 
 ### Gate overrides (`OverrideBar`, `OverrideButton`, `OverrideTag`, `PendingReason`)
