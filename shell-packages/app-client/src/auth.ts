@@ -283,15 +283,11 @@ export function createAuth(options: AuthOptions): Auth {
       // every module.
       redirectUri: origin,
       postLogoutRedirectUri: `${origin}${postLogoutPath}`,
-      // The page routes the stored target itself (see boot), so a returning sign-in boots the
-      // SPA once instead of once on the redirect URI and again on the start page.
-      navigateToLoginRequestUrl: false,
     },
     cache: {
       // localStorage on purpose: the shell and every module share one origin and one cache, so a
       // token acquired on the shell is reused silently by each module.
       cacheLocation: 'localStorage',
-      storeAuthStateInCookie: false,
     },
   };
 
@@ -332,8 +328,7 @@ export function createAuth(options: AuthOptions): Auth {
         if (typeof msal.addEventCallback === 'function') {
           msal.addEventCallback((event: EventMessage) => {
             if (
-              event.eventType === EventType.ACCOUNT_ADDED ||
-              event.eventType === EventType.ACCOUNT_REMOVED ||
+              event.eventType === EventType.LOGOUT_SUCCESS ||
               event.eventType === EventType.LOGIN_SUCCESS ||
               event.eventType === EventType.ACTIVE_ACCOUNT_CHANGED
             ) {
