@@ -4,7 +4,7 @@
 
 Template change, takes effect in a consumer on its next sync.
 
-- `core-ci.py commitlint` now enforces what an emkraan-apps style `commitlint.config.mjs` (config-conventional with subject case and body line length off) enforces: a header of at most 100 characters, no full stop at the end of the subject, a lower case type and scope, a blank line between header and body, besides the Conventional Commit shape it already checked. A consumer can drop its separate commitlint step.
+- `core-ci.py commitlint` now enforces what a consumer's `commitlint.config.mjs` (config-conventional with subject case and body line length off) enforces: a header of at most 100 characters, no full stop at the end of the subject, a lower case type and scope, a blank line between header and body, besides the Conventional Commit shape it already checked. A consumer can drop its separate commitlint step.
 - `tests/test_core_ci.py` covers the long header, the full stop and the upper case scope.
 - `CHANGELOG.md`: stray merge conflict marker lines from an earlier bad merge are removed (the text between them was all kept). `checks/check-changelog-versions.py` now fails on a conflict marker line, with tests (the conflict marker half of #232).
 
