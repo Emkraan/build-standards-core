@@ -383,7 +383,7 @@
       ],
       "check": {
         "kind": "core-ci",
-        "command": "npm --prefix kit test -- tests/a11y.test.tsx",
+        "command": "npm --prefix kit test -- tests/a11y.light.test.tsx tests/a11y.dark.test.tsx",
         "requires": "ui-adoption"
       },
       "acceptance": "A kit test runs axe on the composite shell and each overlay in both themes and finds zero violations."
