@@ -94,6 +94,21 @@ class PrHygiene(Overlay):
         self.assertEqual(rc, 1)
         self.assertIn("1 bad subject", out)
 
+    def test_commitlint_matches_consumer_rules(self):
+        for subject in (
+            "feat: " + "x" * 100,
+            "feat: ends with a stop.",
+            "feat(Scope): upper case scope",
+        ):
+            head = self.commit(subject, {"b": subject})
+            rc, out = self.ci("commitlint", self.base, head)
+            self.assertEqual(rc, 1, subject)
+            git(self.repo, "reset", "-q", "--hard", self.base)
+
+    def test_commitlint_header_at_limit_passes(self):
+        head = self.commit("feat(ui): " + "x" * 90, {"c": "1"})
+        self.assertEqual(self.ci("commitlint", self.base, head)[0], 0)
+
     def test_pr_issue_declaration(self):
         def run(body, title="feat: x", author="rp", branch="feat/x", repo="acme/apps"):
             return self.ci(

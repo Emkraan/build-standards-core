@@ -21,6 +21,16 @@ TEXT = """# Changelog
 """
 
 
+class ConflictMarkers(unittest.TestCase):
+    def test_marker_lines_are_found(self):
+        text = "a\n<<<<<<< HEAD\nb\n=======\nc\n>>>>>>> origin/main\n"
+        self.assertEqual(len(cv.conflict_markers(text)), 3)
+        self.assertIn("line 2", cv.conflict_markers(text)[0])
+
+    def test_clean_text_and_rules_pass(self):
+        self.assertEqual(cv.conflict_markers(TEXT + "=== not a marker\n"), [])
+
+
 class Headings(unittest.TestCase):
     def test_reads_1x_headings_in_order_and_skips_0x(self):
         self.assertEqual(cv.headings(TEXT), [(1, 3, 0), (1, 2, 0), (1, 1, 0)])

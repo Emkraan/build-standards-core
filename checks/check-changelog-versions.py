@@ -9,7 +9,8 @@ from 1.0.0 (the 0.x headings predate tagging and are left alone):
   1. a version appears in at most one heading;
   2. a heading has a tag, except an unreleased one: a version above every existing tag (the entry a pull
      request adds, which auto-release tags when it lands);
-  3. a tag has a heading.
+  3. a tag has a heading;
+  4. no line is a merge conflict marker (<<<<<<<, =======, >>>>>>>).
 
 Usage: python3 checks/check-changelog-versions.py
 In CI (CI or GITHUB_ACTIONS set) a clone with no release tags fails: a check that cannot see the tags
@@ -33,6 +34,18 @@ def headings(text):
         if m and int(m.group(1)) >= 1:
             out.append(tuple(int(g) for g in m.groups()))
     return out
+
+
+MARKER = re.compile(r"^(<{7}|={7}|>{7})( |$)")
+
+
+def conflict_markers(text):
+    """Problems for each merge conflict marker line, with its line number."""
+    return [
+        f"line {n} is a merge conflict marker"
+        for n, line in enumerate(text.splitlines(), 1)
+        if MARKER.match(line)
+    ]
 
 
 def problems(versions, tags):
@@ -72,7 +85,9 @@ def read_tags():
 def main():
     root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
     with open(os.path.join(root, "CHANGELOG.md"), encoding="utf-8") as f:
-        versions = headings(f.read())
+        text = f.read()
+    versions = headings(text)
+    markers = conflict_markers(text)
     tags = read_tags()
     in_ci = bool(os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"))
     if not tags:
@@ -84,7 +99,7 @@ def main():
             return 1
         print(f"check-changelog-versions: {msg}; skipped (local run)")
         return 0
-    bad = problems(versions, tags)
+    bad = markers + problems(versions, tags)
     for p in bad:
         print("::error file=CHANGELOG.md::" + p)
     print(

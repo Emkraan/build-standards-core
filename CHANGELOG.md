@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-08 (v1.184.0, core commitlint holds the consumer commitlint rules, changelog conflict markers removed)
+
+Template change, takes effect in a consumer on its next sync.
+
+- `core-ci.py commitlint` now enforces what an emkraan-apps style `commitlint.config.mjs` (config-conventional with subject case and body line length off) enforces: a header of at most 100 characters, no full stop at the end of the subject, a lower case type and scope, a blank line between header and body, besides the Conventional Commit shape it already checked. A consumer can drop its separate commitlint step.
+- `tests/test_core_ci.py` covers the long header, the full stop and the upper case scope.
+- `CHANGELOG.md`: stray merge conflict marker lines from an earlier bad merge are removed (the text between them was all kept). `checks/check-changelog-versions.py` now fails on a conflict marker line, with tests (the conflict marker half of #232).
+
+Closes #229
+
+
 ## 2026-11-08 (v1.183.0, core-ci no longer runs on a push to the default branch)
 
 Template change, takes effect in a consumer on its next sync. Standard text amended to match.
@@ -90,12 +101,6 @@ Opt in, new package `shell-packages/announcements` from the Olympus shell source
 
 No issue: requested by the core consolidation session (build-standards-core-intake#117).
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
 ## 2026-11-07 (v1.173.0, rbac names the removal ceiling)
 
 Opt in, `rbac`. New exports `removalBeyond` and `removalCeilingMessage` (SH-3, K-source-refresh): deleting a role, an assignment or an override takes away the permissions it confers, so the caller must hold every one of them, and only a genuine wildcard holder removes the wildcard. It answers what `permissionsBeyond` answers (stale ids and unreadable text fail closed) with a message that says removal. Documented in `web-shell-packages.md` section 3; the rule itself is `rbac.md` section 3.
@@ -141,12 +146,6 @@ Opt in, two new packages from the Olympus shell source (SH-4 and SH-5, K-source-
 
 No issue: requested by the core consolidation session (build-standards-core-intake#117).
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
 
 Also in this release: shell gaps from the console redesign against Olympus. This entry was first headed v1.168.0 by mistake (v1.168.0 is the dark launches release, tagged earlier); the change ships in v1.169.0.
 
@@ -186,8 +185,6 @@ Also in this release: script rule U6: the cause is Windows PowerShell 5.1. This 
 
 `scripting-powershell.md`: the `ConvertFrom-Json` array rule now names the right cause, from the hub consumer's check against its scripts repo. Windows PowerShell 5.1 returns a JSON array from `ConvertFrom-Json` as a single object, so a pipeline wrapped in `@(...)` yields an array inside an array; assign the result, then enumerate `@($rows)`. It no longer reads as a variant of the PowerShell 7 `Invoke-RestMethod` note, which is a separate problem. The acceptance fixture (empty array, one object, several, counts 0, 1 and N) now runs on Windows PowerShell 5.1 specifically (`tests/fixtures/powershell-51/ConvertFromJsonShape.ps1`) and says so and skips on any other host, never passing in silence. Core CI has no 5.1 host, so it checks the fixture's shape and the skip; the 5.1 run is the consumer's.
 
->>>>>>> origin/main
->>>>>>> origin/main
 
 ## 2026-11-07 (v1.165.0, the run watches read a failed run once and pick the real error line)
 
@@ -196,14 +193,10 @@ Also in this release: script rule U6: the cause is Windows PowerShell 5.1. This 
 - API budget: a failed run's jobs and logs are read once and cached by repo, run id and attempt (newest 20 kept), so a run that stays red costs one runs list per collect instead of a jobs and log read each time. A log that could not be read is not cached and is read again. The cache lives in the process by default; the optional `cache_file` config key keeps it between runs of the `items` CLI. Job logs are read with `--allow-escape-sequences` (a gh without that flag is asked again without it).
 - `collect`, `main_item` and `drift_item` take an optional `cache`; the runs list asks for `attempt`. Tests port the scenarios of the reference main and drift watch tests onto `collect()`.
 
->>>>>>> origin/main
->>>>>>> origin/main
->>>>>>> origin/main
 ## 2026-11-07 (v1.164.0, the CI-only freeze exemption holds more, and the draft gate checks an apply)
 
 Ops center lanes. `lanes/freeze_ci_only.py` (opt in, policy `freeze_ci_only`) now holds four kinds of pull request it used to exempt from a change freeze: a workflow on `pull_request_target` (it runs with the base branch's permissions and secrets), a reusable workflow whose file name starts with `_`, a workflow that names a deployment environment outside an allowlist (policy `own_pr_merge.freeze_ci_environments`, null: only `terraform-plan`; an environment block or an unreadable expression is held), and a workflow whose `on:` block is malformed (the reader has no YAML library, so it is now strict and fails closed). Changed behaviour: a consumer that relied on any of these being exempt sees them held during a freeze; set `freeze_ci_environments` to admit its own CI environments. Decisions cached under the old rules are made again. `lanes/pr_gate.py` gains a built-in `applied: <number>` kind: met only when that pull request is merged and a run of the apply workflow on the apply branch that started at or after the merge succeeded; a failed run after the merge is named. The workflow and branch come from policy `own_pr_merge.gate_apply_workflow` and `gate_apply_branch` (passed by the own-PR lane to a gate plug-in whose `evaluate` takes `config`) or from `OPSCENTER_GATE_APPLY_WORKFLOW` and `OPSCENTER_GATE_APPLY_BRANCH`; null by default, and the kind is then never met and says so.
 
->>>>>>> origin/main
 ## 2026-11-07 (v1.163.0, rbac matches a stored user row by directory object id)
 
 Opt in, `rbac`. New exports `cleanOid`, `userRowMatches` and `pickUserRow` from the Olympus shell source (SH-3 family, K-source-refresh): a grant to a person binds to their directory object id, the email stays a label and is the match only for rows with no object id. A caller whose token has no object id matches only rows that have none (fail closed); `pickUserRow` prefers the row bound to the id whatever the row order. Documented in `web-shell-packages.md` section 3.
