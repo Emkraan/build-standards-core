@@ -9,6 +9,8 @@ Template change, takes effect in a consumer on its next sync. Standard text amen
 
 No issue: a consumer's runner-queue reduction follow-up.
 
+## 2026-11-07 (v1.180.0, the changelog and the tags agree, and a check holds them to it)
+
 ## 2026-11-08 (v1.182.0, the app client moves to MSAL Browser v5)
 
 Dependency major, `@azure/msal-browser` 3 to 5, with the code changes it needs. Renovate branch renovate/major-azure-ad-microsoft-authentication-library-for-js-monorepo (#163).
