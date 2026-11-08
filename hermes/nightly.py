@@ -5,7 +5,9 @@
 
 Steps, in order, all from this clone so every consumer runs the identical code:
   1. Pull the core clone (fast-forward only, four tries with backoff, because the nightly tick often
-     fires while the network is still waking). A clone with no merge base with origin/main (the core's
+     fires while the network is still waking). A clone left on a branch other than main is moved back
+     to main with one log line when it is clean and fully pushed, else the run fails with the one-line
+     recovery command and the clone is not touched. A clone with no merge base with origin/main (the core's
      history was rewritten) is reset to origin/main when it is clean, with one log line, or the run
      fails with the one-line recovery command. If the pull changed this script, hand over to the new
      copy so a release that changes the job takes effect the same night.
@@ -249,6 +251,9 @@ class Run:
         if not (self.core / ".git").exists():
             self.problems.append(f"core clone missing at {self.core}")
             return False
+        healed = self.leave_branch()
+        if healed is not None:
+            return healed
         _, before = sh(["git", "-C", str(self.core), "rev-parse", "HEAD"])
         err = ""
         for attempt in range(1, 5):
@@ -274,6 +279,57 @@ class Run:
         if before != after:
             self.info.append(f"core updated {before[:7]} -> {after[:7]} ({self.latest_tag()})")
         return True
+
+    def leave_branch(self) -> bool | None:
+        """Move a core clone left on another branch back to main (issue #118).
+
+        The pull is a fast-forward of main onto whatever is checked out, so a clone left on a feature
+        branch fails every night. Nobody works in this clone (section 1), so a branch that is clean and
+        has nothing the upstream lacks is safe to leave: check out main with one log line and let the
+        pull go on. A dirty tree, an unpushed commit, a branch with no upstream or a detached HEAD
+        could lose work, so none is touched and the problem line gives the one-line recovery command.
+        Returns None to go on with the pull, True to stop with the pull counted done (check mode), or
+        False to stop failed."""
+        c = str(self.core)
+        rc, branch = sh(["git", "-C", c, "symbolic-ref", "--short", "-q", "HEAD"])
+        if rc == 0 and branch == "main":
+            return None
+        fix = f"git -C {c} checkout main"
+        if rc != 0:
+            self.problems.append(
+                f"core clone is on a detached HEAD, so it was not moved. Recover with: {fix}"
+            )
+            return False
+        why = ""
+        _, dirty = sh(["git", "-C", c, "status", "--porcelain", "--untracked-files=no"])
+        if dirty:
+            why = "has local edits"
+        else:
+            rc, behind = sh(["git", "-C", c, "rev-list", "--count", "@{upstream}..HEAD"])
+            if rc != 0:
+                why = "has no upstream to prove it is pushed"
+            elif behind != "0":
+                why = f"has {behind} unpushed commit(s)"
+        if why:
+            self.problems.append(
+                f"core clone is on branch {branch}, which {why}, so it was not moved. Push or discard "
+                f"that work, then recover with: {fix}"
+            )
+            return False
+        if self.check:
+            self.info.append(f"core clone is on branch {branch}: would check out main ({fix})")
+            return True
+        rc, out = sh(["git", "-C", c, "checkout", "--quiet", "main"])
+        if rc != 0:  # no local main yet: create it from the remote one
+            rc, out = sh(["git", "-C", c, "checkout", "--quiet", "-b", "main", "--track", "origin/main"])
+        if rc != 0:
+            self.problems.append(
+                f"core clone is on branch {branch} and checking out main failed: {out[-200:]}. "
+                f"Recover with: {fix}"
+            )
+            return False
+        self.info.append(f"core clone was on clean, pushed branch {branch}: checked out main")
+        return None
 
     def recover_rewrite(self) -> bool:
         """Recover from a rewritten core history (CONSUMING.md section 6, "History rewritten").
