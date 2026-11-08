@@ -2,7 +2,7 @@ name: lint-sweep
 # core-managed: this file is refreshed from the core release by scripts/sync-core.py
 # Weekly full-tree lint (ci-cd-release.md 4.6). Pull requests lint what they change, so a linter
 # upgrade or a new rule can leave older files failing unnoticed; this sweep lints the whole tree once
-# a week and keeps one issue (label lint-sweep) open while it fails: it opens the issue the first
+# a week and keeps one issue (label source:lint-sweep) open while it fails: it opens the issue the first
 # time, updates that same issue on every later failure and never opens a second one, and closes it
 # with a comment on the first green sweep.
 #
@@ -83,7 +83,13 @@ jobs:
           FAILED: ${{ steps.lint.outputs.failed }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          open=$(gh issue list --label lint-sweep --state open --json number --jq '.[0].number // empty')
+          # Transition: an issue opened before the rename carries the old label `lint-sweep`, so the
+          # lookup accepts either name. A central rename of existing labels runs separately.
+          open=""
+          for l in source:lint-sweep lint-sweep; do
+            open=$(gh issue list --label "$l" --state open --json number --jq '.[0].number // empty')
+            [ -n "$open" ] && break
+          done
           if [ "$FAILED" != "1" ]; then
             if [ -n "$open" ]; then
               gh issue close "$open" --comment "The weekly lint sweep passes again: $RUN_URL"
@@ -98,11 +104,11 @@ jobs:
             tail -c 60000 "$RUNNER_TEMP/lint-sweep.txt"
             echo '```'
           } > "$body"
-          gh label create lint-sweep --color B60205 --description "Weekly full-tree lint sweep" --force
+          gh label create source:lint-sweep --color B60205 --description "Weekly full-tree lint sweep" --force
           if [ -n "$open" ]; then
-            gh issue edit "$open" --body-file "$body"
+            gh issue edit "$open" --body-file "$body" --add-label source:lint-sweep
             gh issue comment "$open" --body "Still failing: $RUN_URL"
           else
-            gh issue create --title "Weekly lint sweep fails" --label lint-sweep --body-file "$body"
+            gh issue create --title "Weekly lint sweep fails" --label source:lint-sweep --body-file "$body"
           fi
           exit 1

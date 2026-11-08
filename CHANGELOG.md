@@ -9,6 +9,16 @@ Template change, takes effect in a consumer on its next nightly pull.
 
 Refs #118
 
+## 2026-11-08 (v1.187.0, lint-sweep label renamed to source:lint-sweep)
+
+Consumer effect: `lint-sweep.yml` is a core-managed template, so a consumer picks the change up on its next core sync (no manual step).
+
+- `templates/overlay/.github/workflows/lint-sweep.yml` creates the label `source:lint-sweep` (the `family:value` convention), applies it to the sweep issue it opens, and adds it to an existing sweep issue it updates.
+- The lookup for the open sweep issue accepts either `source:lint-sweep` or the former `lint-sweep`, so an issue opened before the rename is still found, updated and closed on the first green sweep. A central rename of existing labels runs separately.
+- `standards/ci-cd-release.md` (2.1), `standards/rules.json`, the overlay README and the `core-practices` skill name the new label. A test pins the template.
+
+Refs #119
+
 ## 2026-11-08 (v1.186.0, kit a11y tests split so no single test nears the timeout)
 
 Repository change, no consumer effect.

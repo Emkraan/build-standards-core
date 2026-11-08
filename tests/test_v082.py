@@ -65,6 +65,14 @@ class WorkflowMerge(unittest.TestCase):
         self.assertIn("working-directory: ${{ steps.p.outputs.app_dir }}", tpl)
         self.assertIn('cd "$APP_DIR"', tpl)
 
+    def test_lint_sweep_uses_family_label_and_accepts_the_old_one(self):
+        tpl = (TEMPLATES / "lint-sweep.yml").read_text()
+        self.assertIn("gh label create source:lint-sweep ", tpl)
+        self.assertIn("--label source:lint-sweep --body-file", tpl)
+        self.assertIn("for l in source:lint-sweep lint-sweep; do", tpl)
+        self.assertNotIn("gh label create lint-sweep", tpl)
+        self.assertNotIn("--label lint-sweep ", tpl)
+
     def test_core_drift_prefix_is_kept(self):
         tpl = (TEMPLATES / "core-drift.yml").read_text()
         local = tpl.replace("python3 scripts/", "python3 ov/scripts/").replace(
