@@ -1,5 +1,19 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "dependencyDashboard": false,
-  "extends": ["github>Emkraan/.github//renovate.json"]
+  "extends": [
+    "github>Emkraan/.github//renovate.json"
+  ],
+  "packageRules": [
+    {
+      "description": "Hold express at v4 until app-server route naming (shell-packages/app-server/index.js, mountTemplateOf) can read Express 5 routers (path-to-regexp 8, no layer.regexp); re-enable when that support lands.",
+      "matchPackageNames": [
+        "express"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "enabled": false
+    }
+  ]
 }
