@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-08 (v1.186.0, kit a11y tests split so no single test nears the timeout)
+
+Repository change, no consumer effect.
+
+- The kit axe suite was one 60 second test per theme running eight axe passes in sequence. Each pass walks the whole gallery document (about 4800 nodes) and takes 2 to 5 seconds, so a single test ran 36 to 60 seconds and CI load pushed it past its limit (60.6s against 60s on the v1.182.0 run). It is now one test per overlay in `kit/tests/a11y-scenarios.tsx`, with the light and dark themes in `a11y.light.test.tsx` and `a11y.dark.test.tsx` so vitest runs them in parallel workers.
+- Measured locally: before, 53s to 108s for the file with a single test of 36s or more per theme; after, 40s to 43s for both files with the slowest single test at about 6s against the 20s default timeout. Same 16 axe passes, same rules, no timeout raised.
+
+Refs #232
+
 ## 2026-11-08 (v1.185.0, renovate holds the express major bump)
 
 Repository change, no consumer effect.
