@@ -1247,7 +1247,7 @@
           "core-secret-scan"
         ]
       },
-      "acceptance": "core-ci.yml job core-secret-scan passes on every PR and push to the default branch: the checksum-pinned scanner reads the base commit's config with ignore files and allow comments off, and the core's tests prove it fails on a planted secret."
+      "acceptance": "core-ci.yml job core-secret-scan passes on every PR and merge queue event: the checksum-pinned scanner reads the base commit's config with ignore files and allow comments off, and the core's tests prove it fails on a planted secret."
     },
     {
       "id": "secrets-and-credentials.1.9",

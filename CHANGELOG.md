@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-08 (v1.181.0, core-ci no longer runs on a push to the default branch)
+
+Template change, takes effect in a consumer on its next sync. Standard text amended to match.
+
+- `templates/overlay/.github/workflows/core-ci.yml` drops its `push: branches: [main]` trigger. That run only did the secret scan, on a tree the pull request run had already scanned (a change reaches the default branch only through a pull request, and the merge gate requires an up to date head), and it cost one runner job per merge to main.
+- `ci-cd-release.md` (why one job), `secrets-and-credentials.md` section 6 and the acceptance text of the secret-scan rule in `rules.json` no longer name a push to the default branch.
+
+No issue: Emkraan/emkraan-apps#3300 item 1.
+
 ## 2026-11-07 (v1.180.0, the changelog and the tags agree, and a check holds them to it)
 
 Record fixes, one new check and one recorded decision. No tag is edited.

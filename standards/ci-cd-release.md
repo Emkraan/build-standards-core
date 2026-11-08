@@ -59,7 +59,8 @@ so no core-ci check shares a name with a job of the repo's own workflows: a gate
 names would read two jobs called `python` as one. A repo lists `core-checks` next to its own checks.
 
 Why one job: each core check is a short script, so a job's cost is mostly runner start and checkout.
-One job per pull request run and a push to the default branch that runs only the secret scan keep
+One job per pull request run, and no run on a push to the default branch (the merge gate requires an
+up to date head, so that run would re-test the tree the pull request run proved), keep
 the shared runner pool free (twelve jobs per run used to be most of a busy consumer's queue). A title or
 body edit is a pull request event, so it runs every check.
 
