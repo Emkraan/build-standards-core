@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-08 (v1.185.0, renovate holds the express major bump)
+
+Repository change, no consumer effect.
+
+- `renovate.json` disables major `express` updates. Express 5 has no `layer.regexp`, so the route naming in `shell-packages/app-server/index.js` (it rebuilds mount templates from Express 4 layer regexps) names every mount "-" and six `routes.test.js` cases fail (Renovate PR #231, closed).
+- Remove the rule once route naming supports the Express 5 router.
+
+Refs #231
+
 ## 2026-11-08 (v1.184.0, core commitlint holds the consumer commitlint rules, changelog conflict markers removed)
 
 Template change, takes effect in a consumer on its next sync.
