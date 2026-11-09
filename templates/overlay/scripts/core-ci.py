@@ -94,14 +94,20 @@ Usage (run from the consumer repo root; the overlay may sit in a subfolder):
   python3 scripts/core-ci.py powershell [--analyzer DIR]     parser errors and PSUseCompatibleSyntax
                                                              (5.1 and 7) in tracked PowerShell files
   python3 scripts/core-ci.py architecture-article --kind apps|stacks --repo OWNER/DOCS_REPO
-                                                             [--ref main] [--root DIR] every system
+                                                             [--ref main] [--root DIR]
+                                                             [--base SHA --head SHA] every system
                                                              directory in this checkout has a compliant
                                                              architecture article merged in the docs
                                                              repository (GH_TOKEN or GITHUB_TOKEN with
                                                              contents:read there; the article rules live
                                                              with the standard: the docs repository's own
                                                              shape script is fetched and applied at run
-                                                             time, so one implementation defines them)
+                                                             time, so one implementation defines them);
+                                                             with --base and --head, each system that
+                                                             range touches also has its article checked
+                                                             against the manifests at HEAD, and its
+                                                             stack_verified against the range's first
+                                                             commit when its structure changed
 
 A BASE of all zeros (a new branch push) scans or checks the whole history up to HEAD.
 Exit codes: 0 pass (or a clean skip, which prints a line starting "skip"), 1 findings, 2 usage or
@@ -2715,15 +2721,45 @@ def architecture_systems(kind: str, root: pathlib.Path, support) -> list:
     )
 
 
+def system_changes(base: str, head: str, kind: str, slugs: list) -> dict:
+    """{slug: first commit date (ISO)} for the systems the change base..head touches: a system is
+    touched when a changed path is inside its folder. The date is the author date of the
+    earliest commit in the range, which a rebase leaves alone."""
+    changed = git("diff", "--name-only", base, head, check=False).splitlines()
+    dates = sorted(git("log", "--format=%aI", f"{base}..{head}", check=False).split())
+    since = dates[0] if dates else ""
+    touched = {}
+    for slug in slugs:
+        prefix = (f"apps/{slug}" if kind == "apps" else slug) + "/"
+        if since and any(c.startswith(prefix) for c in changed):
+            touched[slug] = since
+    return touched
+
+
+def manifests_at(rev: str, folder: str, is_manifest) -> dict:
+    """{path relative to folder: text} of the manifest files inside folder at rev."""
+    names = git("ls-tree", "-r", "--name-only", rev, "--", folder + "/", check=False).splitlines()
+    files = {}
+    for n in names:
+        rel = n[len(folder) + 1 :]
+        text = show(rev, n) if is_manifest(rel) else None
+        if text is not None:
+            files[rel] = text
+    return files
+
+
 def architecture_findings(
-    kind: str, root: str, fetch, shape_script: str, articles_dir: str
+    kind: str, root: str, fetch, shape_script: str, articles_dir: str, change=None
 ) -> tuple:
     """(systems, findings) for the checkout at root. fetch(path) answers the text of that path in
     the docs repository, or None when it is not there. The article rules stay the docs repository's
     own: the shape script named by shape_script is fetched and applied, so this ships the delivery
     gate and never restates the standard, and the set of support folders is read from the same
     module. A missing shape script is a setup error, not a finding: a gate that cannot see the
-    rules proves nothing."""
+    rules proves nothing. change is None (existence and shape only) or (base, head): the systems
+    that range touches also get the shape script's coupling_findings, the article compared with the
+    manifests at head and, when the structure changed, its stack_verified checked against the
+    range's first commit."""
     src = fetch(shape_script)
     if src is None:
         raise RuntimeError(f"the shape script {shape_script} is not in the docs repository")
@@ -2750,6 +2786,24 @@ def architecture_findings(
             article.parent.mkdir(parents=True, exist_ok=True)
             article.write_text(text, encoding="utf-8")
             findings.extend(mod.check_article(article))
+            if change:
+                touched = system_changes(change[0], change[1], kind, [slug])
+                if slug in touched:
+                    if not hasattr(mod, "coupling_findings"):
+                        raise RuntimeError(
+                            f"the shape script {shape_script} has no coupling_findings, so the "
+                            "change cannot be checked against the article"
+                        )
+                    folder = f"apps/{slug}" if kind == "apps" else slug
+                    findings.extend(
+                        mod.coupling_findings(
+                            slug,
+                            text,
+                            manifests_at(change[1], folder, mod.is_manifest),
+                            manifests_at(change[0], folder, mod.is_manifest),
+                            touched[slug],
+                        )
+                    )
     return slugs, findings
 
 
@@ -2759,7 +2813,7 @@ def cmd_architecture_article(argv: list) -> int:
     if kind not in ("apps", "stacks") or not repo:
         say(
             "usage: core-ci.py architecture-article --kind apps|stacks --repo OWNER/DOCS_REPO"
-            " [--ref main] [--root DIR]; GH_TOKEN or GITHUB_TOKEN must carry contents:read on"
+            " [--ref main] [--root DIR] [--base SHA --head SHA]; GH_TOKEN or GITHUB_TOKEN must carry contents:read on"
             " the docs repository"
         )
         return 2
@@ -2775,16 +2829,20 @@ def cmd_architecture_article(argv: list) -> int:
     def fetch(path: str):
         return api_file(repo, path, ref, token)
 
+    base, head = opt.get("--base", ""), opt.get("--head", "")
+    change = (base, head) if base and head and base != ZERO else None
     slugs, findings = architecture_findings(
         kind,
         opt.get("--root", "."),
         fetch,
         "scripts/architecture-docs-compliance.py",
         "docs/architecture",
+        change,
     )
     for f in findings:
         say(f"::error::architecture-article: {f}")
-    say(f"architecture-article: {len(slugs)} system(s), {len(findings)} finding(s)")
+    scope = "with the change coupling" if change else "existence and shape only"
+    say(f"architecture-article: {len(slugs)} system(s), {len(findings)} finding(s), {scope}")
     return 1 if findings else 0
 
 
