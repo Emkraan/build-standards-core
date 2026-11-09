@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-09 (v1.190.0, architecture-article: a system change merges with its article updated)
+
+Opt in, extends the v1.189.0 subcommand; a consumer takes it by moving its pinned core release.
+
+- `core-ci.py architecture-article` accepts `--base SHA --head SHA`. For each system the range touches, it fetches the manifests of that system folder at both commits and calls the documentation repository's own `coupling_findings` (fetched with the shape script): the article's technology table against the manifests at HEAD, and, when the system's structure changed, its `stack_verified` against the range's first commit. Without a range the gate checks existence and shape only, as before.
+- A shape script without `coupling_findings` is a setup error, so a gate that cannot see the coupling rules never passes silently. The coupling rules stay with the documentation repository, never here.
+- Tests: 5 added in `tests/test_architecture_article.py` over real git history in a scratch repository (both sides and the first commit date reach the rules, only the touched system is checked, a finding fails the gate, a change outside every system checks none, no range checks shape only, a missing coupling function is a setup error).
+
 ## 2026-11-09 (v1.189.0, architecture-article: every system in the checkout merges with its article)
 
 Opt in, a pull-request gate for monorepos: a new `core-ci.py` subcommand.
