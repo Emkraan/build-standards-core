@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-09 (v1.189.0, architecture-article: every system in the checkout merges with its article)
+
+Opt in, a pull-request gate for monorepos: a new `core-ci.py` subcommand.
+
+- `core-ci.py architecture-article --kind apps|stacks --repo OWNER/DOCS_REPO [--ref main] [--root DIR]` derives the system folders present in the checkout (the app folders under `apps/`, or the top-level stack folders that are not support code), fetches each system's architecture article from the documentation repository through its GitHub contents API (`GH_TOKEN` or `GITHUB_TOKEN`; a short-lived app token scoped to read-only contents of that one repository is enough), and fails the pull request on a missing article or one failing the shape check.
+- The article rules stay with the documentation repository, never here: the shape script the standard ships is fetched at run time and applied to each fetched article, and the support-folder set is read from the same module, so an article definition keeps exactly one implementation.
+- Tests: 10 in `tests/test_architecture_article.py` (derivation for both kinds, a checkout with no app folder, support and dot folders skipped, missing and malformed articles, the setup error when the shape script is absent, usage and token errors, two full command passes), the docs repository an injected fetch over a fixture shape module, no network.
+
 ## 2026-11-08 (v1.188.0, the nightly moves a core clone left on a clean, pushed branch back to main)
 
 Template change, takes effect in a consumer on its next nightly pull.

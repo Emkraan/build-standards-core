@@ -93,6 +93,15 @@ Usage (run from the consumer repo root; the overlay may sit in a subfolder):
   python3 scripts/core-ci.py install-psscriptanalyzer DIR    the pinned analyzer, checksum verified
   python3 scripts/core-ci.py powershell [--analyzer DIR]     parser errors and PSUseCompatibleSyntax
                                                              (5.1 and 7) in tracked PowerShell files
+  python3 scripts/core-ci.py architecture-article --kind apps|stacks --repo OWNER/DOCS_REPO
+                                                             [--ref main] [--root DIR] every system
+                                                             directory in this checkout has a compliant
+                                                             architecture article merged in the docs
+                                                             repository (GH_TOKEN or GITHUB_TOKEN with
+                                                             contents:read there; the article rules live
+                                                             with the standard: the docs repository's own
+                                                             shape script is fetched and applied at run
+                                                             time, so one implementation defines them)
 
 A BASE of all zeros (a new branch push) scans or checks the whole history up to HEAD.
 Exit codes: 0 pass (or a clean skip, which prints a line starting "skip"), 1 findings, 2 usage or
@@ -103,6 +112,7 @@ from __future__ import annotations
 
 import fnmatch
 import hashlib
+import importlib.util
 import io
 import json
 import os
@@ -2669,6 +2679,112 @@ def cmd_list_shrinks(argv: list) -> int:
     return 1 if bad else 0
 
 
+# ---------------------------------------------------------------- architecture articles
+
+
+def api_file(repo: str, path: str, ref: str, token: str):
+    """The text of path at ref in the GitHub repository repo, or None when the file is not there.
+    The contents API answers raw, so there is no base64 hop. Any failure but a 404 is raised."""
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{repo}/contents/{path}?ref={ref}",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github.raw+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:  # noqa: S310 - fixed api.github.com URL
+            return r.read().decode("utf-8")
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return None
+        raise RuntimeError(f"api status {e.code} reading {path} from {repo} at {ref}") from e
+
+
+def architecture_systems(kind: str, root: pathlib.Path, support) -> list:
+    """The slugs of the systems present in a monorepo checkout: the app folders under apps/ for
+    apps, the top-level folders that are not support code for stacks; dot folders are never one."""
+    base = root / "apps" if kind == "apps" else root
+    if not base.is_dir():
+        return []
+    return sorted(
+        p.name
+        for p in base.iterdir()
+        if p.is_dir()
+        and not p.name.startswith(".")
+        and (kind == "apps" or p.name not in support)
+    )
+
+
+def architecture_findings(kind: str, root: str, fetch, shape_script: str, articles_dir: str) -> tuple:
+    """(systems, findings) for the checkout at root. fetch(path) answers the text of that path in
+    the docs repository, or None when it is not there. The article rules stay the docs repository's
+    own: the shape script named by shape_script is fetched and applied, so this ships the delivery
+    gate and never restates the standard, and the set of support folders is read from the same
+    module. A missing shape script is a setup error, not a finding: a gate that cannot see the
+    rules proves nothing."""
+    src = fetch(shape_script)
+    if src is None:
+        raise RuntimeError(f"the shape script {shape_script} is not in the docs repository")
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = pathlib.Path(tmp)
+        script = tmp_path / "architecture_shape.py"
+        script.write_text(src, encoding="utf-8")
+        spec = importlib.util.spec_from_file_location("architecture_shape", script)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.ROOT = tmp_path  # findings name files under the fetched tree, not the runner's
+        support = set(getattr(mod, "STACK_SUPPORT_DIRS", ()))
+        slugs = architecture_systems(kind, pathlib.Path(root), support)
+        findings = []
+        for slug in slugs:
+            text = fetch(f"{articles_dir}/{slug}.md")
+            if text is None:
+                findings.append(
+                    f"{slug}: no architecture article merged in the docs repository; add "
+                    f"{articles_dir}/{slug}.md there and merge it before this pull request"
+                )
+                continue
+            article = tmp_path / articles_dir / f"{slug}.md"
+            article.parent.mkdir(parents=True, exist_ok=True)
+            article.write_text(text, encoding="utf-8")
+            findings.extend(mod.check_article(article))
+    return slugs, findings
+
+
+def cmd_architecture_article(argv: list) -> int:
+    opt = dict(zip(argv[::2], argv[1::2]))
+    kind, repo = opt.get("--kind", ""), opt.get("--repo", "")
+    if kind not in ("apps", "stacks") or not repo:
+        say(
+            "usage: core-ci.py architecture-article --kind apps|stacks --repo OWNER/DOCS_REPO"
+            " [--ref main] [--root DIR]; GH_TOKEN or GITHUB_TOKEN must carry contents:read on"
+            " the docs repository"
+        )
+        return 2
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN") or ""
+    if not token:
+        say(
+            "::error::architecture-article: no GH_TOKEN or GITHUB_TOKEN with contents:read on "
+            f"{repo}; a short-lived app token scoped to read-only contents of that repository is enough"
+        )
+        return 2
+    ref = opt.get("--ref", "main")
+
+    def fetch(path: str):
+        return api_file(repo, path, ref, token)
+
+    slugs, findings = architecture_findings(
+        kind, opt.get("--root", "."), fetch,
+        "scripts/architecture-docs-compliance.py", "docs/architecture",
+    )
+    for f in findings:
+        say(f"::error::architecture-article: {f}")
+    say(f"architecture-article: {len(slugs)} system(s), {len(findings)} finding(s)")
+    return 1 if findings else 0
+
+
 COMMANDS = {
     "params": cmd_params,
     "pr-title": cmd_pr_title,
@@ -2697,6 +2813,7 @@ COMMANDS = {
     "changelog-lines": cmd_changelog_lines,
     "list-shrinks": cmd_list_shrinks,
     "repo-checks": cmd_repo_checks,
+    "architecture-article": cmd_architecture_article,
 }
 
 
