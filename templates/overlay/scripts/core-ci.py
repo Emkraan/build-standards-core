@@ -2711,13 +2711,13 @@ def architecture_systems(kind: str, root: pathlib.Path, support) -> list:
     return sorted(
         p.name
         for p in base.iterdir()
-        if p.is_dir()
-        and not p.name.startswith(".")
-        and (kind == "apps" or p.name not in support)
+        if p.is_dir() and not p.name.startswith(".") and (kind == "apps" or p.name not in support)
     )
 
 
-def architecture_findings(kind: str, root: str, fetch, shape_script: str, articles_dir: str) -> tuple:
+def architecture_findings(
+    kind: str, root: str, fetch, shape_script: str, articles_dir: str
+) -> tuple:
     """(systems, findings) for the checkout at root. fetch(path) answers the text of that path in
     the docs repository, or None when it is not there. The article rules stay the docs repository's
     own: the shape script named by shape_script is fetched and applied, so this ships the delivery
@@ -2776,8 +2776,11 @@ def cmd_architecture_article(argv: list) -> int:
         return api_file(repo, path, ref, token)
 
     slugs, findings = architecture_findings(
-        kind, opt.get("--root", "."), fetch,
-        "scripts/architecture-docs-compliance.py", "docs/architecture",
+        kind,
+        opt.get("--root", "."),
+        fetch,
+        "scripts/architecture-docs-compliance.py",
+        "docs/architecture",
     )
     for f in findings:
         say(f"::error::architecture-article: {f}")

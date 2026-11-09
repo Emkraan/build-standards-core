@@ -10,14 +10,14 @@ from support import Work, load
 
 CI = load("core_ci_arch", "templates/overlay/scripts/core-ci.py")
 
-SHAPE = '''ROOT = None
+SHAPE = """ROOT = None
 STACK_SUPPORT_DIRS = {"templates", "scripts"}
 
 
 def check_article(path):
     text = path.read_text(encoding="utf-8")
     return [] if "## Purpose" in text else [f"{path.stem}: missing Purpose"]
-'''
+"""
 
 GOOD = "one two ## Purpose three\n"
 
@@ -60,9 +60,7 @@ class Derivation(ArchitectureArticle):
         self.assertEqual(len(findings), 2)
 
     def test_stacks_skips_support_and_dot_folders(self):
-        slugs, _ = self.run_check(
-            "stacks", ["kong", "litellm", "templates", "scripts"], {}
-        )
+        slugs, _ = self.run_check("stacks", ["kong", "litellm", "templates", "scripts"], {})
         self.assertEqual(slugs, ["kong", "litellm"])
 
     def test_a_missing_apps_folder_is_no_systems(self):
@@ -78,9 +76,7 @@ class Verdicts(ArchitectureArticle):
         self.assertIn("docs/architecture/newapp.md", findings[0])
 
     def test_a_good_article_passes(self):
-        _, findings = self.run_check(
-            "apps", ["demo"], {"docs/architecture/demo.md": GOOD}
-        )
+        _, findings = self.run_check("apps", ["demo"], {"docs/architecture/demo.md": GOOD})
         self.assertEqual(findings, [])
 
     def test_a_malformed_article_reports_the_shape_findings(self):
@@ -122,8 +118,9 @@ class Command(ArchitectureArticle):
     def test_the_command_fails_on_a_missing_article_and_passes_without_one(self):
         root = self.checkout("apps", ["studio", "newapp"])
         env = {"GH_TOKEN": "t"}
-        with mock.patch.dict(os.environ, env, clear=True), mock.patch.object(
-            CI, "api_file", self.api({"docs/architecture/studio.md": GOOD})
+        with (
+            mock.patch.dict(os.environ, env, clear=True),
+            mock.patch.object(CI, "api_file", self.api({"docs/architecture/studio.md": GOOD})),
         ):
             code = CI.cmd_architecture_article(["--kind", "apps", "--repo", "o/r", "--root", root])
         self.assertEqual(code, 1)
@@ -131,10 +128,13 @@ class Command(ArchitectureArticle):
         self.lines.clear()
         clean = self.dir / "clean"  # a second checkout, so the first one's folders do not leak
         (clean / "apps" / "demo2").mkdir(parents=True)
-        with mock.patch.dict(os.environ, env, clear=True), mock.patch.object(
-            CI, "api_file", self.api({"docs/architecture/demo2.md": GOOD})
+        with (
+            mock.patch.dict(os.environ, env, clear=True),
+            mock.patch.object(CI, "api_file", self.api({"docs/architecture/demo2.md": GOOD})),
         ):
-            code = CI.cmd_architecture_article(["--kind", "apps", "--repo", "o/r", "--root", str(clean)])
+            code = CI.cmd_architecture_article(
+                ["--kind", "apps", "--repo", "o/r", "--root", str(clean)]
+            )
         self.assertEqual(code, 0)
         self.assertTrue(self.lines[-1].endswith("1 system(s), 0 finding(s)"))
 
