@@ -1,5 +1,5 @@
 /* Segmented draws its selected pill as one marker that glides to the pressed option
-   (web-ui.md section 7), not as a fill on each option. */
+   (the UI standard, section 7), not as a fill on each option. */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';

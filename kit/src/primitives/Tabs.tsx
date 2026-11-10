@@ -178,7 +178,7 @@ export interface SegmentedProps<T extends string> {
 export function Segmented<T extends string>({ options, value, onChange, label, full = false, className }: SegmentedProps<T>) {
   const groupRef = useRef<HTMLFieldSetElement | null>(null);
   const gliderRef = useRef<HTMLSpanElement | null>(null);
-  // One raised pill that slides to the pressed option (web-ui.md section 7). It is placed without a
+  // One raised pill that slides to the pressed option (the UI standard, section 7). It is placed without a
   // transition the first time, so it never glides in from the corner; `data-glide` then hands the
   // pressed option's own fill over to it.
   useIsoLayoutEffect(() => {
