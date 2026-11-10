@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-09 (v1.191.0, kit: 24 px feed strip pager dots, global selection and scrollbar base styles)
+
+Kit change, a consumer takes it by moving its pinned release. Visual baselines are refreshed by CI.
+
+- The feed strip pager dots (`.presenter-dot`) are 24 by 24 CSS pixel targets (WCAG 2.2 2.5.8) that still draw the 6 px dot, 16 px wide when active. The gallery axe run no longer turns `target-size` off.
+- `kit.css` ships the global base styles `standards/web-ui.md` asks for: `::selection` takes the accent wash with `--text-primary`, and scrollbars are thin with a `--border-default` thumb on a transparent track (`scrollbar-width`, `scrollbar-color` and the WebKit pseudo elements). An app's unlayered rule still wins.
+- Intake item 3 (the `.is-selected[class]` accent shadow) needs no change: `tokens/hub-layer.css` already uses the neutral recipe (`--surface-3`, `inset 0 0 0 1px var(--border-strong)`, sheen, `--shadow-xs`).
+
 ## 2026-11-09 (v1.190.0, architecture-article: a system change merges with its article updated)
 
 Opt in, extends the v1.189.0 subcommand; a consumer takes it by moving its pinned core release.
