@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-09 (v1.194.0, slow upstream queries: cache, single flight, admission limits; tests independent of the time of day)
+
+Opt in for a web consumer; takes effect by moving its pinned core release and registering the rules.
+
+- `standards/web-api-runtime.md` section 10, "Slow upstream queries", five rules: cache a query result and serve it stale while it refreshes, single flight per query, bounded running and waiting counts with 429 beyond them, back off when the upstream throttles, and a one-shot worker per query that exits when answered. It cross-references `createSwrReader` (`standards/web-shell-packages.md` section 5.11), the same stale-while-refresh pattern for a status reading, and `standards/web-process-health.md` for the worker. A checklist line is added to section 8.
+- `standards/web-build.md` section 9.1: tests do not depend on the time of day; day buckets in a test are anchored to the UTC day of an injected instant. Evidence: a test anchored to the current time failed every evening until it was anchored to the UTC day.
+- `standards/rules.json` registers `web-api-runtime.10.1` to `10.5` and `web-build.9.1` (check kind `test`, scope `web`); the generated `core-practices` skill is rebuilt.
+- Tests: `tests/test_rules_slow_upstream.py` (5) pins the registered rules, the absence of unregistered ones, the prevents and acceptance lines, the cross-references and the evidence.
+
 ## 2026-11-09 (v1.192.0, kit: Segmented glides its selected pill)
 
 Kit change, a consumer takes it by moving its pinned release.
