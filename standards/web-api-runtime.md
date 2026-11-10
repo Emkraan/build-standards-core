@@ -149,8 +149,64 @@ flood each fail; the dev identity is refused when the environment is unset or `s
 - [ ] Lightweight exporter, not the all-in-one distribution.
 - [ ] One shared runtime package, no runtime dependencies.
 - [ ] Bearer rules written, dev identity only in development or test.
+- [ ] Slow upstream queries: stale-while-refresh cache, single flight, bounded running and waiting counts with 429 beyond, back-off when throttled, one-shot worker per query (section 10).
 
 ## 9. Route contracts
 
 1. **Every route has a contract, the API reference is generated and checked, and the exemption list only shrinks.** A contract names a route's method and path, who may call it, its input and its answers, and is bound to the handler where the route is declared. The API reference is generated from the contracts and a CI step fails when it differs from the committed copy. A route that predates the rule sits on an exemption list; a new route never joins it, so the list only shrinks to zero (`core-ci.py list-shrinks` fails a pull request that adds an entry, the parameters row `Shrink-only lists` names the file). **Acceptance (test):** a route with no contract fails the coverage check, a generated reference that differs fails, and a pull request that adds an exemption fails `list-shrinks`.
 2. **Every CSV or spreadsheet export goes through one formula guard.** A text value whose first character is `=`, `+`, `-`, `@`, a tab or a carriage return is written with a leading apostrophe (inside the quotes when the cell is quoted), so opening a download never runs a formula. Numbers and booleans are not text and are never mangled. No code builds a CSV line by hand. **Acceptance (test):** a test writes each leading character and a negative number and asserts the guard and the exemption (`opscenter/server/modules/reports/export_csv_test.py`).
+
+## 10. Slow upstream queries
+
+How an API serves a view that is backed by a slow remote query (a log store, a search service, a
+metrics backend) without making every viewer wait for it and without a burst of viewers becoming a
+burst of upstream queries. The rules came from reports that moved from a local table to a remote
+log store. The health-read helper `createSwrReader` ([Shell packages](web-shell-packages.md)
+section 5.11) is the same stale-while-refresh pattern for one status reading; a query-keyed cache
+follows the same behaviour (answer at once from the last reading, one shared refresh, a failed
+refresh keeps the last good reading with its real age) and may be built on it.
+
+1. **Cache the query result and serve it stale while it refreshes.** Each distinct query (the
+   normalised parameters, never the caller's identity when the answer is the same for everyone) has
+   a cache entry with a fresh window and a stale window. Inside the fresh window the entry is
+   served. Inside the stale window the entry is served at once and one refresh starts in the
+   background. Only a request with no entry waits for the upstream. A failed refresh keeps the last
+   good entry, records the error and is never cached as an answer.
+   - Prevents: every repeat view of a report paying the full upstream latency, and an upstream
+     outage turning into an empty page for a view that was loaded a minute ago.
+   - Evidence: after reports moved from a local table to a remote log store, serving the stale rows
+     at once and refreshing in the background removed the wait on repeat views.
+   - Acceptance (test): a second request inside the stale window is answered before the fake
+     upstream replies and a later request sees the refreshed rows; a failing refresh leaves the last
+     good rows and their age in place.
+2. **Single flight per query.** Concurrent requests for the same query, and a refresh that is
+   already running, share one upstream call.
+   - Prevents: a page that opens in many tabs, or a dashboard of identical panels, sending one
+     upstream query per request.
+   - Acceptance (test): N concurrent requests for a cold query produce one upstream call, and a
+     request during a refresh starts none.
+3. **Bound the running and the waiting counts, and answer 429 beyond them.** The API runs at most a
+   fixed number of upstream queries at once and lets at most a fixed number of further requests
+   wait for a slot. A request past both limits is answered 429 with a `Retry-After`, at once, and
+   never queued without bound.
+   - Prevents: a burst of distinct queries exhausting the upstream's concurrency allowance, the
+     server's memory and every other caller's patience at the same time.
+   - Acceptance (test): with the limits set to two running and three waiting, ten distinct
+     simultaneous queries run two, queue three and answer the other five 429 with `Retry-After`.
+4. **Back off when the upstream throttles.** An upstream answer that means "slow down" (429, or a
+   throttling error code) opens a back-off: no new upstream query starts until the time the upstream
+   names, or an exponentially growing delay with a cap when it names none. Requests in that window
+   are served stale where there is an entry and answered 429 with `Retry-After` where there is not.
+   - Prevents: retries and refreshes hammering an upstream that has already said no, which lengthens
+     the throttle for everyone.
+   - Acceptance (test): a fake upstream that answers 429 once stops all upstream calls until the
+     back-off ends, stale entries are served during it, and the first call after it succeeds.
+5. **Run each query in a worker that exits when it is answered.** The upstream call, its response
+   parsing and its row shaping run in a one-shot worker per query (the one-shot worker rule of the web process health standard, `web-process-health.md` rule 1). The worker keeps no connection, pool or cache open
+   after the answer, and the main thread receives only the shaped result.
+   - Prevents: parsing a large response on the event loop, and idle upstream connections held open
+     by a process that serves a few queries an hour.
+   - Evidence: a worker per query that exits when answered kept no connection open and kept
+     parsing off the main thread.
+   - Acceptance (test): a query against a fake upstream answers while a health request is served
+     during the parse, and the worker is gone afterwards.

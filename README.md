@@ -171,6 +171,7 @@ value of the doc's registered rules (see the rules registry below).
 | App types | `standards/web-shell-deploy.md` | Shell build and deploy: bundle and API pipelines, gates, the dev tier guard, fix-forward recovery | web (no rules yet) |
 | App types | `standards/web-shell-server.md` | Shell server rules: removal ceiling, own-permission modules, route gates, closed relay targets, sealed secrets, keyed audit chain, announcements, external tools, per-user state, never-invented health, persisted boot, migrations, production preflight, per-item bulk results, one-process jobs | web (no rules yet) |
 | App types | `standards/web-api-runtime.md` | Node and Express APIs behind a gateway: group caching, directory token, CORS max age and origin guard, Server-Timing, request log, telemetry, the shared runtime package | web |
+| App types | `standards/web-process-health.md` | Keeping a web process responsive: long reads in a one-shot worker, an event-loop watchdog, one job registry, staggered startup and a lock takeover that never waits on a full check | web |
 | App types | `standards/web-client-runtime.md` | Single page apps with an OIDC library: one auth boot, renewal without iframes, the API client, lazy bundles, the shared client package, the live feed strip | web |
 | App types | `standards/local-ops-app.md` | Locally hosted operations apps: contract, cost-gated analyzer, loopback server | local-ops |
 | App types | `standards/web-ui.md` sections 10, 12, 21 | WPF translation, per-app accent and the plain-CSS port, system health | web |

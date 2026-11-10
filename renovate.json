@@ -14,6 +14,14 @@
         "major"
       ],
       "enabled": false
+    },
+    {
+      "description": "Move the Playwright container tag in visual.yml and @playwright/test in kit/package.json together: Playwright refuses to start when the browser image and the library differ.",
+      "groupName": "playwright",
+      "matchPackageNames": [
+        "@playwright/test",
+        "mcr.microsoft.com/playwright"
+      ]
     }
   ]
 }
