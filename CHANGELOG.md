@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-09 (v1.196.0, ci-cd-release: standby-slot deploy, polling post-swap smoke, slot reaper)
+
+Opt in for a consumer that deploys to a platform with deployment slots; takes effect by moving its pinned core release.
+
+- `standards/ci-cd-release.md` section 6 gains three rules after 6.1: 6.2, a deploy goes through a standby slot, is health-gated there and swaps, the previous release staying in the standby slot and the slot never opening the database before the swap; 6.3, the post-swap smoke polls and retries a 500 (and any other non-answer) with no list of retryable statuses, only the end of the window failing the run (it extends 6.1, which already requires the bounded window); 6.4, a scheduled reaper outside the deploy workflow reclaims old slots from the platform's own list and timestamps, never from a record the deploy wrote.
+- Evidence: a one-shot smoke check marked healthy deploys as failed while the platform answered 500 during a restart, and polling removed the false failures; slots that were never reclaimed stayed running until the reaper was added.
+- `standards/rules.json` registers `ci-cd-release.6.2` (review), `6.3` and `6.4` (test); the generated `core-practices` skill is rebuilt.
+- Tests: `tests/test_rules_deploy_slots.py` (4) pins the registered rules, the retained 6.1, the no-list wording of 6.3 and the reaper's independence.
+
 ## 2026-11-09 (v1.192.0, kit: Segmented glides its selected pill)
 
 Kit change, a consumer takes it by moving its pinned release.
