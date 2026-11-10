@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-10 (v2.0.1, retire the hub log intake and reports plans)
+
+Documentation only. The hub no longer consumes the core, so the owner retired the hub log intake and hub reports plans on 2026-11-10.
+
+- Removed: `opscenter/plans/hub-log-intake-plan.md` and `opscenter/plans/hub-reports-plan.md`. Plan items that were not built are dropped.
+- Kept: the built optional modules `server/modules/log_intake/` and `server/modules/reports/` with their tests, unchanged in behaviour.
+- Reworded: `opscenter/DESIGN.md` (sections 12.57, 12.60, 12.61, 12.62), the two module docstrings and `opscenter/plans/README.md` no longer point at the plans.
+
 ## 2026-11-10 (v2.0.0, breaking: the core narrows to Hermes and the ops center)
 
 Breaking. The core now holds only the Hermes tooling, the ops center and the standards those two rely on.
