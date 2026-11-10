@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { cx } from '../lib/env';
+import { useIsoLayoutEffect } from '../lib/layers';
 import type { StatusTone } from './marks';
 
 export interface TabItem {
@@ -176,6 +177,34 @@ export interface SegmentedProps<T extends string> {
 /** A segmented toggle (ranges, views, series). Arrow keys move the selection. */
 export function Segmented<T extends string>({ options, value, onChange, label, full = false, className }: SegmentedProps<T>) {
   const groupRef = useRef<HTMLFieldSetElement | null>(null);
+  const gliderRef = useRef<HTMLSpanElement | null>(null);
+  // One raised pill that slides to the pressed option (the UI standard, section 7). It is placed without a
+  // transition the first time, so it never glides in from the corner; `data-glide` then hands the
+  // pressed option's own fill over to it.
+  useIsoLayoutEffect(() => {
+    const group = groupRef.current;
+    const glider = gliderRef.current;
+    if (!group || !glider) return undefined;
+    const place = () => {
+      const active = group.querySelector<HTMLElement>('.seg-btn[aria-pressed="true"]');
+      if (!active) {
+        glider.style.opacity = '0';
+        return;
+      }
+      glider.style.opacity = '1';
+      glider.style.transform = `translate(${active.offsetLeft}px, ${active.offsetTop}px)`;
+      glider.style.width = `${active.offsetWidth}px`;
+      glider.style.height = `${active.offsetHeight}px`;
+      if (!group.hasAttribute('data-glide')) {
+        group.setAttribute('data-glide', '');
+        requestAnimationFrame(() => group.setAttribute('data-glide', 'ready'));
+      }
+    };
+    place();
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(place) : null;
+    ro?.observe(group);
+    return () => ro?.disconnect();
+  }, [value, options]);
   const onKeyDown = (event: KeyboardEvent<HTMLFieldSetElement>) => {
     const index = options.findIndex((o) => o.value === value);
     let next: SegmentedOption<T> | undefined;
@@ -192,6 +221,7 @@ export function Segmented<T extends string>({ options, value, onChange, label, f
   return (
     <fieldset ref={groupRef} className={cx('seg', className)} data-full={full ? '' : undefined} onKeyDown={onKeyDown}>
       <legend className="kit-sr-only">{label}</legend>
+      <span ref={gliderRef} className="seg-glider" aria-hidden="true" />
       {options.map((o) => {
         const pressed = o.value === value;
         return (

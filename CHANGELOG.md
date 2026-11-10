@@ -6,6 +6,13 @@ Repository change, no consumer effect.
 
 - `renovate.json` groups `@playwright/test` (`kit/package.json`) and the `mcr.microsoft.com/playwright` container image (`.github/workflows/visual.yml`) under one `playwright` update, so one pull request moves both and the visual gate never runs a library that differs from its browser image (Playwright refuses to start on a mismatch).
 
+## 2026-11-09 (v1.192.0, kit: Segmented glides its selected pill)
+
+Kit change, a consumer takes it by moving its pinned release.
+
+- `Segmented` draws its selected pill as one marker (`.seg-glider`, decorative) that slides to the pressed option, as `standards/web-ui.md` section 7 requires, instead of filling each option. The marker is placed without a transition the first time, so it never glides in from the corner, and reduced motion turns the slide off. Radio-group semantics, arrow keys and `aria-pressed` are unchanged.
+- Test: `kit/tests/segmented-glide.test.tsx`.
+
 ## 2026-11-09 (v1.191.0, kit: 24 px feed strip pager dots, global selection and scrollbar base styles)
 
 Kit change, a consumer takes it by moving its pinned release. Visual baselines are refreshed by CI.
