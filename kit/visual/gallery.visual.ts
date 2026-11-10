@@ -50,12 +50,11 @@ async function openGallery(page: Page, theme: Theme, paused: boolean): Promise<s
 
 /**
  * axe's default rule set (the same one the jsdom run uses), with color-contrast on because a real
- * browser paints. target-size (WCAG 2.2, 24 by 24 pixel targets) is off for now: the feed strip
- * pager dots in kit/src are 8 by 20 pixels and fail it. That is a kit component finding, recorded
- * in CHANGELOG.md, and this exclusion goes when the dots grow.
+ * browser paints, including target-size (WCAG 2.2, 24 by 24 pixel targets): the feed strip pager
+ * dots are 24 by 24 targets that draw a smaller dot.
  */
 async function axeViolations(page: Page): Promise<{ rule: string; impact: string | null | undefined; nodes: string[] }[]> {
-  const results = await new AxeBuilder({ page }).disableRules(['target-size']).analyze();
+  const results = await new AxeBuilder({ page }).analyze();
   const ran = [...results.passes, ...results.violations, ...results.incomplete].some((r) => r.id === 'color-contrast');
   expect(ran, 'the color-contrast rule ran').toBe(true);
   return results.violations.map((v) => ({

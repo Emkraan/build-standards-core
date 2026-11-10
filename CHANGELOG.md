@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-09 (v1.191.0, web-process-health: a new standard for a responsive web process)
+## 2026-11-09 (v1.193.0, web-process-health: a new standard for a responsive web process)
 
 Opt in for a web consumer; takes effect by moving its pinned core release and registering the four rules.
 
@@ -9,6 +9,21 @@ Opt in for a web consumer; takes effect by moving its pinned core release and re
 - The jobs-in-one-process rule stays in `standards/web-shell-server.md` section 5 and the `jobs` package in `standards/web-shell-packages.md` section 5.4; the new doc cross-references them and does not repeat them.
 - `standards/rules.json` registers `web-process-health.1.1` to `1.4` (check kind `test`, scope `web`); the README standards table has one new row; the generated `core-practices` skill is rebuilt.
 - Tests: `tests/test_rules_web_process_health.py` (5) pins the four registered rules, the absence of an unregistered fifth, the prevents, evidence and acceptance lines of each rule, the measured evidence and cross-references, and the README row.
+
+## 2026-11-09 (v1.192.0, kit: Segmented glides its selected pill)
+
+Kit change, a consumer takes it by moving its pinned release.
+
+- `Segmented` draws its selected pill as one marker (`.seg-glider`, decorative) that slides to the pressed option, as `standards/web-ui.md` section 7 requires, instead of filling each option. The marker is placed without a transition the first time, so it never glides in from the corner, and reduced motion turns the slide off. Radio-group semantics, arrow keys and `aria-pressed` are unchanged.
+- Test: `kit/tests/segmented-glide.test.tsx`.
+
+## 2026-11-09 (v1.191.0, kit: 24 px feed strip pager dots, global selection and scrollbar base styles)
+
+Kit change, a consumer takes it by moving its pinned release. Visual baselines are refreshed by CI.
+
+- The feed strip pager dots (`.presenter-dot`) are 24 by 24 CSS pixel targets (WCAG 2.2 2.5.8) that still draw the 6 px dot, 16 px wide when active. The gallery axe run no longer turns `target-size` off.
+- `kit.css` ships the global base styles `standards/web-ui.md` asks for: `::selection` takes the accent wash with `--text-primary`, and scrollbars are thin with a `--border-default` thumb on a transparent track (`scrollbar-width`, `scrollbar-color` and the WebKit pseudo elements). An app's unlayered rule still wins.
+- Intake item 3 (the `.is-selected[class]` accent shadow) needs no change: `tokens/hub-layer.css` already uses the neutral recipe (`--surface-3`, `inset 0 0 0 1px var(--border-strong)`, sheen, `--shadow-xs`).
 
 ## 2026-11-09 (v1.190.0, architecture-article: a system change merges with its article updated)
 
