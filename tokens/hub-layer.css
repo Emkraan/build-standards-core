@@ -159,8 +159,9 @@
   box-shadow: var(--shadow-inset-top); flex-wrap: wrap; min-width: 0;
 }
 .presenter-bubble { display: flex; gap: 8px; align-items: baseline; min-width: 0; flex: 1 1 160px; overflow: hidden; white-space: nowrap; animation: hub-fade-up var(--dur-enter) var(--ease-out) backwards; }
-.presenter-dots { display: flex; gap: 2px; align-items: center; }
-.presenter-dot { height: 20px; padding: 0 1px; display: inline-flex; align-items: center; background: none; border: 0; cursor: pointer; }
+.presenter-dots { display: flex; gap: 0; align-items: center; }
+/* 24 by 24 CSS px target (WCAG 2.2 2.5.8); the 6px dot is drawn by ::after, the active one 16px wide. */
+.presenter-dot { min-width: 24px; height: 24px; padding: 0; justify-content: center; display: inline-flex; align-items: center; background: none; border: 0; cursor: pointer; }
 .presenter-dot::after { content: ""; width: 6px; height: 6px; border-radius: 999px; background: var(--border-strong); transition: width var(--dur-slower) var(--ease-spring), background-color var(--dur-base); }
 .presenter-dot:hover::after { background: var(--text-tertiary); }
 .presenter-dot.is-active::after { width: 16px; background: rgb(var(--accent-rgb)); }
