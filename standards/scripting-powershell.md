@@ -12,7 +12,7 @@ Related: [CMTrace Logging Standard](cmtrace-logging.md) (log format, what not to
 and exit code logging rules), [CI/CD and Release Standard](ci-cd-release.md#101-powershell-repos)
 (the PowerShell CI set), [Secrets and Credentials](secrets-and-credentials.md) (identity and
 secret handling), [Automation Safety](automation-safety.md) (what automation may act on),
-[WPF PowerShell GUI Standards](wpf-powershell-gui.md) (interactive tools).
+WPF PowerShell GUI Standards (the wpf-powershell-gui-standard doc) (interactive tools).
 
 ---
 

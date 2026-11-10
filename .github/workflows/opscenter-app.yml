@@ -3,8 +3,8 @@ on:
   pull_request:
     paths:
       - 'opscenter/app/**'
-      - 'kit/**'
-      - 'tokens/**'
+      - 'opscenter/kit/**'
+      - 'opscenter/tokens/**'
       - '.github/workflows/opscenter-app.yml'
 permissions:
   contents: read
@@ -18,11 +18,11 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: |
-            kit/package-lock.json
+            opscenter/kit/package-lock.json
             opscenter/app/package-lock.json
       # The app builds against the kit source (alias @kit), so the kit's own dependencies are installed too.
       - run: npm ci
-        working-directory: kit
+        working-directory: opscenter/kit
       - run: npm ci
         working-directory: opscenter/app
       - run: npm run typecheck

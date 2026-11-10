@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * What's new data for the Ops Center build card (web-ui.md sections 22 and 25).
+ * What's new data for the Ops Center build card (the web-ui-standard doc).
  *
  * The core generator (scripts/gen-changelog.mjs, synced, never edited) reads the whole repository
  * log. The Ops Center lives inside a larger repository, so this wrapper reads only the commits that

@@ -1,4 +1,4 @@
-"""web-ui.0.3: the kit's own CSS carries a glow only in the allowed places. This scans the kit stylesheets
+"""The web UI standard: the kit's own CSS carries a glow only in the allowed places. This scans the kit stylesheets
 for a glow token, a text-shadow or a coloured blurred shadow and fails outside the allowed selectors."""
 
 import re
@@ -6,7 +6,7 @@ import unittest
 
 from support import ROOT
 
-FILES = ["kit/src/styles/kit.css", "kit/src/graph/graph.css"]
+FILES = ["opscenter/kit/src/styles/kit.css", "opscenter/kit/src/graph/graph.css"]
 # Hero stat tile, the progress bar fill, the search focus, selected cards and nodes, chart bars, the active nav marker, and the art mark's own
 # picture effect layers (an art asset, not chrome).
 ALLOWED = re.compile(
@@ -38,10 +38,10 @@ class KitGlow(unittest.TestCase):
                         and "var(--focus-ring)" not in decl
                     ):
                         bad.append(f"{rel}: {sel[:50]} -> {decl.strip()[:70]}")
-        self.assertEqual(bad, [], "glow outside the allowed uses (web-ui.0.3)")
+        self.assertEqual(bad, [], "glow outside the allowed uses (the web-ui-standard doc)")
 
     def test_search_focus_is_glow_only_ring_on_keyboard(self):
-        css = (ROOT / "kit/src/styles/kit.css").read_text()
+        css = (ROOT / "opscenter/kit/src/styles/kit.css").read_text()
         m = re.search(r'\.search-field\[data-focus="true"\]\s*\{([^}]*)\}', css)
         self.assertNotIn("var(--focus-ring)", m.group(1))
         self.assertIn("0 0 0 3px var(--accent-glow)", m.group(1))
@@ -51,7 +51,7 @@ class KitGlow(unittest.TestCase):
         self.assertIn("var(--focus-ring)", keyboard.group(1))
 
     def test_progress_fill_glow_only_on_the_plain_fill(self):
-        css = (ROOT / "kit/src/styles/kit.css").read_text()
+        css = (ROOT / "opscenter/kit/src/styles/kit.css").read_text()
         m = re.search(r"\n\.progress-fill\s*\{([^}]*)\}", css)
         self.assertIn("var(--shadow-glow)", m.group(1))
         m = re.search(r"\.progress\.meter \.progress-fill\s*\{([^}]*)\}", css)

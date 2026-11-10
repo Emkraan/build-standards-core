@@ -12,7 +12,7 @@ or the repo itself. The rules hold wherever it is.
 
 Related: [PR Review and Merge](pr-review-and-merge.md) (the changelog entry in every PR),
 [CI/CD section 3](ci-cd-release.md#3-conventional-commits-and-semver) (versions and the in-app
-changelog), [First-Party Build Standard section 9](web-build.md#9-engineering-practice) (standards
+changelog), First-Party Build Standard section 9 (the web-build-standard doc) (standards
 change with the code).
 
 ---

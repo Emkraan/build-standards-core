@@ -76,7 +76,7 @@ are in the core's `CONTRIBUTING.md` ("Reporting from a consumer") and the templa
    - pinned release: `standards.lock` in the overlay (`ref`);
    - `python3 scripts/core-status.py --json --latest` (the overlay's copy of the script). Take
      `core.pinned_ref`, `core.latest`, `core.behind`, `summary.pass`, `summary.proved`,
-     `summary.fail`, `summary.unverified`, `ui_adoption.status`. A repo without the script:
+     `summary.fail`, `summary.unverified`. A repo without the script:
      `not collected: core-status not installed`. A vendored repo has no overlay: take its line
      from `python3 <core clone>/templates/overlay/scripts/core-status.py --vendored OWNER/REPO --json`
      (`release`, `latest`, `behind`).
@@ -96,8 +96,7 @@ For each UI repo, read the code (do not guess from names):
 
 1. **Tokens.** Search the app's CSS and TS for `var(--` and list which core token families it reads
    (colour, space, radius, type, motion, z). List every file that defines a custom property or sets
-   the accent, and what it sets. `python3 lint-core/ui_lint.py --json` in the overlay lists UI007,
-   UI008, UI009 and UI010 findings: include their counts per rule.
+   the accent, and what it sets.
 2. **Shell.** Find the root layout component and describe: the grid (columns and rows), the rail
    (width, collapsed state, grouping), the header (search, actions), any status strip, the home or
    hub page, and how a user switches module (routes, tabs, palette).
@@ -137,6 +136,9 @@ For each UI repo, read the code (do not guess from names):
    capture is `not collected: <reason>`.
 
 ## 3. Section c: design diff against the kit
+
+The core no longer ships a UI kit (the ops center keeps its own in `opscenter/kit`). A repo with no
+`kit-core/` copy has no section c: write `not applicable: no kit copy` for it and go on.
 
 1. Pinned kit: `kit-core/src` in the overlay is the kit at the pinned release. List its parts
    (capitalised exports).

@@ -1,4 +1,4 @@
-// Bundle size budget check (web-client-runtime.md 4.1).
+// Bundle size budget check (the web-client-runtime-standard doc).
 // Reads dist/index.html, finds the entry script and its eagerly loaded modulepreload chunks, and fails
 // when the gzip size of the entry chunk or the first-load total passes the budget below.
 // Run after the build: node tools/check-bundle-size.mjs (the build script runs it).

@@ -98,13 +98,13 @@ functionality precisely enough that adopting a core part never breaks a feature.
   jobs; per repo the way it takes the core, by neutral label (`workflow`, `apply-at-once` for the
   ops-center mode, `vendored`, `agent-home`),
   the pinned release and how far behind it is; `core-status --json` counts (pass, proved, fail,
-  unverified) and the UI verdict.
+  unverified).
 - **b. Design inventory per app.** Tokens used and any local token or accent work; the shell
   (layout, rail, header, strip, home or hub, module switching); every UI part with its source
   (kit, adapter over kit, local); interaction patterns (palette, shortcuts, toasts, dialogs,
   motion); typography and density; light and dark; layout-only screenshots of every main screen
   in both themes.
-- **c. Design diff against the core kit**, at the pinned release, part by part: one row per kit
+- **c. Design diff against the core kit** (only for a repo that still carries a `kit-core/` copy), at the pinned release, part by part: one row per kit
   part and per local part, verdict same, local is better, core is better, missing in core or
   missing locally. Each "local is better" or "missing in core" row is a proposal item `D-nnn`.
 - **d. Functionality inventory per app,** the parts each feature depends on, and the adoption

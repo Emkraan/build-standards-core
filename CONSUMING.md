@@ -20,7 +20,7 @@ none of them needs an invitation, a token or an account to read the core: it is 
 
 | Channel | What it delivers | How it stays current | Section |
 |---|---|---|---|
-| Overlay sync | `standards-core/`, `tokens-core/`, `lint-core/`, `kit-core/`, the overlay scripts and the template workflows (`core-ci.yml`, `core-drift.yml`, `core-update.yml`, `lint-sweep.yml`), pinned by `standards.lock` | the repo's own `core-update.yml` opens a pull request on every release; or run `python3 scripts/update-core.py` by hand | 3, 12 |
+| Overlay sync | `standards-core/`, `lint-core/`, the overlay scripts and the template workflows (`core-ci.yml`, `core-drift.yml`, `core-update.yml`, `lint-sweep.yml`), pinned by `standards.lock` | the repo's own `core-update.yml` opens a pull request on every release; or run `python3 scripts/update-core.py` by hand | 3, 12 |
 | Reusable workflow (opt in) | the same one-job `core-ci` checks, run from the core at a pinned release, with no copy of `core-ci.yml` in the repo | move the pinned commit (by hand or with Renovate) | 3 ("Alternative") |
 | Agent skills | the `core-` skills and settings for the agent on a machine | the nightly job (`hermes/nightly.py`) | 2, 4 |
 
@@ -158,7 +158,7 @@ trigger list so a fixed title or body is re-validated.
 - The caller's repo is checked out at the pull request head with full history; the core is fetched at the
   pinned commit into the runner's temp folder, outside the workspace, so no repo-wide tool sees it. The
   caller's own `scripts/core-ci.py` is not used; the pinned copy runs with `CORE_CI_OVERLAY` pointing at the
-  caller's overlay, so `standards-local/parameters.md`, `exceptions.md` and `kit-core` are still the repo's.
+  caller's overlay, so `standards-local/parameters.md` and `exceptions.md` are still the repo's.
 - A sync (`sync-core.py`, the nightly) leaves a `core-ci.yml` that calls the reusable workflow as it is and
   prints a note; move the pinned sha to a new release yourself, or let Renovate do it (it updates a
   sha-pinned `uses:` and its version comment).
@@ -213,7 +213,7 @@ the repo's agent to run; the core never changes a ruleset or a required check it
 - Register with the repo's local `PATH`; the repo needs no CI and no token.
 - The nightly applies a release at once. In an isolated git worktree of the committed default
   branch it runs the gate on the current pin, syncs the new release, and runs the gate again:
-  core sync, exceptions, UI lint, script lint, typecheck, test build, plus the repo's own verify
+  core sync, exceptions, script lint, typecheck, test build, plus the repo's own verify
   command from `standards-local/parameters`. Only then does it commit to the default branch and
   push where a remote exists; where the remote requires a pull request, the job opens it and
   merges it at once, because the local gate is the gate.
@@ -272,7 +272,7 @@ the repo's agent to run; the core never changes a ruleset or a required check it
   `sync_head` in the entry so the Core consumption panel finds the pull request.
 - Registered report only (`--report-only`), the nightly still writes the machine record each run
   (it reads the clone and the core clone and writes nothing into the repo), and the report sections
-  scan the clone at its root against the core's kit, so section g and the candidates list the repo
+  scan the clone at its root against the ops center kit (`opscenter/kit/src`), so section g and the candidates list the repo
   too.
 
 ### `pin-file`: a repo that records the core as one line
@@ -294,7 +294,6 @@ The owner's rule (README "Direction", "Two consumption classes"; `ci-cd-release.
 | A new release | the nightly applies it at once behind the ops center's gate, rolls back on failure; a gated repo's release lands as a pull request that merges as soon as its own checks pass | arrives as a pull request: `core-update.yml`'s draft, the vendoring tool's, or the pin-file bump |
 | Who approves it | nobody: the gate is the approval | the owner, one action in the Core consumption panel or on GitHub |
 | Who merges it | the nightly, after the gate passes (and the repo's own checks, for a gated repo) | the repo's merge gate or `merge-pr.py`, after the owner's approval and green checks |
-| Adopting new kit parts | the ops center's own changes | planned pull requests the owner approves, one per swap |
 | What the nightly may do to the repo | commit and push the sync to its default branch, or for a gated repo open the sync pull request and merge it once its checks pass | dispatch `core-update.yml`, read state; never push, never merge |
 | What the panel shows | release and gate result, no approval control | pin, behind, sync pull request and CI, status, adoption suggestions with risk |
 | `setup.py` says | "applies at once" | "approval-gated" |
@@ -411,14 +410,14 @@ nightly never fills the report's two marker sections for that repo. Migrate it o
   tracks it.
 
 Either way the repo appears in `ui_consumers`, which is what the report step reads. A `vendored`
-repo carries no overlay: the report scan reads its clone at the root against the core clone's kit,
+repo carries no overlay: the report scan reads its clone at the root against the core clone's ops center kit,
 read-only, and its release comes from the machine record, which the nightly writes for a report-only
 entry too (#117 G-031). Its counts reach the report through `core-status.py --vendored` in section a.
 
 **The consumption feed.** Each run the nightly also writes
 `~/.config/build-standards-core/consumption.json` (schema versioned, written atomically): per
 registered consumer its class, pin, latest, behind count, open sync pull request with CI state,
-core-status counts, UI verdict and adoption suggestions, this account's report items waiting for a
+core-status counts and adoption suggestions, this account's report items waiting for a
 decision or approved with no core pull request yet, and a `peers` block read from every open
 `consumer-report` issue in the private intake (`report_repo`). Every ops center renders its Core consumption panel from it
 (standards/local-ops-app.md section 19, which holds the schema). The feed is read-only on every
@@ -430,8 +429,7 @@ remote and never writes to another account's issue.
 - `python3 hermes/apply_setup.py --check` prints "hermes setup matches the core decisions".
 - After the restart, `hermes plugins list` shows `rtk-rewrite` enabled and `rtk gain` prints stats.
 - In a registered consumer repo, `python3 scripts/core-status.py` prints the rules it carries and
-  its UI adoption state; `--require-ui-adopted` turns that into a gate, and a vendored repo is
-  judged from the record on the machine. `--ci` reads the repo's latest `core-ci.yml` run, so each
+  its status counts, and a vendored repo is judged from the record on the machine. `--ci` reads the repo's latest `core-ci.yml` run, so each
   `overlay-ci` rule reports pass or fail instead of unverified.
 - `standards-local/parameters.md` has a `Stacks` row (a missing row is a problem, and
   `--require-lint-config` fails on it).
@@ -509,7 +507,7 @@ links the issue.
 `python3 scripts/core-status.py` is the one report on an overlay: the pin, one status per registered rule,
 exceptions expiring within 30 days and problems. `--json` prints the machine form, `--latest` adds the rules
 that are new or changed in the newest release, `--ci` reads the `overlay-ci` results from the repo's latest
-default-branch run (needs `gh`), `--require-ui-adopted` and `--require-lint-config` exit 1 for the drift
+default-branch run (needs `gh`), `--require-lint-config` exits 1 for the drift
 workflow, and `--vendored OWNER/REPO` reads a vendored repo's record. It never changes a file.
 
 ### The eight statuses
@@ -520,7 +518,7 @@ workflow, and `--vendored OWNER/REPO` reads a vendored repo's record. It never c
 | `proved` | a `ci` or `test` proof record is valid; counted apart from `pass`, because the script did not watch it pass | a `ci` or `test` record in `standards-local/proofs.json` (a `review` alongside it is allowed and noted) |
 | `attested` | a person looked: a dated `review` record that expires | a `review` record |
 | `waived` | the rule is set aside for this repo with a reason; never counted as proof and it expires | a `waiver` record |
-| `not_applicable` | a rule the core proves on the kit, in an app that does not adopt the kit whole (below); or a rule or group the repo declares has no surface here, with a reason ("Declaring rules that do not apply") | nothing for the kit case; a `$not_applicable` entry for the declared case |
+| `not_applicable` | a rule or group the repo declares has no surface here, with a reason ("Declaring rules that do not apply") | a `$not_applicable` entry for the declared case |
 | `excepted` | findings sit inside a ratchet baseline or an active exception | a row in `standards-local/exceptions.md` that names the rule (README "Source of truth and explicit exceptions") |
 | `unverified` | nothing proves it yet: a `test` or `review` rule with no record, or an `overlay-ci` result that was not read | record a proof, or leave it on the operator's list |
 | `fail` | a finding above the baseline, a `core-ci.yml` or `lint-sweep.yml` job the rule needs is not installed, or a declared stack has no lint config | fix it; no record can turn a `fail` into anything else |
@@ -537,16 +535,16 @@ repo root, dates are `YYYY-MM-DD`.
 {
   "$max_review_age_days": 180,
   "rbac.1.3": {"kind": "ci", "ref": "ci.yml#route-guard"},
-  "web-ui.20": {"kind": "test", "ref": "app/test/rail.test.ts"},
+  "scripting-python.1.4": {"kind": "test", "ref": "tests/test_atomic.py"},
   "ci-cd-release.7": {"kind": "review", "ref": "docs/reviews/deploy.md", "date": "2026-10-20", "reviewed_by": "owner"},
-  "web-ui.0.3": {"kind": "waiver", "ref": "docs/waivers/glow.md", "date": "2026-10-20", "reason": "the app draws no glow surfaces", "reviewed_by": "owner"}
+  "live-actions.1.6": {"kind": "waiver", "ref": "docs/waivers/direct-read.md", "date": "2026-10-20", "reason": "the app has no search index", "reviewed_by": "owner"}
 }
 ```
 
 | Kind | `ref` | Also needed | Reports as |
 |---|---|---|---|
 | `ci` | `<workflow file>#<job>` of a workflow installed in `.github/workflows/` (a job id, or a `core-` step of `core-ci.yml`) | nothing | `proved` |
-| `test` | a test file that exists | the file carries the rule id, as a comment such as `core-rule: web-ui.20` | `proved` |
+| `test` | a test file that exists | the file carries the rule id, as a comment such as `core-rule: scripting-python.1.4` | `proved` |
 | `review` | the review record | `date` within `$max_review_age_days` (default 180); `reviewed_by` (a missing one is a warning) | `attested` |
 | `waiver` | the waiver record | `date` (same expiry), `reason` and `reviewed_by`, all required | `waived` |
 
@@ -593,16 +591,6 @@ synced `scripts/core-status.py`: a core release sets it to `True`, and from then
 problem and the proof stops counting. A consumer never edits it (the file is core-owned); tag every test
 proof now so the release that flips it changes nothing. The release notes say when it flips.
 
-### Kit-test proofs: `not_applicable` without UI adoption
-
-Nine rules are proved by a test the kit already ships, run in the core before release, and carry
-`requires: ui-adoption` in the registry: `web-ui.0.8` (toast Undo), `web-ui.12` (theme init), `web-ui.18`
-(count-up), `web-ui.19` (rail state and pin), `web-ui.22` (changelog parser), `web-ui.24` (axe on the shell
-and overlays in both themes), `web-ui.26.1` (per-app dismissal keys), `web-shell.3` (generated registry) and
-`web-shell.5` (module CSS scope). An app that adopts the kit whole (the UI verdict `adopted`) reads `pass`
-for them; any other app reads `not_applicable`, counted apart in the summary. A proof record does not
-change a `not_applicable` rule: the way to a `pass` is to adopt the UI (`kit/MIGRATION.md`).
-
 ### Declaring rules that do not apply: `$not_applicable`
 
 Scope by stack (the `Stacks` row of `parameters.md`) is coarse: a single-operator local app is `web` and
@@ -613,15 +601,15 @@ no real surface in it, in the same `standards-local/proofs.json`, under one rese
 {
   "$not_applicable": [
     {"rule": "rbac", "reason": "one operator, no roles or permissions in the app", "date": "2026-10-27", "reviewed_by": "owner"},
-    {"rule": "web-shell", "reason": "single page, no shell or module registry", "date": "2026-10-27", "reviewed_by": "owner", "until": "2027-04-27"},
-    {"rule": "web-api-runtime.5.3", "reason": "no directory lookups", "date": "2026-10-27", "reviewed_by": "owner"}
+    {"rule": "live-actions", "reason": "read-only app, no operator actions", "date": "2026-10-27", "reviewed_by": "owner", "until": "2027-04-27"},
+    {"rule": "data-safety-sqlite.7.1", "reason": "no database sign-in", "date": "2026-10-27", "reviewed_by": "owner"}
   ]
 }
 ```
 
 - `rule` is a rule id or a group prefix. A prefix matches whole dotted segments: `rbac` covers `rbac` and
-  every `rbac.*`; `web-api-runtime.1` covers `web-api-runtime.1` and `web-api-runtime.1.4`, never
-  `web-api-runtime.10`.
+  every `rbac.*`; `live-actions.1` covers `live-actions.1` and `live-actions.1.4`, never
+  `live-actions.10`.
 - `reason`, `date` (`YYYY-MM-DD`) and `reviewed_by` are required. `until` is optional; from the day after it
   the entry is expired.
 - A covered rule that would read `unverified` reads `not_applicable` with the reason beside it, counted apart
@@ -639,17 +627,16 @@ no real surface in it, in the same `standards-local/proofs.json`, under one rese
 How it differs: a **waiver** sets aside a rule that applies but the repo will not meet, needs a record file
 and expires like a review. An **exception** (`exceptions.md`) accepts a known finding for a rule that
 applies, with an expiry. A **declaration** says the rule has nothing to apply to; no record file, and it
-is the only one of the three that covers a whole group. A kit rule's `not_applicable` (above) comes from
-the UI verdict, not from a declaration.
+is the only one of the three that covers a whole group.
 
-### The `repo-check` kind: RC001 to RC022
+### The `repo-check` kind: RC001 to RC027
 
 A `repo-check` rule is proved by a static check of the repo's own tracked files, `scripts/repo_checks.py`.
 `core-status.py` runs the check of every such rule: no finding is `pass`, a finding is `fail`, an active
 exception that names the rule is `excepted`, and `unverified` only when the check cannot run. A check
 passes when the repo holds nothing the rule governs (no migrations, no deploy workflow) and fails on a
 violation or, where the rule demands a thing, on its absence. A line carrying `core-exception: EXC-NNN` is
-skipped. The synced copies (`standards-core/`, `kit-core/`, `lint-core/`, `tokens-core/`), build output
+skipped. The synced copies (`standards-core/`, `lint-core/`), build output
 and dependency folders are not scanned.
 
 | Check | Rule | Reports a finding when |
@@ -658,26 +645,17 @@ and dependency folders are not scanned.
 | RC002 | `pr-review-and-merge.1.6` | a merge command or merge endpoint call carries no head sha |
 | RC003 | `ci-cd-release.4` | a renovate config auto-merges major updates |
 | RC004 | `ci-cd-release.5` | a workflow with a trusted trigger checks out or runs pull request code |
-| RC005 | `web-api-runtime.3.3` | hosting or infrastructure config holds a platform CORS origin list |
 | RC006 | `data-safety-sqlite.2.10` | a SQLite repo's deploy workflow has no queueing concurrency group or no health step that names the sha (a static-site or Vercel-only deploy is carved out) |
 | RC007 | `data-safety-sqlite.2.12` | a migration is destructive, or adds a NOT NULL column without a default |
 | RC008 | `identity-and-people-data.1.7` | a fixture email address is outside the reserved test domains |
-| RC009 | `web-client-runtime.1.2` | the auth redirect is handled in more than one non-test source file |
 | RC010 | `ci-cd-release.9` | a secret a workflow reads is named in no documentation page |
 | RC011 | `secrets-and-credentials.1.4` | a checkout of another repository has no ssh-key |
 | RC012 | `scripting-python.1.2` | an import outside the standard library is not in a pinned requirements file with a reason comment, or in a declared dependency list with a lock file (a `pip-compile --generate-hashes` file counts as a lock only when every line carries a hash) |
 | RC013 | `ci-cd-release.6` | a stateful deploy workflow neither re-runs CI nor waits on a CI job, or has no health check |
-| RC014 | `web-ui.9` | a web app's test suites never run axe or never cover both themes |
-| RC015 | `web-ui.25` | an app mounts an app shell and renders no build card |
-| RC016 | `web-build.8.1` | a package has no verify script, or one that skips a `check:*`, typecheck, lint, build or test script the package defines |
 | RC017 | `scripting-python.1.3` | a subprocess call passes a secret-named value or flag as an argument |
-| RC018 | `web-client-runtime.4.2` | a vite config has no `manualChunks` |
-| RC019 | `web-client-runtime.4.1` | a bundled app has no bundle size budget check (a size-limit or bundlewatch config, or a budget script) |
-| RC020 | `web-client-runtime.4.3` | a vite config has no `assetsInlineLimit` |
-| RC021 | `web-client-runtime.5.1` | an app's client code builds the bearer header in more than one file |
 | RC022 | `rbac.3` | an app compares permissions or roles by hand in more than one non-test file |
 
-RC021 and RC022 group files per app (`apps/<name>`, `packages/<name>`, `services/<name>`). Each rule's
+RC022 groups files per app (`apps/<name>`, `packages/<name>`, `services/<name>`). Each rule's
 acceptance line says exactly what its check proves and what stays with review.
 
 Run them locally from the repo (the overlay's `scripts/` folder):
@@ -691,40 +669,18 @@ python3 scripts/repo_checks.py --root DIR   # another repository (the git top le
 
 In a clone of the core the script is `templates/overlay/scripts/repo_checks.py`.
 
-## 9. UI lint config and scrolling
+## 9. Script lint config
 
-**Lint config.** `standards-local/ui-lint.json` tells `python3 lint-core/ui_lint.py` what to read:
+`standards-local/script-lint.json` tells `python3 lint-core/script_lint.py` what to read:
 
 ```json
-{ "paths": ["src"], "exclude": [], "token_files": [], "data_palettes": [], "baseline": null }
+{ "paths": ["scripts"], "exclude": [], "python_floor": "3.9", "baseline": null }
 ```
 
-`paths` and `exclude` pick the files; `token_files` adds files allowed to hold colour literals (the synced
-`tokens-core/` always is); `baseline` is only for an app that runs the lint without taking the kit (a UI
-consumer may not keep one: `core-status.py --require-ui-adopted` and the lint refuse it). `data_palettes`
-lists globs of files that hold data colours (a chart theme, a table of category colours): the colour
-literal rule UI003 is skipped in them and every other rule still applies. A colour literal in any other
-file still fails. A one-sided border under 2px in a neutral grey (equal channels, or saturation of 10% or
-less) is a hairline divider and UI001 does not flag it; a coloured hairline, a border of 2px or more and
-every accent edge bar still fail. Suppress a finding only with `core-exception: EXC-NNN` (or `edge-ok` for
-a data mark that looks like an edge bar, UI001 only); there is no switch that turns a rule off. The full
-rule table is `lint/README.md`.
-
-**Scrolling.** The standard is `web-ui.md` rule 0.12 (`web-ui.0.12`, a review rule): the page body is one
-vertical scroll container, a board is sized to the window with a floor and scrolls on its own edge, a wide
-table has a capped scroll area with a floor, a page header is never capped with a viewport fraction, and
-`overflow: hidden` is never put on a flex parent to fit a board. The kit carries the sizing, so use it
-instead of local CSS:
-
-| Kit part | What it does |
-|---|---|
-| `page-scroll` class | makes the page body the one vertical scroll container (full height) |
-| `Table` `capped` prop | limits the table to the window height less 15rem, with no floor so a short table stays short, as a named focusable region so the keyboard can scroll it |
-| `LaneBoard` `fit` prop | sizes the board to the window height less 6rem, never under 360px, scrolls sideways on the board edge and each lane on its own |
-
-`capped` and `fit` default to off, so an existing use is unchanged. The proof is loading every route that has a
-board or a wide table at a window about 700px tall; record it as an `attested` review in `proofs.json`.
-Details are in `kit/README.md`.
+`paths` and `exclude` pick the files; `python_floor` falls back to the "Python interpreter floor" row of
+`standards-local/parameters.md`, then to 3.9. Suppress a finding only with `core-exception: EXC-NNN`; there
+is no switch that turns a rule off. The rule table and the baseline ratchet are in `lint/README.md`. The
+web and WPF standards, their UI lint and the scrolling rules live in the owner's standards repo, not here.
 
 ## 10. Releases and versions
 
@@ -820,10 +776,6 @@ This is the flow for a repo on its own GitHub account, with no access to anythin
   workflow with a `REQUIRED_CHECKS` list (this pull request adds the job and the gate together). In any other
   case the list is left unchanged and the sync prints `REQUIRED_CHECKS: <exact replacement>` and the order:
   merge the pull request that adds `core-checks` first, then change the list in a second pull request.
-- UI not adopted yet. Set the parameter `UI adoption stage` in `standards-local/parameters.md` to `none` or
-  `partial`: the drift workflow's `core-status.py --require-ui-adopted` step then prints `ui: N/A` and passes
-  instead of failing, so `core-drift.yml` can land before the UI series. Set it to `adopted` (or empty) when
-  the UI is whole; empty is the default and keeps the original behavior (a partial UI fails).
 
 ### Existing non-ASCII content (the ASCII check)
 
@@ -860,7 +812,6 @@ useDefault = true          # keep every default rule; this file only adds allowa
 [[allowlists]]
 description = "design token files hold colour hex values, not secrets"
 paths = [
-  '''(^|/)tokens-core/''',
   '''(^|/)[^/]*[Tt]okens?[^/]*\.(xaml|css|json)$''',
   '''(^|/)Themes?/[^/]*\.xaml$''',
 ]
@@ -899,12 +850,12 @@ python3 -m unittest discover -s tests -p "test_*.py"
 ruff check . && ruff format --check .
 ```
 
-README "Checks" lists the rest (tokens, lints, kit). Run the unit tests under the oldest interpreter too
+README "Checks" lists the rest (tokens, script lint, the ops center app and kit). Run the unit tests under the oldest interpreter too
 (`/usr/bin/python3` on macOS is 3.9), not only the newest.
 
 **A consumer repo is READY** when `python3 scripts/check-core-sync.py` prints `core sync: clean`,
-`python3 scripts/check-exceptions.py` and `python3 lint-core/ui_lint.py` pass, `python3
-scripts/core-status.py --require-ui-adopted --require-lint-config` exits 0 (a UI repo), `core-checks`
+`python3 scripts/check-exceptions.py` and `python3 lint-core/script_lint.py` pass, `python3
+scripts/core-status.py --require-lint-config` exits 0, `core-checks`
 (or `core-checks / core-checks`) is required in the merge gate and green, and no rule is `fail`. The
 `unverified` list is the open work, not a blocker.
 
@@ -976,10 +927,10 @@ job names change.
 | Hermes settings and plugins, with reasons | `hermes/configurations.md` |
 | Token efficiency policy for an agent home | `hermes/token-efficiency.md` |
 | Per-tool decisions the nightly job installs | `hermes/tools.json` |
-| How a UI repo consumes the core | README "Consuming the core", `templates/overlay/` |
+| How a repo consumes the core | README "Consuming the core", `templates/overlay/` |
 | How a build reports to the core | the private intake's `consumer-report` template (`report_repo`), `CONTRIBUTING.md` |
 | How to contribute | `CONTRIBUTING.md`, `hermes/README.md` section 4, sections 10, 11 and 13 above |
-| Rule statuses, proof records, the `RC001` to `RC022` checks | section 8, `standards/rules.json` |
-| UI lint config, scrolling, kit scroll parts | section 9, `lint/README.md`, `kit/README.md` |
+| Rule statuses, proof records, the `RC001` to `RC027` checks | section 8, `standards/rules.json` |
+| Script lint config | section 9, `lint/README.md` |
 | The overlay's own files and CI steps | `templates/overlay/README.md` |
 | Updating from a repo with only the public docs | section 12 |

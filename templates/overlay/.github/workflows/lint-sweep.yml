@@ -6,7 +6,7 @@ name: lint-sweep
 # time, updates that same issue on every later failure and never opens a second one, and closes it
 # with a comment on the first green sweep.
 #
-# What it runs: the overlay's UI lint and script lint over the paths in standards-local, then the
+# What it runs: the overlay's script lint over the paths in standards-local, then the
 # repo's own full-tree lint from the parameters row "Lint sweep command" (for example
 # `npm run lint -- --max-warnings 0`), when that row is set. Configure: OVERLAY is the overlay folder
 # relative to the repo root ("." when it is the root). CORE_CI_RUNNER, when set, is a JSON runs-on
@@ -62,7 +62,6 @@ jobs:
           out="$RUNNER_TEMP/lint-sweep.txt"
           : > "$out"
           rc=0
-          python3 "$OVERLAY/lint-core/ui_lint.py" >> "$out" 2>&1 || rc=1
           python3 "$OVERLAY/lint-core/script_lint.py" >> "$out" 2>&1 || rc=1
           if [ -n "$SWEEP_CMD" ]; then
             src=0

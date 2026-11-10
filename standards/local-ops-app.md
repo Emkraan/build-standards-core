@@ -7,7 +7,7 @@ operator's own machine, with a web UI that follows the first-party design system
 is fixed, or the consumer records an explicit exception (README, "Source of truth and explicit
 exceptions"). This standard is for
 tools that are not deployed to the cloud host and have exactly one user. Multi-user hub tools follow the
-[First-Party Build Standard](web-build.md) instead.
+First-Party Build Standard (the web-build-standard doc) instead.
 
 ## 1. When this pattern applies
 
@@ -21,9 +21,9 @@ tools that are not deployed to the cloud host and have exactly one user. Multi-u
 | Layer | Choice |
 |---|---|
 | Server and engine | Python 3 standard library only (`http.server`, `urllib`, `sqlite3` read-only where needed, `unittest`). No third-party Python packages. |
-| Front end | React, TypeScript, Vite, `react-router-dom`. The UI library is the core kit (next row) and nothing else: no third-party UI component library. Charts come from the kit's chart entry (its optional peer), not a second chart library. |
-| Styling | The core token sheets and kit stylesheet (next row), then `app.css` for app-specific classes only. Per-app accent by the kit accent, never a token redefinition. An app that does not take the core yet uses the plain-CSS port of the [Web Design System](web-ui.md#plain-css-port-no-tailwind) (`theme.css` plus `app.css`) until it adopts. |
-| Core baseline | The app consumes the core in the `ops-center` way (README "Direction", `CONSUMING.md`): the component kit from `kit-core/`, the token sheets from `tokens-core/`, both synced copies never hand-edited, and app-specific code in `src/` and `app.css` only. |
+| Front end | React, TypeScript, Vite, `react-router-dom`. The UI library is the kit (the core baseline row) and nothing else: no third-party UI component library. Charts come from the kit's chart entry (its optional peer), not a second chart library. |
+| Styling | The token sheets and kit stylesheet (the core baseline row), then `app.css` for app-specific classes only. Per-app accent by the kit accent, never a token redefinition. An app that does not take the kit yet uses the plain-CSS port of the web UI standard (the web-ui-standard doc) (`theme.css` plus `app.css`) until it adopts. |
+| Core baseline | The ops center is built in tree on the component kit in `opscenter/kit/` and the token sheets in `opscenter/tokens/` (its own UI code, not copied from anywhere), with app-specific code in `src/` and `app.css` only. Another local ops app takes the kit and tokens its UI standard names (the web-ui-standard doc). |
 | Package manager | pnpm 12 through corepack (`packageManager` in `package.json`, `corepack prepare pnpm@12.9.1 --activate` in CI), `pnpm install --frozen-lockfile`. |
 | Lint and test | Biome (`biome lint src`), Vitest, `tsc --noEmit` as part of `build`. |
 
@@ -187,11 +187,10 @@ lives there, so the service runs a **copied runtime** in an unprotected location
 - Redeploy after every merge that changes `server/`, `engine/`, `contract/` or `app/`. The
   scheduler job (`ops-center-refresh`) runs `engine/refresh.py` from the runtime copy on a
   30-minute cadence.
-- CI deploys nothing; this tool runs locally. The build runs against the synced core copies:
-  `pnpm run build` compiles the app against `kit-core/` and copies the token sheets from
-  `tokens-core/` into `app/dist`, so the copied runtime never reads the checkout. The nightly
-  applies core releases to those copies at once, one line in the machine's log per apply
-  (`CONSUMING.md`); redeploy after any apply that changed the front end.
+- CI deploys nothing; this tool runs locally. The build runs against the kit and tokens in tree:
+  `pnpm run build` compiles the app against `opscenter/kit/` and copies the token sheets from
+  `opscenter/tokens/` into `app/dist`, so the copied runtime never reads the checkout. Redeploy
+  after any change that touched the front end.
 
 ## 9. Auth for the directory API
 
@@ -269,29 +268,29 @@ cd app && corepack pnpm run typecheck && corepack pnpm run lint && corepack pnpm
 | `ascii` | plain ASCII in every tracked text file (name a banned character by code point) |
 | `actionlint`, `gitleaks`, `pr-title` | workflow syntax, no secrets, Conventional Commit title |
 
-The [Web Design System verification gate](web-ui.md#9-verification-gate-before-done)
+The web UI standard's verification gate (the web-ui-standard doc)
 (both themes, no console errors) applies to the UI.
 
 ## 13. Design rules that carry over
 
-- UI follows the [Web Design System](web-ui.md): no edge-bar accents, accent
+- UI follows the web UI standard (the web-ui-standard doc): no edge-bar accents, accent
   discipline, actions beside the content they act on, the app owns every dialog (no native
   `confirm`, `prompt` or `alert`), undo over "are you sure" for reversible changes, inline icons.
 - Chart, tab, dialog and sortable-header patterns:
-  [Web Design System section 12](web-ui.md#local-tool-patterns-charts-tabs-dialogs-sortable-headers).
+  the web UI standard's local tool patterns (the web-ui-standard doc).
 - Where a tool lets the operator act on another system (merge, move, close, resolve), the action
   follows the [Live Actions Standard](live-actions.md): optimistic removal, a server tombstone
   until the backend agrees, and direct reads to confirm.
 - Global search is a server-side tokenized, ranked search with no model or network calls (contract
   section 3); the palette is described in
-  [Web Design System section 13](web-ui.md#13-global-search-palette).
+  the web UI standard's global search palette (the web-ui-standard doc).
 
 ## 14. Accent palette
 
 Local ops apps use the `indigo` named accent: `<html data-app-accent="indigo">`. It is a token swap
-of the accent tokens only ([Web Design System section 12](web-ui.md#per-app-accent-token-swap-only)
-and [section 16](web-ui.md#16-one-accent-token-per-app)). Every other token stays as generated in
-`tokens/tokens.css`, and the indigo ramp is certified in both modes in `tokens/CONTRAST.md`.
+of the accent tokens only (the web UI standard's per-app accent rules, the web-ui-standard doc).
+Every other token stays as generated in `opscenter/tokens/tokens.css`, and the indigo ramp is certified in
+both modes in `opscenter/tokens/CONTRAST.md`.
 
 Rules that stay unchanged:
 

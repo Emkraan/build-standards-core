@@ -6,7 +6,7 @@ How first-party apps hold data about people. The reference implementation is the
 (`server/src/core/lib/team-sync.ts`, `team-cleanup.ts`, `server/src/core/db/team-raci.ts`,
 `server/src/tools/roster/router.ts`).
 
-Related: [First-Party Build Standard](web-build.md) (auth and RBAC),
+Related: First-Party Build Standard (the web-build-standard doc) (auth and RBAC),
 [Data Safety](data-safety-sqlite.md) (people data is why backups are encrypted).
 
 ---

@@ -12,7 +12,7 @@ This is the access-control standard for every first-party web build. It is being
 phases (RBAC v2). Each rule below is tagged **[enforced]** (in the hub code and CI today) or
 **[target]** (agreed design, lands in a later phase; build new work so it fits).
 
-Related: identity and platform-level auth in [First-Party Build Standard](web-build.md#4-auth-platform-level-auth),
+Related: identity and platform-level auth in First-Party Build Standard (the web-build-standard doc),
 the people roster in [Identity and People Data](identity-and-people-data.md).
 
 ---
@@ -166,7 +166,7 @@ action covers the caller's own records, `.others` covers everyone else's (for ex
   delegable only by a `*` holder. **[enforced]**
 - **Removal ceiling.** The no-escalation rule covers removal too: a delegated admin does not delete an assignment of a
   role that holds permissions they do not hold, and never deletes the Super Admin assignment; they can still delete
-  inside their own access ([web-shell-server.md](web-shell-server.md) section 1). **Acceptance (test):** a delegate
+  inside their own access (the web-shell-standard doc, shell server rights). **Acceptance (test):** a delegate
   deleting the Super Admin assignment, or an assignment above their access, gets 403 and the assignment stays.
 - **Preview ceiling.** A preview of a role or an access package (View-As or a package preview) never
   shows more than the viewer holds: the server intersects the previewed permissions with the
@@ -209,7 +209,7 @@ action covers the caller's own records, `.others` covers everyone else's (for ex
   `subject` from `useAuth()`. **[enforced]**
 - A tool hosted inside another tool keeps its own permissions: the host lists both in
   `viewAnyPermission` and `accessPrefixes`, and every nav item and route is gated by its own
-  section's permission (reference: RACI under Team Links; see [First-Party Build Standard](web-build.md) section 7).
+  section's permission (reference: RACI under Team Links; see First-Party Build Standard (the web-build-standard doc) section 7).
 
 ## 8. Adding a tool or route (checklist)
 

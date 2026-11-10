@@ -4,8 +4,8 @@ Status: draft for owner review. Design only; no code exists yet. Section 12 reco
 consumer's running ops center does today, row by row against sections 2 to 9, and the owner's
 decision (section 11, item 7) that every module it runs belongs in the standard.
 
-Inputs: `standards/local-ops-app.md` (the ops center rules today), `standards/web-ui.md`,
-`standards/web-shell.md`, `standards/web-api-runtime.md`, `standards/rules.json`, `kit/README.md`,
+Inputs: `standards/local-ops-app.md` (the ops center rules today), the web-ui-standard doc,
+the web-shell-standard doc, the web-api-runtime-standard doc, `standards/rules.json`, `opscenter/kit/README.md`,
 `CONSUMING.md`, the core nightly tooling (`hermes/nightly.py`, `hermes/ops_center.py`,
 `hermes/consumption.py`, `hermes/setup.py`, `hermes/report.py`), the approved Table A (105 rows)
 and Table B (31 rows, all approved as recommended), the 20 approved assessment decisions, and the
@@ -84,13 +84,13 @@ opscenter/
 
 ### 1.2 How it is consumed and synced
 
-The ops center is consumed the way the kit is: a synced copy, never hand edited.
+The ops center is consumed as a synced copy, never hand edited. Its UI kit (`kit/`) and design tokens
+(`tokens/`) are part of `opscenter/` and travel inside that copy: they are the ops center's own UI code,
+not a separate shared copy.
 
 ```text
 <consumer ops center repo>/
-  opscenter-core/      synced copy of the core opscenter/ (except DESIGN.md, tests/, adopt/)
-  kit-core/            synced copy of kit/ (existing)
-  tokens-core/         synced copy of tokens/ (existing)
+  opscenter-core/      synced copy of the core opscenter/ (except DESIGN.md, tests/, adopt/), kit/ and tokens/ included
   standards-overlay/   existing overlay, lock and checks
   local/
     params.json        the parameters file (section 6), schema checked, no secrets
@@ -102,7 +102,7 @@ The ops center is consumed the way the kit is: a synced copy, never hand edited.
   `CONSUMING.md` and `hermes/ops_center.py`). The nightly applies each core release at once behind
   the local gate; a repo with its own CI gate lands it by pull request (`apply_via: pr`). Nothing in
   this flow changes; the sync step gains `opscenter-core/` as a target path.
-- The build compiles `opscenter-core/app` against `kit-core/` and `local/slots/*/ui` (slot UI is
+- The build compiles `opscenter-core/app` against `opscenter-core/kit/` and `local/slots/*/ui` (slot UI is
   loaded through the slot registry, section 5.1), so the runtime copy never reads the checkout.
 - `standards-overlay` gains one check, `check-opscenter-sync`: `opscenter-core/` equals the pinned
   release byte for byte, so a local edit fails CI and the pre-push guard.
@@ -826,7 +826,7 @@ name of the parameter. `adopt` prompts for every required row (section 8.1).
 
 Strategy `copy` (default):
 
-1. Build: `pnpm install --frozen-lockfile`, `pnpm run build` against `kit-core/` and `local/slots`.
+1. Build: `pnpm install --frozen-lockfile`, `pnpm run build` against `opscenter-core/kit/` and `local/slots`.
 2. Stage: copy `server/`, `engine/`, `schemas/`, `slots/`, `local/slots/` and `app/dist/` to
    `<runtime_dir>/releases/<commit>`; strip caches; write `release.json` (commit, core release,
    content hash).
@@ -905,7 +905,7 @@ only what differs.
 
 1. Checks: core clone present and current; `consumer.json` version; the code host CLI signed in.
 2. The ops center repo: creates it from the core template when absent, or takes an existing one
-   (`--ops-center PATH`). Syncs `opscenter-core/`, `kit-core/`, `tokens-core/` and the overlay with
+   (`--ops-center PATH`). Syncs `opscenter-core/` (kit and tokens inside it) and the overlay with
    its lock. `PATH` may be the repo root, the app folder inside it, or a symbolic link to either, for
    example a deployed checkout that the state tree reaches through a link to its app folder:
    - `adopt` resolves the link (real path), walks up to the git top level and takes that repo. A

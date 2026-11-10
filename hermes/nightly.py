@@ -535,7 +535,7 @@ class Run:
         comes from the machine's vendored record (#117 G-031). Read-only either way."""
         if c.get("mode") != "vendored":
             return c
-        e = {**c, "overlay": "", "kit_src": str(self.core / "kit" / "src")}
+        e = {**c, "overlay": "", "kit_src": str(self.core / "opscenter" / "kit" / "src")}
         try:
             e["release"] = json.loads(record_path(c["repo"]).read_text(encoding="utf8")).get(
                 "release", ""

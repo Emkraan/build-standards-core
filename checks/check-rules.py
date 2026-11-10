@@ -3,8 +3,7 @@
 
 Checks: the format and fields of every rule, unique ids, id and ref agree, the doc exists and the
 section exists in it (a "## N." heading, or numbered item K under "## N." for an "N.K" ref), every
-lint rule names a real ui_lint or script_lint rule with the same ref, every ui_lint rule is
-registered exactly once, and every script_lint rule is registered at most once and names a rule in
+lint rule names a real script_lint rule with the same ref, and every script_lint rule is registered at most once and names a rule in
 the registry (a script_lint rule that only covers part of a rule's acceptance supports that rule
 without making it a lint rule). Prints the rule count per doc so docs with no registered rules stay
 visible.
@@ -38,9 +37,8 @@ REQUIRED = ("id", "ref", "title", "statement", "level", "applies_to", "check", "
 
 sys.path.insert(0, str(ROOT / "lint"))
 import script_lint  # noqa: E402  # pyright: ignore[reportMissingImports]
-import ui_lint  # noqa: E402  # pyright: ignore[reportMissingImports]
 
-LINT_RULES = {**ui_lint.RULES, **script_lint.RULES}
+LINT_RULES = dict(script_lint.RULES)
 
 sys.path.insert(0, str(ROOT / "templates" / "overlay" / "scripts"))
 import repo_checks  # noqa: E402  # pyright: ignore[reportMissingImports]
@@ -208,7 +206,7 @@ def main():
         if kind == "lint":
             lid = r["check"].get("id")
             if lid not in LINT_RULES:
-                bad.append(f"{where}: check.id {lid!r} is not a ui_lint or script_lint rule")
+                bad.append(f"{where}: check.id {lid!r} is not a script_lint rule")
             else:
                 if LINT_RULES[lid][1] != r["ref"]:
                     bad.append(
@@ -249,9 +247,6 @@ def main():
                 bad.append(f"{where}: {k} is not ASCII")
         if len(r["statement"]) > 400:
             bad.append(f"{where}: statement over 400 characters; link the doc instead")
-    for lid in ui_lint.RULES:
-        if lint_ids.get(lid, 0) != 1:
-            bad.append(f"ui_lint {lid} is registered {lint_ids.get(lid, 0)} times, expected once")
     for cid in repo_checks.CHECKS:
         if repo_ids.get(cid, 0) != 1:
             bad.append(

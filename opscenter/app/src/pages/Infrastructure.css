@@ -513,7 +513,7 @@
 }
 
 @media (max-width: 640px) {
-  /* Card heads wrap their controls under the title on phones (web-ui.md section 7). */
+  /* Card heads wrap their controls under the title on phones (the web-ui-standard doc). */
   .infra .card-head {
     flex-wrap: wrap;
   }

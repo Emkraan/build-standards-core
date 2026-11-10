@@ -339,26 +339,6 @@ class TestChecks(Tree):
         )
         self.passes("RC004", {".github/workflows/a.yml": trusted, ".github/workflows/b.yml": pr})
 
-    def test_rc005_platform_cors(self):
-        self.fails(
-            "RC005",
-            {
-                "vercel.json": '{"headers":[{"headers":[{"key":"Access-Control-Allow-Origin","value":"*"}]}]}'
-            },
-        )
-        self.fails(
-            "RC005",
-            {
-                "infra/app.tf": 'site_config {\n  cors {\n    allowed_origins = ["https://x"]\n  }\n}\n'
-            },
-        )
-
-    def test_rc005_clean(self):
-        self.passes(
-            "RC005",
-            {"vercel.json": '{"headers":[{"headers":[{"key":"X-Frame-Options","value":"DENY"}]}]}'},
-        )
-
     def test_rc006_deploy_needs_queue_and_health(self):
         self.put({"app/db.py": "import sqlite3\n"})
         self.fails(
@@ -417,24 +397,6 @@ class TestChecks(Tree):
                 + ".test"
                 + '", "b": "b@corp.example.com", "pkg": "x@1.2.3"}',
                 "src/real.json": '{"mail": "a@' + REAL + '"}',
-            },
-        )
-
-    def test_rc009_two_files_handle_redirect(self):
-        self.fails(
-            "RC009",
-            {
-                "apps/a/boot.ts": "await msal.handleRedirectPromise();\n",
-                "apps/b/main.ts": "await app.handleRedirectPromise();\n",
-            },
-        )
-
-    def test_rc009_clean(self):
-        self.passes(
-            "RC009",
-            {
-                "packages/boot/boot.ts": "await msal.handleRedirectPromise();\n",
-                "apps/a/boot.test.ts": "handleRedirectPromise()\n",
             },
         )
 
@@ -684,59 +646,6 @@ class TestBatch2(Tree):
 class TestBatch3(Tree):
     UI = {"src/App.tsx": "export const A = () => <AppShell rail={<BuildCard />} />;\n"}
 
-    def test_rc014_needs_axe_and_both_themes(self):
-        self.put(self.UI)
-        self.assertTrue(self.run_check("RC014"))
-        self.fails("RC014", {"e2e/a.spec.ts": "test('x', () => { page.goto('/') })\n"})
-        self.put(
-            {"e2e/a.spec.ts": "import AxeBuilder from '@axe-core/playwright';\nconst t = 'dark';\n"}
-        )
-        self.assertIn("both", self.run_check("RC014")[0][2])
-
-    def test_rc014_clean_and_no_ui(self):
-        self.passes(
-            "RC014",
-            {
-                **self.UI,
-                "e2e/a.spec.ts": "import AxeBuilder from 'x/axe-core';\nfor (const t of ['light', 'dark']) {}\n",
-            },
-        )
-        shutil.rmtree(self.dir / "src")
-        shutil.rmtree(self.dir / "e2e")
-        self.assertEqual(self.run_check("RC014"), [])
-
-    def test_rc015_shell_without_build_card(self):
-        self.fails("RC015", {"src/App.tsx": "export const A = () => <AppShell />;\n"})
-
-    def test_rc015_clean(self):
-        self.passes("RC015", {**self.UI})
-
-    def test_rc016_verify_script(self):
-        self.fails("RC016", {"package.json": json.dumps({"scripts": {"build": "x"}})})
-        self.put(
-            {
-                "package.json": json.dumps(
-                    {"scripts": {"verify": "npm run build", "check:unicode": "x", "test": "y"}}
-                )
-            }
-        )
-        found = self.run_check("RC016")
-        self.assertEqual(
-            sorted(f[2] for f in found),
-            ["the verify script does not run check:unicode", "the verify script does not run test"],
-        )
-
-    def test_rc016_clean_with_script_file(self):
-        self.passes(
-            "RC016",
-            {
-                "package.json": json.dumps(
-                    {"scripts": {"verify": "node scripts/verify.mjs", "check:a": "x", "build": "y"}}
-                ),
-                "scripts/verify.mjs": "run('pnpm run check:a'); run('pnpm run build');\n",
-            },
-        )
-
     def test_rc017_secret_in_argv(self):
         self.fails(
             "RC017", {"t.py": "import subprocess\nsubprocess.run(['tool', '--password', pw])\n"}
@@ -823,53 +732,8 @@ class TestBatch3(Tree):
             },
         )
 
-    def test_rc018_vendor_chunks(self):
-        self.fails("RC018", {"vite.config.ts": "export default {};\n"})
-        self.passes(
-            "RC018",
-            {
-                "vite.config.ts": "export default { build: { rollupOptions: { output: { manualChunks: {} } } } };\n"
-            },
-        )
-
 
 class TestBatch4(Tree):
-    def test_rc019_budget(self):
-        self.fails("RC019", {"vite.config.ts": "export default {};\n"})
-        self.passes(
-            "RC019",
-            {
-                "vite.config.ts": "x\n",
-                "package.json": json.dumps({"scripts": {"check:size": "size-limit"}}),
-            },
-        )
-        shutil.rmtree(self.dir / "package.json", ignore_errors=True)
-
-    def test_rc019_no_bundler(self):
-        self.passes("RC019", {"package.json": "{}"})
-
-    def test_rc020_inline_limit(self):
-        self.fails("RC020", {"vite.config.ts": "export default {};\n"})
-        self.passes(
-            "RC020", {"vite.config.ts": "export default { build: { assetsInlineLimit: 0 } };\n"}
-        )
-
-    def test_rc021_bearer_in_many_client_files(self):
-        h = "fetch(u, { headers: { Authorization: `Bearer ${t}` } });\n"
-        self.fails("RC021", {"apps/a/src/api.ts": h, "apps/a/src/other.ts": h})
-
-    def test_rc021_clean(self):
-        h = "fetch(u, { headers: { Authorization: `Bearer ${t}` } });\n"
-        self.passes(
-            "RC021",
-            {
-                "apps/a/src/api.ts": h,
-                "apps/b/src/api.ts": h,
-                "apps/a/server/x.ts": h,
-                "apps/a/server/y.ts": h,
-            },
-        )
-
     def test_rc022_permissions_by_hand(self):
         h = "if (user.permissions.includes('x')) {}\n"
         self.fails("RC022", {"apps/a/src/a.ts": h, "apps/a/src/b.ts": h})
@@ -900,12 +764,16 @@ class TestWiring(Tree):
         self.assertIn("repo_checks.py", corehash.OVERLAY_SCRIPTS)
 
     def test_core_ci_command_with_a_missing_test_file_is_caught(self):
-        cmd = "npm --prefix kit test -- tests/does-not-exist.test.tsx"
+        cmd = "npm --prefix opscenter/kit test -- tests/does-not-exist.test.tsx"
         self.assertTrue(check_rules.core_ci_test_missing(cmd, ROOT))
         self.assertFalse(
-            check_rules.core_ci_test_missing("npm --prefix kit test -- tests/toast.test.tsx", ROOT)
+            check_rules.core_ci_test_missing(
+                "npm --prefix opscenter/kit test -- tests/toast.test.tsx", ROOT
+            )
         )
-        self.assertFalse(check_rules.core_ci_test_missing("python3 tokens/build.py --check", ROOT))
+        self.assertFalse(
+            check_rules.core_ci_test_missing("python3 opscenter/tokens/build.py --check", ROOT)
+        )
 
     def test_core_status_fails_then_passes_a_repo_check_rule(self):
         st = load("core_status_rc", "templates/overlay/scripts/core-status.py")
@@ -919,12 +787,6 @@ class TestWiring(Tree):
         self.assertEqual(st.repo_check_status(rule, {rule["ref"]: ["EXC-001"]})[0], "excepted")
         (root / "x.sh").write_text('kill "$PID"\n')
         self.assertEqual(st.repo_check_status(rule, {})[0], "pass")
-
-    def test_registry_marks_the_kit_proofs_as_needing_adoption(self):
-        reg = json.loads((ROOT / "standards/rules.json").read_text(encoding="utf8"))["rules"]
-        kit = [r for r in reg if r["check"].get("requires") == "ui-adoption"]
-        self.assertEqual(len(kit), 9)
-        self.assertTrue(all(r["check"]["kind"] == "core-ci" for r in kit))
 
     def test_enforced_tag_drops_an_untagged_test_proof(self):
         st = load("core_status_tag", "templates/overlay/scripts/core-status.py")

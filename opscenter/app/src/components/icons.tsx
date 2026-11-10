@@ -1,4 +1,4 @@
-// Nav and palette icons for the Ops Center shell: inline Lucide paths (web-ui.md section 12,
+// Nav and palette icons for the Ops Center shell: inline Lucide paths (the web-ui-standard doc,
 // never emoji or Unicode glyphs), drawn in currentColor like the kit's own chrome icons.
 import type { ReactElement, ReactNode, SVGProps } from 'react'
 

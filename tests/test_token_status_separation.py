@@ -1,15 +1,17 @@
-"""Status inks stay distinguishable under simulated deuteranopia (tokens/build.py)."""
+"""Status inks stay distinguishable under simulated deuteranopia (opscenter/tokens/build.py)."""
 
 import json
 import unittest
 
 from support import ROOT, load
 
-build = load("tokens_build", "tokens/build.py")
+build = load("tokens_build", "opscenter/tokens/build.py")
 
 
 def model():
-    return build.Model(json.loads((ROOT / "tokens" / "tokens.json").read_text(encoding="utf8")))
+    return build.Model(
+        json.loads((ROOT / "opscenter" / "tokens" / "tokens.json").read_text(encoding="utf8"))
+    )
 
 
 class CiedeTests(unittest.TestCase):

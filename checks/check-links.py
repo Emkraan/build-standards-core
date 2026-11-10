@@ -2,10 +2,13 @@
 """Fail on a relative markdown link whose target file or heading anchor does not exist.
 
 Scans the same file set as check-ascii.py and check-sanitised.py (git ls-files: tracked plus
-untracked files that are not ignored), so installed dependencies such as kit/node_modules never
+untracked files that are not ignored), so installed dependencies such as opscenter/kit/node_modules never
 count. An anchor (`doc.md#4-auth` or `#4-auth` in the same file) must match a heading of the target,
 slugged the way GitHub renders it: lower case, punctuation dropped, spaces to hyphens, and a
 `-1`, `-2` suffix for repeated headings.
+
+CHANGELOG.md is skipped: its entries are append-only history, and an old entry may link a doc a later
+change removed (the web, shell and WPF standards moved to the owner's standards repo).
 """
 
 from __future__ import annotations
@@ -61,7 +64,7 @@ def anchors(path: pathlib.Path) -> set:
 def main():
     bad = []
     for f in markdown_files():
-        if not f.is_file():
+        if not f.is_file() or f == pathlib.Path("CHANGELOG.md"):
             continue
         for i, line in enumerate(f.read_text(encoding="utf8").split("\n"), 1):
             for m in LINK.finditer(line):

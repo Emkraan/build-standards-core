@@ -4,9 +4,8 @@ Fill in per business. Keep secrets, hostnames and tenant ids out of any repo tha
 
 | Parameter | Value | Used by |
 |---|---|---|
-| App accent (a named accent set with `data-app-accent` on the root, or a block printed by `tokens-core/build.py --accent`) | | web-ui.md sections 12 and 16 |
 | Identity provider | | identity-and-people-data.md, rbac.md |
-| Hosting platform | | web-build.md, data-safety-sqlite.md |
+| Hosting platform | | data-safety-sqlite.md |
 | Runner topology | | ci-cd-release.md |
 | Notification channel | | notifications.md |
 | Python interpreter floor (default 3.9 where the OS python is the runtime) | | scripting-python.md 1.1 |
@@ -25,11 +24,10 @@ Fill in per business. Keep secrets, hostnames and tenant ids out of any repo tha
 | App directory (the folder with the web app's lockfile that lint-sweep.yml installs and lints in; empty: the root, else the first folder one level down that holds a lockfile) | | ci-cd-release.md 2.1 |
 | Trust hold: merged pull requests before an author is no longer new (default 3) | | pr-review-and-merge.md section 4 |
 | Trust hold: device-shipped paths, comma-separated globs (content shipped to managed devices or end-user machines) | | pr-review-and-merge.md section 4 |
-| ASCII check patterns, comma-separated globs that narrow the ASCII check (empty: every tracked text file, the default and the rule; for existing non-ASCII files record a time-boxed exception instead of narrowing) | | pr-review-and-merge.md 1.19, scripting-powershell.md 1.7, wpf-design-system.md 6.1 |
-| UI adoption stage (`none`, `partial` or `adopted`: with `none` or `partial` the drift workflow's UI adoption gate reports N/A instead of failing, until the UI series lands; empty keeps the gate on, the default) | | web-ui.md 0.11, scripts/core-status.py --require-ui-adopted |
+| ASCII check patterns, comma-separated globs that narrow the ASCII check (empty: every tracked text file, the default and the rule; for existing non-ASCII files record a time-boxed exception instead of narrowing) | | pr-review-and-merge.md 1.19, scripting-powershell.md 1.7 |
 | Node major version (web; empty takes the first pin found) | | ci-cd-release.md 1 |
 | Repo checks gate (the repo checks `core-ci.yml` fails the run on: rule ids, doc names or `all`, comma-separated, for example `ops-center-layout`; empty: off, the checks only report through core-status) | | scripts/core-ci.py repo-checks, repo_checks.py |
-| Shrink-only lists (paths, comma-separated, of lists that may lose entries and never gain one, such as a route exemption list; `core-ci.py list-shrinks` reads it; empty: off) | | web-api-runtime.md route contracts, scripts/core-ci.py list-shrinks |
+| Shrink-only lists (paths, comma-separated, of lists that may lose entries and never gain one, such as a route exemption list; `core-ci.py list-shrinks` reads it; empty: off) | | route contracts, scripts/core-ci.py list-shrinks |
 
 ## ascii_ignore
 

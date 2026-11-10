@@ -1,5 +1,5 @@
 // The title block of a hub page: the kit PageHeader (eyebrow, title, one-line purpose, status
-// only, no actions per web-ui.md rule 6) with the hub's route tabs under it.
+// only, no actions per the web-ui-standard doc) with the hub's route tabs under it.
 import { PageHeader } from '@kit'
 import type { ReactNode } from 'react'
 import type { TabDef } from './Tabs'

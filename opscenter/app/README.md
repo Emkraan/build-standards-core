@@ -1,6 +1,6 @@
 # Ops center app
 
-React, TypeScript and Vite on the shared kit (`@kit` resolves to `kit/src`), lifted from the shell consumer's running
+React, TypeScript and Vite on the shared kit (`@kit` resolves to `opscenter/kit/src`), lifted from the shell consumer's running
 ops center (opscenter/DESIGN.md section 4 and 12). Every page and component of the running app is here:
 
 | Rail group | Pages |
