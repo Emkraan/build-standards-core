@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-10 (v1.199.0, fix: a merge-pending test stops failing when the shipped window passes its fixed date)
+
+Test fix, no consumer effect.
+
+- `platform_reviews_merge_pending_test.py` built its fixture with fixed 2026-10-27 stamps while the reviews lane only lists a merged item for `shipped_days` (14), so from 2026-11-10 10:00Z two of its tests failed and `ci` went red on every pull request. The fixture now stamps relative to the current time (`_ago`), so it stays inside the window on any date.
+
+No issue: ci red on every pull request since the 14 day shipped window passed the test's fixed dates.
+
 ## 2026-11-09 (v1.198.0, report wording: which pull-request rule applies before approval and which after)
 
 Wording only. The nightly rewrites the candidates note in an open report issue on its next run.
