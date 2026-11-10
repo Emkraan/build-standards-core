@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-09 (v1.194.0, renovate: the Playwright image and @playwright/test move together)
+
+Repository change, no consumer effect.
+
+- `renovate.json` groups `@playwright/test` (`kit/package.json`) and the `mcr.microsoft.com/playwright` container image (`.github/workflows/visual.yml`) under one `playwright` update, so one pull request moves both and the visual gate never runs a library that differs from its browser image (Playwright refuses to start on a mismatch).
+
 ## 2026-11-09 (v1.193.0, web-process-health: a new standard for a responsive web process)
 
 Opt in for a web consumer; takes effect by moving its pinned core release and registering the four rules.
