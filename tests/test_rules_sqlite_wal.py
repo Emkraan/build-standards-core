@@ -22,7 +22,9 @@ class SqliteWal(unittest.TestCase):
         self.assertIn("network file share", r["statement"])
         self.assertIn("restore test", r["statement"])
         self.assertNotIn("allowed only on local disk.", r["statement"])
-        item = self.text.split("4. **Journal mode follows where the file lives.**")[1].split("5. **")[0]
+        item = self.text.split("4. **Journal mode follows where the file lives.**")[1].split(
+            "5. **"
+        )[0]
         self.assertIn("never allowed on a network file share", item)
         self.assertIn("restore test", item)
 
