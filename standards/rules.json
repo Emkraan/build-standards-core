@@ -2716,8 +2716,8 @@
     {
       "id": "data-safety-sqlite.2.4",
       "ref": "data-safety-sqlite.md 2.4",
-      "title": "Journal mode for network storage",
-      "statement": "On network storage the database uses journal_mode DELETE with synchronous FULL. WAL is allowed only on local disk.",
+      "title": "Journal mode follows where the file lives",
+      "statement": "On a network file share the database uses journal_mode DELETE with synchronous FULL, and WAL is never allowed there. WAL is allowed on a cloud host only on the host's local disk, with continuous replication and a passing restore test of the replica (section 8).",
       "level": "must",
       "applies_to": [
         "web"
@@ -2725,7 +2725,7 @@
       "check": {
         "kind": "test"
       },
-      "acceptance": "A test opens the database with the network-storage setting and asserts the journal mode."
+      "acceptance": "A test opens the database with the network-storage setting and asserts DELETE with FULL, and asserts WAL is refused for a directory faked as a network filesystem and for local disk without the recorded replication and restore-test conditions of section 8."
     },
     {
       "id": "data-safety-sqlite.2.5",
@@ -2896,6 +2896,62 @@
         "kind": "test"
       },
       "acceptance": "Two concurrent appends produce one chain that verifies; an edited or removed row fails the walk."
+    },
+    {
+      "id": "data-safety-sqlite.8.1",
+      "ref": "data-safety-sqlite.md 8.1",
+      "title": "Local-disk WAL keeps the DB, wal and shm off any share",
+      "statement": "An app that runs WAL on a cloud host keeps the DB, its -wal and its -shm on local disk, and startup refuses WAL when the DB directory is a network filesystem.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "Opening in WAL with the directory faked as a network filesystem exits before the DB is opened; a local directory opens in WAL."
+    },
+    {
+      "id": "data-safety-sqlite.8.2",
+      "ref": "data-safety-sqlite.md 8.2",
+      "title": "A snapshot chain plus shipped WAL frames replicate to blob storage",
+      "statement": "The replicator writes a base snapshot through the online backup API, ships WAL frames in order as separate blobs and starts a new snapshot on a schedule; it never copies, opens or locks the live file.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "After a series of writes the blob store holds a snapshot and ordered frames that replay into an empty file with the same rows, and the replicator never opens the live file for writing."
+    },
+    {
+      "id": "data-safety-sqlite.8.3",
+      "ref": "data-safety-sqlite.md 8.3",
+      "title": "Sealed blobs fence out an old writer",
+      "statement": "Each blob is created once and never overwritten, and a new lock holder seals its predecessor's chain generation before shipping, so a process that lost the lock cannot extend the chain.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "After a takeover an append from the old holder is refused and the restored chain holds only the new holder's frames after the seal."
+    },
+    {
+      "id": "data-safety-sqlite.8.4",
+      "ref": "data-safety-sqlite.md 8.4",
+      "title": "A passing restore test of the replica comes before local WAL",
+      "statement": "A restore of the newest snapshot and following frames into a scratch file passes quick_check and matches row counts and a content hash before the DB moves to local WAL, and reruns on a schedule; a failing or missing result puts the app back on DELETE mode.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "The runbook records the date and result of a passing restore test earlier than the switch, and the last scheduled one is within the schedule."
     },
     {
       "id": "ci-cd-release.1",

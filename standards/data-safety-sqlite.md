@@ -34,9 +34,13 @@ instead of being written over.
 3. **Listen before you lock.** The HTTP server listens first and answers 503 `starting` until the
    DB is open. Otherwise the platform warm-up never succeeds, the old container never gets SIGTERM,
    and both deadlock until the start time limit.
-4. **Journal mode for network storage.** On the cloud platform (`WEBSITE_INSTANCE_ID` set) use
-   `journal_mode=DELETE` with `synchronous=FULL`. WAL is allowed only on local disk (dev). The
-   switch runs `wal_checkpoint(TRUNCATE)` first. Override only with `DB_JOURNAL_MODE`.
+4. **Journal mode follows where the file lives.** On a network file share (on the cloud platform,
+   the `/home` share, `WEBSITE_INSTANCE_ID` set) use `journal_mode=DELETE` with `synchronous=FULL`.
+   WAL is never allowed on a network file share. WAL is allowed on a cloud host only when the DB file,
+   its `-wal` and its `-shm` are on that host's local disk and every condition of
+   [section 8](#8-local-disk-wal-with-continuous-replication-conditional) holds, the restore test
+   included. Until then the cloud default stays DELETE. The switch runs `wal_checkpoint(TRUNCATE)`
+   first. Override only with `DB_JOURNAL_MODE`.
 5. **Graceful shutdown.** On SIGTERM/SIGINT: stop HTTP, stop cron, checkpoint, close the DB,
    release the lock, exit (forced after `SHUTDOWN_TIMEOUT_MS`, default 8000).
 6. **Integrity gate on open.** Run `PRAGMA quick_check`. On failure, copy the file (and any
@@ -82,7 +86,8 @@ health gate and the `/api/ops/smoke` check read these.
 
 ## 5. What not to do
 
-- Do not switch the cloud-hosted DB back to WAL.
+- Do not put a DB in WAL on a network file share, ever.
+- Do not move a cloud-hosted DB to local-disk WAL before the section 8 conditions hold, the passing restore test of the replica first.
 - Do not open, copy or `sqlite3` the live `hub.db` from Kudu or SSH while the app runs.
 - Do not run two deploys, or a deploy and a rollback, at the same time.
 - Do not "fix" a corrupt DB in place. Repair always happens on a copy.
@@ -171,3 +176,51 @@ SQLite, and to any app with a tamper-evident log.
    verify walk checks the chain in sequence order.
    - Prevents: two instances forking the chain, and equal timestamps breaking the verify walk.
    - Acceptance (test): two concurrent appends produce one chain that verifies, and an edited or removed row fails the walk.
+
+## 8. Local-disk WAL with continuous replication (conditional)
+
+Status: settling. The replica uploads and its access test pass in the app this section came from. Its
+restore test is built but has not run, and that app has not switched to local mode. This section
+therefore allows the mode only on the conditions below, and rule 2.4 allows nothing beyond them.
+
+The reason to want it: a network file share was about 57 times slower than local disk for small
+synced writes (200 writes of 4 KB: 4.54 s against 0.08 s), forced rollback-journal mode and was the
+write ceiling of the app. The share is also what makes WAL unsafe (section 1). Moving the live file
+to the host's local disk removes both, and the lost durability of a disk that goes away with the
+host is bought back by replication.
+
+1. **The live DB, its `-wal` and its `-shm` are on local disk, never on a share.** Startup resolves the
+   real filesystem of the DB directory and refuses to open in WAL when it is a network filesystem.
+   - Prevents: WAL on a share, the corruption of section 1, through a path setting that quietly
+     points at the share.
+   - Acceptance (test): opening in WAL with the directory faked as a network filesystem exits
+     before the DB is opened; a local directory opens in WAL.
+2. **A snapshot chain plus shipped WAL frames replicate continuously to blob storage.** A replicator
+   writes a base snapshot, then ships the WAL frames as they are committed, each as its own blob in
+   order, and starts a new snapshot on a schedule so a restore never replays an unbounded chain. It
+   reads the snapshot through the online backup API and the frames from the WAL, so the live file is
+   never copied, opened by a second writer or locked.
+   - Prevents: a host that goes away taking the only copy of the data, and a replicator that
+     becomes a second process touching the live file (rule 9).
+   - Evidence: in the app this came from, the replica uploads and its access test pass in
+     production.
+   - Acceptance (test): after a series of writes the blob store holds a snapshot and the frames in
+     order, and replaying them into an empty file gives the same rows; the replicator never opens the
+     live file for writing.
+3. **Blobs are sealed, so an old writer is fenced out.** Each blob is written once (create only,
+   never overwrite) and a new lock holder seals the chain generation of its predecessor before it
+   ships anything, so a process that lost the lock cannot extend the chain a restore will read.
+   - Prevents: two processes both shipping frames after a handoff, a chain a restore cannot replay.
+   - Acceptance (test): after a takeover, an append from the old holder is refused and the restored
+     chain holds only the new holder's frames after the seal.
+4. **The restore test of the replica passes before the DB moves to local WAL, and keeps passing.**
+   The test restores the newest snapshot and every frame after it into a scratch file, runs
+   `PRAGMA quick_check` and compares row counts and a content hash with the live DB at a known
+   point. It passes once before the switch and runs on the schedule of
+   [rule 7.2](#7-server-databases-and-audit-logs) afterwards, with the result recorded. A failing or
+   missing result moves the app back to DELETE journal mode on the share.
+   - Prevents: a replica nobody has ever restored being trusted with the only copy of the data.
+   - Acceptance (review): the runbook records the date and result of a passing restore test that is
+     earlier than the switch, and the last scheduled one is within the schedule.
+
+Network file shares keep the ban in rule 2.4 whatever the replica does.

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-09 (v1.196.0, data-safety-sqlite: WAL on local disk with continuous replication, conditional)
+
+Opt in for a web consumer. The new allowance is settling: it is conditional on a passing restore test, which the app it came from has built but not yet run.
+
+- `standards/data-safety-sqlite.md` rule 2.4 is reworded. It said WAL is never allowed on cloud hosts. It now says WAL is never allowed on a network file share, and is allowed on a cloud host only on the host's local disk with continuous replication and a passing restore test of the replica. Until those hold, the cloud default stays `journal_mode=DELETE` with `synchronous=FULL`. The "what not to do" list is updated to match.
+- New section 8, "Local-disk WAL with continuous replication (conditional)": the live file, `-wal` and `-shm` on local disk; a snapshot chain plus shipped WAL frames replicated to blob storage without touching the live file; sealed blobs to fence out an old writer; a restore test that passes before the switch and reruns on a schedule. Evidence: a network file share was about 57 times slower than local disk for small synced writes (200 writes of 4 KB: 4.54 s against 0.08 s).
+- `standards/rules.json`: `data-safety-sqlite.2.4` reworded, `data-safety-sqlite.8.1` to `8.4` added (the last is a review rule); the generated `core-practices` skill is rebuilt.
+- Tests: `tests/test_rules_sqlite_wal.py` (4) pins the reworded rule, the retained share ban, the new rules, the settling status and the updated list.
+
 ## 2026-11-09 (v1.195.0, slow upstream queries: cache, single flight, admission limits; tests independent of the time of day)
 
 Opt in for a web consumer; takes effect by moving its pinned core release and registering the rules.
