@@ -13,6 +13,13 @@ Hermes safe restart gains a fenced mode (#254). It is off by default, so restart
 
 Refs #254, which stays open until the live run is approved.
 
+## 2026-11-10 (v2.2.1, run the ops center app browser tests in CI)
+
+CI only (#260). `.github/workflows/opscenter-app.yml` now runs `npm run test:browser` (axe, live actions and the three tabs) after the build,
+on the same runner as the rest of the job (`vars.CORE_RUNNER`), with no fallback to a hosted runner, so a consumer that keeps its runners
+local gets the same gate. The runner needs no Chrome of its own: the Chromium named by the pinned `playwright-core` is downloaded once per
+version into a cached directory and passed as `CHROME_BIN`, with `CHROME_NO_SANDBOX=1`. The gate still fails, never skips, when the browser is missing.
+
 ## 2026-11-10 (v2.2.0, ops center app tabs for docs drift, sprint trend and live automation)
 
 The ops center app gets the three tabs that were left unbuilt when their server pieces were lifted (#255). Each tab is hidden

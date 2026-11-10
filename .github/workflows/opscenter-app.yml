@@ -31,3 +31,29 @@ jobs:
         working-directory: opscenter/app
       - run: npm run build
         working-directory: opscenter/app
+      # The browser tests run on this same runner, whatever CORE_RUNNER points at, with no hosted fallback.
+      # The runner needs no Chrome of its own: the Chromium that the pinned playwright-core devDependency
+      # names is downloaded once per version and cached. Only the system libraries Chromium links against
+      # must exist on the runner. tests/browserGate.mjs fails (never skips) when the browser is missing.
+      - id: pw
+        run: echo "version=$(node -p "require('playwright-core/package.json').version")" >> "$GITHUB_OUTPUT"
+        working-directory: opscenter/app
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ runner.arch }}-${{ steps.pw.outputs.version }}
+      - run: npx playwright-core install chromium
+        working-directory: opscenter/app
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/ms-playwright
+      - name: Browser tests (axe, live actions, tabs)
+        run: |
+          CHROME_BIN="$(node -e "console.log(require('playwright-core').chromium.executablePath())")"
+          export CHROME_BIN
+          "$CHROME_BIN" --version
+          npm run test:browser
+        working-directory: opscenter/app
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/ms-playwright
+          # Ubuntu 24.04 restricts the user namespaces Chromium's sandbox needs; the job runs only this repo's own code.
+          CHROME_NO_SANDBOX: '1'
