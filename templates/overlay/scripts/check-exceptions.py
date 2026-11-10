@@ -4,7 +4,7 @@
 Fails (exit 1) when a row is malformed, names a core doc that is not synced, has no review date,
 has a review date more than 180 days after approval, is past its review date, or when a
 `core-exception: EXC-NNN` marker in a tracked file names an ID that is not in the table. Markers
-inside the synced core copies (the lint fixtures in lint-core/) belong to the core and are skipped.
+inside the synced core copy (standards-core/) belong to the core and are skipped. lint-core/ is the consumer's own code, so its fixtures are scanned.
 
 A baseline file (a tracked *baseline*.json, or the file a lint config names under "baseline") that
 names an EXC-NNN id missing from the table is a problem too: a ratchet that cites an exception which
@@ -35,7 +35,7 @@ MAX_DAYS = 180
 ID_RE = re.compile(r"^EXC-\d{3}$")
 RULE_RE = re.compile(r"^([a-z0-9-]+\.md) (\d+(?:\.\d+)?)$")
 MARK_RE = re.compile(r"core-exception:\s*(EXC-\d{3})")
-COPIES = ("standards-core", "tokens-core", "lint-core", "kit-core")
+COPIES = ("standards-core",)
 
 
 def parse_date(text):

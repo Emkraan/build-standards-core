@@ -94,6 +94,11 @@ try:
         shutil.rmtree(out, ignore_errors=True)
         if (tmp / "core" / src).is_dir():
             shutil.copytree(tmp / "core" / src, out, ignore=IGNORE)
+    kept = [d for d in ch.FORMER_COPIES if (ch.ROOT / d).is_dir()]
+    if kept:
+        print(
+            "kept as your own code, no longer synced or hashed: " + ", ".join(f"{d}/" for d in kept)
+        )
     for src, dst in ch.SYNC_FILES:
         if (tmp / "core" / src).is_file():
             (ch.ROOT / dst).parent.mkdir(parents=True, exist_ok=True)

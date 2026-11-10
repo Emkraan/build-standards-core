@@ -20,7 +20,7 @@ none of them needs an invitation, a token or an account to read the core: it is 
 
 | Channel | What it delivers | How it stays current | Section |
 |---|---|---|---|
-| Overlay sync | `standards-core/`, `lint-core/`, the overlay scripts and the template workflows (`core-ci.yml`, `core-drift.yml`, `core-update.yml`, `lint-sweep.yml`), pinned by `standards.lock` | the repo's own `core-update.yml` opens a pull request on every release; or run `python3 scripts/update-core.py` by hand | 3, 12 |
+| Overlay sync | `standards-core/`, the overlay scripts and the template workflows (`core-ci.yml`, `core-drift.yml`, `core-update.yml`, `lint-sweep.yml`), pinned by `standards.lock` | the repo's own `core-update.yml` opens a pull request on every release; or run `python3 scripts/update-core.py` by hand | 3, 12 |
 | Reusable workflow (opt in) | the same one-job `core-ci` checks, run from the core at a pinned release, with no copy of `core-ci.yml` in the repo | move the pinned commit (by hand or with Renovate) | 3 ("Alternative") |
 | Agent skills | the `core-` skills and settings for the agent on a machine | the nightly job (`hermes/nightly.py`) | 2, 4 |
 
@@ -636,7 +636,7 @@ A `repo-check` rule is proved by a static check of the repo's own tracked files,
 exception that names the rule is `excepted`, and `unverified` only when the check cannot run. A check
 passes when the repo holds nothing the rule governs (no migrations, no deploy workflow) and fails on a
 violation or, where the rule demands a thing, on its absence. A line carrying `core-exception: EXC-NNN` is
-skipped. The synced copies (`standards-core/`, `lint-core/`), build output
+skipped. The synced copy (`standards-core/`), build output
 and dependency folders are not scanned.
 
 | Check | Rule | Reports a finding when |
@@ -671,7 +671,7 @@ In a clone of the core the script is `templates/overlay/scripts/repo_checks.py`.
 
 ## 9. Script lint config
 
-`standards-local/script-lint.json` tells `python3 lint-core/script_lint.py` what to read:
+`standards-local/script-lint.json` tells `python3 lint-core/script_lint.py` what to read. The core no longer syncs `lint-core/`: a repo that keeps its last copy owns it, and `core-drift.yml`, `lint-sweep.yml` and `core-status.py` run the script lint only when that file is present and say so when it is not:
 
 ```json
 { "paths": ["scripts"], "exclude": [], "python_floor": "3.9", "baseline": null }
@@ -854,7 +854,7 @@ README "Checks" lists the rest (tokens, script lint, the ops center app and kit)
 (`/usr/bin/python3` on macOS is 3.9), not only the newest.
 
 **A consumer repo is READY** when `python3 scripts/check-core-sync.py` prints `core sync: clean`,
-`python3 scripts/check-exceptions.py` and `python3 lint-core/script_lint.py` pass, `python3
+`python3 scripts/check-exceptions.py` passes (and `python3 lint-core/script_lint.py` when the repo keeps its own `lint-core/`), `python3
 scripts/core-status.py --require-lint-config` exits 0, `core-checks`
 (or `core-checks / core-checks`) is required in the merge gate and green, and no rule is `fail`. The
 `unverified` list is the open work, not a blocker.

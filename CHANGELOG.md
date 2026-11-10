@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-11-10 (v2.3.1, the overlay syncs and hashes only standards-core)
+
+The overlay template now matches the v2.0.0 narrowing (#264, #257 B.3). I stopped syncing `lint-core/` and stopped hashing `kit-core/`, `tokens-core/` and `lint-core/`, so a consumer that keeps its last copy of them as its own code can edit them without a drift failure and without refreshing the lock hash by hand.
+
+- Changed: `templates/overlay/scripts/corehash.py` has `SYNC_MAP` for `standards` only and `COPIES` (the `content_sha256` scope) for `standards-core` only. A lock written by an older sync names a hash over more folders, so the first sync after this release rewrites `standards.lock`.
+- Changed: `sync-core.py` never deletes an existing `lint-core/`, `kit-core/` or `tokens-core/`. It prints `kept as your own code, no longer synced or hashed` with the folders it found.
+- Changed: `check-exceptions.py`, and `core-ci.py` (the sync path list, the ASCII and Python config scans), treat only `standards-core/` as a core-owned copy. The lint fixtures in a kept `lint-core/` are now scanned like any other code of the repo.
+- Changed: `core-drift.yml` and `lint-sweep.yml` run `lint-core/script_lint.py` only when the file exists and write a one-line note when it does not. A repo with an overlay subfolder keeps its path prefix on the new check.
+- Documented: the overlay `README.md`, `README.md` and `CONSUMING.md` no longer call `lint-core/` a generated copy.
+- Tests: `tests/test_overlay_own_copies.py` proves `SYNC_MAP` is standards only, the hash ignores edits to the three folders and still sees `standards-core/`, a sync leaves an existing `lint-core/`, `kit-core/` and `tokens-core/` in place, and the two workflows guard the lint call. Two existing tests use `standards-core/` for the core-owned fixture.
+
+Fixes #264. Refs #257.
+
 ## 2026-11-10 (v2.3.0, safe Hermes restart: freeze new work, backend before gateway, behind a flag)
 
 Hermes safe restart gains a fenced mode (#254). It is off by default, so restart behaviour does not change until the owner approves a live run and the default is turned on in a later change.

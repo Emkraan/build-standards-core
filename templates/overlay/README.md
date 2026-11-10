@@ -6,7 +6,8 @@ only what is specific to that business.
 | Path | Holds |
 |---|---|
 | `standards.lock` | The pinned ref, commit and content hash. It never names the core's repo or owner: scripts read the source from `CORE_REPO` or from the machine-local `consumer.json` |
-| `standards-core/`, `lint-core/` | Generated copies of the core `standards/` and `lint/`. Never edit by hand |
+| `standards-core/` | Generated copy of the core `standards/`. Never edit by hand. It is the only folder the sync writes and the lock hash covers |
+| `lint-core/`, `kit-core/`, `tokens-core/` | Not synced and not hashed since core v2.0.0. A repo that has them keeps the last synced copy as its own code, edits them freely, and a sync never deletes them. `core-drift.yml` and `lint-sweep.yml` run `lint-core/script_lint.py` only when it is present |
 | `standards-local/script-lint.json` | Which script paths the script lint checks (PowerShell and Python), the Python floor and an optional baseline. Required once `parameters.md` declares the `powershell`, `python` or `iac` stack: without it the script lint skips, and `core-status.py --require-lint-config` (run by `core-drift.yml`) fails the drift check |
 | `standards-local/` | Business-specific standards and parameter values |
 | `scripts/sync-core.py` | Refreshes `standards-core/`, the pin and the core template workflows the repo has (per-repo settings kept) |
@@ -84,7 +85,7 @@ not read the pull request, and a push to the default branch runs only `core-secr
 Values come from `standards-local/parameters.md`: Stacks, Python floor and test command, commit
 emails, changelog file, version files, ASCII patterns, Node major. The repository variable
 `CORE_CI_RUNNER` sets `runs-on` as JSON; unset, the job runs on `ubuntu-24.04` (the Python floor, 3.9, has no build on newer images). Require `core-checks`
-in the merge gate (section "Required checks"). Exclude the vendored copies (`standards-core/`, `lint-core/`) in the ruff config, as for any formatter.
+in the merge gate (section "Required checks"). Exclude the vendored copy (`standards-core/`) in the ruff config, as for any formatter.
 
 `core-status.py --ci` reads the latest default-branch run of `core-ci.yml` and turns each
 `overlay-ci` rule into pass or fail; without it an installed workflow leaves the rule unverified,

@@ -62,7 +62,11 @@ jobs:
           out="$RUNNER_TEMP/lint-sweep.txt"
           : > "$out"
           rc=0
-          python3 "$OVERLAY/lint-core/script_lint.py" >> "$out" 2>&1 || rc=1
+          if [ -f "$OVERLAY/lint-core/script_lint.py" ]; then
+            python3 "$OVERLAY/lint-core/script_lint.py" >> "$out" 2>&1 || rc=1
+          else
+            echo "script lint skipped: no $OVERLAY/lint-core/ (the core no longer syncs it)" >> "$out"
+          fi
           if [ -n "$SWEEP_CMD" ]; then
             src=0
             (cd "$APP_DIR" && bash -c "$SWEEP_CMD") >> "$out" 2>&1 || src=$?

@@ -23,4 +23,6 @@ jobs:
       - run: python3 scripts/check-core-sync.py
       - run: python3 scripts/check-exceptions.py
       - run: python3 scripts/core-status.py --require-lint-config
-      - run: python3 lint-core/script_lint.py
+      - run: |
+          if [ -f lint-core/script_lint.py ]; then python3 lint-core/script_lint.py
+          else echo "script lint skipped: no lint-core/ in this repo (the core no longer syncs it)"; fi

@@ -286,14 +286,14 @@ git checkout -b chore/sync-core
 python3 scripts/sync-core.py            # tracks the ref in standards.lock
 python3 scripts/sync-core.py vX.Y.Z     # or pin an explicit release tag
 python3 scripts/sync-core.py latest     # or the newest release
-git add standards.lock standards-core lint-core scripts
+git add standards.lock standards-core scripts
 python3 scripts/check-core-sync.py       # confirm the copy matches the pin
 ```
 
 The script needs `git` and Python 3.9 or newer (the floor is the macOS system python, and core CI runs
 every script on 3.9). It reads the core through `gh` when that is signed in and over anonymous HTTPS
-otherwise, from the repository named by `CORE_REPO`. It copies `standards/` and `lint/` into
-`standards-core/` and `lint-core/`, refreshes the overlay scripts, resolves the ref to a commit, and rewrites `standards.lock` with that commit, so a
+otherwise, from the repository named by `CORE_REPO`. It copies `standards/` into
+`standards-core/` (it leaves any existing `lint-core/`, `kit-core/` or `tokens-core/` in place, as the repo's own code), refreshes the overlay scripts, resolves the ref to a commit, and rewrites `standards.lock` with that commit, so a
 pin is always an exact commit and never a moving branch. When a release changes the sync tooling
 itself, the sync hands over to the new copy in the same run. Overlays on v0.11.0 or older lack the
 handover, so run the first sync past it twice.
@@ -307,7 +307,7 @@ standards first and the code fixes after, so the gap is visible and tracked.
 ### 5. Let CI check the pin
 
 The template `core-drift.yml` is an offline check and needs no secret, no `gh` and no access to the
-core. `sync-core.py` writes a hash of `standards-core/` and `lint-core/` into `standards.lock`
+core. `sync-core.py` writes a hash of `standards-core/` into `standards.lock`
 (`content_sha256`), and `check-core-sync.py` recomputes it. CI fails when someone edits the synced copies
 by hand or they no longer match the lock. It does not prove the lock names a real release; `sync-core.py`
 does that when you run it, because it must read the core. Syncing is a developer action that reads the
@@ -354,7 +354,7 @@ Run `python3 scripts/check-core-sync.py --latest` on a developer machine. It pri
 `pinned vX, latest vY, run sync-core.py vY` (exit 3) when you are behind, and needs no account or secret.
 
 **Upgrading.** `python3 scripts/sync-core.py latest` (or an explicit tag) on a branch, then commit
-`standards.lock`, the synced copies (`standards-core/`, `lint-core/`) and
+`standards.lock`, the synced copy (`standards-core/`) and
 the refreshed core template workflows together and open a pull request. The sync refreshes only the
 template workflows the repo has (`core-ci.yml`, `core-drift.yml`, `core-update.yml`, `lint-sweep.yml`),
 keeps the `OVERLAY` value, `core-drift.yml`'s overlay path prefix and every line marked
@@ -366,7 +366,7 @@ leave alone. To automate this, see "Staying in lockstep" below.
 
 The core is the single source of truth and changes flow one way: core to consumers. To change a rule,
 token or hub stylesheet, open a pull request against the core, tag a release, and let consumers pick it up.
-Never edit `standards-core/`, `lint-core/` or any file listed in `targets.map` in a consumer.
+Never edit `standards-core/` or any file listed in `targets.map` in a consumer.
 
 1. **Generated copies inside your code.** If a UI package must carry a core file (for example the token
    stylesheet), list it in `targets.map` in the overlay root, one `copy path = destination` per line, both
@@ -427,14 +427,14 @@ WPF design standards are the owner's standards repo's. Business code, data and r
 
 ### 7. Enforce what you consume
 
-Consuming a doc is not compliance. `core-drift.yml` runs `lint-core/script_lint.py` on the paths in
+Consuming a doc is not compliance. `core-drift.yml` runs `lint-core/script_lint.py` (when the repo keeps its own copy) on the paths in
 `standards-local/script-lint.json`. An app that starts with findings records a ratchet baseline under
 one explicit exception and burns it down (see `lint/README.md`). Wire every other acceptance line into the
 overlay's CI too. A rule with no check is a suggestion.
 
 ### Keeping vendored copies intact (consumer side)
 
-The synced copies (`standards-core/`, `lint-core/` and every `targets.map` destination) are
+The synced copies (`standards-core/` and every `targets.map` destination) are
 content-hashed. Formatters and pre-commit fixers (biome, prettier, ruff-format) reflow vendored files,
 silently rewriting the bytes; the drift check then fails with a content hash mismatch. Add ignore globs
 for the vendored directories and every `targets.map` destination, in the formatter config, not just the

@@ -364,7 +364,7 @@ class ChangelogEntries(Work):
         head = self.branch(
             {
                 "standards.lock": "ref=v2\n",
-                "kit-core/a.ts": "x\n",
+                "standards-core/a.ts": "x\n",
                 "scripts/core-ci.py": (SCRIPTS / "core-ci.py").read_text() + "\n",
             }
         )

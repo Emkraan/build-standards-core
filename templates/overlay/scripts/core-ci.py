@@ -647,9 +647,6 @@ ENTRY_HEAD = re.compile(
 # is a sync and needs no entry of its own.
 SYNC_PATHS = (
     "standards-core/",
-    "tokens-core/",
-    "lint-core/",
-    "kit-core/",
     "scripts/",
     "standards.lock",
 )
@@ -1222,7 +1219,7 @@ def cmd_node_pin(argv: list) -> int:
     return 1 if bad else 0
 
 
-SYNCED_COPIES = {"standards-core", "tokens-core", "lint-core", "kit-core"}
+SYNCED_COPIES = {"standards-core"}
 
 
 def ruff_configs() -> list:
@@ -1236,7 +1233,7 @@ def ruff_configs() -> list:
         parts = pathlib.PurePosixPath(name).parts
         base = parts[-1]
         if set(parts) & SYNCED_COPIES:
-            continue  # the core's own lint fixtures in a synced copy are not this repo's config
+            continue  # a synced copy is not this repo's config
         if base not in ("ruff.toml", ".ruff.toml", "pyproject.toml"):
             continue
         p = pathlib.Path(name)

@@ -11,12 +11,14 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 LOCK = ROOT / "standards.lock"
-COPIES = ("standards-core", "tokens-core", "lint-core", "kit-core")
+# The copies the lock hash covers: exactly what the sync writes (SYNC_MAP). kit-core, tokens-core and
+# lint-core are the consumer's own code once it keeps its last synced copy (core issue 257 B.3), so
+# editing them never changes the hash and a sync never deletes them.
+COPIES = ("standards-core",)
 # Core folder -> synced copy in the overlay. A core folder that does not exist yet is skipped.
-SYNC_MAP = (
-    ("standards", "standards-core"),
-    ("lint", "lint-core"),
-)
+SYNC_MAP = (("standards", "standards-core"),)
+# Folders an older sync wrote. A sync leaves them in place and says so.
+FORMER_COPIES = ("lint-core", "kit-core", "tokens-core")
 # Overlay scripts are refreshed from the core template on every sync, so tooling fixes reach every overlay.
 # Single core files copied into the overlay on every sync, refreshed like the overlay scripts.
 SYNC_FILES = ()
@@ -392,7 +394,7 @@ KEEP_MARK = "# core-sync: keep"
 KEEP_KEYS = (("env", "OVERLAY"),)
 # A workflow with relative overlay paths (core-drift.yml runs scripts/... from the repo root): a repo whose
 # overlay is a subfolder writes the prefix in front of them, and a sync keeps it.
-RELATIVE_PATH = r"(python3 )((?:scripts|lint-core)/)"
+RELATIVE_PATH = r"(python3 |\[ -f )((?:scripts|lint-core)/)"
 _KEY = r"^(\s*)(?:-\s+)?([A-Za-z0-9_.-]+):(?:\s+(.*?))?\s*$"
 SETUP_JOB_NAMES = ("setup", "core-setup")
 

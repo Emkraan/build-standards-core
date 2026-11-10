@@ -344,7 +344,7 @@ class AsciiNodePython(Overlay):
             {
                 "img.bin": b"\x89PNG\x00\xff\xfe",
                 "package-lock.json": '{"x": "caf\xe9"}\n',
-                "kit-core/a.ts": "// caf\xe9\n",
+                "standards-core/a.ts": "// caf\xe9\n",
                 "ok.md": "plain\n",
             },
         )
@@ -449,7 +449,7 @@ class AsciiNodePython(Overlay):
             "chore: ruff",
             {
                 "pyproject.toml": '[tool.ruff]\ntarget-version = "py312"\n',
-                "lint-core/script-fixtures/ruff.toml": 'target-version = "py39"\n',
+                "standards-core/script-fixtures/ruff.toml": 'target-version = "py39"\n',
             },
         )
         self.assertEqual(self.ci("python-config")[0], 0)
