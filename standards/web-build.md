@@ -336,6 +336,21 @@ stays the gate; the script is the same gate run early, and it must fail on the f
 - **Standards stay current.** If a change here alters a convention, pattern, CI rule or design
   token, update this repo (`this repo`) in the same piece of work.
 
+### 9.1 Tests do not depend on the time of day
+
+A test never reads the real clock to decide what it expects. Time reaches the code under test through
+an injected clock or a fixed instant, and a test that groups data by day anchors its day buckets to
+the UTC day of that instant, never to the current moment, the machine's local day or the runner's
+time zone.
+
+- Prevents: a suite that is green all day and red every evening, when the local day, or "now minus 24
+  hours", crosses a day boundary that the fixture data did not.
+- Evidence: a test that anchored day buckets to the current time failed every evening; anchoring the
+  buckets to the UTC day fixed it.
+- Acceptance (test): the same test passes with the injected clock set just before and just after
+  midnight UTC and under two different time zone settings; a review or lint step flags a bare
+  `new Date()` or `Date.now()` in a test file that is not routed through the clock.
+
 ## 10. Global search (hybrid semantic)
 
 Every first-party app with more than one kind of record gets one global search that covers

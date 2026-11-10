@@ -73,7 +73,7 @@ How to use it:
 | `data-safety-sqlite.2.1` One writer, enforced by a lock file | must | web | test | Before opening the database the server creates a lock file with an exclusive create and heartbeats it. No second process opens the database while the lock is fresh. |
 | `data-safety-sqlite.2.2` Stale takeover only | must | web | test | A waiting process takes over only when the heartbeat is older than the stale limit or the holder is dead on the same host, renames the stale lock aside atomically, and a holder that finds its token replaced stops. |
 | `data-safety-sqlite.2.3` Listen before you lock | must | web | test | The HTTP server listens first and answers 503 starting until the database is open, so platform warm-up succeeds while the old instance still holds the lock. |
-| `data-safety-sqlite.2.4` Journal mode for network storage | must | web | test | On network storage the database uses journal_mode DELETE with synchronous FULL. WAL is allowed only on local disk. |
+| `data-safety-sqlite.2.4` Journal mode follows where the file lives | must | web | test | On a network file share the database uses journal_mode DELETE with synchronous FULL, and WAL is never allowed there. WAL is allowed on a cloud host only on the host's local disk, with continuous replication and a passing restore test of the replica (section 8). |
 | `data-safety-sqlite.2.5` Graceful shutdown | must | web | test | On SIGTERM or SIGINT the server stops HTTP and schedulers, checkpoints, closes the database and releases the lock, with a forced exit after a timeout. |
 | `data-safety-sqlite.2.6` Integrity gate on open | must | web | test | The server runs a quick check on open. On failure it copies the files aside, refuses to open the database and stays up returning 503 with restore instructions. |
 | `data-safety-sqlite.2.7` No silent auto-restore | must | web | test | Restoring from a backup happens only when explicitly enabled, because it discards every write since that backup. |
@@ -86,6 +86,10 @@ How to use it:
 | `data-safety-sqlite.7.2` Server databases: retention and restore drills | must | web | review | Backups are kept for the owner-set period, geo-redundant where data cannot be rebuilt, and restored into a scratch database on a schedule with the result recorded in a repo runbook. |
 | `data-safety-sqlite.7.3` Server databases: a migration screen in CI | must | web | test | CI fails a migration that drops, truncates, deletes, renames or changes a column type unless it is an approved exception with its reason. |
 | `data-safety-sqlite.7.4` An audit log is a serialised, keyed chain | must | web | test | Audit entries are appended under one lock, read the tip by sequence, store a keyed hash of the previous hash plus their content, are written by one shared module and checked by a verify walk. |
+| `data-safety-sqlite.8.1` Local-disk WAL keeps the DB, wal and shm off any share | must | web | test | An app that runs WAL on a cloud host keeps the DB, its -wal and its -shm on local disk, and startup refuses WAL when the DB directory is a network filesystem. |
+| `data-safety-sqlite.8.2` A snapshot chain plus shipped WAL frames replicate to blob storage | must | web | test | The replicator writes a base snapshot through the online backup API, ships WAL frames in order as separate blobs and starts a new snapshot on a schedule; it never copies, opens or locks the live file. |
+| `data-safety-sqlite.8.3` Sealed blobs fence out an old writer | must | web | test | Each blob is created once and never overwritten, and a new lock holder seals its predecessor's chain generation before shipping, so a process that lost the lock cannot extend the chain. |
+| `data-safety-sqlite.8.4` A passing restore test of the replica comes before local WAL | must | web | review | A restore of the newest snapshot and following frames into a scratch file passes quick_check and matches row counts and a content hash before the DB moves to local WAL, and reruns on a schedule; a failing or missing result puts the app back on DELETE mode. |
 
 ## docs-and-changelog.md
 
@@ -334,6 +338,11 @@ How to use it:
 | `web-api-runtime.7` Fixed bearer rules and a development-only dev identity | must | web | test | Bearer tokens use one signing algorithm (RS256), both issuer versions, the audience as the union of the API ids, signing keys cached 10 minutes with at most 10 key fetches a minute. A dev identity exists only when the environment is exactly development or test. |
 | `web-api-runtime.9.1` Every route has a contract and the exemption list only shrinks | must | web | test | Every route has a contract bound to its handler, the API reference is generated from the contracts and checked in CI, and the exemption list for older routes only shrinks to zero. |
 | `web-api-runtime.9.2` Every CSV or spreadsheet export goes through one formula guard | must | web | test | A text value whose first character is =, +, -, @, a tab or a carriage return is written with a leading apostrophe so a download never runs a formula; numbers and booleans are never mangled; no code builds a CSV line by hand. |
+| `web-api-runtime.10.1` Cache a slow query and serve it stale while it refreshes | must | web | test | A slow upstream query is cached per distinct query; a stale entry is served at once while one refresh runs in the background, only a request with no entry waits, and a failed refresh keeps the last good entry and is never cached as an answer. |
+| `web-api-runtime.10.2` Single flight per query | must | web | test | Concurrent requests for the same query, and a refresh already running, share one upstream call. |
+| `web-api-runtime.10.3` Bound running and waiting upstream queries, 429 beyond | must | web | test | The API runs at most a fixed number of upstream queries at once and lets at most a fixed number of further requests wait; a request past both is answered 429 with Retry-After at once. |
+| `web-api-runtime.10.4` Back off when the upstream throttles | must | web | test | An upstream answer meaning slow down opens a back-off: no new upstream query starts until the time it names (or a capped exponential delay), stale entries are served meanwhile and a request with no entry gets 429 with Retry-After. |
+| `web-api-runtime.10.5` A worker per query that exits when answered | must | web | test | The upstream call, its parsing and row shaping run in a one-shot worker per query that keeps no connection or cache open after the answer; the main thread receives only the shaped result. |
 
 ## web-build.md
 
@@ -343,6 +352,7 @@ How to use it:
 | `web-build.7` One tools manifest drives every navigation surface | must | web | test | A single manifest feeds the hub, sidebars and palette; visibility combines the view permissions, accessPrefixes (never narrower than the server), hiddenWithPermission, visibleTo for scoped grants, and previewFlag for nav items. |
 | `web-build.8.1` One local gate runs what CI runs | should | web | repo-check | One script (pnpm run verify) runs typecheck, lint, every check guard, the build, the bundle-size check, the tests and the pinned static analysis scan, failing on the first non-zero step. |
 | `web-build.10` One global search, access-filtered, with index health | must | web | test | Global search covers every record the user can see, filters by the record access rules on the server, indexes up to 100,000 characters of file text with a highlighted passage, and reports stale, skipped and broken-link counts from a health endpoint. |
+| `web-build.9.1` Tests do not depend on the time of day | must | web | test | Time reaches the code under test through an injected clock or a fixed instant, and day buckets in a test are anchored to the UTC day of that instant, never to now, the local day or the runner time zone. |
 
 ## web-client-runtime.md
 
@@ -373,6 +383,15 @@ How to use it:
 | `web-client-runtime.6.2` Per-app items are gated by the user's own permissions | must | web | test | The feed adds items for an app only when the caller holds that app's permissions, and each app may add its own items to the strip. |
 | `web-client-runtime.1.3` An app without a session bounces once, with a validated return target | must | web | test | An app with no session signs in with the current in-app path as the return target, accepted on return only as a same-origin path (single leading slash, no //, backslash, control character, more than 2048 characters or other origin). A rejected target routes to the app home. |
 | `web-client-runtime.1.4` An account change clears the old account's state | must | web | test | When the active account changes, cached API data and error state for the old account are cleared and the app re-boots for the new one. |
+
+## web-process-health.md
+
+| Rule | Level | Applies to | Check | Statement |
+|---|---|---|---|---|
+| `web-process-health.1.1` A long read runs in a one-shot worker | must | web | test | A read that can take more than about a second against network-backed storage (a startup integrity check, a smoke check, a scan) runs in a worker that does that one job and exits; the main thread keeps serving and answers 503 starting until the result arrives. |
+| `web-process-health.1.2` An event-loop watchdog ends a frozen process | must | web | test | A watchdog that does not run on the main loop reads a heartbeat the loop writes; when it is older than about 90 seconds the watchdog logs the age and ends the process with a non-zero exit so the platform starts a fresh one. |
+| `web-process-health.1.3` Every background timer goes through one job registry | must | web | test | Every recurring or delayed task is created through one registry that tracks it and stops all of them on a lost lock, a handoff or SIGTERM; a CI check fails a timer created anywhere else, with an exemption list that only shrinks. |
+| `web-process-health.1.4` Startup is staggered and a takeover never waits on a full check | must | web | test | The server listens first, takes the lock as soon as it is free, then starts the integrity check, the smoke check and the jobs at staggered offsets; the takeover path runs no full check, hash or scan. |
 
 ## web-shell.md
 
