@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-11-10 (v2.3.0, safe Hermes restart: freeze new work, backend before gateway, behind a flag)
+
+Hermes safe restart gains a fenced mode (#254). It is off by default, so restart behaviour does not change until the owner approves a live run and the default is turned on in a later change.
+
+- Added: a freeze window in `hermes/safe-restart/safe_hermes_restart_exec.py`. The helper writes a freeze marker (30 seconds by default, a parameter), re-runs the whole idle proof inside the window and restarts nothing if work started. The freeze is released on every exit path, including a failed step and an exception, and the marker expires on its own.
+- Added: a stated and enforced order, backend first then gateway, each verified (a new process that stays up 30 seconds). A backend that does not come back stops the run before the gateway is touched.
+- Added: the flag, off by default: `~/.hermes/state/safe-restart.fence`, `SAFE_RESTART_FENCE=1` or a `fence` token in the trigger file. With it off the helper does the original single gateway kickstart.
+- Changed: the helper no longer runs `main()` on import (it runs under `__main__`), so it can be tested.
+- Documented: `hermes/safe-restart/README.md` (fenced mode) and `hermes/configurations.md` section 14. No rule is added, so `standards/rules.json` is untouched.
+- Tests: 7 in `tests/test_safe_restart_fence.py`: freeze release on failure and on a raise, freeze held during the re-check, the order, the flag and its window parameter, and flag off equals the old behaviour.
+
+Refs #254, which stays open until the live run is approved.
+
 ## 2026-11-10 (v2.2.0, ops center app tabs for docs drift, sprint trend and live automation)
 
 The ops center app gets the three tabs that were left unbuilt when their server pieces were lifted (#255). Each tab is hidden
