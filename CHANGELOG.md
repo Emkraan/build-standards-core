@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-09 (v1.191.0, web-process-health: a new standard for a responsive web process)
+
+Opt in for a web consumer; takes effect by moving its pinned core release and registering the four rules.
+
+- New `standards/web-process-health.md` with four rules: a long read runs in a one-shot worker, an event-loop watchdog ends a frozen process after about 90 s, every background timer is created through one job registry (a CI check rejects any other), and startup is staggered with a lock takeover that never waits on a full check. Each rule names what it prevents, its evidence and its acceptance line.
+- Evidence from the app the rules came from: takeover after a restart waited 729,682 ms on a full check before the check moved off the main thread and was deferred, then 633 ms; a frozen process stayed up for 10 minutes until the watchdog was added.
+- The jobs-in-one-process rule stays in `standards/web-shell-server.md` section 5 and the `jobs` package in `standards/web-shell-packages.md` section 5.4; the new doc cross-references them and does not repeat them.
+- `standards/rules.json` registers `web-process-health.1.1` to `1.4` (check kind `test`, scope `web`); the README standards table has one new row; the generated `core-practices` skill is rebuilt.
+
 ## 2026-11-09 (v1.190.0, architecture-article: a system change merges with its article updated)
 
 Opt in, extends the v1.189.0 subcommand; a consumer takes it by moving its pinned core release.
