@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-09 (v1.192.0, kit: Segmented glides its selected pill)
+
+Kit change, a consumer takes it by moving its pinned release.
+
+- `Segmented` draws its selected pill as one marker (`.seg-glider`, decorative) that slides to the pressed option, as `standards/web-ui.md` section 7 requires, instead of filling each option. The marker is placed without a transition the first time, so it never glides in from the corner, and reduced motion turns the slide off. Radio-group semantics, arrow keys and `aria-pressed` are unchanged.
+- Test: `kit/tests/segmented-glide.test.tsx`.
+
 ## 2026-11-09 (v1.190.0, architecture-article: a system change merges with its article updated)
 
 Opt in, extends the v1.189.0 subcommand; a consumer takes it by moving its pinned core release.

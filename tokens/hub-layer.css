@@ -212,6 +212,12 @@
 .seg-btn { padding: 3px 11px; border-radius: 999px; border: 0; background: none; font-size: 12px; font-weight: 500; color: var(--text-primary); cursor: pointer; transition: background-color var(--dur-fast), color var(--dur-fast); }
 .seg-btn:hover { color: var(--text-primary); }
 .seg-btn[aria-pressed="true"] { background: var(--surface-1); color: var(--text-primary); box-shadow: var(--shadow-xs); }
+.seg { position: relative; }
+.seg-btn { position: relative; z-index: 1; }
+.seg-glider { position: absolute; top: 0; left: 0; z-index: 0; border-radius: 999px; pointer-events: none; opacity: 0; background: var(--surface-1); box-shadow: var(--shadow-xs); }
+.seg[data-glide="ready"] .seg-glider { transition: transform var(--dur-travel) var(--ease-out), width var(--dur-slower) var(--ease-out), height var(--dur-travel) var(--ease-out), opacity var(--dur-base); }
+.seg[data-glide] .seg-btn[aria-pressed="true"] { background: transparent; box-shadow: none; }
+@media (prefers-reduced-motion: reduce) { .seg-glider { transition: none !important; } }
 
 /* ---- Search trigger + palette ---- */
 .search-btn { display: inline-flex; align-items: center; gap: 10px; padding: 5px 10px; border-radius: 10px; border: 1px solid var(--border-default); background: var(--bg-primary, var(--bg-canvas)); color: var(--text-secondary); font-size: 12.5px; cursor: pointer; transition: border-color var(--dur-fast); }
