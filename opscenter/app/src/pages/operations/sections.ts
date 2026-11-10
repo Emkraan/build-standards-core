@@ -7,6 +7,8 @@ import { hubPath } from '@kit'
 import type { Builds, Problems } from '../../lib/data'
 
 export const OPERATIONS_BASE = '/operations'
+/** The Live automation item (OC-20): enabled dark launches. It sits in Automation and exists only when a dark launch is registered. */
+export const LIVE_AUTOMATION = { key: 'live-automation', label: 'Live automation' }
 
 // Items that are always part of the hub; the build items are added from the feed.
 const AUTOMATION = [
@@ -32,7 +34,11 @@ export function buildItems(builds: Builds | null | undefined, problems: Problems
 }
 
 /** The sections with their counts and working state from the problem list. */
-export function operationsSections(builds: Builds | null | undefined, problems: Problems | null | undefined): HubSection[] {
+export function operationsSections(
+  builds: Builds | null | undefined,
+  problems: Problems | null | undefined,
+  liveAutomation = false,
+): HubSection[] {
   const by = problems?.counts.by_item ?? {}
   const running = (section: string, key: string) => !!problems?.items.some((i) => i.section === section && i.item === key && i.running)
   const make = (section: string, label: string, items: { key: string; label: string }[]): HubSection => ({
@@ -43,7 +49,7 @@ export function operationsSections(builds: Builds | null | undefined, problems: 
   const builds_ = buildItems(builds, problems)
   return [
     ...(builds_.length ? [make('builds', 'Builds and releases', builds_)] : []),
-    make('automation', 'Automation', AUTOMATION),
+    make('automation', 'Automation', liveAutomation ? [...AUTOMATION, LIVE_AUTOMATION] : AUTOMATION),
     make('cost', 'Cost and standards', COST),
   ]
 }

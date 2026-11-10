@@ -3,11 +3,12 @@ import { Badge, Button, Card, CardHead, EmptyState, Field, Pill, Skeleton, Statu
 import { useEffect, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import DocCoverage from '../components/DocCoverage'
+import DocsDrift from '../components/DocsDrift'
 import { HubHeader } from '../components/HubHeader'
 import { AutoPublishDigest, PublishModeCard } from '../components/PublishMode'
 import { LoadError } from '../components/StateBlocks'
 import type { AppliedRecord, CurationData, Proposal } from '../lib/data'
-import { fetchApi, postApprovals, useDocCoverage, useLocalStore, useVisibleInterval } from '../lib/data'
+import { fetchApi, postApprovals, useDocCoverage, useDocsDrift, useLocalStore, useVisibleInterval } from '../lib/data'
 import './Knowledge.css'
 
 // Knowledge hub on the kit: proposal Cards with a kit CardHead and Buttons, a kit Table for what
@@ -83,8 +84,8 @@ const APPLIED_COLUMNS: TableColumn<AppliedRecord & { i: number }>[] = [
 // Knowledge hub: tabs are routes like the rest of the Ops Center. Proposals (landing) is the
 // approval queue, Doc coverage is the documentation audit, History is what I already
 // decided and what the applier published.
-type KTab = 'proposals' | 'coverage' | 'history'
-const KTABS: KTab[] = ['proposals', 'coverage', 'history']
+type KTab = 'proposals' | 'coverage' | 'drift' | 'history'
+const KTABS: KTab[] = ['proposals', 'coverage', 'drift', 'history']
 
 function Lede({ children }: { children: React.ReactNode }) {
   return <p className="kc-lede">{children}</p>
@@ -93,6 +94,9 @@ function Lede({ children }: { children: React.ReactNode }) {
 export default function Knowledge() {
   const { tab: rawTab } = useParams()
   const { data: docs } = useDocCoverage()
+  // The Docs drift tab exists only when the server has a drift provider (a 404 on /api/docs-drift hides it).
+  const { data: drift } = useDocsDrift()
+  const driftOn = !!drift?.configured
   const [cur, setCur] = useState<CurationData | null>(null)
   const [applied, setApplied] = useState<AppliedRecord[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -176,6 +180,7 @@ export default function Knowledge() {
 
   // Land on whatever needs me: pending proposals first, then open documentation gaps.
   if (cur && !rawTab && pending.length === 0 && (docs?.open_count || 0) > 0) return <Navigate to="/knowledge/coverage" replace />
+  if (rawTab === 'drift' && drift && !drift.configured) return <Navigate to="/knowledge" replace />
   const tab: KTab = (rawTab as KTab) || 'proposals'
 
   const modeNote =
@@ -441,10 +446,13 @@ export default function Knowledge() {
         tabs={[
           { to: '/knowledge', label: 'Proposals', n: cur ? pending.length : undefined, end: true },
           { to: '/knowledge/coverage', label: 'Doc coverage', n: docs?.open_count },
+          ...(driftOn ? [{ to: '/knowledge/drift', label: 'Docs drift' }] : []),
           { to: '/knowledge/history', label: 'History' },
         ]}
       />
-      <div className="hub-body">{tab === 'coverage' ? coverageTab : tab === 'history' ? historyTab : proposalsTab}</div>
+      <div className="hub-body">
+        {tab === 'coverage' ? coverageTab : tab === 'drift' ? <DocsDrift /> : tab === 'history' ? historyTab : proposalsTab}
+      </div>
     </div>
   )
 }

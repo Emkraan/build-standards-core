@@ -8,6 +8,30 @@ Registry and documentation. `standards/cmtrace-logging.md` had no entries in `st
 - Added: 25 rules `cmtrace-logging.13.1` to `cmtrace-logging.13.25` in `standards/rules.json` (236 rules), scoped to `powershell`: 12 proved by a Pester test in the consumer (`test`), 13 checked in review (`review`, attested: static lint cannot prove format, path or content rules). `script_lint` PS001 and PS003 still cover the ASCII and empty-catch parts of rules 13.5 and 13.15 without owning them.
 - Regenerated: `hermes/skills/core-practices/SKILL.md` from the registry.
 
+## 2026-11-10 (v2.2.0, ops center app tabs for docs drift, sprint trend and live automation)
+
+The ops center app gets the three tabs that were left unbuilt when their server pieces were lifted (#255). Each tab is hidden
+when its provider is not configured, is built on the ops center's own kit and tokens, and has a page-level accessibility test
+in the light and the dark theme (`opscenter/app/tests/ocTabs.test.mjs`, run by `npm run test:browser`).
+
+- Added: the Docs drift tab in Knowledge (`/knowledge/drift`, OC-10). It reads `GET /api/docs-drift` and shows the newest drift run,
+  the pages behind the code (most commits first), the pages with no verdict, and each app's README and changelog facts, with
+  Check again and Run now. A 404 (no `OPSCENTER_DOCS_DRIFT_PROVIDER`) hides the tab and sends its route to Proposals.
+- Added: the sprint trend card under the Jira Sprint tab and the Closed sprints tab (`/jira/closed`, `/jira/closed/<sprint id>`, OC-18).
+  The card reads `GET /api/jira/sprint-trend` (the last closed sprints and the active one: items in sprint, done today, points
+  done, carried on) and labels the figures as the tracker gives them, with no start of sprint snapshot. The tab lists the closed
+  sprints and opens one read only through `GET /api/jira/sprint?id=`, which the server serves only for an id in the closed list; an
+  id outside it shows a refusal and no tickets. A 404 or 501 from the sprint endpoints hides the card and the tab, and `/jira/closed`
+  then lands on the Sprint tab. `routes.lock.json` gains `/jira/:tab/:sprintId`.
+- Added: the Live automation item in Operations, Automation (`/operations/automation/live-automation`, OC-20). An enabled dark launch
+  (its live switch reads on, or unreadable with the registry recording it as enabled) leaves the Action Center and is listed
+  here with a Disable switch that asks first and sets the launch back to dark, where it returns to the Action Center. The Overview
+  gets one card for it. The item is hidden when no dark launch is registered and its route then lands on the Overview.
+- Decided: `standards/ops-center-layout.md` 1.3 section 6 records where live automation sits (an item in the existing Automation
+  section, not a new section) and gains a change log table. No rule is added or changed, so `standards/rules.json` is untouched.
+- Fixed: `opscenter/app/vite.config.ts` now dedupes `react` and `react-dom`, so a build in a checkout that also has the kit's own
+  dependencies installed no longer bundles two copies of react (the page rendered blank and every browser test failed).
+
 ## 2026-11-10 (v2.0.1, retire the hub log intake and reports plans)
 
 Documentation only. The hub no longer consumes the core, so the owner retired the hub log intake and hub reports plans on 2026-11-10.

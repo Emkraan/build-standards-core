@@ -1,6 +1,6 @@
 # Ops Center Layout Standard
 
-Version: 1.2 | Last reviewed: 2026-11-01 | Status: current | Scope: local-ops (operator consoles)
+Version: 1.3 | Last reviewed: 2026-11-10 | Status: current | Scope: local-ops (operator consoles)
 
 How an ops center is organised and how it starts work: what a hub is, how its items are grouped, what
 the Overview shows, where every count comes from, and what a Run button promises. The ops center
@@ -92,3 +92,20 @@ The count of an item is its number of problem lines, never one per item, and the
 ## 5. Checks
 
 RC023 fails a client source that decides a problem tone (the badge and severity paths, or a quoted bad, warn, alert, danger, needs-me, amber or red value), a badge or a severity from a count, an age or a duration compared with a number (`failedCount > 3`, `ageHours > 30`, `Date.now() - t > 30 * 3600 * 1000`); a comparison with zero or one asks only whether there is anything and is not a threshold. A display-only label, such as a meeting chip that reads next or later, is not a problem tone and is not matched; a threshold that only styles such a label may carry a comment `display-only: <why>` on its line or the line above. RC025 reads code only: help text in a string literal or JSX text ("turns itself off at midnight") never matches, only a cron entry, a timer or a scheduled call that clears an override. RC024 fails an app whose routes and its lock file (`routes.lock.json`, next to the file that declares the routes) disagree. Both run on a repo that has an ops center app and are silenced for a line by the exception marker of the other repo checks. RC025 fails an ops center source in which an override or bypass reader answers yes from an error handler, or a scheduled job clears, expires or revokes an override (rule 10). The remaining rules are proved by the tests named in their acceptance text and by review.
+
+## 6. Where live automation sits
+
+Decision of 2026-11-10 (ops center build for #255; the owner may overrule it). Acting automation that has been enabled, a dark launch whose switch reads on, is operated, so by rule 1 it belongs in the Operations hub and not in the Action Center, which holds what is waiting on the owner.
+
+- **Placement.** One item, "Live automation" (`/operations/automation/live-automation`), in the existing Automation section next to Scheduled jobs and CI. No new section: rule 2 sizes a section by the items it holds, and there is one item. The hub header, the routes and the Overview are still derived from the one section list (section 2).
+- **What leaves the Action Center.** A dark launch leaves the Action Center once its live switch reads on, or reads unreadable while the registry last recorded it as enabled (an unreadable switch is never taken as off). A launch whose switch reads off stays in, or returns to, the Action Center with its dry run and Enable.
+- **The Disable switch.** Each live automation has a switch that sets the launch back to dark after a confirmation. It is the safe direction and has no gate; the server re-reads the live variable before and after.
+- **Counts and the problem list.** Acting automation is not a problem, so the item carries no count and adds nothing to the rail badge. The Overview shows one card for it, built from the dark launch registry (how many are acting, one detail line each), because a hub with an item that has no card breaks rule 3.
+- **Hidden without a registry.** The item exists only while the dark launch registry holds at least one launch. With none, the tab and its Overview card are absent and the route lands on the Overview (rule 9 holds: the route is never dropped from the lock file).
+- **Acceptance (test).** `opscenter/app/tests/darkLaunches.test.mjs` proves the split (acting, dark, an unreadable switch, a switch that reads off) and `opscenter/app/tests/ocTabs.test.mjs` proves, on the built app, that the acting launch is listed under Live automation and gone from the Action Center, that Disable asks first and moves it back, that the page has no critical or serious accessibility violation in the light and dark theme, and that the tab is hidden with no registry.
+
+## 7. Change log
+
+| Version | Date | Change |
+|---|---|---|
+| 1.3 | 2026-11-10 | Section 6: live automation sits in Operations, Automation, as the item "Live automation" (not a new section); an enabled dark launch leaves the Action Center and gets a Disable switch; the item is hidden without a dark launch registry. No rule added. |

@@ -278,6 +278,7 @@ export default function App() {
               <Route path="/platform/:tab" element={<PlatformRedirect />} />
               <Route path="/jira" element={<JiraHub />} />
               <Route path="/jira/:tab" element={<JiraHub />} />
+              <Route path="/jira/:tab/:sprintId" element={<JiraHub />} />
               <Route path="/debt" element={<EngBacklog />} />
               <Route path="/debt/:tab" element={<EngBacklog />} />
               <Route path="/knowledge" element={<Knowledge />} />

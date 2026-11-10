@@ -577,3 +577,34 @@
 .hermes-actions {
   gap: var(--space-2);
 }
+
+/* ---- Live automation (components/LiveAutomation.tsx) ---- */
+.la-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.la-lede {
+  margin: 0;
+  max-width: 90ch;
+  color: var(--text-secondary);
+  font-size: var(--fs-body);
+}
+.la-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+.la-facts dt {
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.la-facts dd {
+  margin: var(--space-1) 0 0;
+  color: var(--text-primary);
+}
