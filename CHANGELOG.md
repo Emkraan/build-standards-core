@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-09 (v1.197.0, report wording: which pull-request rule applies before approval and which after)
+
+Wording only. The nightly rewrites the candidates note in an open report issue on its next run.
+
+- `hermes/skills/core-consumer-report/SKILL.md`: "never open a pull request on the core" now says it is the rule before approval, and that after the owner approves an item the account that owns it opens the core pull request and links the issue.
+- `hermes/report.py`: the `nightly:candidates` note says the owning account opens the core pull request only after the owner approves the item, and never before. The module docstring says the same.
+- Test: `tests/test_nightly_report.py` pins the new sentence in the rendered note.
+
 ## 2026-11-09 (v1.192.0, kit: Segmented glides its selected pill)
 
 Kit change, a consumer takes it by moving its pinned release.

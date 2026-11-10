@@ -29,6 +29,11 @@ class Section(unittest.TestCase):
         out = report.replace_section("hello", report.render_section({}))
         self.assertTrue(out.startswith("hello\n\n" + report.START))
 
+    def test_candidates_text_says_when_the_core_pull_request_opens(self):
+        out = report.render_section({})
+        self.assertIn("only after the owner approves the item", out)
+        self.assertIn("never before", out)
+
     def test_relation(self):
         self.assertEqual(report.relation("Button", {"Button"}), "duplicates")
         self.assertEqual(report.relation("SaveButton", {"Button"}), "extends Button")
