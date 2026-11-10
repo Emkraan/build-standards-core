@@ -122,6 +122,25 @@ class HashSkipsCaches(Work):
         self.assertEqual(ch.content_hash(self.dir), before)
 
 
+class HashCoversSyncedCopiesOnly(Work):
+    def test_own_code_folders_do_not_change_the_hash_but_synced_ones_do(self):
+        ch = load("corehash_t2", "templates/overlay/scripts/corehash.py")
+        self.assertEqual(ch.COPIES, ("standards-core", "lint-core"))
+        for d in ("standards-core", "lint-core", "kit-core", "tokens-core"):
+            (self.dir / d).mkdir()
+            (self.dir / d / "a.txt").write_text("one\n")
+        before = ch.content_hash(self.dir)
+        for d in ("kit-core", "tokens-core"):
+            (self.dir / d / "a.txt").write_text("two\n")
+            (self.dir / d / "new.txt").write_text("new\n")
+        self.assertEqual(ch.content_hash(self.dir), before)
+        for d in ("standards-core", "lint-core"):
+            (self.dir / d / "a.txt").write_text("two\n")
+            self.assertNotEqual(ch.content_hash(self.dir), before)
+            (self.dir / d / "a.txt").write_text("one\n")
+            self.assertEqual(ch.content_hash(self.dir), before)
+
+
 class SkillLogMarks(unittest.TestCase):
     def test_dates_and_tickets_found_versions_and_encodings_not(self):
         skills = load("check_hermes_skills", "checks/check-hermes-skills.py")

@@ -11,12 +11,14 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 LOCK = ROOT / "standards.lock"
-COPIES = ("standards-core", "tokens-core", "lint-core", "kit-core")
 # Core folder -> synced copy in the overlay. A core folder that does not exist yet is skipped.
 SYNC_MAP = (
     ("standards", "standards-core"),
     ("lint", "lint-core"),
 )
+# The copies the sync writes, and so the only folders the lock hash covers. kit-core and tokens-core are
+# the consumer's own code since v2.0.0 and are never hashed, so editing them is not drift.
+COPIES = tuple(dst for _, dst in SYNC_MAP)
 # Overlay scripts are refreshed from the core template on every sync, so tooling fixes reach every overlay.
 # Single core files copied into the overlay on every sync, refreshed like the overlay scripts.
 SYNC_FILES = ()
