@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-10 (v2.3.1, the overlay lock hash covers only the copies the sync writes)
+
+Fix for #264. In the overlay's `scripts/corehash.py`, `COPIES` listed `standards-core`, `tokens-core`, `lint-core` and `kit-core`, but the sync writes only `standards-core` and `lint-core` (`SYNC_MAP`). Since v2.0.0 the consumer owns `kit-core` and `tokens-core`, yet an edit to either made `check-core-sync.py` report drift.
+
+- Fixed: `COPIES` is now derived from `SYNC_MAP`, so `content_sha256` in `standards.lock` covers `standards-core` and `lint-core` only. Editing `kit-core` or `tokens-core` no longer changes the hash. The hand refresh with `corehash.write_lock` in those pull requests is no longer needed.
+- Migration: none by hand. An existing lock holds the old four folder hash, so the gate reports drift on the old scripts only until the next `scripts/sync-core.py`. That sync refreshes the overlay scripts, rewrites `standards.lock` with the new hash and prints a note when a consumer has `kit-core` or `tokens-core`. Pull v2.3.1 and run the sync, then commit `standards.lock` with the refreshed scripts.
+- Not changed: the folder lists in `check-exceptions.py` and `core-ci.py` are path exclusions, not hashing, and still name all four.
+- Tests: 1 in `tests/test_checks.py` (own code folders leave the hash unchanged, each synced folder still changes it).
+
 ## 2026-11-10 (v2.3.0, safe Hermes restart: freeze new work, backend before gateway, behind a flag)
 
 Hermes safe restart gains a fenced mode (#254). It is off by default, so restart behaviour does not change until the owner approves a live run and the default is turned on in a later change.
