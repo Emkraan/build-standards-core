@@ -46,7 +46,7 @@ class Fence(Work):
         elif args[:2] == ["launchctl", "list"]:
             label = args[-1]
             full = next((k for k in self.pids if k.endswith("/" + label)), None)
-            out.stdout = '"PID" = %d;' % self.pids.get(full, 100)
+            out.stdout = f'"PID" = {self.pids.get(full, 100)};'
         return out
 
     def test_flag_default_off(self):
