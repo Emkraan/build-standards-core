@@ -955,6 +955,47 @@ export async function postDocsDrift(act: 'refresh' | 'run'): Promise<{ started?:
   return j
 }
 
+// ---- Sprint trend (OC-18): the last closed sprints plus the active one, and a read-only closed sprint view ----
+// A 404 or 501 means the tracker has no sprint source and the card and the closed sprints tab stay hidden.
+export interface SprintTrendRow {
+  id: number
+  name: string
+  start: string
+  end: string
+  active: boolean
+  items: number
+  done: number
+  points: number
+  points_done: number
+  carried: number
+  committed?: number
+}
+export interface ClosedSprint {
+  id: number
+  name: string
+  start: string
+  end: string
+  complete: string
+}
+export type Optional<T> = { available: false } | ({ available: true } & T)
+async function optionalGet<T extends object>(path: string, fresh = false): Promise<Optional<T>> {
+  const res = await fetch(`${BASE}${path}${fresh ? `${path.includes('?') ? '&' : '?'}fresh=1` : ''}`, { cache: 'no-cache' })
+  if (res.status === 404 || res.status === 501) return { available: false }
+  const j = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error((j as { error?: string }).error || `${path} -> ${res.status}`)
+  return { available: true, ...(j as T) }
+}
+export const useSprintTrend = createLiveStore(
+  (fresh = false) => optionalGet<{ generated_utc: string; sprints: SprintTrendRow[] }>('api/jira/sprint-trend', fresh),
+  10 * 60_000,
+)
+export const useClosedSprints = createLiveStore(
+  (fresh = false) => optionalGet<{ generated_utc: string; sprints: ClosedSprint[] }>('api/jira/sprints', fresh),
+  10 * 60_000,
+)
+/** One closed sprint, read only. The server accepts only ids from the closed list. */
+export const fetchClosedSprint = (id: number) => jiraGet<SprintData>(`api/jira/sprint?id=${encodeURIComponent(String(id))}`)
+
 // ---- Action Center routing: rules are data in ac-routing.json ----
 export type AcRoute = 'action_center' | 'analysis' | 'elsewhere' | 'nowhere'
 export type AcScope = 'all' | 'items' | 'candidates'

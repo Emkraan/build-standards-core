@@ -70,14 +70,65 @@ const DRIFT = {
   refreshing: false,
 }
 
-const FIXTURES = { drift: DRIFT }
+// ---- OC-18 fixtures: the sprint trend, the closed list and one closed sprint (the server answers only ids from the list) ----
+const sprintRow = (id, n, extra = {}) => ({
+  id,
+  name: `Sprint ${id}`,
+  start: `2026-0${n}-01T00:00:00Z`,
+  end: `2026-0${n}-14T00:00:00Z`,
+  active: false,
+  items: 10 + n,
+  done: 8 + n,
+  points: 20 + n,
+  points_done: 15 + n,
+  carried: 2,
+  ...extra,
+})
+const TREND = { generated_utc: '2026-11-10T12:00:00Z', sprints: [sprintRow(31, 8), sprintRow(32, 9), sprintRow(33, 10, { active: true, done: 3 })] }
+const CLOSED = {
+  generated_utc: '2026-11-10T12:00:00Z',
+  sprints: [31, 32].map((id) => ({ id, name: `Sprint ${id}`, start: '2026-09-01T00:00:00Z', end: '2026-09-14T00:00:00Z', complete: '2026-09-15T00:00:00Z' })),
+}
+const jiraItem = (key, status_category, mine, extra = {}) => ({
+  key,
+  summary: `Ticket ${key}`,
+  status: status_category === 'done' ? 'Done' : 'In Progress',
+  status_category,
+  issuetype: 'Task',
+  priority: 'Medium',
+  points: 3,
+  assignee: 'Fixture Person',
+  assignee_id: 'u1',
+  parent_key: '',
+  parent_summary: '',
+  updated: '2026-09-10T00:00:00Z',
+  due: '',
+  carry: 0,
+  planned_sprint: null,
+  url: `https://example.invalid/browse/${key}`,
+  mine,
+  ...extra,
+})
+const CLOSED_ONE = {
+  generated_utc: '2026-11-10T12:00:00Z',
+  sprint: { id: 31, name: 'Sprint 31', board_id: 1, start: '2026-09-01T00:00:00Z', end: '2026-09-14T00:00:00Z' },
+  me: 'u1',
+  items: [jiraItem('FIX-1', 'done', true), jiraItem('FIX-2', 'indeterminate', false), jiraItem('FIX-3', 'done', false)],
+}
+const ACTIVE = { generated_utc: '2026-11-10T12:00:00Z', sprint: { id: 33, name: 'Sprint 33', board_id: 1, start: '2026-11-01T00:00:00Z', end: '2026-11-14T00:00:00Z' }, me: 'u1', items: [jiraItem('FIX-9', 'indeterminate', true)] }
+
+const FIXTURES = { drift: DRIFT, trend: TREND, closed: CLOSED, closedOne: CLOSED_ONE, active: ACTIVE }
 
 function fakeBackend(fx) {
   const json = (res, code, body) => res.writeHead(code, { 'content-type': 'application/json' }).end(JSON.stringify(body))
   return (req, res, path) => {
     if (!path.startsWith('/api/')) return false
+    const url = new URL(req.url, 'http://x')
     const table = {
       '/api/docs-drift': fx.drift,
+      '/api/jira/sprint-trend': fx.trend,
+      '/api/jira/sprints': fx.closed,
+      '/api/jira/sprint': url.searchParams.get('id') ? fx.closedOne : fx.active,
     }
     const body = table[path]
     if (body === undefined || body === null) return json(res, 404, { error: 'not found' }), true
@@ -206,5 +257,40 @@ test('the Docs drift tab is hidden when no provider is configured, and its route
   await withApp({ ...FIXTURES, drift: null }, async (s, origin) => {
     await visit(s, origin, '/knowledge/drift', 'light', `location.hash === '#/knowledge' && ${hasTab('Proposals')}`, 'the redirect to Proposals')
     assert.equal(await s.evaluate(hasTab('Docs drift')), false, 'no Docs drift tab without a provider')
+  })
+})
+
+// ---- OC-18: sprint trend card and closed sprints ----
+test('the sprint trend card and the closed sprints tab have no axe violation in either theme', { skip, timeout: 120000 }, async () => {
+  await withApp(FIXTURES, async (s, origin) => {
+    for (const theme of ['light', 'dark']) {
+      await visit(s, origin, '/jira', theme, hasText('Sprint trend') && hasText('Items in sprint'), 'the sprint trend card')
+      assert.ok(await s.evaluate(hasTab('Closed sprints')), `${theme}: the Closed sprints tab is in the hub`)
+      let found = await axeFindings(s)
+      assert.deepEqual(found, [], `${theme} theme, Sprint tab: ${JSON.stringify(found)}`)
+      await visit(s, origin, '/jira/closed', theme, hasText('Closed sprints') && hasText('Sprint 32'), 'the closed sprint list')
+      found = await axeFindings(s)
+      assert.deepEqual(found, [], `${theme} theme, closed list: ${JSON.stringify(found)}`)
+      await visit(s, origin, '/jira/closed/31', theme, hasText('FIX-2'), 'the closed sprint items')
+      assert.ok(await s.evaluate(hasText('read only')), `${theme}: the view says it is read only`)
+      found = await axeFindings(s)
+      assert.deepEqual(found, [], `${theme} theme, closed sprint: ${JSON.stringify(found)}`)
+    }
+  })
+})
+
+test('the sprint trend card and the closed sprints tab are hidden when the tracker has no sprint source', { skip, timeout: 60000 }, async () => {
+  await withApp({ ...FIXTURES, trend: null, closed: null }, async (s, origin) => {
+    await visit(s, origin, '/jira', 'light', hasText('FIX-9'), 'the active sprint')
+    assert.equal(await s.evaluate(hasText('Sprint trend')), false, 'no trend card without a sprint source')
+    assert.equal(await s.evaluate(hasTab('Closed sprints')), false, 'no Closed sprints tab without a sprint source')
+    await visit(s, origin, '/jira/closed', 'light', `location.hash === '#/jira'`, 'the redirect to the Sprint tab')
+  })
+})
+
+test('an id that is not in the closed list never opens a sprint view', { skip, timeout: 60000 }, async () => {
+  await withApp(FIXTURES, async (s, origin) => {
+    await visit(s, origin, '/jira/closed/999', 'light', hasText('not one of the recent closed sprints'), 'the refusal')
+    assert.equal(await s.evaluate(hasText('FIX-1')), false, 'no ticket of any sprint is shown')
   })
 })

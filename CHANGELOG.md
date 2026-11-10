@@ -9,6 +9,12 @@ in the light and the dark theme (`opscenter/app/tests/ocTabs.test.mjs`, run by `
 - Added: the Docs drift tab in Knowledge (`/knowledge/drift`, OC-10). It reads `GET /api/docs-drift` and shows the newest drift run,
   the pages behind the code (most commits first), the pages with no verdict, and each app's README and changelog facts, with
   Check again and Run now. A 404 (no `OPSCENTER_DOCS_DRIFT_PROVIDER`) hides the tab and sends its route to Proposals.
+- Added: the sprint trend card under the Jira Sprint tab and the Closed sprints tab (`/jira/closed`, `/jira/closed/<sprint id>`, OC-18).
+  The card reads `GET /api/jira/sprint-trend` (the last closed sprints and the active one: items in sprint, done today, points
+  done, carried on) and labels the figures as the tracker gives them, with no start of sprint snapshot. The tab lists the closed
+  sprints and opens one read only through `GET /api/jira/sprint?id=`, which the server serves only for an id in the closed list; an
+  id outside it shows a refusal and no tickets. A 404 or 501 from the sprint endpoints hides the card and the tab, and `/jira/closed`
+  then lands on the Sprint tab. `routes.lock.json` gains `/jira/:tab/:sprintId`.
 - Fixed: `opscenter/app/vite.config.ts` now dedupes `react` and `react-dom`, so a build in a checkout that also has the kit's own
   dependencies installed no longer bundles two copies of react (the page rendered blank and every browser test failed).
 
