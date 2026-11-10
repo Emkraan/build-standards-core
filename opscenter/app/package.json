@@ -11,7 +11,7 @@
     "build": "tsc -p tsconfig.app.json && vite build && npm run --silent check:bundle-size",
     "check": "npm run typecheck && npm run test && npm run build",
     "check:bundle-size": "node tools/check-bundle-size.mjs",
-    "test:browser": "node --test tests/axe.test.mjs tests/liveActions.test.mjs"
+    "test:browser": "node --test tests/axe.test.mjs tests/liveActions.test.mjs tests/ocTabs.test.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",

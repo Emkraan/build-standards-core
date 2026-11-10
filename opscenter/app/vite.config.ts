@@ -28,6 +28,8 @@ export default defineConfig({
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
   },
   resolve: {
+    // The kit keeps its own react for its tests; one copy must serve the app and the kit, or hooks read a null dispatcher.
+    dedupe: ['react', 'react-dom'],
     alias: {
       '@kit': fileURLToPath(new URL('../kit/src', import.meta.url)),
     },

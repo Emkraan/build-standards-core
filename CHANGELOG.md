@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-11-10 (v2.1.0, ops center app tabs for docs drift, sprint trend and live automation)
+
+The ops center app gets the three tabs that were left unbuilt when their server pieces were lifted (#255). Each tab is hidden
+when its provider is not configured, is built on the ops center's own kit and tokens, and has a page-level accessibility test
+in the light and the dark theme (`opscenter/app/tests/ocTabs.test.mjs`, run by `npm run test:browser`).
+
+- Added: the Docs drift tab in Knowledge (`/knowledge/drift`, OC-10). It reads `GET /api/docs-drift` and shows the newest drift run,
+  the pages behind the code (most commits first), the pages with no verdict, and each app's README and changelog facts, with
+  Check again and Run now. A 404 (no `OPSCENTER_DOCS_DRIFT_PROVIDER`) hides the tab and sends its route to Proposals.
+- Fixed: `opscenter/app/vite.config.ts` now dedupes `react` and `react-dom`, so a build in a checkout that also has the kit's own
+  dependencies installed no longer bundles two copies of react (the page rendered blank and every browser test failed).
+
 ## 2026-11-10 (v2.0.1, retire the hub log intake and reports plans)
 
 Documentation only. The hub no longer consumes the core, so the owner retired the hub log intake and hub reports plans on 2026-11-10.
