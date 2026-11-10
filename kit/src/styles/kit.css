@@ -32,6 +32,15 @@
    app font and ink. An app's own unlayered body rule still wins. ---- */
 body { font-family: var(--font-sans); color: var(--text-primary); }
 
+/* ---- Global base styles (web-ui.md, Global base styles): selection takes the accent wash with the
+   primary ink; scrollbars are thin, a --border-default thumb on a transparent track. The kit's own
+   scroll areas inherit them; an app's unlayered rule still wins. ---- */
+::selection { background: rgb(var(--accent-rgb) / 0.3); color: var(--text-primary); }
+* { scrollbar-width: thin; scrollbar-color: var(--border-default) transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 999px; }
+
 /* ---- Box model: kit parts size by their border box, inside the shell and in every overlay ---- */
 .shell, .shell *, .shell ::before, .shell ::after,
 .modal-backdrop, .modal-backdrop *, .palette-backdrop, .palette-backdrop *, .popover, .popover *,
