@@ -110,9 +110,9 @@ function Summary({ d }: { d: DocsDriftData }) {
   return (
     <div className="dd-tiles">
       <StatTile label="Pages checked" value={d.total} />
-      <StatTile label="Behind the code" value={d.behind_total} tone="warning" />
+      <StatTile label="Behind the code" value={d.behind_total} />
       <StatTile label="No verdict" value={noVerdict} hint="no footer, or the footer's commit was not found" />
-      <StatTile label="Read errors" value={d.errors} tone="danger" />
+      <StatTile label="Read errors" value={d.errors} />
     </div>
   )
 }

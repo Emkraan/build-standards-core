@@ -5,13 +5,14 @@ ops center (opscenter/DESIGN.md section 4 and 12). Every page and component of t
 
 | Rail group | Pages |
 |---|---|
-| Operate | Action Center (board, completed, routing, alerts), work tracker (sprint, needs me, backlog), Reviews (primary repo lane, secondary lane, other repos, member views), Debt |
+| Operate | Action Center (board, completed, routing, alerts), work tracker (sprint with its trend card, needs me, backlog, closed sprints), Reviews (primary repo lane, secondary lane, other repos, member views), Debt |
 | People | 1:1 board, team performance, member reviews, yearly review, team history |
-| Knowledge | Knowledge (proposals, coverage, history), Plans, Links |
+| Knowledge | Knowledge (proposals, coverage, docs drift, history), Plans, Links |
 | Platform | Builds, Core consumption, Infrastructure (spend, jobs, live, CI, code host), Search |
 
 The rail, home route and which pages show are decided by the parameters in `opscenter/DESIGN.md` sections 4 and 6; a page
-whose backend slot is null hides (section 1.3).
+whose backend slot is null hides (section 1.3). The optional tabs follow it: Docs drift, the sprint trend card, Closed sprints and
+Live automation each hide when their provider is not configured.
 
 ## Parameters (build time)
 

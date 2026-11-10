@@ -15,6 +15,12 @@ in the light and the dark theme (`opscenter/app/tests/ocTabs.test.mjs`, run by `
   sprints and opens one read only through `GET /api/jira/sprint?id=`, which the server serves only for an id in the closed list; an
   id outside it shows a refusal and no tickets. A 404 or 501 from the sprint endpoints hides the card and the tab, and `/jira/closed`
   then lands on the Sprint tab. `routes.lock.json` gains `/jira/:tab/:sprintId`.
+- Added: the Live automation item in Operations, Automation (`/operations/automation/live-automation`, OC-20). An enabled dark launch
+  (its live switch reads on, or unreadable with the registry recording it as enabled) leaves the Action Center and is listed
+  here with a Disable switch that asks first and sets the launch back to dark, where it returns to the Action Center. The Overview
+  gets one card for it. The item is hidden when no dark launch is registered and its route then lands on the Overview.
+- Decided: `standards/ops-center-layout.md` 1.3 section 6 records where live automation sits (an item in the existing Automation
+  section, not a new section) and gains a change log table. No rule is added or changed, so `standards/rules.json` is untouched.
 - Fixed: `opscenter/app/vite.config.ts` now dedupes `react` and `react-dom`, so a build in a checkout that also has the kit's own
   dependencies installed no longer bundles two copies of react (the page rendered blank and every browser test failed).
 

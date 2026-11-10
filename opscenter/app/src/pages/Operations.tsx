@@ -7,7 +7,9 @@ import type { AreaCardData, AreaTone } from '@kit'
 import type { ComponentType } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import HermesEngineCard from '../components/HermesEngineCard'
-import { useBadges, useBuilds } from '../lib/data'
+import LiveAutomation from '../components/LiveAutomation'
+import { useBadges, useBuilds, useDarkLaunches } from '../lib/data'
+import { splitLaunches } from '../lib/darkLaunches'
 import type { ProblemItem, ProblemTone } from '../lib/data'
 import CoreConsumption from './CoreConsumption'
 import Ci from './infra/Ci'
@@ -16,7 +18,7 @@ import Jobs from './infra/Jobs'
 import LiveJobs from './infra/LiveJobs'
 import Spend from './infra/Spend'
 import BuildTab from './operations/Builds'
-import { OPERATIONS_BASE, operationsSections } from './operations/sections'
+import { LIVE_AUTOMATION, OPERATIONS_BASE, operationsSections } from './operations/sections'
 import './Infrastructure.css'
 
 function CiAndGithub() {
@@ -34,6 +36,7 @@ const BODY: Record<string, ComponentType> = {
   ci: CiAndGithub,
   spend: Spend,
   core: CoreConsumption,
+  'live-automation': LiveAutomation,
 }
 
 const TONE: Record<ProblemTone, AreaTone> = { needs_me: 'alert', worth_a_look: 'warn', healthy: 'good' }
@@ -48,20 +51,37 @@ export default function Operations() {
   const nav = useNavigate()
   const { data: badges } = useBadges()
   const { data: builds } = useBuilds()
+  const { data: launches, error: launchesErr } = useDarkLaunches()
   const problems = badges?.problems
-  const sections = operationsSections(builds, problems)
+  // Live automation exists only when a dark launch registry has entries (a null provider hides the tab).
+  const liveOn = !!launches && launches.launches.length > 0
+  const sections = operationsSections(builds, problems, liveOn)
   const route = resolveHubRoute(OPERATIONS_BASE, sections, section, item)
   // The build items exist once the pipelines feed has loaded: wait for it before sending a deep link to the Overview.
   if (route.kind === 'redirect' && section === 'builds' && !builds) return <Skeleton />
+  // The same wait for the Live automation deep link, until the registry has answered.
+  if (route.kind === 'redirect' && item === LIVE_AUTOMATION.key && !launches && !launchesErr) return <Skeleton />
   if (route.kind === 'redirect') return <Navigate to={`${route.to}${search}${hash}`} replace />
   const needs = problems?.counts.needs_me ?? 0
   const areas = (problems?.items ?? []).map((i) => areaOf(i, hubPath(OPERATIONS_BASE, sections, i.item)))
+  // One card for Live automation, from the registry: what is acting right now. Acting automation is not a problem line.
+  if (liveOn && launches) {
+    const acting = splitLaunches(launches.launches).acting
+    areas.push({
+      key: LIVE_AUTOMATION.key,
+      label: LIVE_AUTOMATION.label,
+      to: hubPath(OPERATIONS_BASE, sections, LIVE_AUTOMATION.key),
+      tone: 'good',
+      headline: acting.length ? `${acting.length} acting on their own` : 'Nothing acting on its own',
+      detail: acting.map((l) => l.title),
+    })
+  }
   let body
   if (route.kind === 'overview') {
     body = (
       <div className="infra-stack">
         <HermesEngineCard />
-        {problems && problems.items.length === 0 ? (
+        {problems && areas.length === 0 ? (
           <EmptyState compact pose="idle" title="Nothing is configured to run here yet." />
         ) : (
           <HubOverview

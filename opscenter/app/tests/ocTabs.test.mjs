@@ -74,8 +74,8 @@ const DRIFT = {
 const sprintRow = (id, n, extra = {}) => ({
   id,
   name: `Sprint ${id}`,
-  start: `2026-0${n}-01T00:00:00Z`,
-  end: `2026-0${n}-14T00:00:00Z`,
+  start: `2026-${String(n).padStart(2, '0')}-01T00:00:00Z`,
+  end: `2026-${String(n).padStart(2, '0')}-14T00:00:00Z`,
   active: false,
   items: 10 + n,
   done: 8 + n,
@@ -117,14 +117,47 @@ const CLOSED_ONE = {
 }
 const ACTIVE = { generated_utc: '2026-11-10T12:00:00Z', sprint: { id: 33, name: 'Sprint 33', board_id: 1, start: '2026-11-01T00:00:00Z', end: '2026-11-14T00:00:00Z' }, me: 'u1', items: [jiraItem('FIX-9', 'indeterminate', true)] }
 
-const FIXTURES = { drift: DRIFT, trend: TREND, closed: CLOSED, closedOne: CLOSED_ONE, active: ACTIVE }
+// ---- OC-20 fixtures: one acting launch, one still dark. A launch is acting while its live switch reads on. ----
+const launch = (id, live, status, extra = {}) => ({
+  id,
+  title: `Launch ${id}`,
+  repo: 'owner/repo',
+  environment: 'production',
+  variable: `LAUNCH_${id.toUpperCase()}_ENABLED`,
+  workflow: 'automation.yml',
+  status,
+  live,
+  dry_run: { state: 'passed', at: '2026-11-09T12:00:00Z', url: 'https://example.invalid/runs/9' },
+  can_dry_run: true,
+  can_enable: live !== 'on',
+  can_disable: live === 'on',
+  ...extra,
+})
+const launches = () => ({ launches: [launch('alpha', 'on', 'enabled'), launch('beta', 'off', 'dark')], error: null })
+
+const fixtures = () => ({ drift: DRIFT, trend: TREND, closed: CLOSED, closedOne: CLOSED_ONE, active: ACTIVE, launches: launches(), posts: [] })
 
 function fakeBackend(fx) {
   const json = (res, code, body) => res.writeHead(code, { 'content-type': 'application/json' }).end(JSON.stringify(body))
   return (req, res, path) => {
     if (!path.startsWith('/api/')) return false
     const url = new URL(req.url, 'http://x')
+    if (path === '/api/dark-launches/disable' && req.method === 'POST') {
+      let raw = ''
+      req.on('data', (c) => {
+        raw += c
+      })
+      req.on('end', () => {
+        const { id } = JSON.parse(raw || '{}')
+        fx.posts.push(`disable ${id}`)
+        const l = fx.launches.launches.find((x) => x.id === id)
+        if (l) Object.assign(l, { live: 'off', status: 'dark', can_disable: false, can_enable: true })
+        json(res, 200, { id, done: ['set the switch to false'] })
+      })
+      return true
+    }
     const table = {
+      '/api/dark-launches': fx.launches,
       '/api/docs-drift': fx.drift,
       '/api/jira/sprint-trend': fx.trend,
       '/api/jira/sprints': fx.closed,
@@ -241,7 +274,7 @@ const hasTab = (label) => `[...document.querySelectorAll('[role="tab"]')].some((
 
 // ---- OC-10: Docs drift ----
 test('the Docs drift tab shows the newest drift report and has no axe violation in either theme', { skip, timeout: 120000 }, async () => {
-  await withApp(FIXTURES, async (s, origin) => {
+  await withApp(fixtures(), async (s, origin) => {
     for (const theme of ['light', 'dark']) {
       await visit(s, origin, '/knowledge/drift', theme, hasText('Runbook 1'), 'the drift rows')
       assert.ok(await s.evaluate(hasText('Pages behind the code')), `${theme}: the behind table has its heading`)
@@ -254,7 +287,7 @@ test('the Docs drift tab shows the newest drift report and has no axe violation 
 })
 
 test('the Docs drift tab is hidden when no provider is configured, and its route lands on Proposals', { skip, timeout: 60000 }, async () => {
-  await withApp({ ...FIXTURES, drift: null }, async (s, origin) => {
+  await withApp({ ...fixtures(), drift: null }, async (s, origin) => {
     await visit(s, origin, '/knowledge/drift', 'light', `location.hash === '#/knowledge' && ${hasTab('Proposals')}`, 'the redirect to Proposals')
     assert.equal(await s.evaluate(hasTab('Docs drift')), false, 'no Docs drift tab without a provider')
   })
@@ -262,7 +295,7 @@ test('the Docs drift tab is hidden when no provider is configured, and its route
 
 // ---- OC-18: sprint trend card and closed sprints ----
 test('the sprint trend card and the closed sprints tab have no axe violation in either theme', { skip, timeout: 120000 }, async () => {
-  await withApp(FIXTURES, async (s, origin) => {
+  await withApp(fixtures(), async (s, origin) => {
     for (const theme of ['light', 'dark']) {
       await visit(s, origin, '/jira', theme, hasText('Sprint trend') && hasText('Items in sprint'), 'the sprint trend card')
       assert.ok(await s.evaluate(hasTab('Closed sprints')), `${theme}: the Closed sprints tab is in the hub`)
@@ -280,7 +313,7 @@ test('the sprint trend card and the closed sprints tab have no axe violation in 
 })
 
 test('the sprint trend card and the closed sprints tab are hidden when the tracker has no sprint source', { skip, timeout: 60000 }, async () => {
-  await withApp({ ...FIXTURES, trend: null, closed: null }, async (s, origin) => {
+  await withApp({ ...fixtures(), trend: null, closed: null }, async (s, origin) => {
     await visit(s, origin, '/jira', 'light', hasText('FIX-9'), 'the active sprint')
     assert.equal(await s.evaluate(hasText('Sprint trend')), false, 'no trend card without a sprint source')
     assert.equal(await s.evaluate(hasTab('Closed sprints')), false, 'no Closed sprints tab without a sprint source')
@@ -289,8 +322,53 @@ test('the sprint trend card and the closed sprints tab are hidden when the track
 })
 
 test('an id that is not in the closed list never opens a sprint view', { skip, timeout: 60000 }, async () => {
-  await withApp(FIXTURES, async (s, origin) => {
+  await withApp(fixtures(), async (s, origin) => {
     await visit(s, origin, '/jira/closed/999', 'light', hasText('not one of the recent closed sprints'), 'the refusal')
     assert.equal(await s.evaluate(hasText('FIX-1')), false, 'no ticket of any sprint is shown')
+  })
+})
+
+// ---- OC-20: Live automation ----
+const clickByText = (sel, text) => `(() => { const el = [...document.querySelectorAll(${JSON.stringify(sel)})].find((e) => e.textContent.trim() === ${JSON.stringify(text)}); if (!el) return false; el.click(); return true })()`
+
+test('the Live automation tab lists the acting launch, and the Action Center keeps only the dark one, in both themes', { skip, timeout: 120000 }, async () => {
+  await withApp(fixtures(), async (s, origin) => {
+    for (const theme of ['light', 'dark']) {
+      await visit(s, origin, '/operations/automation/live-automation', theme, hasText('Launch alpha'), 'the acting launch')
+      assert.ok(await s.evaluate(hasTab('Live automation')), `${theme}: the item is in the Automation section`)
+      assert.equal(await s.evaluate(hasText('Launch beta')), false, `${theme}: a dark launch is not listed as live`)
+      assert.ok(await s.evaluate(`!!document.querySelector('[role="switch"][aria-checked="true"]')`), `${theme}: the launch has its Disable switch, on`)
+      let found = await axeFindings(s)
+      assert.deepEqual(found, [], `${theme} theme, Live automation: ${JSON.stringify(found)}`)
+      await visit(s, origin, '/operations', theme, hasText('Live automation') && hasText('Launch alpha'), 'the Overview card')
+      found = await axeFindings(s)
+      assert.deepEqual(found, [], `${theme} theme, Overview: ${JSON.stringify(found)}`)
+      await visit(s, origin, '/action', theme, hasText('Launch beta'), 'the dark launch in the Action Center')
+      assert.equal(await s.evaluate(hasText('Launch alpha')), false, `${theme}: the acting launch has left the Action Center`)
+      assert.ok(await s.evaluate(hasText('live automation is acting')), `${theme}: the Action Center points to Live automation`)
+    }
+  })
+})
+
+test('the Disable switch asks first, sets the launch back and returns it to the Action Center', { skip, timeout: 60000 }, async () => {
+  const fx = fixtures()
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/operations/automation/live-automation', 'light', hasText('Launch alpha'), 'the acting launch')
+    await s.evaluate(`document.querySelector('[role="switch"]').click(); true`)
+    await s.waitFor(hasText('Disable Launch alpha?'), 'the confirmation')
+    assert.deepEqual(fx.posts, [], 'nothing is sent before the confirmation')
+    assert.ok(await s.evaluate(clickByText('button', 'Disable')), 'the confirm button is there')
+    await s.waitFor(`document.body.innerText.includes('Nothing is acting on its own')`, 'the launch to leave Live automation')
+    assert.deepEqual(fx.posts, ['disable alpha'])
+    await visit(s, origin, '/action', 'light', hasText('Launch alpha') && hasText('Launch beta'), 'both launches back in the Action Center')
+  })
+})
+
+test('the Live automation tab is hidden when no dark launch is registered', { skip, timeout: 60000 }, async () => {
+  await withApp({ ...fixtures(), launches: { launches: [], error: null } }, async (s, origin) => {
+    await visit(s, origin, '/operations', 'light', hasText('what we run and whether it is healthy'), 'the Operations hub')
+    await sleep(500)
+    assert.equal(await s.evaluate(hasTab('Live automation')), false, 'no Live automation tab without a registry')
+    await visit(s, origin, '/operations/automation/live-automation', 'light', `!location.hash.includes('live-automation')`, 'the redirect to the Overview')
   })
 })
