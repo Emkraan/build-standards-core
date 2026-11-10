@@ -1,6 +1,14 @@
 # Changelog
 
-## 2026-11-10 (v2.1.0, ops center app tabs for docs drift, sprint trend and live automation)
+## 2026-11-10 (v2.1.0, register rules for the CMTrace logging standard)
+
+Registry and documentation. `standards/cmtrace-logging.md` had no entries in `standards/rules.json`, so the status tool and the core-practices skill could not see it (#252).
+
+- Added: section 13 "Registered rules" in `standards/cmtrace-logging.md` (version 1.2), 25 numbered rules that restate the enforceable statements of sections 1 to 9 without changing any of them.
+- Added: 25 rules `cmtrace-logging.13.1` to `cmtrace-logging.13.25` in `standards/rules.json` (236 rules), scoped to `powershell`: 12 proved by a Pester test in the consumer (`test`), 13 checked in review (`review`, attested: static lint cannot prove format, path or content rules). `script_lint` PS001 and PS003 still cover the ASCII and empty-catch parts of rules 13.5 and 13.15 without owning them.
+- Regenerated: `hermes/skills/core-practices/SKILL.md` from the registry.
+
+## 2026-11-10 (v2.2.0, ops center app tabs for docs drift, sprint trend and live automation)
 
 The ops center app gets the three tabs that were left unbuilt when their server pieces were lifted (#255). Each tab is hidden
 when its provider is not configured, is built on the ops center's own kit and tokens, and has a page-level accessibility test

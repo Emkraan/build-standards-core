@@ -1,6 +1,6 @@
 # CMTrace Logging Standard
 
-Version: 1.1 | Last reviewed: 2026-10-07 | Status: current | Scope: PowerShell
+Version: 1.2 | Last reviewed: 2026-11-10 | Status: current | Scope: PowerShell
 
 How every the owning team PowerShell script writes its log: one CMTrace-format line per event,
 through one function, to a path that matches how the script runs. This is the canonical home of
@@ -340,3 +340,57 @@ script that logs only through the deployment toolkit passes the logger check.
 - [ ] CI discovery scripts: only `$true` or `$false` on the pipeline; nothing else writes output.
 - [ ] Fixed-name logs set `$script:MaxLogSizeBytes`; per-run logs are pruned.
 - [ ] ASCII only in the script and in every message.
+
+## 13. Registered rules
+
+Each item is one enforceable statement, registered in `standards/rules.json` as `cmtrace-logging.13.<n>` so the status tool and the core-practices skill can see it. Rules marked test are proved by a Pester test in the consumer; the rest are checked in review. `script_lint` covers the ASCII (PS001) and empty-catch (PS003) parts only.
+
+1. **One CMTrace line per event.** Every log entry is one line in the section 1 shape, with a plain ASCII message that never contains the sequence ]LOG]!>, type 1, 2 or 3 only, and an empty file attribute. (section 1)
+
+2. **The logger is Write-CMTraceLog with fixed parameters.** A script defines `function Write-CMTraceLog` copied from section 2, with the parameters Message, Severity (Information, Warning or Error), Component and LogFile, and no renamed or alternative severity names. (section 2)
+
+3. **The logger writes through .NET and emits nothing to the pipeline.** The logger appends with FileShare.ReadWrite through .NET calls, never Add-Content, and emits no object to the success pipeline. (section 2)
+
+4. **A failed log write never stops the script.** The logger retries a failed write 3 times, then warns once unless $script:LogQuiet is true, and never throws. A null LogFile means logging is off and returns quietly. (section 2)
+
+5. **Messages are ASCII.** The logger replaces any non-ASCII character in a message with ?, and scripts put no emoji or box characters in messages. A row of = marks the header and footer. (section 2, 5)
+
+6. **The log path matches the execution context.** The log path follows the section 3 table for the account the script runs as: LOCALAPPDATA for a user, ProgramData for an unattended server task, C:\Windows\Logs\Software for SYSTEM. A script launched from a share logs to the per-user local path, never to the share or next to the script. (section 3)
+
+7. **The log path is declared once and its folder created with .NET.** LogFile, LogComponent and MaxLogSizeBytes are set once at the top with a timestamped name, and the folder is created with a .NET call so -WhatIf cannot skip it. A creation failure warns and sets LogFile to null. (section 3)
+
+8. **Unattended scripts take an optional -LogFile.** A script that runs unattended exposes an optional -LogFile parameter so a test can point at a scratch path. An empty value turns logging off and is never an error. (section 3)
+
+9. **The log starts with a header and is written continuously.** The script writes the section 3 header block right after the folder is created (script, version, machine, log path, and the mode when it has one), then logs as it goes. Lines are never buffered and flushed at the end. (section 3)
+
+10. **Per-run logs are pruned at start-up.** Timestamped per-run logs are pruned at start-up, and a pruning failure is a warning that never fails the script. (section 4)
+
+11. **Fixed-name logs roll to .lo_ at a size limit.** A fixed-name log from an unattended task sets $script:MaxLogSizeBytes, and the logger moves the full file to <name>.lo_ (one generation) and starts a new one. A script that sets no limit never rotates. (section 4)
+
+12. **Severity is used as defined.** Information is for steps, counts and decisions, Warning for something unexpected the script survived, Error for an operation that failed or an exit about to be non-zero. A failure the script handled and recovered from is a Warning, never an Error. (section 5)
+
+13. **Log the exception message and the identifier.** A failure line carries the identifier of the thing that failed and $_.Exception.Message, not the whole error record or a stack dump. (section 5)
+
+14. **Every swallowed external-call catch is logged.** Every swallowed catch around an AD, Graph, device-management, WMI, CIM, MDM, SSO, file-share or registry call logs a Warning or Error. (section 5)
+
+15. **Component is a short stable noun.** The default component is set once with $script:LogComponent from a small stable set of short nouns, passed with -Component only where a section differs. It is never left to $MyInvocation.ScriptName. (section 5)
+
+16. **Runspaces register the logger from its ScriptBlock.** A background runspace registers Write-CMTraceLog from its ScriptBlock with New-Item Function:\, never Invoke-Expression on .Definition, and writes to the file directly. Only the display line goes through the dispatcher. (section 6)
+
+17. **Logging is not gated by -WhatIf.** Write-CMTraceLog is never wrapped in ShouldProcess and the logger and the log folder use .NET calls, so a -WhatIf run writes the log in full. (section 8)
+
+18. **A trial run logs the preview and its mode.** In -WhatIf or trial mode each skipped change is logged as Information with a fixed prefix such as WhatIf: would remove ..., and the header records the mode. (section 8)
+
+19. **Automation scripts support trial mode and set exit codes.** An automation script supports -WhatIf (SupportsShouldProcess) or a TrialRun switch and sets explicit exit codes: 0 success, 1 unhandled failure, 3010 for reboot required, any other non-zero value documented. A partial result exits non-zero with one Error line per failed item. (section 8)
+
+20. **The outcome is logged before exit.** The last line of every run is the END line with the exit code, written before exit. (section 8)
+
+21. **A discovery script's stdout is exactly one boolean.** A script whose stdout a machine reads (a device-management CI discovery) returns only $true or $false, sets $script:LogQuiet = $true, and never calls Write-Warning, Write-Host, Write-Verbose, Write-Information or echo on that path. (section 7)
+
+22. **A discovery script silences every value-returning call.** Every call that can return a value in a discovery script is silenced with $null =, [void] or Out-Null, and the decision is logged before the boolean is returned. (section 7)
+
+23. **No secrets in a log message.** A log message never holds a password, client secret, token, bearer or Authorization header, private key material, a connection string with credentials, SecureString contents or an API key. It records that authentication succeeded and the identity or thumbprint used. (section 9)
+
+24. **No PHI in a log message.** A log message never holds PHI or anything that identifies a patient: names, MRNs, encounter or account numbers or dates of birth. Device names, group names, UPNs and counts are allowed. (section 9)
+
+25. **Log status and counts, not bodies or listings.** A script logs the status, the identifier and the exception message of a Graph, REST or SSO call, never a whole request or response body or a URL carrying a token. It logs counts and paths, not full file contents or directory listings, and a bounded excerpt where user text may appear. (section 9)
