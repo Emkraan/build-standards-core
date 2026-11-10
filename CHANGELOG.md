@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-09 (v1.193.0, renovate: the Playwright image and @playwright/test move together)
+
+Repository change, no consumer effect.
+
+- `renovate.json` groups `@playwright/test` (`kit/package.json`) and the `mcr.microsoft.com/playwright` container image (`.github/workflows/visual.yml`) under one `playwright` update, so one pull request moves both and the visual gate never runs a library that differs from its browser image (Playwright refuses to start on a mismatch).
+
 ## 2026-11-09 (v1.190.0, architecture-article: a system change merges with its article updated)
 
 Opt in, extends the v1.189.0 subcommand; a consumer takes it by moving its pinned core release.
