@@ -8,6 +8,7 @@ Opt in for a web consumer; takes effect by moving its pinned core release and re
 - Evidence from the app the rules came from: takeover after a restart waited 729,682 ms on a full check before the check moved off the main thread and was deferred, then 633 ms; a frozen process stayed up for 10 minutes until the watchdog was added.
 - The jobs-in-one-process rule stays in `standards/web-shell-server.md` section 5 and the `jobs` package in `standards/web-shell-packages.md` section 5.4; the new doc cross-references them and does not repeat them.
 - `standards/rules.json` registers `web-process-health.1.1` to `1.4` (check kind `test`, scope `web`); the README standards table has one new row; the generated `core-practices` skill is rebuilt.
+- Tests: `tests/test_rules_web_process_health.py` (5) pins the four registered rules, the absence of an unregistered fifth, the prevents, evidence and acceptance lines of each rule, the measured evidence and cross-references, and the README row.
 
 ## 2026-11-09 (v1.190.0, architecture-article: a system change merges with its article updated)
 
