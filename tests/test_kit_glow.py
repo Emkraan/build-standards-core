@@ -1,4 +1,4 @@
-"""The web UI standard (the owner standards repo): the kit's own CSS carries a glow only in the allowed places. This scans the kit stylesheets
+"""The web UI standard: the kit's own CSS carries a glow only in the allowed places. This scans the kit stylesheets
 for a glow token, a text-shadow or a coloured blurred shadow and fails outside the allowed selectors."""
 
 import re
@@ -38,7 +38,7 @@ class KitGlow(unittest.TestCase):
                         and "var(--focus-ring)" not in decl
                     ):
                         bad.append(f"{rel}: {sel[:50]} -> {decl.strip()[:70]}")
-        self.assertEqual(bad, [], "glow outside the allowed uses (the web UI standard (the owner standards repo))")
+        self.assertEqual(bad, [], "glow outside the allowed uses (the web-ui-standard doc)")
 
     def test_search_focus_is_glow_only_ring_on_keyboard(self):
         css = (ROOT / "opscenter/kit/src/styles/kit.css").read_text()
