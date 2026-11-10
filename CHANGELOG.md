@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-10 (v1.199.0, tokens: the build fails a status ink pair that deuteranopia pulls under 5)
+
+Token build change, no consumer effect: the shipped colours do not change.
+
+- `tokens/build.py` simulates deuteranopia (Machado 2009, severity 1) on the five status inks (success, warning, urgent, danger, info) in both modes and fails the build, `--check` included, when any pair is under 5 CIEDE2000 apart. Today's closest pairs are warning to urgent (6.9 dark, 5.2 light) and urgent to danger (10.1 dark, 5.7 light).
+- The two descriptions of the urgent ink in `tokens/tokens.json` now state the measured dark numbers (6.9 and 10.1, they said 7.5 and 9) and the new floor; `tokens/tokens.css` regenerates with them.
+- Tests: `tests/test_token_status_separation.py` (the published CIEDE2000 reference pair, all 20 pairs pass, the documented light distances, a pair under the floor is reported).
+
+No issue: approved intake item cmarko89/build-standards-core-intake#56 item 7, decided by the owner on 2026-11-10.
+
 ## 2026-11-09 (v1.198.0, report wording: which pull-request rule applies before approval and which after)
 
 Wording only. The nightly rewrites the candidates note in an open report issue on its next run.

@@ -95,6 +95,95 @@ def contrast(fg, bg):
     return (hi + 0.05) / (lo + 0.05)
 
 
+# Machado 2009 deuteranopia (severity 1.0), applied in linear RGB.
+_DEUTAN = (
+    (0.367322, 0.860646, -0.227968),
+    (0.280085, 0.672501, 0.047413),
+    (-0.011820, 0.042940, 0.968881),
+)
+STATUS_INKS = ("success", "warning", "urgent", "danger", "info")
+STATUS_MIN_SEPARATION = 5.0
+
+
+def _deutan(c):
+    lin = [_lin(x) for x in c[:3]]
+    out = [max(0.0, min(1.0, sum(_DEUTAN[i][j] * lin[j] for j in range(3)))) for i in range(3)]
+    return tuple(255 * _delin(v) for v in out)
+
+
+def _lab(c):
+    r, g, b = (_lin(x) for x in c[:3])
+    x = (0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / 0.95047
+    y = 0.2126729 * r + 0.7151522 * g + 0.0721750 * b
+    z = (0.0193339 * r + 0.1191920 * g + 0.9503041 * b) / 1.08883
+
+    def f(t):
+        return t ** (1 / 3) if t > 216 / 24389 else (24389 / 27 * t + 16) / 116
+
+    fx, fy, fz = f(x), f(y), f(z)
+    return 116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)
+
+
+def ciede2000(p, q):
+    """CIEDE2000 colour difference between two Lab triples."""
+    l1, a1, b1 = p
+    l2, a2, b2 = q
+    cbar = (math.hypot(a1, b1) + math.hypot(a2, b2)) / 2
+    g = 0.5 * (1 - math.sqrt(cbar**7 / (cbar**7 + 25**7)))
+    ap1, ap2 = (1 + g) * a1, (1 + g) * a2
+    c1, c2 = math.hypot(ap1, b1), math.hypot(ap2, b2)
+
+    def hue(y, x):
+        return math.degrees(math.atan2(y, x)) % 360 if (x or y) else 0.0
+
+    h1, h2 = hue(b1, ap1), hue(b2, ap2)
+    dl, dc = l2 - l1, c2 - c1
+    if c1 * c2 == 0:
+        dh = 0.0
+    else:
+        d = h2 - h1
+        dh = d - 360 if d > 180 else d + 360 if d < -180 else d
+    dhh = 2 * math.sqrt(c1 * c2) * math.sin(math.radians(dh) / 2)
+    lb, cb = (l1 + l2) / 2, (c1 + c2) / 2
+    if c1 * c2 == 0:
+        hb = h1 + h2
+    elif abs(h1 - h2) <= 180:
+        hb = (h1 + h2) / 2
+    else:
+        hb = (h1 + h2 + 360) / 2 if h1 + h2 < 360 else (h1 + h2 - 360) / 2
+    tt = (
+        1
+        - 0.17 * math.cos(math.radians(hb - 30))
+        + 0.24 * math.cos(math.radians(2 * hb))
+        + 0.32 * math.cos(math.radians(3 * hb + 6))
+        - 0.20 * math.cos(math.radians(4 * hb - 63))
+    )
+    dtheta = 30 * math.exp(-(((hb - 275) / 25) ** 2))
+    rc = 2 * math.sqrt(cb**7 / (cb**7 + 25**7))
+    sl = 1 + 0.015 * (lb - 50) ** 2 / math.sqrt(20 + (lb - 50) ** 2)
+    sc, sh = 1 + 0.045 * cb, 1 + 0.015 * cb * tt
+    rt = -math.sin(math.radians(2 * dtheta)) * rc
+    return math.sqrt(
+        (dl / sl) ** 2 + (dc / sc) ** 2 + (dhh / sh) ** 2 + rt * (dc / sc) * (dhh / sh)
+    )
+
+
+def status_separation(model):
+    """Simulated-deuteranopia CIEDE2000 of every pair of status inks, both modes.
+
+    Returns rows (mode, ink_a, ink_b, difference, ok); ok means at least STATUS_MIN_SEPARATION.
+    """
+    rows = []
+    for mode in ("dark", "light"):
+        vals = mode_values(model, mode)
+        labs = {n: _lab(_deutan(_pick(vals, n))) for n in STATUS_INKS}
+        for i, a in enumerate(STATUS_INKS):
+            for b in STATUS_INKS[i + 1 :]:
+                d = ciede2000(labs[a], labs[b])
+                rows.append((mode, a, b, d, d + 1e-9 >= STATUS_MIN_SEPARATION))
+    return rows
+
+
 def oklch(c):
     r, g, b = (_lin(x) for x in c[:3])
     lms = (
@@ -893,6 +982,12 @@ def main(argv):
         print(
             f"::error::contrast {r[1]}: {r[2]} on {r[3]} is {r[4]:.2f}:1, needs {_num(r[5])}:1 ({r[0]})"
         )
+    sep_failed = [r for r in status_separation(model) if not r[4]]
+    for r in sep_failed:
+        print(
+            f"::error::status inks {r[1]} and {r[2]} ({r[0]}) are {r[3]:.1f} CIEDE2000 apart under "
+            f"simulated deuteranopia, needs {STATUS_MIN_SEPARATION:g}"
+        )
     if "--check" in argv:
         stale = [
             p
@@ -904,14 +999,14 @@ def main(argv):
         print(
             f"tokens: {len(rows) - len(failed)} of {len(rows)} contrast checks pass, {len(stale)} stale output(s)"
         )
-        return 1 if failed or stale else 0
+        return 1 if failed or sep_failed or stale else 0
     OUT_WPF.mkdir(exist_ok=True)
     for p, text in files.items():
         p.write_text(text, encoding="utf8")
     print(
         f"tokens: wrote {len(files)} files, {len(rows) - len(failed)} of {len(rows)} contrast checks pass"
     )
-    return 1 if failed else 0
+    return 1 if failed or sep_failed else 0
 
 
 def emit_css_accent_only(name, a):
