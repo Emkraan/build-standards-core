@@ -25,6 +25,8 @@ are in the core's `CONTRIBUTING.md` ("Reporting from a consumer") and the templa
 - **One issue per account.** Update the open `consumer-report` issue this account authored; create
   it only when none is open, in the private intake. Never file it on the core, and never open a pull
   request on the core.
+  That is the rule before approval. After the owner approves an item in the issue, the account that
+  owns the item opens the core pull request for it and links the issue; that is the only case.
 - **The nightly owns its markers.** Keep `<!-- nightly:changes:start -->` to
   `<!-- nightly:changes:end -->` and `<!-- nightly:candidates:start -->` to
   `<!-- nightly:candidates:end -->` byte for byte as they are in the current issue body.

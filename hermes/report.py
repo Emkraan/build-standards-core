@@ -30,8 +30,8 @@ never touched. The rules, each with its reason:
   both sections: the section that creates the issue records its number there, and the other reads
   that number directly instead of listing again. A create whose number cannot be read is never
   followed by a second create in the same run. Test: tests/test_nightly_report.py.
-- Never open a PR. The owner approves items in the issue; the owning account then opens the core PR
-  and links the issue. Labels: `consumer-report` (the report) and `settling` (a proposal that is not
+- Never open a PR before approval. The owner approves items in the issue; only then does the owning
+  account open the core PR and link the issue. Labels: `consumer-report` (the report) and `settling` (a proposal that is not
   ready yet, set by people, never by this module).
 
 Python 3.9, stdlib only. Network access only through the gh CLI.
@@ -137,7 +137,8 @@ def render_section(groups: dict[str, tuple]) -> str:
         START,
         "",
         "Candidates for the core, kept current by the nightly, per registered UI repo. Approve, "
-        "reject or mark each one in a comment; the owning account opens the core pull request.",
+        "reject or mark each one in a comment; the owning account opens the core pull request only "
+        "after the owner approves the item, and never before.",
         "",
     ]
     for label in sorted(groups):
