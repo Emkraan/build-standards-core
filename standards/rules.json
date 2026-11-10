@@ -3750,6 +3750,76 @@
       "acceptance": "a test writes each leading character and a negative number and asserts the guard and the exemption."
     },
     {
+      "id": "web-api-runtime.10.1",
+      "ref": "web-api-runtime.md 10.1",
+      "title": "Cache a slow query and serve it stale while it refreshes",
+      "statement": "A slow upstream query is cached per distinct query; a stale entry is served at once while one refresh runs in the background, only a request with no entry waits, and a failed refresh keeps the last good entry and is never cached as an answer.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A second request inside the stale window is answered before the fake upstream replies and a later request sees the refreshed rows; a failing refresh leaves the last good rows and their age."
+    },
+    {
+      "id": "web-api-runtime.10.2",
+      "ref": "web-api-runtime.md 10.2",
+      "title": "Single flight per query",
+      "statement": "Concurrent requests for the same query, and a refresh already running, share one upstream call.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "N concurrent requests for a cold query produce one upstream call, and a request during a refresh starts none."
+    },
+    {
+      "id": "web-api-runtime.10.3",
+      "ref": "web-api-runtime.md 10.3",
+      "title": "Bound running and waiting upstream queries, 429 beyond",
+      "statement": "The API runs at most a fixed number of upstream queries at once and lets at most a fixed number of further requests wait; a request past both is answered 429 with Retry-After at once.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "With two running and three waiting allowed, ten distinct simultaneous queries run two, queue three and answer five 429 with Retry-After."
+    },
+    {
+      "id": "web-api-runtime.10.4",
+      "ref": "web-api-runtime.md 10.4",
+      "title": "Back off when the upstream throttles",
+      "statement": "An upstream answer meaning slow down opens a back-off: no new upstream query starts until the time it names (or a capped exponential delay), stale entries are served meanwhile and a request with no entry gets 429 with Retry-After.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A fake upstream answering 429 once stops all upstream calls until the back-off ends, stale entries are served during it and the first call after it succeeds."
+    },
+    {
+      "id": "web-api-runtime.10.5",
+      "ref": "web-api-runtime.md 10.5",
+      "title": "A worker per query that exits when answered",
+      "statement": "The upstream call, its parsing and row shaping run in a one-shot worker per query that keeps no connection or cache open after the answer; the main thread receives only the shaped result.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A query against a fake upstream answers while a health request is served during the parse, and the worker is gone afterwards."
+    },
+    {
       "id": "web-client-runtime.1.1",
       "ref": "web-client-runtime.md 1.1",
       "title": "One canonical boot sequence",
@@ -4371,6 +4441,20 @@
         "kind": "test"
       },
       "acceptance": "A search never returns a key the caller cannot read; the health endpoint reports a stale fixture document."
+    },
+    {
+      "id": "web-build.9.1",
+      "ref": "web-build.md 9.1",
+      "title": "Tests do not depend on the time of day",
+      "statement": "Time reaches the code under test through an injected clock or a fixed instant, and day buckets in a test are anchored to the UTC day of that instant, never to now, the local day or the runner time zone.",
+      "level": "must",
+      "applies_to": [
+        "web"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "The same test passes with the clock just before and just after midnight UTC and under two time zone settings."
     },
     {
       "id": "web-shell.1",

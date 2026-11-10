@@ -331,6 +331,11 @@ How to use it:
 | `web-api-runtime.7` Fixed bearer rules and a development-only dev identity | must | web | test | Bearer tokens use one signing algorithm (RS256), both issuer versions, the audience as the union of the API ids, signing keys cached 10 minutes with at most 10 key fetches a minute. A dev identity exists only when the environment is exactly development or test. |
 | `web-api-runtime.9.1` Every route has a contract and the exemption list only shrinks | must | web | test | Every route has a contract bound to its handler, the API reference is generated from the contracts and checked in CI, and the exemption list for older routes only shrinks to zero. |
 | `web-api-runtime.9.2` Every CSV or spreadsheet export goes through one formula guard | must | web | test | A text value whose first character is =, +, -, @, a tab or a carriage return is written with a leading apostrophe so a download never runs a formula; numbers and booleans are never mangled; no code builds a CSV line by hand. |
+| `web-api-runtime.10.1` Cache a slow query and serve it stale while it refreshes | must | web | test | A slow upstream query is cached per distinct query; a stale entry is served at once while one refresh runs in the background, only a request with no entry waits, and a failed refresh keeps the last good entry and is never cached as an answer. |
+| `web-api-runtime.10.2` Single flight per query | must | web | test | Concurrent requests for the same query, and a refresh already running, share one upstream call. |
+| `web-api-runtime.10.3` Bound running and waiting upstream queries, 429 beyond | must | web | test | The API runs at most a fixed number of upstream queries at once and lets at most a fixed number of further requests wait; a request past both is answered 429 with Retry-After at once. |
+| `web-api-runtime.10.4` Back off when the upstream throttles | must | web | test | An upstream answer meaning slow down opens a back-off: no new upstream query starts until the time it names (or a capped exponential delay), stale entries are served meanwhile and a request with no entry gets 429 with Retry-After. |
+| `web-api-runtime.10.5` A worker per query that exits when answered | must | web | test | The upstream call, its parsing and row shaping run in a one-shot worker per query that keeps no connection or cache open after the answer; the main thread receives only the shaped result. |
 
 ## web-build.md
 
@@ -340,6 +345,7 @@ How to use it:
 | `web-build.7` One tools manifest drives every navigation surface | must | web | test | A single manifest feeds the hub, sidebars and palette; visibility combines the view permissions, accessPrefixes (never narrower than the server), hiddenWithPermission, visibleTo for scoped grants, and previewFlag for nav items. |
 | `web-build.8.1` One local gate runs what CI runs | should | web | repo-check | One script (pnpm run verify) runs typecheck, lint, every check guard, the build, the bundle-size check, the tests and the pinned static analysis scan, failing on the first non-zero step. |
 | `web-build.10` One global search, access-filtered, with index health | must | web | test | Global search covers every record the user can see, filters by the record access rules on the server, indexes up to 100,000 characters of file text with a highlighted passage, and reports stale, skipped and broken-link counts from a health endpoint. |
+| `web-build.9.1` Tests do not depend on the time of day | must | web | test | Time reaches the code under test through an injected clock or a fixed instant, and day buckets in a test are anchored to the UTC day of that instant, never to now, the local day or the runner time zone. |
 
 ## web-client-runtime.md
 
