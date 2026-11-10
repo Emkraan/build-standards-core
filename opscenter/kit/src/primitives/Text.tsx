@@ -101,7 +101,9 @@ export function freshness(date: string | null | undefined): { tone?: StatusTone;
   if (!date) return { label: 'undated' };
   const days = Math.floor((Date.now() - new Date(date).getTime()) / 86400000);
   if (Number.isNaN(days)) return { label: date };
+  // display-only: the chip tone for a date the caller passes; no server problem list is involved
   if (days <= 30) return { tone: 'success', label: `${days}d` };
+  // display-only: same chip, the warning band
   if (days <= 90) return { tone: 'warning', label: `${days}d` };
   return { tone: 'danger', label: `${days}d` };
 }
