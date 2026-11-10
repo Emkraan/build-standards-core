@@ -3040,6 +3040,356 @@
         "kind": "test"
       },
       "acceptance": "a test renders the in-flight state from a recent apply and shows nothing once the expected time has passed."
+    },
+    {
+      "id": "cmtrace-logging.13.1",
+      "ref": "cmtrace-logging.md 13.1",
+      "title": "One CMTrace line per event",
+      "statement": "Every log entry is one line in the section 1 shape, with a plain ASCII message that never contains the sequence ]LOG]!>, type 1, 2 or 3 only, and an empty file attribute.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A Pester test writes one entry per severity, reads the file back and matches each line against the section 1 pattern with the expected type code and file=\"\"."
+    },
+    {
+      "id": "cmtrace-logging.13.2",
+      "ref": "cmtrace-logging.md 13.2",
+      "title": "The logger is Write-CMTraceLog with fixed parameters",
+      "statement": "A script defines `function Write-CMTraceLog` copied from section 2, with the parameters Message, Severity (Information, Warning or Error), Component and LogFile, and no renamed or alternative severity names.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A Pester test finds the function, asserts its parameter names and the Severity ValidateSet, and a text check finds the exact function line."
+    },
+    {
+      "id": "cmtrace-logging.13.3",
+      "ref": "cmtrace-logging.md 13.3",
+      "title": "The logger writes through .NET and emits nothing to the pipeline",
+      "statement": "The logger appends with FileShare.ReadWrite through .NET calls, never Add-Content, and emits no object to the success pipeline.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A Pester test runs two writers at once against one file with no lost line, and asserts the call returns nothing."
+    },
+    {
+      "id": "cmtrace-logging.13.4",
+      "ref": "cmtrace-logging.md 13.4",
+      "title": "A failed log write never stops the script",
+      "statement": "The logger retries a failed write 3 times, then warns once unless $script:LogQuiet is true, and never throws. A null LogFile means logging is off and returns quietly.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A Pester test points LogFile at an unwritable path and asserts no exception, at most one warning, and none with LogQuiet set; a null LogFile returns with no output."
+    },
+    {
+      "id": "cmtrace-logging.13.5",
+      "ref": "cmtrace-logging.md 13.5",
+      "title": "Messages are ASCII",
+      "statement": "The logger replaces any non-ASCII character in a message with ?, and scripts put no emoji or box characters in messages. A row of = marks the header and footer.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A Pester test logs a message with non-ASCII characters and asserts the line holds ? in their place; script_lint PS001 reports no finding in the script itself."
+    },
+    {
+      "id": "cmtrace-logging.13.6",
+      "ref": "cmtrace-logging.md 13.6",
+      "title": "The log path matches the execution context",
+      "statement": "The log path follows the section 3 table for the account the script runs as: LOCALAPPDATA for a user, ProgramData for an unattended server task, C:\\Windows\\Logs\\Software for SYSTEM. A script launched from a share logs to the per-user local path, never to the share or next to the script.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review finds the path in the script matches the table row for its execution context and no log path on a share."
+    },
+    {
+      "id": "cmtrace-logging.13.7",
+      "ref": "cmtrace-logging.md 13.7",
+      "title": "The log path is declared once and its folder created with .NET",
+      "statement": "LogFile, LogComponent and MaxLogSizeBytes are set once at the top with a timestamped name, and the folder is created with a .NET call so -WhatIf cannot skip it. A creation failure warns and sets LogFile to null.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review finds one declaration at the top and System.IO.Directory.CreateDirectory in a try with the null fallback."
+    },
+    {
+      "id": "cmtrace-logging.13.8",
+      "ref": "cmtrace-logging.md 13.8",
+      "title": "Unattended scripts take an optional -LogFile",
+      "statement": "A script that runs unattended exposes an optional -LogFile parameter so a test can point at a scratch path. An empty value turns logging off and is never an error.",
+      "level": "should",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A Pester test runs the script with a scratch LogFile and finds the log there, and with an empty LogFile and finds no error."
+    },
+    {
+      "id": "cmtrace-logging.13.9",
+      "ref": "cmtrace-logging.md 13.9",
+      "title": "The log starts with a header and is written continuously",
+      "statement": "The script writes the section 3 header block right after the folder is created (script, version, machine, log path, and the mode when it has one), then logs as it goes. Lines are never buffered and flushed at the end.",
+      "level": "should",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review finds the header block after folder creation and no end-of-run flush of buffered lines."
+    },
+    {
+      "id": "cmtrace-logging.13.10",
+      "ref": "cmtrace-logging.md 13.10",
+      "title": "Per-run logs are pruned at start-up",
+      "statement": "Timestamped per-run logs are pruned at start-up, and a pruning failure is a warning that never fails the script.",
+      "level": "should",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review finds a start-up prune with -ErrorAction SilentlyContinue limited to the housekeeping call and no throw from it."
+    },
+    {
+      "id": "cmtrace-logging.13.11",
+      "ref": "cmtrace-logging.md 13.11",
+      "title": "Fixed-name logs roll to .lo_ at a size limit",
+      "statement": "A fixed-name log from an unattended task sets $script:MaxLogSizeBytes, and the logger moves the full file to <name>.lo_ (one generation) and starts a new one. A script that sets no limit never rotates.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A Pester test sets a small MaxLogSizeBytes, writes past it and asserts a .lo_ file exists and the new log starts fresh."
+    },
+    {
+      "id": "cmtrace-logging.13.12",
+      "ref": "cmtrace-logging.md 13.12",
+      "title": "Severity is used as defined",
+      "statement": "Information is for steps, counts and decisions, Warning for something unexpected the script survived, Error for an operation that failed or an exit about to be non-zero. A failure the script handled and recovered from is a Warning, never an Error.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review finds no Error line for a handled failure and no Information line for a failed operation."
+    },
+    {
+      "id": "cmtrace-logging.13.13",
+      "ref": "cmtrace-logging.md 13.13",
+      "title": "Log the exception message and the identifier",
+      "statement": "A failure line carries the identifier of the thing that failed and $_.Exception.Message, not the whole error record or a stack dump.",
+      "level": "should",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review finds each failure line names the item and the exception message and logs no whole error record."
+    },
+    {
+      "id": "cmtrace-logging.13.14",
+      "ref": "cmtrace-logging.md 13.14",
+      "title": "Every swallowed external-call catch is logged",
+      "statement": "Every swallowed catch around an AD, Graph, device-management, WMI, CIM, MDM, SSO, file-share or registry call logs a Warning or Error.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review finds a Write-CMTraceLog call in every catch around an external call; script_lint PS003 reports no empty catch."
+    },
+    {
+      "id": "cmtrace-logging.13.15",
+      "ref": "cmtrace-logging.md 13.15",
+      "title": "Component is a short stable noun",
+      "statement": "The default component is set once with $script:LogComponent from a small stable set of short nouns, passed with -Component only where a section differs. It is never left to $MyInvocation.ScriptName.",
+      "level": "should",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review finds LogComponent set at the top and no use of MyInvocation.ScriptName as the component."
+    },
+    {
+      "id": "cmtrace-logging.13.16",
+      "ref": "cmtrace-logging.md 13.16",
+      "title": "Runspaces register the logger from its ScriptBlock",
+      "statement": "A background runspace registers Write-CMTraceLog from its ScriptBlock with New-Item Function:\\, never Invoke-Expression on .Definition, and writes to the file directly. Only the display line goes through the dispatcher.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review finds the ScriptBlock registration and no Invoke-Expression of a function definition or dispatcher-routed file write."
+    },
+    {
+      "id": "cmtrace-logging.13.17",
+      "ref": "cmtrace-logging.md 13.17",
+      "title": "Logging is not gated by -WhatIf",
+      "statement": "Write-CMTraceLog is never wrapped in ShouldProcess and the logger and the log folder use .NET calls, so a -WhatIf run writes the log in full.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A Pester test runs the script with -WhatIf and asserts the log file exists and holds the run's lines."
+    },
+    {
+      "id": "cmtrace-logging.13.18",
+      "ref": "cmtrace-logging.md 13.18",
+      "title": "A trial run logs the preview and its mode",
+      "statement": "In -WhatIf or trial mode each skipped change is logged as Information with a fixed prefix such as WhatIf: would remove ..., and the header records the mode.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A Pester test runs trial mode and asserts a prefixed Information line per skipped change and a Mode line in the header."
+    },
+    {
+      "id": "cmtrace-logging.13.19",
+      "ref": "cmtrace-logging.md 13.19",
+      "title": "Automation scripts support trial mode and set exit codes",
+      "statement": "An automation script supports -WhatIf (SupportsShouldProcess) or a TrialRun switch and sets explicit exit codes: 0 success, 1 unhandled failure, 3010 for reboot required, any other non-zero value documented. A partial result exits non-zero with one Error line per failed item.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A Pester test asserts the switch, the exit code of a success, a failure and a partial run, and an Error line per failed item."
+    },
+    {
+      "id": "cmtrace-logging.13.20",
+      "ref": "cmtrace-logging.md 13.20",
+      "title": "The outcome is logged before exit",
+      "statement": "The last line of every run is the END line with the exit code, written before exit.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A Pester test runs success and failure paths and asserts the final log line is the END line carrying the exit code returned."
+    },
+    {
+      "id": "cmtrace-logging.13.21",
+      "ref": "cmtrace-logging.md 13.21",
+      "title": "A discovery script's stdout is exactly one boolean",
+      "statement": "A script whose stdout a machine reads (a device-management CI discovery) returns only $true or $false, sets $script:LogQuiet = $true, and never calls Write-Warning, Write-Host, Write-Verbose, Write-Information or echo on that path.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "A Pester test runs the script under powershell.exe -NoProfile -File with a valid and an unwritable -LogFile and asserts the captured stdout is exactly True or False each time."
+    },
+    {
+      "id": "cmtrace-logging.13.22",
+      "ref": "cmtrace-logging.md 13.22",
+      "title": "A discovery script silences every value-returning call",
+      "statement": "Every call that can return a value in a discovery script is silenced with $null =, [void] or Out-Null, and the decision is logged before the boolean is returned.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review finds no unsilenced call and a Write-CMTraceLog decision line before the return."
+    },
+    {
+      "id": "cmtrace-logging.13.23",
+      "ref": "cmtrace-logging.md 13.23",
+      "title": "No secrets in a log message",
+      "statement": "A log message never holds a password, client secret, token, bearer or Authorization header, private key material, a connection string with credentials, SecureString contents or an API key. It records that authentication succeeded and the identity or thumbprint used.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review finds no log call that interpolates a secret value, and the secrets scan finds none in the script."
+    },
+    {
+      "id": "cmtrace-logging.13.24",
+      "ref": "cmtrace-logging.md 13.24",
+      "title": "No PHI in a log message",
+      "statement": "A log message never holds PHI or anything that identifies a patient: names, MRNs, encounter or account numbers or dates of birth. Device names, group names, UPNs and counts are allowed.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review finds no log call that interpolates a patient identifier."
+    },
+    {
+      "id": "cmtrace-logging.13.25",
+      "ref": "cmtrace-logging.md 13.25",
+      "title": "Log status and counts, not bodies or listings",
+      "statement": "A script logs the status, the identifier and the exception message of a Graph, REST or SSO call, never a whole request or response body or a URL carrying a token. It logs counts and paths, not full file contents or directory listings, and a bounded excerpt where user text may appear.",
+      "level": "must",
+      "applies_to": [
+        "powershell"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review finds no log call that writes a whole body, a token-bearing URL, a full listing or unbounded user text."
     }
   ]
 }
