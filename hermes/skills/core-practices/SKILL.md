@@ -377,6 +377,15 @@ How to use it:
 | `web-client-runtime.1.3` An app without a session bounces once, with a validated return target | must | web | test | An app with no session signs in with the current in-app path as the return target, accepted on return only as a same-origin path (single leading slash, no //, backslash, control character, more than 2048 characters or other origin). A rejected target routes to the app home. |
 | `web-client-runtime.1.4` An account change clears the old account's state | must | web | test | When the active account changes, cached API data and error state for the old account are cleared and the app re-boots for the new one. |
 
+## web-process-health.md
+
+| Rule | Level | Applies to | Check | Statement |
+|---|---|---|---|---|
+| `web-process-health.1.1` A long read runs in a one-shot worker | must | web | test | A read that can take more than about a second against network-backed storage (a startup integrity check, a smoke check, a scan) runs in a worker that does that one job and exits; the main thread keeps serving and answers 503 starting until the result arrives. |
+| `web-process-health.1.2` An event-loop watchdog ends a frozen process | must | web | test | A watchdog that does not run on the main loop reads a heartbeat the loop writes; when it is older than about 90 seconds the watchdog logs the age and ends the process with a non-zero exit so the platform starts a fresh one. |
+| `web-process-health.1.3` Every background timer goes through one job registry | must | web | test | Every recurring or delayed task is created through one registry that tracks it and stops all of them on a lost lock, a handoff or SIGTERM; a CI check fails a timer created anywhere else, with an exemption list that only shrinks. |
+| `web-process-health.1.4` Startup is staggered and a takeover never waits on a full check | must | web | test | The server listens first, takes the lock as soon as it is free, then starts the integrity check, the smoke check and the jobs at staggered offsets; the takeover path runs no full check, hash or scan. |
+
 ## web-shell.md
 
 | Rule | Level | Applies to | Check | Statement |

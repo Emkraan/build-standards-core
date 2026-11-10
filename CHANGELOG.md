@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-09 (v1.194.0, slow upstream queries: cache, single flight, admission limits; tests independent of the time of day)
+## 2026-11-09 (v1.195.0, slow upstream queries: cache, single flight, admission limits; tests independent of the time of day)
 
 Opt in for a web consumer; takes effect by moving its pinned core release and registering the rules.
 
@@ -8,6 +8,22 @@ Opt in for a web consumer; takes effect by moving its pinned core release and re
 - `standards/web-build.md` section 9.1: tests do not depend on the time of day; day buckets in a test are anchored to the UTC day of an injected instant. Evidence: a test anchored to the current time failed every evening until it was anchored to the UTC day.
 - `standards/rules.json` registers `web-api-runtime.10.1` to `10.5` and `web-build.9.1` (check kind `test`, scope `web`); the generated `core-practices` skill is rebuilt.
 - Tests: `tests/test_rules_slow_upstream.py` (5) pins the registered rules, the absence of unregistered ones, the prevents and acceptance lines, the cross-references and the evidence.
+
+## 2026-11-09 (v1.194.0, renovate: the Playwright image and @playwright/test move together)
+
+Repository change, no consumer effect.
+
+- `renovate.json` groups `@playwright/test` (`kit/package.json`) and the `mcr.microsoft.com/playwright` container image (`.github/workflows/visual.yml`) under one `playwright` update, so one pull request moves both and the visual gate never runs a library that differs from its browser image (Playwright refuses to start on a mismatch).
+
+## 2026-11-09 (v1.193.0, web-process-health: a new standard for a responsive web process)
+
+Opt in for a web consumer; takes effect by moving its pinned core release and registering the four rules.
+
+- New `standards/web-process-health.md` with four rules: a long read runs in a one-shot worker, an event-loop watchdog ends a frozen process after about 90 s, every background timer is created through one job registry (a CI check rejects any other), and startup is staggered with a lock takeover that never waits on a full check. Each rule names what it prevents, its evidence and its acceptance line.
+- Evidence from the app the rules came from: takeover after a restart waited 729,682 ms on a full check before the check moved off the main thread and was deferred, then 633 ms; a frozen process stayed up for 10 minutes until the watchdog was added.
+- The jobs-in-one-process rule stays in `standards/web-shell-server.md` section 5 and the `jobs` package in `standards/web-shell-packages.md` section 5.4; the new doc cross-references them and does not repeat them.
+- `standards/rules.json` registers `web-process-health.1.1` to `1.4` (check kind `test`, scope `web`); the README standards table has one new row; the generated `core-practices` skill is rebuilt.
+- Tests: `tests/test_rules_web_process_health.py` (5) pins the four registered rules, the absence of an unregistered fifth, the prevents, evidence and acceptance lines of each rule, the measured evidence and cross-references, and the README row.
 
 ## 2026-11-09 (v1.192.0, kit: Segmented glides its selected pill)
 
