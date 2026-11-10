@@ -49,7 +49,7 @@ class JobNames(Work):
             r"^\s+-\s+name:\s*(core-[A-Za-z0-9_-]+)\s*$", TEMPLATE_WF.read_text(), re.M
         )
         self.assertEqual(len(steps), len(set(steps)), steps)
-        for s in ("core-setup", "core-secret-scan", "core-ascii", "core-python", "core-kit-peers"):
+        for s in ("core-setup", "core-secret-scan", "core-ascii", "core-python"):
             self.assertIn(s, steps)
 
     def test_every_check_step_runs_after_a_failure_and_push_runs_only_the_secret_scan(self):

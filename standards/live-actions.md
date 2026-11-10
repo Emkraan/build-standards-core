@@ -11,7 +11,7 @@ implementation differs, the implementation is fixed, or the consumer records an 
 
 Related: [Automation Safety](automation-safety.md) (re-verify before acting, idempotent retries),
 [PR Review and Merge](pr-review-and-merge.md#4-holds-and-the-merge-button) (which rows get which
-button), [Local Ops App](local-ops-app.md) (TTL caches, loopback server), [Web Design System](web-ui.md)
+button), [Local Ops App](local-ops-app.md) (TTL caches, loopback server), Web Design System (the web-ui-standard doc)
 (toasts, undo, dialogs).
 
 ---

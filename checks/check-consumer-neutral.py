@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Fail if anything that ships to a consumer names the core's owner account or repo.
 
-Shipped means the folders and files an overlay copies (standards, tokens, lint, kit/src, the overlay
-template, kit/scripts/gen-changelog.mjs) and the Hermes skills. A consumer must never learn which
+Shipped means the folders and files an overlay copies (standards, lint, the overlay template) and the
+Hermes skills. A consumer must never learn which
 account owns the core, so those paths may not contain the owner login or a core repo slug.
 
 The owner comes from the origin remote of this clone, plus any terms in CORE_PRIVATE_DENYLIST or
@@ -40,12 +40,7 @@ import diffadded  # noqa: E402
 
 SHIPPED = (
     "standards/",
-    "tokens/",
     "lint/",
-    "kit/src/",
-    "kit/scripts/gen-changelog.mjs",
-    "kit/scripts/scope-css.mjs",
-    "kit/scripts/build-registry.mjs",
     "templates/overlay/",
     "hermes/skills/",
     "skills/",

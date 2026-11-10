@@ -34,15 +34,6 @@ class FileMode(Work):
         self.assertEqual(sh([sys.executable, script, "--file", ok], cwd=ROOT)[0], 0)
         self.assertEqual(sh([sys.executable, script, "--file", bad], cwd=ROOT)[0], 1)
 
-    def test_kit_comments_name_no_doc(self):
-        ok, bad = self.dir / "ok.tsx", self.dir / "bad.tsx"
-        ok.write_text("/* the UI standard, section 7 */\n")
-        bad.write_text("/* the page web-ui.md requires */\n")
-        script = ROOT / "checks/check-kit-comments.py"
-        self.assertEqual(sh([sys.executable, script, "--file", ok])[0], 0)
-        self.assertEqual(sh([sys.executable, script, "--file", bad])[0], 1)
-        self.assertEqual(sh([sys.executable, script], cwd=ROOT)[0], 0)  # the real kit is clean
-
 
 class ExceptionsBaseline(Work):
     def run_check(self, baseline_text):
@@ -51,14 +42,14 @@ class ExceptionsBaseline(Work):
         (ov / "standards-local").mkdir()
         src = (ROOT / "templates/overlay/scripts/check-exceptions.py").read_text()
         (ov / "scripts" / "check-exceptions.py").write_text(src)
-        (ov / "standards-local" / "ui-lint-baseline.json").write_text(baseline_text)
+        (ov / "standards-local" / "script-lint-baseline.json").write_text(baseline_text)
         sh(
             ["git", "init", "-q"], cwd=ov
         )  # its own repo, so the worktree's ignore rules do not apply
         return sh([sys.executable, "scripts/check-exceptions.py"], cwd=ov)
 
     def test_orphan_baseline_is_flagged(self):
-        rc, out = self.run_check(json.dumps({"EXC-001": {"UI001": 3}}))
+        rc, out = self.run_check(json.dumps({"EXC-001": {"PS003": 3}}))
         self.assertEqual(rc, 1)
         self.assertIn("baseline names EXC-001", out)
 
@@ -71,27 +62,10 @@ class StatusGap(Work):
         status = load("core_status2", "templates/overlay/scripts/core-status.py")
         status.ch.ROOT = self.dir
         (self.dir / "standards-local").mkdir()
-        self.assertEqual(len(status.missing_lint_config({"python", "web"})), 2)
+        self.assertEqual(len(status.missing_lint_config({"python", "web"})), 1)
         (self.dir / "standards-local" / "script-lint.json").write_text("{}")
-        (self.dir / "standards-local" / "ui-lint.json").write_text("{}")
         self.assertEqual(status.missing_lint_config({"python", "web"}), [])
         self.assertEqual(status.missing_lint_config({"wpf"}), [])
-
-
-class StatusStandIns(Work):
-    def test_named_copy_without_kit_import_is_a_stand_in_adapter_is_not(self):
-        status = load("core_status3", "templates/overlay/scripts/core-status.py")
-        kit = self.dir / "kit-core"
-        kit.mkdir()
-        (kit / "index.ts").write_text(
-            "export { Spinner, Button as Btn } from './p';\nexport type { X } from './x';\n"
-        )
-        names = status.kit_exports(kit)
-        self.assertEqual(names, {"Spinner", "Btn"})
-        copy, adapter = self.dir / "Spinner.tsx", self.dir / "Btn.tsx"
-        copy.write_text("export function Spinner() { return null }\n")
-        adapter.write_text("import { Btn as K } from '@kit';\nexport const Btn = K;\n")
-        self.assertEqual(status.stand_ins([copy, adapter], names), ["Spinner (Spinner.tsx)"])
 
 
 class LicenseExempt(Work):
@@ -156,7 +130,7 @@ class SkillLogMarks(unittest.TestCase):
             ["2026-10-13", "#142", "OPS-77"],
         )
         self.assertEqual(
-            skills.log_marks("Use v1.2.3, UTF-8, SHA-256 and UI010 (web-ui 0.11)."), []
+            skills.log_marks("Use v1.2.3, UTF-8, SHA-256 and PS003 (scripting-powershell 1.4)."), []
         )
 
 

@@ -1,5 +1,5 @@
 // Copy fallback for when the clipboard API is refused: a kit Modal with the text selected in a
-// read-only box, replacing the old native prompt (web-ui.md 0.7). Render `dialog` once.
+// read-only box, replacing the old native prompt (the web-ui-standard doc). Render `dialog` once.
 import { Field, Modal, Textarea } from '@kit'
 import { type ReactNode, useCallback, useRef, useState } from 'react'
 

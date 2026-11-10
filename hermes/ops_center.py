@@ -29,7 +29,7 @@ the deploy checkout is never written: the repo's own deploy job takes the merge.
 timeout closes the pull request, deletes the branch and leaves the pin unchanged, reported once per
 kind like every other failure ("pr_timeout_min" bounds the wait, default 60).
 
-The gate is the overlay's own checks (core sync, exceptions, UI lint, script lint), then the commands
+The gate is the overlay's own checks (core sync, exceptions, script lint), then the commands
 the consumer names in standards-local/parameters.md: "Gate typecheck", "Gate build" and "Gate verify"
 (its own verify command). A step with no command is skipped. Commands are split like a shell would
 and run without one, from the repo root of the worktree. The clone's node_modules is linked into the
@@ -72,7 +72,6 @@ GATE_PARAMS = (("typecheck", "Gate typecheck"), ("build", "Gate build"), ("verif
 OVERLAY_CHECKS = (
     ("core sync", "scripts/check-core-sync.py", []),
     ("exceptions", "scripts/check-exceptions.py", []),
-    ("UI lint", "lint-core/ui_lint.py", []),
     ("script lint", "lint-core/script_lint.py", []),
 )
 # What a sync writes. Committed by name so nothing else in the worktree can ride along.

@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-11-10 (v2.0.0, breaking: the core narrows to Hermes and the ops center)
+
+Breaking. The core now holds only the Hermes tooling, the ops center and the standards those two rely on.
+The shared web, shell and WPF standards are the owner's standards repo's (`web-ui-standard`, `web-ui-components-standard`,
+`web-build-standard`, `web-api-runtime-standard`, `web-client-runtime-standard`, `web-shell-standard`,
+`web-shell-modules-standard`, `wpf-design-system-standard`, `wpf-powershell-gui-standard`). Two former consumers stop consuming the core and one keeps its own overlay copy. Pinned older tags are unchanged
+and keep working, including `templates/overlay/scripts/core-ci.py` at an old sha.
+
+- Moved: `kit/` to `opscenter/kit/` and `tokens/` to `opscenter/tokens/`, as the ops center's own UI code
+  (not a shared standard and not an overlay for other apps). The `@kit` alias in `opscenter/app`
+  (`vite.config.ts`, `tsconfig.app.json`), the token imports, `operations.test.mjs`, the token build and
+  its generated headers, the workflows (`kit.yml`, `opscenter-app.yml`, `visual.yml`,
+  `gallery-release.yml`, `checks.yml`) and the docs follow. Behaviour is unchanged: the app builds, tests
+  and bundles as before and the token build still certifies 359 of 359 contrast checks.
+- Removed: `shell-packages/`, `lint/ui_lint.py` and its fixtures and tests, the web, shell and WPF standards
+  (`web-ui`, `web-build`, `web-api-runtime`, `web-client-runtime`, `web-process-health`, `web-shell` and
+  its `-auth`, `-deploy`, `-gateway`, `-manifest`, `-packages` and `-server` parts, `wpf-design-system`,
+  `wpf-powershell-gui`), `standards/schemas/console.module.schema.json`, their 135 entries in
+  `standards/rules.json` (211 rules remain), the kit tests and fixtures that tested `shell-packages/`,
+  `kit/consumer/` and `kit/MIGRATION.md` (consumer adoption material), `checks/check-kit-comments.py`,
+  the `kit-peers` check and its `core-kit-peers` step, the UI adoption verdict and
+  `--require-ui-adopted` in `core-status.py`, the repo checks RC005, RC009, RC014, RC015, RC016, RC018,
+  RC019, RC020 and RC021 (their rules went with the standards), and the express hold in `renovate.json`.
+- `lint/script_lint.py` keeps the exception and counting helpers it used to import from `ui_lint.py`.
+  The overlay sync no longer copies `tokens/`, `kit/src` or the kit scripts; it copies `standards/` and
+  `lint/`. `hermes/skills/core-practices/SKILL.md` is regenerated from the smaller registry.
+- Docs: `README.md`, `CONSUMING.md`, `CONTRIBUTING.md`, `lint/README.md`, `templates/overlay/README.md`,
+  `opscenter/DESIGN.md`, `opscenter/kit/README.md`, `opscenter/tokens/README.md` and the retained
+  standards describe the narrowed scope and point at the doc names in the owner's standards repo, never a core path.
+  `checks/check-links.py` skips `CHANGELOG.md`, whose older entries link docs that moved.
+
+No issue: narrowing the core to Hermes and ops center per owner decision.
+
 ## 2026-11-10 (v1.200.0, tokens: the build fails a status ink pair that deuteranopia pulls under 5)
 
 Token build change, no consumer effect: the shipped colours do not change.

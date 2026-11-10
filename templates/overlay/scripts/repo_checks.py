@@ -380,55 +380,6 @@ def rc004(repo):
 
 # ---------------------------------------------------------------- RC005 CORS lives in the app only
 
-CORS_FILES = (
-    "vercel.json",
-    "staticwebapp.config.json",
-    "netlify.toml",
-    "_headers",
-    "web.config",
-    "host.json",
-    "firebase.json",
-    "now.json",
-)
-CORS_HEADER = re.compile(r"access-control-allow-origin", re.I)
-TF_CORS = re.compile(r"\bcors\s*\{[^}]*allowed_origins", re.S)
-BICEP_CORS = re.compile(r"\bcors\s*:\s*\{[^}]*allowedOrigins", re.S | re.I)
-WEB_CONFIG_CORS = re.compile(r"<\s*cors\b", re.I)
-
-
-def rc005(repo):
-    out = []
-    for p in repo.paths:
-        base = p.rsplit("/", 1)[-1]
-        if base in CORS_FILES:
-            text = repo.text(p)
-            m = CORS_HEADER.search(text) or (
-                WEB_CONFIG_CORS.search(text) if base == "web.config" else None
-            )
-            if m:
-                out.append(
-                    (
-                        p,
-                        line_of(text, m.start()),
-                        "the hosting config sets a platform CORS origin; keep CORS in the app",
-                    )
-                )
-        elif p.endswith(".tf") or p.endswith(".bicep"):
-            text = repo.text(p)
-            m = (TF_CORS if p.endswith(".tf") else BICEP_CORS).search(text)
-            if m:
-                out.append(
-                    (
-                        p,
-                        line_of(text, m.start()),
-                        "the infrastructure code sets a platform CORS origin list",
-                    )
-                )
-    return out
-
-
-# ---------------------------------------------------------------- RC006 deploys are serialised and health gated
-
 
 def uses_sqlite(repo):
     for p in repo.select(
@@ -634,26 +585,6 @@ def rc008(repo):
 # ---------------------------------------------------------------- RC009 one boot module for every app
 
 JS_EXTS = (".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx")
-AUTH_REDIRECT = re.compile(r"\.handleRedirectPromise\s*\(")
-
-
-def rc009(repo):
-    hits = {}
-    for p in repo.select(exts=JS_EXTS, tests=False):
-        lines = repo.text(p).splitlines()
-        for i, ln in enumerate(lines):
-            if not is_comment(ln) and not skipped(lines, i) and AUTH_REDIRECT.search(ln):
-                hits.setdefault(p, i + 1)
-    if len(hits) <= 1:
-        return []
-    return [
-        (p, n, f"the auth redirect is handled in {len(hits)} files; one boot module owns it")
-        for p, n in sorted(hits.items())
-    ]
-
-
-# ---------------------------------------------------------------- RC010 every secret is documented
-
 SECRET_REF = re.compile(
     r"\bsecrets\.([A-Za-z_][A-Za-z0-9_]*)|secrets\[\s*['\"]([A-Za-z_][A-Za-z0-9_]*)['\"]\s*\]"
 )
@@ -1098,84 +1029,6 @@ def rc013(repo):
 
 # ---------------------------------------------------------------- RC014 verify in both themes
 
-UI_EXTS = (".tsx", ".jsx", ".vue", ".svelte")
-
-
-def has_ui(repo):
-    return bool(repo.select(exts=UI_EXTS, tests=False)) or any(
-        p.rsplit("/", 1)[-1] == "index.html" for p in repo.paths
-    )
-
-
-def rc014(repo):
-    if not has_ui(repo):
-        return []
-    specs = [
-        p
-        for p in repo.select(exts=(".ts", ".js", ".mjs", ".tsx"))
-        if TEST_PART.search(p) or re.search(r"(^|/)(visual|playwright)(/|$)", p)
-    ]
-    text = "\n".join(repo.text(p) for p in specs)
-    if not specs:
-        return [
-            (
-                "playwright.config.ts",
-                1,
-                "a web app has no test suite that could run axe in both themes",
-            )
-        ]
-    out = []
-    if not re.search(r"AxeBuilder|axe-core|@axe-core/playwright|checkA11y", text):
-        out.append((specs[0], 1, "no test runs axe"))
-    if not (re.search(r"[\"'`]dark[\"'`]", text) and re.search(r"[\"'`]light[\"'`]", text)):
-        out.append((specs[0], 1, "no test covers both the light and the dark theme"))
-    return out
-
-
-# ---------------------------------------------------------------- RC015 required chrome is mounted
-
-
-def rc015(repo):
-    files = repo.select(exts=(".tsx", ".jsx"), tests=False)
-    shells = [p for p in files if re.search(r"<AppShell\b", repo.text(p))]
-    if not shells:
-        return []
-    if any(re.search(r"\bBuildCard\b", repo.text(p)) for p in files):
-        return []
-    return [(shells[0], 1, "an app shell is mounted and no file renders the build card")]
-
-
-# ---------------------------------------------------------------- RC016 one local gate
-
-
-def rc016(repo):
-    if "package.json" not in repo.paths:
-        return []
-    try:
-        scripts = json.loads(repo.text("package.json")).get("scripts", {})
-    except ValueError:
-        return [("package.json", 1, "package.json cannot be read")]
-    if not isinstance(scripts, dict):
-        return []
-    verify = scripts.get("verify")
-    if not verify:
-        return [("package.json", 1, "no verify script: one local gate that runs what CI runs")]
-    body = verify
-    for m in re.finditer(r"(?:node|bash|sh|python3?|tsx)\s+(\S+\.(?:mjs|js|cjs|ts|sh|py))", verify):
-        if m.group(1) in repo.paths:
-            body += "\n" + repo.text(m.group(1))
-    out = []
-    wanted = [k for k in scripts if k.startswith("check:")] + [
-        k for k in ("typecheck", "lint", "build", "test") if k in scripts
-    ]
-    for k in wanted:
-        if not re.search(rf"(?<![\w:-]){re.escape(k)}(?![\w:-])", body):
-            out.append(("package.json", 1, f"the verify script does not run {k}"))
-    return out
-
-
-# ---------------------------------------------------------------- RC017 no secret in a subprocess argument
-
 SECRET_NAME = re.compile(r"password|passwd|secret|token|api[_-]?key|credential", re.I)
 SAFE_SUFFIX = re.compile(r"(stdin|file|path|env|name|id|url|dir|src)$", re.I)
 WRAPPERS = {"str", "Path", "PurePath", "fspath", "join", "abspath", "realpath", "expanduser"}
@@ -1269,61 +1122,7 @@ def rc017(repo):
 # ---------------------------------------------------------------- RC018 long-lived vendor chunks
 
 
-def rc018(repo):
-    out = []
-    for p in repo.paths:
-        if re.search(r"(^|/)vite\.config\.[a-z]+$", p) and "manualChunks" not in repo.text(p):
-            out.append((p, 1, "the build config names no vendor chunks (manualChunks)"))
-    return out
-
-
 # ---------------------------------------------------------------- RC019 entry chunk budget
-
-BUNDLER = re.compile(r"(^|/)(vite|webpack|rollup|rspack)\.config\.[a-z]+$")
-BUDGET_FILE = re.compile(
-    r"(^|/)(\.size-limit|size-limit\.config|bundlewatch\.config|\.bundlewatch)"
-)
-BUDGET_WORD = re.compile(
-    r"size-limit|bundlewatch|bundlesize|bundle-size|check:size|check:bundle|budget", re.I
-)
-
-
-def rc019(repo):
-    bundled = [p for p in repo.paths if BUNDLER.search(p)]
-    if not bundled:
-        return []
-    if any(BUDGET_FILE.search(p) for p in repo.paths):
-        return []
-    for p in repo.paths:
-        if p.rsplit("/", 1)[-1] == "package.json":
-            try:
-                scripts = json.loads(repo.text(p)).get("scripts", {})
-            except ValueError:
-                continue
-            if isinstance(scripts, dict) and any(
-                BUDGET_WORD.search(k) or BUDGET_WORD.search(str(v)) for k, v in scripts.items()
-            ):
-                return []
-    return [(bundled[0], 1, "a bundled app has no bundle size budget check")]
-
-
-# ---------------------------------------------------------------- RC020 large inline assets become files
-
-
-def rc020(repo):
-    out = []
-    for p in repo.paths:
-        if re.search(r"(^|/)vite\.config\.[a-z]+$", p) and "assetsInlineLimit" not in repo.text(p):
-            out.append((p, 1, "the build config sets no assetsInlineLimit"))
-    return out
-
-
-# ---------------------------------------------------------------- RC021 one client package
-
-BEARER = re.compile(r"[\"'`]Bearer\s|Authorization[\"']?\s*[:=]")
-
-
-SERVER_PART = re.compile(r"(^|/)(server|backend|api|scripts|tools|functions|workers?|cli)/")
 
 
 def app_root(path):
@@ -1346,18 +1145,6 @@ def many_files_per_app(hits, what):
         if len(files) > 1
         for p, n in files
     ]
-
-
-def rc021(repo):
-    hits = {}
-    for p in repo.select(exts=JS_EXTS, tests=False):
-        if SERVER_PART.search(p):
-            continue
-        lines = repo.text(p).splitlines()
-        for i, ln in enumerate(lines):
-            if not is_comment(ln) and not skipped(lines, i) and BEARER.search(ln):
-                hits.setdefault(p, i + 1)
-    return many_files_per_app(hits, "the bearer header is built; one client package owns it")
 
 
 # ---------------------------------------------------------------- RC022 guards come from one module
@@ -1699,23 +1486,14 @@ CHECKS = {
     "RC002": ("merge without the head sha", "pr-review-and-merge.md 1.6", rc002),
     "RC003": ("major updates auto-merge", "ci-cd-release.md 4", rc003),
     "RC004": ("merge gate runs PR code", "ci-cd-release.md 5", rc004),
-    "RC005": ("platform CORS config", "web-api-runtime.md 3.3", rc005),
     "RC006": ("deploy not serialised or health gated", "data-safety-sqlite.md 2.10", rc006),
     "RC007": ("destructive migration", "data-safety-sqlite.md 2.12", rc007),
     "RC008": ("real-looking fixture address", "identity-and-people-data.md 1.7", rc008),
-    "RC009": ("auth redirect handled outside one module", "web-client-runtime.md 1.2", rc009),
     "RC010": ("undocumented secret", "ci-cd-release.md 9", rc010),
     "RC011": ("cross-repo checkout without a deploy key", "secrets-and-credentials.md 1.4", rc011),
     "RC012": ("import outside the standard library not pinned", "scripting-python.md 1.2", rc012),
     "RC013": ("deploy without CI or health gate", "ci-cd-release.md 6", rc013),
-    "RC014": ("no axe run in both themes", "web-ui.md 9", rc014),
-    "RC015": ("app shell without the build card", "web-ui.md 25", rc015),
-    "RC016": ("no complete verify script", "web-build.md 8.1", rc016),
     "RC017": ("secret in a subprocess argument", "scripting-python.md 1.3", rc017),
-    "RC018": ("no vendor chunks", "web-client-runtime.md 4.2", rc018),
-    "RC019": ("no bundle size budget", "web-client-runtime.md 4.1", rc019),
-    "RC020": ("no inline asset limit", "web-client-runtime.md 4.3", rc020),
-    "RC021": ("bearer header built in many files", "web-client-runtime.md 5.1", rc021),
     "RC022": ("permissions compared by hand in many files", "rbac.md 3", rc022),
     "RC023": ("client-side count, age or duration threshold", "ops-center-layout.md 1.4", rc023),
     "RC024": ("route removed without a redirect", "ops-center-layout.md 1.9", rc024),

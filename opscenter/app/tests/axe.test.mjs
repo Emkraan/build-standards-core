@@ -1,4 +1,4 @@
-// Accessibility gate (web-ui.md 9): axe-core over the built shell in the light and the dark theme.
+// Accessibility gate (the web-ui-standard doc): axe-core over the built shell in the light and the dark theme.
 // Run: npm run build && node --test tests/axe.test.mjs
 // Serves dist/ on a random local port and drives a headless Chrome of its own over the DevTools
 // protocol (own port, own profile dir). Skips with a stated reason when dist/ or Chrome is missing on a machine with no browser provided.

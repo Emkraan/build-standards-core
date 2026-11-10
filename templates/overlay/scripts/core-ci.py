@@ -43,12 +43,6 @@ Usage (run from the consumer repo root; the overlay may sit in a subfolder):
   python3 scripts/core-ci.py secret-scan BASE HEAD [--gitleaks BIN]
                                                              scan BASE..HEAD with the base commit's
                                                              config, ignore files and allow comments off
-  python3 scripts/core-ci.py kit-peers [DIR]                 the kit copy (default kit-core) typechecks
-                                                             without its optional peers: no root file
-                                                             imports one, every tsconfig that includes
-                                                             the copy excludes an entry whose peer the
-                                                             app does not declare, and tsc (when the
-                                                             repo has it) passes with the peers blocked
   python3 scripts/core-ci.py required-checks [--repo R] [--branch B] [--api-json FILE] [--fix [--no-write]]
                                                              which core-ci.yml jobs the merge gate does
                                                              not require (branch protection, rulesets,
@@ -280,7 +274,6 @@ def params() -> dict:
         "python": str(on("python", probe="python")).lower(),
         "powershell": str(on("powershell", "wpf", probe="powershell")).lower(),
         "web": str(on("web", probe="web")).lower(),
-        "kit": str((ROOT / "kit-core").is_dir()).lower(),
         "python_floor": floor,
         "python_test": parameter("Python test command") or "python -m unittest discover",
         # The repo's own full-tree lint for lint-sweep.yml (empty: only the overlay lints run).
@@ -940,7 +933,7 @@ LOCKFILES = {
     "flake.lock",
 }
 # The every-file ASCII rule. An exception for it covers a path, never a script or XAML file: those
-# stay under their own rules (scripting-powershell.md 1.7, wpf-design-system.md 6.1).
+# stay under their own rules (scripting-powershell.md 1.7).
 ASCII_RULE = "pr-review-and-merge.md 1.19"
 SCRIPT_PATTERNS = ("*.ps1", "*.psm1", "*.psd1", "*.xaml")
 
@@ -1474,240 +1467,6 @@ def cmd_secret_scan(argv: list) -> int:
         return 2
     say(f"secret-scan: clean ({rev_range(base, head)})")
     return 0
-
-
-# ---------------------------------------------------------------- kit optional peers
-
-# Each optional kit entry and the peer it needs. The kit root never imports one, so an app that does
-# not install a peer excludes its entry from the typecheck (kit/MIGRATION.md step 0). A new optional
-# entry is added here in the same change that adds it to the kit.
-OPTIONAL_ENTRIES = {
-    "charts": ("recharts",),
-    "reports": ("recharts",),
-    "graph": ("@xyflow/react",),
-    "api-reference": ("@scalar/api-reference-react",),
-}
-IMPORT_RE = re.compile(
-    r"""(?:\bfrom\s*|\bimport\s*\(?\s*|@import\s+(?:url\()?\s*)["']([^"']+)["']"""
-)
-TS_SOURCES = (".ts", ".tsx", ".mts", ".cts", ".css")
-
-
-def peer_of(spec: str) -> str | None:
-    for entry, peers in OPTIONAL_ENTRIES.items():
-        for peer in peers:
-            if spec == peer or spec.startswith(peer + "/"):
-                return entry
-    return None
-
-
-def resolve_import(src: pathlib.Path, spec: str) -> pathlib.Path | None:
-    base = src.parent / spec
-    for cand in (
-        base,
-        *(base.with_name(base.name + e) for e in TS_SOURCES),
-        *(base / ("index" + e) for e in TS_SOURCES),
-    ):
-        if cand.is_file():
-            return cand.resolve()
-    return None
-
-
-def kit_root_imports(kit: pathlib.Path) -> list:
-    """(file, line, kind) for every peer import reachable from the kit root: the files outside the
-    optional entries and every file they import, at any depth. An entry's own files may import its peer;
-    a helper inside an entry folder that the root imports (the chart theme) must not."""
-    top = kit.resolve()
-    files = sorted(
-        f.resolve()
-        for f in kit.rglob("*")
-        if f.is_file() and f.suffix in TS_SOURCES and "node_modules" not in f.parts
-    )
-    todo = [f for f in files if f.relative_to(top).parts[0] not in OPTIONAL_ENTRIES]
-    seen, bad = set(todo), []
-    while todo:
-        f = todo.pop()
-        for i, line in enumerate(f.read_text(encoding="utf8", errors="replace").splitlines(), 1):
-            for spec in IMPORT_RE.findall(line):
-                if peer_of(spec):
-                    bad.append(
-                        (f, i, f"imports the optional peer {spec}, reachable from the kit root")
-                    )
-                elif spec.startswith("."):
-                    t = resolve_import(f, spec)
-                    if t and t not in seen and top in t.parents:
-                        seen.add(t)
-                        todo.append(t)
-    return sorted(bad)
-
-
-def load_jsonc(text: str):
-    """JSON with // and /* */ comments and trailing commas (a tsconfig), comments outside strings only."""
-    out, i, n, in_str = [], 0, len(text), False
-    while i < n:
-        c = text[i]
-        if in_str:
-            out.append(c)
-            if c == "\\" and i + 1 < n:
-                out.append(text[i + 1])
-                i += 1
-            elif c == '"':
-                in_str = False
-        elif c == '"':
-            in_str = True
-            out.append(c)
-        elif text.startswith("//", i):
-            while i < n and text[i] != "\n":
-                i += 1
-            continue
-        elif text.startswith("/*", i):
-            end = text.find("*/", i + 2)
-            i = n if end < 0 else end + 2
-            continue
-        else:
-            out.append(c)
-        i += 1
-    return json.loads(re.sub(r",(\s*[}\]])", r"\1", "".join(out)))
-
-
-def declared_packages(start: pathlib.Path, stop: pathlib.Path) -> set:
-    """Every dependency name in the package.json files from start up to stop (a workspace root counts)."""
-    names = set()
-    d, stop = start.resolve(), stop.resolve()
-    while True:
-        pkg = d / "package.json"
-        if pkg.is_file():
-            try:
-                data = json.loads(pkg.read_text(encoding="utf8"))
-            except ValueError:
-                data = {}
-            for key in (
-                "dependencies",
-                "devDependencies",
-                "peerDependencies",
-                "optionalDependencies",
-            ):
-                names |= set((data.get(key) or {}).keys())
-        if d == stop or d == d.parent or stop not in d.parents:
-            break
-        d = d.parent
-    return names
-
-
-def clean_glob(p: str) -> str:
-    p = p.replace("\\", "/")
-    while p.startswith("./"):
-        p = p[2:]
-    for tail in ("/**/*", "/**", "/*", "/"):
-        if p.endswith(tail):
-            p = p[: -len(tail)]
-    return p
-
-
-def tsconfig_gaps(repo: pathlib.Path, kit: pathlib.Path) -> list:
-    """(tsconfig, entry) for each tsconfig that includes the whole kit copy without excluding an optional
-    entry whose peer the app's package.json files do not declare."""
-    gaps = []
-    for name in tracked():
-        parts = pathlib.PurePosixPath(name).parts
-        if (
-            not (parts[-1].startswith("tsconfig") and parts[-1].endswith(".json"))
-            or set(parts) & SYNCED_COPIES
-        ):
-            continue
-        cfg = repo / name
-        try:
-            data = load_jsonc(cfg.read_text(encoding="utf8"))
-        except (OSError, ValueError):
-            continue
-        base = cfg.parent.resolve()
-        kit_rel = clean_glob(os.path.relpath(kit.resolve(), base))
-        if not any(
-            isinstance(p, str) and clean_glob(p) == kit_rel for p in data.get("include") or []
-        ):
-            continue
-        excludes = [clean_glob(str(x)) for x in data.get("exclude") or []]
-        have = declared_packages(base, repo)
-        for entry, peers in OPTIONAL_ENTRIES.items():
-            if not all(p in have for p in peers) and f"{kit_rel}/{entry}" not in excludes:
-                gaps.append((name, entry))
-    return gaps
-
-
-def find_tsc(start: pathlib.Path, stop: pathlib.Path) -> pathlib.Path | None:
-    d, stop = start.resolve(), stop.resolve()
-    while True:
-        cand = d / "node_modules" / ".bin" / "tsc"
-        if cand.is_file():
-            return cand
-        if d == stop or d == d.parent:
-            return None
-        d = d.parent
-
-
-def cmd_kit_peers(argv: list) -> int:
-    kit = pathlib.Path(argv[0]) if argv else ROOT / "kit-core"
-    if not kit.is_dir():
-        say(f"skip kit-peers: no kit copy at {kit}")
-        return 0
-    repo = pathlib.Path(git("rev-parse", "--show-toplevel").strip() or ".")
-    bad = 0
-    for f, i, kind in kit_root_imports(kit):
-        bad += 1
-        say(
-            f"::error file={f},line={i}::kit-peers: {kind}; the kit root never imports an optional entry or peer"
-        )
-    for name, entry in tsconfig_gaps(repo, kit):
-        bad += 1
-        say(
-            f"::error file={name}::kit-peers: {name} includes the kit copy but the app does not declare the "
-            f'{entry} peer ({", ".join(OPTIONAL_ENTRIES[entry])}); add the {entry} entry to "exclude" '
-            f"(kit/MIGRATION.md step 0)"
-        )
-    tsc = find_tsc(kit, repo)
-    note = "tsc not found under the repo, static checks only"
-    if tsc and not bad:
-        with tempfile.TemporaryDirectory(dir=os.environ.get("RUNNER_TEMP") or None) as tmp:
-            stub = pathlib.Path(tmp) / "no-peer.ts"
-            stub.write_text("export {};\n", encoding="utf8")
-            cfg = pathlib.Path(tmp) / "tsconfig.json"
-            cfg.write_text(
-                json.dumps(
-                    {
-                        "compilerOptions": {
-                            "target": "ES2022",
-                            "lib": ["ES2022", "DOM", "DOM.Iterable"],
-                            "module": "ESNext",
-                            "moduleResolution": "Bundler",
-                            "jsx": "react-jsx",
-                            "strict": True,
-                            "resolveJsonModule": True,
-                            "isolatedModules": True,
-                            "skipLibCheck": True,
-                            "noEmit": True,
-                            "types": [],
-                            "paths": {
-                                p: [str(stub)] for peers in OPTIONAL_ENTRIES.values() for p in peers
-                            },
-                        },
-                        "include": [str(kit.resolve())],
-                        "exclude": [str((kit / e).resolve()) for e in OPTIONAL_ENTRIES],
-                    }
-                ),
-                encoding="utf8",
-            )
-            r = subprocess.run(
-                [str(tsc), "-p", str(cfg)], capture_output=True, text=True, timeout=600
-            )
-        note = "tsc passed with the optional entries excluded and their peers blocked"
-        if r.returncode != 0:
-            sys.stdout.write(r.stdout + r.stderr)
-            bad += 1
-            say(
-                "::error::kit-peers: the kit copy fails tsc with the optional entries excluded and their peers blocked"
-            )
-    say(f"kit-peers: {bad} finding(s); {note}")
-    return 1 if bad else 0
 
 
 # ---------------------------------------------------------------- required checks and the merge wait
@@ -2659,8 +2418,8 @@ def list_entries(text: str) -> set:
 
 
 def cmd_list_shrinks(argv: list) -> int:
-    """A shrink-only list (an exemption list, a baseline) may lose entries and never gain one (web-api-runtime.md route
-    contracts): every non-comment line of each file at HEAD was already in it at BASE. The files come from the arguments or
+    """A shrink-only list (an exemption list, a baseline) may lose entries and never gain one: every
+    non-comment line of each file at HEAD was already in it at BASE. The files come from the arguments or
     the parameters row "Shrink-only lists" (comma-separated paths)."""
     if len(argv) < 2:
         say("usage: core-ci.py list-shrinks BASE HEAD [FILE ...]")
@@ -2864,7 +2623,6 @@ COMMANDS = {
     "secret-scan": cmd_secret_scan,
     "install-psscriptanalyzer": cmd_install_pssa,
     "powershell": cmd_powershell,
-    "kit-peers": cmd_kit_peers,
     "required-checks": cmd_required_checks,
     "required-names": cmd_required_names,
     "wait-checks": cmd_wait_checks,

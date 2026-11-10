@@ -5,7 +5,7 @@ Version: 1.1 | Last reviewed: 2026-10-07 | Status: current | Scope: PowerShell
 How every the owning team PowerShell script writes its log: one CMTrace-format line per event,
 through one function, to a path that matches how the script runs. This is the canonical home of
 `Write-CMTraceLog`. The WPF-specific parts (runspaces, the in-window log pane, UI-thread rules)
-stay in [WPF PowerShell GUI Standards](wpf-powershell-gui.md#8-logging---cmtrace-format);
+stay in WPF PowerShell GUI Standards (the wpf-powershell-gui-standard doc);
 the CI gates are summarised in section 10 of this doc and defined in
 [CI/CD and Release Standard](ci-cd-release.md).
 
@@ -119,7 +119,7 @@ catch { Write-Warning "Could not create the log folder: $($_.Exception.Message)"
 | Technician GUI or interactive script (user context) | `$env:LOCALAPPDATA\Logs\Software\ToolName_<yyyyMMdd_HHmmss>.log` | What every sibling tool GUI does today. |
 | Unattended task on a server (scheduled task, service account) | `C:\ProgramData\<ToolName>\<ToolName>.log` | What `Pull-JobCode.ps1` does. Fixed name, so rotation (section 4) applies. |
 | SYSTEM: the device-management system or ExampleMDM deployment, CI discovery, remediation | `C:\Windows\Logs\Software\ToolName_<yyyyMMdd_HHmmss>.log` | Writable by SYSTEM. From the original logging skill; no sibling tool script uses it yet. |
-| Tool launched from a network share | Per-user local path above | Never log to the share or next to the script. See the share rule in the [WPF standard](wpf-powershell-gui.md#share-hosted-tools-per-user-log-path-only). |
+| Tool launched from a network share | Per-user local path above | Never log to the share or next to the script. See the share rule in the WPF standard (the wpf-powershell-gui-standard doc). |
 
 Rules:
 
@@ -172,7 +172,7 @@ The user is already in the `context` field of every line, so the header does not
   unless debugging. Include the identifier of the thing that failed.
 - Every swallowed `catch` around an AD, Graph, the device-management system/WMI/CIM, ExampleMDM, ExampleSSO, file-share or
   registry call logs a Warning or Error. The full rule and the allowed empty catches are in the
-  [WPF standard](wpf-powershell-gui.md#log-every-swallowed-error-around-an-external-call).
+  WPF standard (the wpf-powershell-gui-standard doc).
 - Do not log an Error for something the script handled and recovered from; that is a Warning.
 - Components are short nouns for the section of the script: `Inventory`, `Auth`, `Network`,
   `Export`, `UI`, `Worker`, `Cleanup`. Keep the set small and stable so filters stay useful. Set
@@ -186,7 +186,7 @@ The user is already in the `context` field of every line, so the header does not
 
 The runspace rules (passing `$script:LogFile` and the function across, the `New-Item Function:\`
 registration, writing to the UI pane before the file) are in the
-[WPF standard](wpf-powershell-gui.md#8-logging---cmtrace-format) and are not repeated here.
+WPF standard (the wpf-powershell-gui-standard doc) and are not repeated here.
 Two points matter for logging in particular:
 
 - Register the function in the runspace from its `ScriptBlock`, never by `Invoke-Expression` on
@@ -311,7 +311,7 @@ standard chose as follows:
 
 | Topic | Original how-to | Sibling tool code | This standard |
 |---|---|---|---|
-| Time field | Fixed `+000` | `Pull-JobCode.ps1` writes the real UTC offset in minutes; the WPF tools and the [WPF standard](wpf-powershell-gui.md) write `+000` | Real offset; `+000` copies stay valid |
+| Time field | Fixed `+000` | `Pull-JobCode.ps1` writes the real UTC offset in minutes; the WPF tools and the WPF standard (the wpf-powershell-gui-standard doc) write `+000` | Real offset; `+000` copies stay valid |
 | `context` field | Empty | `Pull-JobCode.ps1` fills it with the Windows identity; the rest leave it empty | Windows identity |
 | Severity names | `Information` | Most function definitions use `Information`; `Pull-JobCode.ps1` and `the device-management system Collection Manager.ps1` use `Info` | `Information` |
 | Write method | `File.Open` with `FileShare.ReadWrite` | Same in the GUI tools; `Pull-JobCode.ps1` and `the device-management system Collection Manager.ps1` use `Add-Content` | `File.Open` (also immune to `-WhatIf`) |

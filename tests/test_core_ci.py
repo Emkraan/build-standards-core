@@ -643,54 +643,6 @@ class DeliverySteps(Overlay):
         self.assertIn("failed: attribution", out)
 
 
-class KitPeers(Overlay):
-    def kit(self, extra=None):
-        files = {
-            "kit-core/index.ts": "export { useChartTheme } from './charts/chartTheme';\n",
-            "kit-core/charts/chartTheme.ts": "export const useChartTheme = 1;\n",
-            "kit-core/charts/Charts.tsx": "import { Area } from 'recharts';\nexport { Area };\n",
-            "kit-core/graph/index.ts": "export * from '@xyflow/react';\n",
-            "kit-core/api-reference/index.ts": "export * from '@scalar/api-reference-react';\n",
-        }
-        files.update(extra or {})
-        self.commit("feat: kit", files)
-
-    def test_root_reaching_a_peer_fails(self):
-        self.kit()
-        self.assertEqual(self.ci("kit-peers")[0], 0)
-        self.commit(
-            "feat: bad",
-            {
-                "kit-core/charts/chartTheme.ts": "import 'recharts';\nexport const useChartTheme = 1;\n"
-            },
-        )
-        rc, out = self.ci("kit-peers")
-        self.assertEqual(rc, 1)
-        self.assertIn("optional peer recharts", out)
-
-    def test_tsconfig_must_exclude_entries_without_peers(self):
-        self.kit(
-            {
-                "app/package.json": '{"dependencies": {"recharts": "3"}}',
-                "app/tsconfig.json": '{\n  // app\n  "include": ["src", "../kit-core"],\n'
-                '  "exclude": ["../kit-core/graph"],\n}\n',
-            }
-        )
-        rc, out = self.ci("kit-peers")
-        self.assertEqual(rc, 1)
-        self.assertIn("api-reference", out)
-        self.assertNotIn("the charts peer", out)
-        self.assertNotIn("the graph peer", out)
-        self.commit(
-            "fix: x",
-            {
-                "app/tsconfig.json": '{"include": ["src", "../kit-core/**"], '
-                '"exclude": ["../kit-core/graph", "../kit-core/api-reference/**"]}'
-            },
-        )
-        self.assertEqual(self.ci("kit-peers")[0], 0)
-
-
 class RequiredChecks(Overlay):
     def setUp(self):
         super().setUp()
@@ -1024,25 +976,6 @@ class CoreStatus(Overlay):
             self.assertEqual(
                 self.by_id(self.status("--ci-results", res)[1])["a.1"]["status"], want, conclusion
             )
-
-    def test_kit_core_ci_rule_is_not_applicable_without_ui_adoption(self):
-        rules = json.loads((self.repo / "standards-core" / "rules.json").read_text())["rules"]
-        rules.append(
-            {
-                "id": "a.9",
-                "ref": "a.md 9",
-                "title": "T9",
-                "statement": "s",
-                "level": "must",
-                "applies_to": ["all"],
-                "check": {"kind": "core-ci", "command": "x", "requires": "ui-adoption"},
-                "acceptance": "x",
-            }
-        )
-        (self.repo / "standards-core" / "rules.json").write_text(json.dumps({"rules": rules}))
-        rc, rep = self.status()
-        self.assertEqual(self.by_id(rep)["a.9"]["status"], "not_applicable")
-        self.assertEqual(rep["summary"]["not_applicable"], 1)
 
     def test_proofs(self):
         (self.repo / "tests").mkdir()

@@ -5,7 +5,6 @@ Usage:
   python3 scripts/core-status.py            human summary
   python3 scripts/core-status.py --json     machine-readable report for nightly tooling
   python3 scripts/core-status.py --latest   also compare against the newest core release (needs gh)
-  python3 scripts/core-status.py --require-ui-adopted   exit 1 when a UI consumer is only partial
   python3 scripts/core-status.py --require-lint-config  exit 1 when a declared stack has no lint config,
                     or when parameters.md has no Stacks row
   python3 scripts/core-status.py --ci       read overlay-ci rule results from the latest default-branch
@@ -20,22 +19,11 @@ Usage:
                     how it was found, and behind (exit 3) when the newest release is newer; with
                     --latest the newest release is read through gh instead of from the record
 
-A UI consumer also gets a ui_adoption verdict (web-ui.md 0.11): adopted when the kit is imported from
-kit-core, no local stylesheet redefines a token (UI007, UI008, UI010), the lint has zero findings and
-ui-lint.json sets no baseline. Otherwise partial, or excepted while an active exception names web-ui.md 0.11. An overlay with no UI lint config and no kit-core is
-not_applicable. --require-ui-adopted exits 1 on partial, for the drift workflow, unless the parameters sheet's "UI
-adoption stage" is none or partial (then it reports N/A and exits 0).
-
-A stack declared in the Stacks row needs its lint config: web needs standards-local/ui-lint.json,
-powershell, python and iac need standards-local/script-lint.json. A declared stack with no config is
+A stack declared in the Stacks row needs its lint config: powershell, python and iac need
+standards-local/script-lint.json. A declared stack with no config is
 a failure (reported under problems, and its lint rules are fail, not unverified): a lint that was
 never set up proves nothing, and a silent skip let a consumer believe a rule held.
 --require-lint-config exits 1 on it, for the drift workflow.
-
-A local component that takes the name of a kit export in a file that never imports the kit is a
-stand-in for a kit part (web-ui.md 0.11, "No local copy of a kit part"), so the UI stays partial
-until it is replaced or turned into an adapter over the kit part. An adapter of the same name that
-imports the kit is allowed: it is the baseline-first step.
 
 Each registered rule gets a status:
   pass        no finding (lint rules), or proved in the core before release (core-ci rules)
@@ -48,8 +36,7 @@ Each registered rule gets a status:
               and reviewed_by; it expires like a review and is never counted as proof
   proved      a test or review rule (or an overlay-ci rule with no result read) that a valid ci or test entry in
               standards-local/proofs.json proves; counted apart from pass
-  not_applicable  a core-ci rule that needs the kit (check.requires ui-adoption) in an app whose UI is not adopted
-              Also a rule a consumer declares not applicable in proofs.json under "$not_applicable" (a rule id or
+  not_applicable  a rule a consumer declares not applicable in proofs.json under "$not_applicable" (a rule id or
               group prefix, with reason, date, reviewed_by, optional until): shown with its reason, and only for
               a rule that would otherwise be unverified. --ci fails on an entry with no reason or one expired.
   unverified  a test or review rule with no proof record, an overlay-ci rule whose workflow is installed
@@ -84,7 +71,7 @@ kind or stronger (ci > test > review); a review needs a date within "$max_review
 A missing Stacks row in standards-local/parameters.md is a problem, and --require-lint-config fails on
 it: without the row no stack is declared, so the lint config gate would check nothing.
 
-Lint rules come from lint-core/ui_lint.py and lint-core/script_lint.py. A script lint check that
+Lint rules come from lint-core/script_lint.py. A script lint check that
 covers only part of a rule (for example the ASCII half of an overlay-ci rule) can fail that rule
 with its findings, but never passes it: with no finding the rule stays unverified.
 
@@ -117,7 +104,6 @@ except ImportError:  # an overlay that predates repo_checks.py
     repo_checks = None
 
 REGISTRY = ch.ROOT / "standards-core" / "rules.json"
-LINT = ch.ROOT / "lint-core" / "ui_lint.py"
 SCRIPT_LINT = ch.ROOT / "lint-core" / "script_lint.py"
 EXCEPTIONS = ch.ROOT / "scripts" / "check-exceptions.py"
 PARAMETERS = ch.ROOT / "standards-local" / "parameters.md"
@@ -127,7 +113,6 @@ COMPARED = ("title", "statement", "level", "applies_to", "check", "acceptance")
 
 
 STACK_CONFIG = {
-    "web": "ui-lint.json",
     "powershell": "script-lint.json",
     "python": "script-lint.json",
     "iac": "script-lint.json",
@@ -214,23 +199,6 @@ def declared_scopes() -> tuple[set[str] | None, list[str]]:
     return None, [STACKS_MISSING]
 
 
-UI_STAGES = ("none", "partial", "adopted")
-
-
-def ui_stage() -> str:
-    """The "UI adoption stage" parameter: none, partial or adopted ("" when the row is absent, empty or
-    not one of those, which keeps the original behaviour: a partly adopted UI fails the drift gate).
-    none and partial mark a repo that has not finished adopting the UI yet, so the gate reports N/A."""
-    if not PARAMETERS.is_file():
-        return ""
-    for line in PARAMETERS.read_text(encoding="utf8").splitlines():
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if len(cells) >= 2 and cells[0].lower().startswith("ui adoption stage"):
-            v = cells[1].strip("`").strip().lower()
-            return v if v in UI_STAGES else ""
-    return ""
-
-
 # ---------------------------------------------------------------- overlay-ci results
 
 
@@ -258,7 +226,6 @@ CORE_CI_STEPS = (
     "core-python",
     "core-powershell",
     "core-node-pin",
-    "core-kit-peers",
     "core-required-checks",
 )
 
@@ -813,112 +780,6 @@ def in_scope(rule, scopes) -> bool:
     return scopes is None or "all" in applies or bool(scopes & set(applies))
 
 
-UI_THEME_RULES = ("UI007", "UI008", "UI010")
-# The synced folder, the package name, or the usual '@kit' alias for kit-core in the build config.
-KIT_IMPORT = ("kit-core", "@build-standards/kit", "'@kit'", '"@kit"', "'@kit/", '"@kit/')
-
-
-DEFINES = re.compile(
-    r"^\s*export\s+(?:default\s+)?(?:function|const|class)\s+([A-Z][A-Za-z0-9]*)", re.M
-)
-KIT_EXPORTS = re.compile(r"export\s*\{([^}]*)\}\s*from", re.S)
-
-
-def kit_exports(kit_dir) -> set:
-    """Component names the kit exports from its index (types are skipped)."""
-    names = set()
-    index = kit_dir / "index.ts"
-    try:
-        text = index.read_text(encoding="utf8")
-    except OSError:
-        return names
-    for m in KIT_EXPORTS.finditer(text):
-        for part in m.group(1).split(","):
-            name = part.strip().split(" as ")[-1].strip()
-            if name[:1].isupper():
-                names.add(name)
-    return names
-
-
-def stand_ins(files, kit_names) -> list:
-    """Local components named like a kit export, in files that never import the kit."""
-    out = []
-    for f in files:
-        if (
-            f.suffix not in (".tsx", ".jsx", ".ts")
-            or "kit-core" in f.parts
-            or "node_modules" in f.parts
-        ):
-            continue
-        try:
-            text = f.read_text(encoding="utf8", errors="replace")
-        except OSError:
-            continue
-        if any(k in text for k in KIT_IMPORT):
-            continue
-        for name in DEFINES.findall(text):
-            if name in kit_names:
-                out.append(f"{name} ({f.name})")
-    return sorted(set(out))
-
-
-def ui_adoption(lint, scopes) -> dict:
-    """Verdict on web-ui.md 0.11 from the lint report and a scan for the kit import."""
-    cfg_file = ch.ROOT / "standards-local" / "ui-lint.json"
-    kit_dir = ch.ROOT / "kit-core"
-    if (scopes is not None and "web" not in scopes) or not (cfg_file.is_file() or kit_dir.is_dir()):
-        return {"status": "not_applicable", "reasons": []}
-    try:
-        cfg = json.loads(cfg_file.read_text(encoding="utf8")) if cfg_file.is_file() else {}
-    except (OSError, json.JSONDecodeError):
-        cfg = {}
-    base = (ch.ROOT / cfg.get("root", ".")).resolve()
-    imported = False
-    scanned = []
-    for p in cfg.get("paths", ["src"]):
-        target = base / p
-        files = (
-            [target] if target.is_file() else sorted(target.rglob("*")) if target.is_dir() else []
-        )
-        scanned += files
-        for f in files:
-            if imported:
-                break
-            if (
-                f.suffix in (".ts", ".tsx", ".js", ".jsx", ".mjs", ".css")
-                and "node_modules" not in f.parts
-            ):
-                try:
-                    if any(k in f.read_text(encoding="utf8", errors="replace") for k in KIT_IMPORT):
-                        imported = True
-                except OSError:
-                    pass
-    copies = stand_ins(scanned, kit_exports(kit_dir))
-    theme = sum(1 for f in lint.get("findings", []) if f["rule"] in UI_THEME_RULES)
-    reasons = []
-    if not imported:
-        reasons.append("the kit is not imported from kit-core")
-    if theme:
-        reasons.append(f"{theme} local theme or token finding(s) (UI007, UI008, UI010)")
-    if lint.get("findings"):
-        reasons.append(f"{len(lint['findings'])} lint finding(s), the target is zero")
-    if lint.get("baseline_set") or cfg.get("baseline"):
-        reasons.append("ui-lint.json sets a baseline, which a UI consumer may not keep")
-    if "error" in lint:
-        reasons.append("the UI lint could not run")
-    if copies:
-        reasons.append(f"{len(copies)} local stand-in(s) for kit parts: " + ", ".join(copies[:8]))
-    return {"status": "adopted" if not reasons else "partial", "reasons": reasons}
-
-
-def ui_with_exceptions(ui, by_ref):
-    """A partial adoption covered by an active exception on web-ui.md 0.11 is excepted, not partial."""
-    ids = by_ref.get("web-ui.md 0.11")
-    if ui["status"] == "partial" and ids:
-        return dict(ui, status="excepted", exceptions=ids)
-    return ui
-
-
 def diff_rules(old, new):
     o = {r["id"]: r for r in (old or {}).get("rules", [])}
     n = {r["id"]: r for r in (new or {}).get("rules", [])}
@@ -978,11 +839,6 @@ def main(argv):
     )
     pinned_hash = lock.get("content_sha256")
     drift = bool(pinned_hash) and ch.content_hash() != pinned_hash
-    lint = (
-        run_json([str(LINT), "--json"])
-        if LINT.is_file()
-        else {"error": "lint-core/ui_lint.py missing, run sync-core.py"}
-    )
     exc = (
         run_json([str(EXCEPTIONS), "--json"])
         if EXCEPTIONS.is_file()
@@ -1022,10 +878,8 @@ def main(argv):
     gaps = missing_lint_config(scopes)
     scope_problems = scope_problems + gaps
     gap_stacks = {g.split()[1] for g in gaps}
-    ui_gap = "web" in gap_stacks
     script_gap = bool(gap_stacks & {"powershell", "python", "iac"})
     rules, out_of_scope = [], []
-    ui = ui_with_exceptions(ui_adoption(lint, scopes), by_ref)
     for r in registry.get("rules", []):
         if not in_scope(r, scopes):
             out_of_scope.append(r["id"])
@@ -1049,33 +903,10 @@ def main(argv):
                 if n_over
                 else "excepted"
             )
-        elif (
-            kind == "lint"
-            and ui_gap
-            and (r.get("applies_to") or ["all"]) != ["all"]
-            and "web" in r["applies_to"]
-        ):
-            status = "fail"
-        elif kind == "lint" and lid not in lint.get("refs", {lid: None}):
-            status = "unverified"
         elif kind == "lint":
-            n, n_over = tally(lint, {lid})
-            status = (
-                "error"
-                if "error" in lint
-                else "pass"
-                if n == 0
-                else "fail"
-                if n_over
-                else "excepted"
-            )
+            status = "unverified"
         elif kind == "core-ci":
-            # A proof the core runs on the kit holds for an app only when the app uses the kit whole.
-            status = (
-                "pass"
-                if r["check"].get("requires") != "ui-adoption" or ui["status"] == "adopted"
-                else "not_applicable"
-            )
+            status = "pass"
         elif kind == "repo-check":
             status, n, note = repo_check_status(r, by_ref)
             n_over = n if status == "fail" else 0
@@ -1125,7 +956,6 @@ def main(argv):
         },
         "scopes": sorted(scopes) if scopes is not None else None,
         "out_of_scope": out_of_scope,
-        "ui_adoption": ui,
         "summary": {
             s: sum(1 for x in rules if x["status"] == s)
             for s in (
@@ -1156,7 +986,6 @@ def main(argv):
         "warnings": list(PROOF_WARNINGS),
         "problems": (
             exc.get("problems", [])
-            + ([lint["error"]] if "error" in lint else [])
             + ([slint["error"]] if "error" in slint else [])
             + ([exc["error"]] if "error" in exc else [])
             + scope_problems
@@ -1164,8 +993,7 @@ def main(argv):
             + proof_problems
             + na_problems
         ),
-        "fixed_since_baseline": lint.get("fixed_since_baseline", 0)
-        + slint.get("fixed_since_baseline", 0),
+        "fixed_since_baseline": slint.get("fixed_since_baseline", 0),
         "script_lint": {
             "configured": bool(slint.get("configured")),
             "files": slint.get("files", 0),
@@ -1189,17 +1017,11 @@ def main(argv):
                 c = [r for r in c if in_scope(newer_by_id.get(r["id"], {}), scopes)]
                 report["new_rules"], report["changed_rules"], report["removed_rules"] = a, c, rm
 
-    require_ui = "--require-ui-adopted" in argv
-    stage = ui_stage()
-    report["ui_adoption_stage"] = stage or None
-    # none and partial: the repo is still on the way to the UI, so the adoption gate reports N/A, not red.
-    ui_pending = stage in ("none", "partial")
-    ui_bad = report["ui_adoption"]["status"] == "partial" and not ui_pending
     lint_bad = "--require-lint-config" in argv and (bool(gaps) or stacks_missing)
     na_bad = "--ci" in argv and bool(na_problems)
     if "--json" in argv:
         print(json.dumps(report, indent=2))
-        return 1 if (require_ui and ui_bad) or lint_bad or na_bad else 0
+        return 1 if lint_bad or na_bad else 0
     c, s = report["core"], report["summary"]
     print(
         f"core-status: core pinned at {c['pinned_ref']}"
@@ -1214,11 +1036,6 @@ def main(argv):
         print(
             f"  stacks: {', '.join(report['scopes']) or 'none'} ({len(out_of_scope)} rule(s) for other stacks not reported)"
         )
-    ui = report["ui_adoption"]
-    if require_ui and ui_pending:
-        print(f"  ui: N/A (UI adoption stage: {stage}; the adoption gate is skipped until adopted)")
-    elif ui["status"] != "not_applicable":
-        print(f"  ui: {ui['status']}" + (f" ({'; '.join(ui['reasons'])})" if ui["reasons"] else ""))
     for x in rules:
         if x["status"] in ("fail", "error"):
             print(
@@ -1246,11 +1063,6 @@ def main(argv):
         print(f"  CHANGED in {c['latest']}: {r['id']} {r['title']} ({', '.join(r['fields'])})")
     if lint_bad:
         print("::error::" + "; ".join(gaps + ([STACKS_MISSING] if stacks_missing else [])))
-    if require_ui and ui_bad:
-        print(
-            "::error::the UI is only partly adopted (web-ui.md 0.11): " + "; ".join(ui["reasons"])
-        )
-        return 1
     return 1 if lint_bad or na_bad else 0
 
 

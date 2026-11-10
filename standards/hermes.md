@@ -3,8 +3,8 @@ title: Hermes Standard
 last_updated: 2026-10-12
 category: standards
 related:
-  - docs/standards/web-ui.md
-  - docs/standards/web-build.md
+  - docs/standards/web-ui-standard.md
+  - docs/standards/web-build-standard.md
 ---
 # Hermes Standard: Skills and Plugins Sharing
 

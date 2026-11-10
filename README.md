@@ -1,8 +1,14 @@
 # Build Standards Core
 
-Business-agnostic build standards, design tokens and CI checks shared across the accounts that
-contribute to it. It holds no business names, hostnames, tenants or people. Each business keeps
-its own overlay repo that pins a version of this one and adds only what is specific to it.
+Business-agnostic standards and code for two things: the Hermes agent runtime and the ops center.
+It holds the ops center app (its server, engine, checks and its own web UI kit and design tokens), the
+Hermes consumer and nightly tooling, and the standards those two rely on (scripting, secrets, CI and
+release, PR review and merge, live actions, automation safety, the local ops app and ops center layout,
+RBAC, notifications, data safety, docs and the changelog). It holds no business names, hostnames, tenants
+or people. The shared web, shell and WPF design standards live in the owner's standards repo (the `web-ui-standard`,
+`web-ui-components-standard`, `web-build-standard`, `web-api-runtime-standard`,
+`web-client-runtime-standard`, `web-shell-standard`, `web-shell-modules-standard`,
+`wpf-design-system-standard` and `wpf-powershell-gui-standard` docs), not here.
 
 This repo is the one place every contributing account may update. Everything downstream is owned
 by its own account and only ever reads from here.
@@ -10,9 +16,9 @@ by its own account and only ever reads from here.
 > **Agent reading this repo for the first time:** not cloned yet? Run
 > `gh repo clone OWNER/build-standards-core ~/GitHub/build-standards-core` (a permanent path), then
 > follow [CONSUMING.md](CONSUMING.md) now. It sets up
-> the nightly job (`python3 hermes/setup.py --ui OWNER/REPO`) that applies this standard to the
-> Hermes desktop app (skills, plugins such as rtk and caveman, settings) and to every UI consumer
-> repo, then verifies it. A repo with no Hermes agent reads CONSUMING.md sections 3 and 8 to 14.
+> the nightly job (`python3 hermes/setup.py`) that applies this standard to the
+> Hermes desktop app (skills, plugins such as rtk and caveman, settings) and to every consumer repo
+> registered on the machine, then verifies it. A repo with no Hermes agent reads CONSUMING.md sections 3 and 8 to 14.
 
 `OWNER` in commands below is the GitHub account or organisation this repository lives in.
 
@@ -40,10 +46,12 @@ by its own account and only ever reads from here.
 
 ## Direction
 
-This repo is the mandatory baseline for four things: UI design (tokens, the shell, the kit),
-web frontend and backend practice, the CI workflows that proved themselves across builds, and
-agent runtime practice. A repo either conforms or records its deviations; the core is not a
-menu.
+This repo is the baseline for three things: the ops center (its code, its UI kit and tokens, and its
+layout and local-app standards), agent runtime practice (Hermes), and the scripting, secrets, CI and
+release practice that proved itself across builds. A repo either conforms or records its deviations;
+the core is not a menu. The shared web, shell and WPF design standards are the owner's standards repo's. The ops center's
+own UI kit (`opscenter/kit`) and tokens (`opscenter/tokens`) are the ops center's UI code: not a shared
+standard and not an overlay for other apps.
 
 Five ways to take the core. Every consumer picks one per repo, recorded in the machine-local
 `consumer.json`, and [CONSUMING.md](CONSUMING.md) walks an agent through each:
@@ -89,12 +97,6 @@ renders the same thing and an improvement one account contributes shows up as a 
 every other ops center. [CONSUMING.md](CONSUMING.md) section 3 has the table of who does what
 per class; the rules are `ci-cd-release.11` and `local-ops-app.19`.
 
-Baseline first. A repo that predates the core adopts the baseline before it swaps anything
-out: sync the overlay, keep every existing feature working, put thin adapters over the kit
-parts so call sites do not move, and retire the hand-rolled parts last
-([kit/MIGRATION.md](kit/MIGRATION.md) step 0; `standards/web-ui.md` 0.11 says what counts as
-adoption).
-
 Core-owned and consumer-owned paths. Inside an overlay every synced directory is core-owned:
 the nightly pull request writes it and the consumer never edits it. `standards-local/` is the
 one consumer-owned directory inside the overlay: parameters, exceptions and the repo's own
@@ -130,52 +132,29 @@ If a rule only makes sense inside one business, it belongs in that business's ov
 |---|---|
 | `standards/` | One topic per doc. This is what overlays consume |
 | `templates/overlay/` | Starter for a business overlay: pin file, sync and update scripts, `core-status.py`, `core-ci.py`, `repo_checks.py`, `merge-pr.py`, the template workflows and the local parameters sheet |
-| `tokens/` | `tokens.json` (the one token source), `build.py` and everything it generates (CSS, TS, Tailwind preset, WPF dictionaries, contrast report), plus the behavioural layer `hub-layer.css`. Synced into overlays as `tokens-core/` |
-| `checks/` | Scripts that keep this repo agnostic and clean: sanitisation and consumer neutrality (full tree or `--diff`), ASCII, placeholders, links and anchors, authors, changelog, closing references, CSS variables, token names in the docs, kit comments, the rules registry, and `auto-release.py` |
-| `lint/` | `ui_lint.py`, the static UI rules every consumer runs; synced into overlays as `lint-core/` |
-| `kit/` | The shared React kit (shell, primitives, overlays, required chrome, chart theme), its gallery and tests; `kit/src/` syncs into overlays as `kit-core/` |
-| `opscenter/` | `DESIGN.md`: the design of the locally hosted ops center app that applies the core at once (see `standards/local-ops-app.md`) |
+| `opscenter/` | The ops center: `DESIGN.md`, the app (`app/`, React and Vite), its UI kit (`kit/`, with its gallery and tests) and design tokens (`tokens/`, generated from `tokens.json` by `build.py`), the server, engine, gates, lanes, people, plans, testing and tracker code, and `applicability.json`, the rules that apply to an ops center (see `standards/local-ops-app.md`) |
 | `claude/` | The opt-in coding-agent CLI layer the nightly can apply (`claude/README.md`, `tools.json`, `apply_claude.py`) |
 | `skills/` | `core-example.md`, the worked example of a shareable skill |
 | `tests/` | The unit tests for the checks, the overlay scripts, the nightly and the lints (`python3 -m unittest discover -s tests -p "test_*.py"`) |
-| `.github/workflows/` | The core's own CI: `checks.yml` (job `ci`), `kit.yml`, `visual.yml`, `sweep.yml` (weekly full-tree checks), `release.yml` and `gallery-release.yml` (automatic releases), `automerge.yml`, and `core-ci-reusable.yml` (the opt-in reusable `core-ci` workflow consumers call) |
+| `.github/workflows/` | The core's own CI: `checks.yml` (job `ci`), `kit.yml` and `opscenter-app.yml` (the ops center kit and app), `visual.yml`, `sweep.yml` (weekly full-tree checks), `release.yml` and `gallery-release.yml` (automatic releases), `automerge.yml`, and `core-ci-reusable.yml` (the opt-in reusable `core-ci` workflow consumers call) |
 | `hermes/` | Shared practice for consumers that run the Hermes agent: `configurations.md` (settings and plugins that proved themselves), `token-efficiency.md` (where model spend goes and the setting that controls each part), `skills/core-*` (shared skills, the generated `core-practices` first), `tools.json` (adopt, adapt or reject per plugin or skill), `setup.py` (one-time consumer setup), `nightly.py` (the nightly job), `apply_setup.py`, `build_skills.py` and `sync_skills.py`. See [hermes/README.md](hermes/README.md) |
 | `CHANGELOG.md` | One dated entry per change to any standard. Read it before bumping a pin |
 | `CONTRIBUTING.md` | Rules for changing this repo |
 
 ## The standards
 
-The docs are grouped the way they build on each other: foundations (tokens, type, motion), the
-components built from them, the patterns that combine components, the app types that assemble
-patterns, and the engineering practice that ships any of it. The scope column is the `applies_to`
+The docs are grouped by what they govern: patterns for operator tools, the local ops app type, and the
+engineering practice that ships any of it. The web UI, web build, shell and WPF standards are in the owner's standards repo. The scope column is the `applies_to`
 value of the doc's registered rules (see the rules registry below).
 
 | Group | Doc | Topic | Scope |
 |---|---|---|---|
-| Foundations | `standards/web-ui.md` sections 0 to 5, 14, 16, 17 | The rules, colour tokens, Tailwind preset, type, geometry, motion, the accent tokens, categorical hues, tone and selection | web |
-| Foundations | `standards/wpf-design-system.md` sections 1 to 3, 5, 6 | The same DNA for WPF: colour, type, geometry, spacing and the hard rules | wpf |
-| Components | `standards/web-ui.md` sections 7, 8, 18, and `kit/README.md` | Primitives, dialogs, toasts, tables, charts, the stat tile, all shipped in the kit | web |
-| Components | `standards/wpf-design-system.md` section 4 | The XAML control kit | wpf |
-| Patterns | `standards/web-ui.md` sections 6, 11, 13, 19 to 25 | Shell, mobile drawer, search palette, rail, announcements and feed, build card, undo and confirm, required chrome | web |
 | Patterns | `standards/rbac.md` | Additive-union RBAC shape and the lockstep check | web |
 | Patterns | `standards/live-actions.md` | Actions in operator UIs against eventually consistent backends | all |
 | Patterns | `standards/ops-center-layout.md` | Ops center layout: hubs by what is run, sections, one card per item, one server problem list, current state vs history, run buttons with safe defaults, old links never break | local-ops |
 | Patterns | `standards/identity-and-people-data.md` | Directory as source of truth and the single roster | all (no rules yet) |
 | Patterns | `standards/notifications.md` | Message format and channel rules | all (no rules yet) |
-| App types | `standards/web-build.md` | Stack, layout, API envelope, auth, RBAC wiring and the verification gate for first-party web apps | web (no rules yet) |
-| App types | `standards/web-shell.md` | Several tools on one origin: registry generated from manifests, per-module CSS scope, storage and accent, safe return target, home as the hub | web |
-| App types | `standards/web-shell-manifest.md` | The per-module `console.module.json` a multi-module shell reads, its JSON schema and the static-manifest exception | web (no rules yet) |
-| App types | `standards/web-shell-packages.md` | The shared packages of a multi-module shell: the module contract validator and the RBAC core (code in `shell-packages/`), the server and client packages (code) | web (no rules yet) |
-| App types | `standards/web-shell-gateway.md` | The shell's own API and the gateway per tier: middleware order, route areas, the gateway token, layout and call path | web (no rules yet) |
-| App types | `standards/web-shell-auth.md` | Shell sign-in (PKCE), one scope per API, token checks, where rights are enforced, registering a permission | web (no rules yet) |
-| App types | `standards/web-shell-deploy.md` | Shell build and deploy: bundle and API pipelines, gates, the dev tier guard, fix-forward recovery | web (no rules yet) |
-| App types | `standards/web-shell-server.md` | Shell server rules: removal ceiling, own-permission modules, route gates, closed relay targets, sealed secrets, keyed audit chain, announcements, external tools, per-user state, never-invented health, persisted boot, migrations, production preflight, per-item bulk results, one-process jobs | web (no rules yet) |
-| App types | `standards/web-api-runtime.md` | Node and Express APIs behind a gateway: group caching, directory token, CORS max age and origin guard, Server-Timing, request log, telemetry, the shared runtime package | web |
-| App types | `standards/web-process-health.md` | Keeping a web process responsive: long reads in a one-shot worker, an event-loop watchdog, one job registry, staggered startup and a lock takeover that never waits on a full check | web |
-| App types | `standards/web-client-runtime.md` | Single page apps with an OIDC library: one auth boot, renewal without iframes, the API client, lazy bundles, the shared client package, the live feed strip | web |
 | App types | `standards/local-ops-app.md` | Locally hosted operations apps: contract, cost-gated analyzer, loopback server | local-ops |
-| App types | `standards/web-ui.md` sections 10, 12, 21 | WPF translation, per-app accent and the plain-CSS port, system health | web |
-| App types | `standards/wpf-powershell-gui.md` | Desktop GUI tools: encoding, runspaces, logging, modules, launching | wpf |
 | Engineering | `standards/ci-cd-release.md` | Required checks, auto-merge, dependency updates, deploy, rollback, releases, secrets | all |
 | Engineering | `standards/data-safety-sqlite.md` | Database safety rules and the recovery runbook | web |
 | Engineering | `standards/scripting-powershell.md` | Auth order, trial modes, errors, exit codes, naming, 5.1 and 7, idempotency, endpoint scripts, runbook runtimes | powershell |
@@ -196,8 +175,8 @@ each with the failure it prevents and its acceptance line, and end with a checkl
 and section an exception names, the statement, the acceptance line and how a consumer proves it
 (`lint`, `core-ci`, `overlay-ci`, `test` or `review`), and `applies_to`, the stacks it covers (`web`,
 `wpf`, `local-ops`, `powershell`, `python`, `iac`, or `all`). The check kind is one of `lint`, `core-ci`,
-`overlay-ci`, `repo-check` (a static check in `repo_checks.py`, RC001 to RC022), `test` or `review`.
-`checks/check-rules.py` keeps it in step with the docs and the UI lint, and consumers diff it between
+`overlay-ci`, `repo-check` (a static check in `repo_checks.py`, RC001 to RC027), `test` or `review`.
+`checks/check-rules.py` keeps it in step with the docs and the script lint, and consumers diff it between
 releases to raise new and changed rules. What each status means (pass, proved, attested, waived,
 not_applicable, excepted, unverified, fail) and how a consumer records a proof is in
 [CONSUMING.md](CONSUMING.md#8-rule-status-proofs-and-the-repo-checks).
@@ -243,9 +222,7 @@ For an account that owns its own repos (a different GitHub owner than the core).
    "Consuming the core", set `standards-local/parameters.md`, and run `python3 scripts/sync-core.py latest`.
 5. **Keep the offline check.** The template `core-drift.yml` needs no secret and no access to the core,
    so it works for any owner. Nothing to configure.
-6. **Mount the required chrome.** Work through section 25 of `standards/web-ui.md` for every app with a
-   sidebar. The build card's changelog must be generated in CI, not at upload time.
-7. **Open a pull request** for the overlay and let its checks pass before merging. Require `core-checks`
+6. **Open a pull request** for the overlay and let its checks pass before merging. Require `core-checks`
    in the merge gate, then follow [CONSUMING.md](CONSUMING.md#12-the-update-flow-for-an-account-that-only-has-the-public-docs)
    to keep the pin current.
 
@@ -287,10 +264,10 @@ Any scratch directory works. The result in your repo is:
 | `.github/workflows/core-drift.yml` | Runs the offline drift check on pull requests and weekly |
 | `.github/workflows/lint-sweep.yml` | Weekly full-tree lint; keeps one issue open while it fails (ci-cd-release.md 2.1) |
 | `.github/workflows/core-ci.yml` | The CI half of the standard: secret scan, workflow lint, ASCII, PR title, commitlint, attribution, identity, changelog, Python floor and ruff, PowerShell parse and edition syntax, Node pin (templates/overlay/README.md "CI workflow") |
-| `scripts/repo_checks.py` | Static checks RC001 to RC022 that `core-status.py` runs for every `repo-check` rule |
+| `scripts/repo_checks.py` | Static checks RC001 to RC027 that `core-status.py` runs for every `repo-check` rule |
 | `scripts/core-status.py`, `scripts/core-ci.py`, `scripts/merge-pr.py` | The status report, the checks behind `core-ci.yml` and the noreply-author merge wrapper |
 | `standards-local/proofs.json` | How the repo proves the rules `core-status.py` cannot see (see "Source of truth and explicit exceptions") |
-| `standards-local/ui-lint.json` | Which paths the UI lint reads, its token files and `data_palettes` |
+| `standards-local/script-lint.json` | Which paths the script lint reads and its optional baseline |
 
 The scripts resolve paths from their own location, so the overlay can sit at a repo root or in a
 subfolder (for example `standards-overlay/`). If you use a subfolder, move `.github/workflows/core-drift.yml`
@@ -309,16 +286,14 @@ git checkout -b chore/sync-core
 python3 scripts/sync-core.py            # tracks the ref in standards.lock
 python3 scripts/sync-core.py vX.Y.Z     # or pin an explicit release tag
 python3 scripts/sync-core.py latest     # or the newest release
-git add standards.lock standards-core tokens-core lint-core kit-core scripts
+git add standards.lock standards-core lint-core scripts
 python3 scripts/check-core-sync.py       # confirm the copy matches the pin
 ```
 
 The script needs `git` and Python 3.9 or newer (the floor is the macOS system python, and core CI runs
 every script on 3.9). It reads the core through `gh` when that is signed in and over anonymous HTTPS
-otherwise, from the repository named by `CORE_REPO`. It copies `standards/`,
-`tokens/`, `lint/` and `kit/src/` into `standards-core/`, `tokens-core/`, `lint-core/` and
-`kit-core/`, writes the kit's release notes generator to `scripts/gen-changelog.mjs`, refreshes the
-overlay scripts, resolves the ref to a commit, and rewrites `standards.lock` with that commit, so a
+otherwise, from the repository named by `CORE_REPO`. It copies `standards/` and `lint/` into
+`standards-core/` and `lint-core/`, refreshes the overlay scripts, resolves the ref to a commit, and rewrites `standards.lock` with that commit, so a
 pin is always an exact commit and never a moving branch. When a release changes the sync tooling
 itself, the sync hands over to the new copy in the same run. Overlays on v0.11.0 or older lack the
 handover, so run the first sync past it twice.
@@ -332,7 +307,7 @@ standards first and the code fixes after, so the gap is visible and tracked.
 ### 5. Let CI check the pin
 
 The template `core-drift.yml` is an offline check and needs no secret, no `gh` and no access to the
-core. `sync-core.py` writes a hash of `standards-core/` and `tokens-core/` into `standards.lock`
+core. `sync-core.py` writes a hash of `standards-core/` and `lint-core/` into `standards.lock`
 (`content_sha256`), and `check-core-sync.py` recomputes it. CI fails when someone edits the synced copies
 by hand or they no longer match the lock. It does not prove the lock names a real release; `sync-core.py`
 does that when you run it, because it must read the core. Syncing is a developer action that reads the
@@ -379,7 +354,7 @@ Run `python3 scripts/check-core-sync.py --latest` on a developer machine. It pri
 `pinned vX, latest vY, run sync-core.py vY` (exit 3) when you are behind, and needs no account or secret.
 
 **Upgrading.** `python3 scripts/sync-core.py latest` (or an explicit tag) on a branch, then commit
-`standards.lock`, the synced copies (`standards-core/`, `tokens-core/`, `lint-core/`, `kit-core/`) and
+`standards.lock`, the synced copies (`standards-core/`, `lint-core/`) and
 the refreshed core template workflows together and open a pull request. The sync refreshes only the
 template workflows the repo has (`core-ci.yml`, `core-drift.yml`, `core-update.yml`, `lint-sweep.yml`),
 keeps the `OVERLAY` value, `core-drift.yml`'s overlay path prefix and every line marked
@@ -391,7 +366,7 @@ leave alone. To automate this, see "Staying in lockstep" below.
 
 The core is the single source of truth and changes flow one way: core to consumers. To change a rule,
 token or hub stylesheet, open a pull request against the core, tag a release, and let consumers pick it up.
-Never edit `standards-core/`, `tokens-core/` or any file listed in `targets.map` in a consumer.
+Never edit `standards-core/`, `lint-core/` or any file listed in `targets.map` in a consumer.
 
 1. **Generated copies inside your code.** If a UI package must carry a core file (for example the token
    stylesheet), list it in `targets.map` in the overlay root, one `copy path = destination` per line, both
@@ -418,7 +393,7 @@ Never edit `standards-core/`, `tokens-core/` or any file listed in `targets.map`
      the working tree, so uncommitted work never decides the verdict.
    - Run the copy's gate on the **current** pin first. If it already fails, the update is held and the
      failure is reported as the consumer's, never blamed on the release.
-   - Then sync the copy and run everything the build runs: drift, exceptions, UI lint, typecheck and a
+   - Then sync the copy and run everything the build runs: drift, exceptions, script lint, typecheck and a
      build into a scratch folder. Typecheck with `tsc -p <project> --noEmit`, not `tsc -b`, when the
      copy links the real `node_modules`: build mode writes its build info there and can make the real
      build skip its typecheck.
@@ -442,87 +417,29 @@ Never edit `standards-core/`, `tokens-core/` or any file listed in `targets.map`
 6. **Mirrors and backups.** The synced copies are reproducible from `standards.lock`. A backup or mirror
    of a consumer should leave them out and restore with `sync-core.py <pinned ref>`, so it carries only
    the consumer's own code. Its CI restores them as in "CI that builds the app" under step 5, and its
-   recovery runbook restores them with `gh` before the first build. Secret scanners (gitleaks `generic-api-key`) read every `x:Key` in the WPF
-   token dictionaries as a key, so a repo that does carry `tokens-core/wpf/` needs a path allowlist for it.
+   recovery runbook restores them with `gh` before the first build. 
 
 #### What is and is not shared
 
-Shared: standards text, the token and hub stylesheets, the check scripts, the overlay scripts and the
-React kit (`kit/`). A React app imports the shell, primitives, overlays and required chrome from
-`kit-core/` instead of rebuilding them, so every app gets the same behaviour and the same fixes (see
-`kit/README.md`). Apps on another stack build against the required-chrome table in
-`standards/web-ui.md` section 25 and use the kit gallery as the reference. Business code, data and
-routing stay in each app.
-
-#### Vendoring into a consumer that carries no record of the core
-
-Some consumers must not reference the core at all: no lock file, no drift workflow, no repo name,
-no core package name and no core docs or lint in their tree. For those, vendor instead of overlaying:
-
-1. **Commit the kit and token sheets as plain package source.** The kit source, `tokens.css` and
-   `hub-layer.css` (and `layers.css`) live in a normal workspace package of the consumer's monorepo
-   (for example `packages/ui/src`), under the consumer's own package name, and every app imports
-   that package. The optional entries whose peers the consumer does not install (`graph/`,
-   `api-reference/` and the chart entry `charts/`) may be left out: the kit root never imports them.
-   Leave them out as whole folders and record which in the tool, so the package still typechecks
-   and the content hash (web-ui.md 0.11) is taken over the release as published, not the subset.
-2. **Keep the pin and the tooling outside the consumer.** A local tool on a machine with access to
-   the core owns the pin, the drift check and the upgrade. It archives a release tag, writes the
-   package source into a branch of the consumer, and opens an ordinary pull request ("UI kit
-   update") that the consumer's own CI gates. The pin is recorded by the tool, never in the
-   consumer repo.
-3. **Scrub, then deny.** The tool rewrites doc references and source names in comments, then fails
-   with file and line on any remaining reference to the source (repo, package or doc names). A new
-   kit comment that names a doc makes the sync fail: fix the wording in the core or add a scrub rule,
-   never hand-edit the vendored source. Deny terms match on word boundaries, so a short term never
-   matches inside an unrelated word, and a plain English word (such as "core" in a comment about a
-   pure function) is never a deny term on its own: deny the full names instead.
-4. **Mark the CSS as a side effect.** The package manifest lists its stylesheets in `sideEffects` so
-   the bundler never tree-shakes the token and kit sheets away.
-5. **Check against the consumer's React types.** Before releasing a kit change, sync it into a
-   scratch branch of the consumer (without recording the pin) and run the package typecheck there.
-   A consumer pinned to older React types catches a ref or element type the core's own types accept.
-
-#### Rolling a kit change out across apps
-
-- **Package pull request first, then one pull request per app.** The first pull request adds or
-  upgrades the shared package with no app changes. Each app then moves in its own pull request, so a
-  regression points at one app and can be reverted alone.
-- **Screenshots of every route in both themes.** Each app pull request carries before and after
-  screenshots of every route in light and dark, diffed, not a sample of pages.
-- **Scope per-app storage on a shared origin.** Apps mounted at different paths of one origin share
-  `localStorage`. Pass each app's `appId` to the shell (`AppShell appId`, `StorageScope`) so seen and
-  dismissed state stays per app, while theme and rail pin stay shared on purpose.
+Shared: standards text, the check scripts, the script lint and the overlay scripts. The ops center's own
+UI kit and tokens are not shared: they live in `opscenter/` as the ops center's code. The web, shell and
+WPF design standards are the owner's standards repo's. Business code, data and routing stay in each app.
 
 ### 7. Enforce what you consume
 
-Consuming a doc is not compliance. `core-drift.yml` runs `lint-core/ui_lint.py` on the paths in
-`standards-local/ui-lint.json`. A UI consumer clears its findings during adoption and keeps no
-baseline (`kit/MIGRATION.md`, "Close the baseline"). Only an app that runs the lint without taking
-the kit records a ratchet baseline under one explicit exception and burns it down (see
-`lint/README.md`). Wire every other acceptance line into the
+Consuming a doc is not compliance. `core-drift.yml` runs `lint-core/script_lint.py` on the paths in
+`standards-local/script-lint.json`. An app that starts with findings records a ratchet baseline under
+one explicit exception and burns it down (see `lint/README.md`). Wire every other acceptance line into the
 overlay's CI too. A rule with no check is a suggestion.
 
 ### Keeping vendored copies intact (consumer side)
 
-The synced copies (`standards-core/`, `tokens-core/`, and every `targets.map` destination) are
-content-hashed. Two classes of consumer tooling will break the hash or fail on them unless they
-are excluded:
-
-- Formatters and pre-commit fixers (biome, prettier, ruff-format) reflow vendored JSON and TS,
-  silently rewriting the bytes; the drift check then fails with a content hash mismatch. Add
-  ignore globs for the vendored directories and every `targets.map` destination, in the
-  formatter config, not just the hook (CI formatters count too). For biome:
-  `"!standards-overlay/standards-core/**"`, `"!standards-overlay/tokens-core/**"`, plus each
-  mapped destination.
-- Secret scanners (gitleaks) hit the vendored WPF resource dictionaries in `tokens-core/wpf/`,
-  where `generic-api-key` matches `Key="..."` attributes. Allowlist the vendored paths in the
-  consumer scan; the content is reviewed in this repo before release, which is where scanning it
-  belongs.
-
-The typed mirror in a UI package (a `T` object alongside `tokens.css`) is consumer-owned: when a
-sync moves a CSS custom property, the mirror's parity test fails by design. Update the mirrored
-values, and any contrast annotations, in the same PR as the sync.
+The synced copies (`standards-core/`, `lint-core/` and every `targets.map` destination) are
+content-hashed. Formatters and pre-commit fixers (biome, prettier, ruff-format) reflow vendored files,
+silently rewriting the bytes; the drift check then fails with a content hash mismatch. Add ignore globs
+for the vendored directories and every `targets.map` destination, in the formatter config, not just the
+hook (CI formatters count too). For biome: `"!standards-overlay/standards-core/**"`, plus each mapped
+destination.
 
 ## What an overlay may and may not do
 
@@ -534,9 +451,7 @@ values, and any contrast annotations, in the same PR as the sync.
   is recorded in the overlay (next section).
 - **May not edit** `standards-core/` by hand. The next sync would erase it and the pin would lie.
 
-Adopt baseline-first: an existing repo syncs the overlay and keeps its features working,
-behind thin adapters, before it swaps any hand-rolled part ([kit/MIGRATION.md](kit/MIGRATION.md)
-step 0). Inside the overlay only `standards-local/` belongs to the consumer; scripts and
+Inside the overlay only `standards-local/` belongs to the consumer; scripts and
 helpers a consumer writes for itself live in the repo's own tree, outside the synced
 directories, so no sync ever overwrites them.
 
@@ -556,7 +471,7 @@ An explicit exception lives in the overlay's `standards-local/exceptions.md`, on
 | Field | Meaning |
 |---|---|
 | `ID` | `EXC-NNN`, never reused |
-| `Rule` | Core doc and section, for example `web-ui.md 0.1` (section 0, rule 1) |
+| `Rule` | Core doc and section, for example `scripting-python.md 1.8` (section 1, rule 8) |
 | `Scope` | The app or path it covers. Never all apps: that is a core change |
 | `Deviation`, `Reason`, `Owner` | What differs, why, and who answers for it |
 | `Approved`, `Review by` | Dates. Review by is at most 180 days after approval |
@@ -684,24 +599,22 @@ python3 checks/check-links.py       # every relative markdown link and heading a
 python3 checks/check-authors.py origin/main  # every commit uses a GitHub noreply email
 python3 checks/check-changelog.py origin/main  # shipped content changed, so the changelog changed
 python3 checks/check-closing-refs.py origin/main  # no closing keyword before a consumer-report reference
-python3 tokens/build.py --check     # token outputs are current and every contrast rule passes
-python3 lint/ui_lint.py --self-test # the UI lint still catches every fixture violation
-python3 lint/ui_lint.py tokens/hub-layer.css  # the core's own recipes pass the rules it sets
+python3 opscenter/tokens/build.py --check  # ops center token outputs are current and every contrast rule passes
 python3 lint/script_lint.py --self-test  # the script lint still catches every fixture violation
 python3 checks/check-css-vars.py    # every var() in the core CSS resolves
 python3 checks/check-token-names.py # every --token a standards doc names exists
-python3 checks/check-rules.py       # the rules registry matches the docs, the UI lint and the repo checks
+python3 checks/check-rules.py       # the rules registry matches the docs, the script lint and the repo checks
 python3 checks/check-hermes-skills.py  # shared skills are core- named and core-practices is current
 python3 checks/check-hermes-tools.py   # every Hermes tool has a decision and required tools are in the doc
-python3 checks/check-kit-comments.py   # kit source comments name no doc
 python3 templates/overlay/scripts/repo_checks.py  # the repo checks pass on the core itself
 python3 -m unittest discover -s tests -p "test_*.py"  # run under the oldest supported Python (3.9) too
 ruff check . && ruff format --check .  # pinned ruff, configured in pyproject.toml
-(cd kit && npm ci && npm run check) # kit typecheck, unit and axe tests, gallery build
+(cd opscenter/kit && npm ci && npm run check) # kit typecheck, unit and axe tests, gallery build
+(cd opscenter/app && npm ci && npm run check) # ops center app typecheck, tests, build and bundle budget
 ```
 
 CI runs them on every pull request through one required job named `ci` (`checks.yml`; a push to `main`
-runs only the secret scan). The `kit` workflow runs when `kit/` or `tokens/` change, and the `visual` job
+runs only the secret scan). The `kit` and `opscenter-app` workflows run when `opscenter/kit/`, `opscenter/tokens/` or the app change, and the `visual` job
 (see [Visual gate](#visual-gate)) is required next to `ci`. CONSUMING.md section 13 says what READY means
 and what to do when a check is cancelled.
 
@@ -726,7 +639,7 @@ The hook checks only the lines a commit adds (`check-sanitised.py --staged`, `ch
 
 The `visual` workflow screenshots every kit gallery specimen (each `section` with a stable
 `specimen-<name>` id) in the dark and light themes and compares them to the committed baselines in
-`kit/visual/baselines/linux`, then runs axe in a real browser with color-contrast on, in both
+`opscenter/kit/visual/baselines/linux`, then runs axe in a real browser with color-contrast on, in both
 themes and with the dialog and the sheet open. Zero violations are allowed. It runs on every pull
 request and is a required check next to `ci`. It runs in the pinned
 Playwright image (`mcr.microsoft.com/playwright`, the same version as `@playwright/test`), which
@@ -735,7 +648,7 @@ and paused before load, reduced motion is forced, the theme is set through the `
 storage key, and `?gate` swaps the git-generated release notes for fixed sample notes.
 
 ```bash
-cd kit
+cd opscenter/kit
 npm run visual          # build the gallery, then compare and run axe (local runs use their own OS baselines)
 npm run visual:update   # dispatch the workflow with update-baselines on, then download the linux set
 npm run visual:update -- --docker   # or make the linux set locally in the same image
@@ -747,27 +660,12 @@ a baseline fails the run, and the failed run uploads the `visual-baselines` arti
 image in it, so a first baseline can come from the pull request itself. Diffs and the HTML report
 are in the `visual-report` artifact.
 
-A consumer refreshes its own baselines, against the kit it syncs, with the same script: it takes the project
-that holds the consumer's Playwright config and baselines, so the pinned image, the full-set replacement and the
-CI-first rule are the same.
-
-```bash
-node kit/scripts/visual-update.mjs --docker --root apps/site/visual --baselines baselines/linux --build "npm run build"
-node kit/scripts/visual-update.mjs --root apps/site/visual --workflow site-visual.yml --artifact site-baselines
-```
-
-`--root` is the Playwright project (the Docker run mounts the repository, works inside that folder and keeps its
-`node_modules` in a volume of its own), `--baselines` the committed folder inside it, `--build` runs before the
-screenshots (the core kit's own run keeps the gallery build; another root runs none unless given one), and `--workflow`
-and `--artifact` name the consumer's visual workflow and the artifact it uploads. With no options the script
-refreshes the core kit's baselines as before.
-
 After an update-baselines run, copy the full linux baseline set from the artifact, never a single
 specimen: copying only the changed one leaves unrelated specimens one pixel off.
 
 Every pull request also uploads the built gallery as the `kit-gallery`
-artifact. Every release attaches `kit-gallery-<tag>.zip` to the release, so any account can see the
-reference without building it. Unzip it and serve the folder (`python3 -m http.server`), because the
+artifact. Every release attaches `kit-gallery-<tag>.zip` to the release, so the kit can be seen
+without building it. Unzip it and serve the folder (`python3 -m http.server`), because the
 page loads ES modules and browsers block them from `file://`.
 
 ## Adding a new source repo
@@ -788,9 +686,9 @@ page loads ES modules and browsers block them from `file://`.
 diff in the consumer's own history, works with no extra access at build time, and cannot change
 under a consumer without a pull request.
 
-**Where do the design tokens live?** In `tokens/tokens.json`. `tokens/build.py` generates the CSS,
-TypeScript, Tailwind and WPF outputs and certifies contrast. Each app picks one named accent, or
-generates a certified custom one in its overlay.
+**Where do the ops center's design tokens live?** In `opscenter/tokens/tokens.json`.
+`opscenter/tokens/build.py` generates the CSS, TypeScript, Tailwind and WPF outputs and certifies
+contrast. The shared design standards, and any other app's tokens, are the owner's standards repo's.
 
 **A rule here conflicts with one of ours.** Tighten only. If yours is stricter, keep it. If yours
 is looser, either meet the core or open a pull request here to change it.

@@ -23,7 +23,7 @@ before(async () => {
   })
   sections = await vite.ssrLoadModule('/src/pages/operations/sections.ts')
   routes = await vite.ssrLoadModule('/src/pages/operations/routes.ts')
-  kit = await vite.ssrLoadModule(new URL('../../../kit/src/shell/HubHeader.tsx', import.meta.url).pathname)
+  kit = await vite.ssrLoadModule(new URL('../../kit/src/shell/HubHeader.tsx', import.meta.url).pathname)
 })
 
 after(async () => {

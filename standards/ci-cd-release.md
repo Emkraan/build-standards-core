@@ -8,7 +8,7 @@ implementation is the reference app repo (`.github/workflows/`, `scripts/`,
 Security, no branch protection, no paid scanners. Because there is no branch protection, the
 auto-merge workflow is what enforces "all checks green before merge".
 
-Related: [First-Party Build Standard](web-build.md) (stack and commands),
+Related: First-Party Build Standard (the web-build-standard doc) (stack and commands),
 [Data Safety - SQLite](data-safety-sqlite.md) (why the deploy is shaped this way).
 
 ---
@@ -102,7 +102,6 @@ gate.
 | `core-ci.yml` step `core-changelog` | req | req | req | - |
 | `core-ci.yml` step `core-python`, `core-powershell` | stack | stack | - | - |
 | `core-ci.yml` step `core-node-pin` | req | stack | - | - |
-| `core-ci.yml` step `core-kit-peers` | req (with `kit-core`) | req (with `kit-core`) | - | - |
 | Build, typecheck, lint and tests (`lint-and-build` or the repo's own name) | req | req, per changed app | - | local gate: typecheck, build, verify |
 | Dependency audit and OSV scan (`audit`, `osv`) | req | req | - | - |
 | Static analysis (`semgrep`) | req | req | - | - |
@@ -331,7 +330,7 @@ a merge queue) once all checks pass. The `--squash` flags below stand for the de
   env:
     REQUIRED_CHECKS: >-
       lint-and-build core-secret-scan core-workflow-lint core-ascii core-pr-title core-commitlint
-      core-attribution core-pr-issue core-identity core-changelog core-python core-node-pin core-kit-peers
+      core-attribution core-pr-issue core-identity core-changelog core-python core-node-pin
   ```
 - **Gate:** every check run on the head SHA concluded `success`, `skipped` or `neutral`, nothing is
   still running, and every name in `REQUIRED_CHECKS` is present. The PR must be mergeable and its
@@ -545,7 +544,7 @@ these files unchanged except `ci/Policy.psd1` and the `EXCLUDE` list in `scripts
 The owner's rule for how a release of the shared core reaches an app. Every consumer is in one of
 two classes, and the way it is registered with (`consumer.json` `mode`) decides which.
 
-| Class | Who | How a release lands | How new kit parts are adopted |
+| Class | Who | How a release lands | How new changes are adopted |
 |---|---|---|---|
 | apply-at-once | the ops center (a local, single-operator app) and the agent home | the nightly applies every release at once, behind the ops center's own gate, with rollback; an ops center whose source is a repo with its own CI gate gets it as a pull request that merges as soon as that CI passes, never waiting for the owner | the ops center's own pull requests or commits |
 | approval-gated | every other app: product repos, hubs, multi-module shells, vendored copies | a pull request per release (the `workflow` way's sync pull request, or the vendoring tool's pull request for `vendored`) that merges only after the owner approves it | planned pull requests the owner approves |

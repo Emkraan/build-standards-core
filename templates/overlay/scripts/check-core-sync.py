@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fail if the synced copies were edited by hand or no longer match the lock.
 
-Default (offline): recompute the content hash of standards-core/ and tokens-core/ and compare it
+Default (offline): recompute the content hash of standards-core/ and compare it
 with content_sha256 in standards.lock. Needs no network, no gh and no secret.
 
 targets.map (optional): every listed destination must equal its synced copy, so a consumer cannot
@@ -71,7 +71,7 @@ if "--remote" in sys.argv:
         how = ch.checkout_pinned(tmp / "core", cfg)
         if how != "commit":
             print(f"core sync: {how}")
-        for src, dst in (("standards", "standards-core"), ("tokens", "tokens-core")):
+        for src, dst in (("standards", "standards-core"),):
             if (tmp / "core" / src).is_dir():
                 c = filecmp.dircmp(tmp / "core" / src, ch.ROOT / dst)
                 bad += [f"{dst}/{n}" for n in sorted(c.left_only + c.right_only + c.diff_files)]

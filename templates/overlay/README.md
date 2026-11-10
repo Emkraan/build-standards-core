@@ -6,8 +6,7 @@ only what is specific to that business.
 | Path | Holds |
 |---|---|
 | `standards.lock` | The pinned ref, commit and content hash. It never names the core's repo or owner: scripts read the source from `CORE_REPO` or from the machine-local `consumer.json` |
-| `standards-core/`, `tokens-core/`, `lint-core/`, `kit-core/` | Generated copies of the core `standards/`, `tokens/`, `lint/` and `kit/src/`. Never edit by hand |
-| `standards-local/ui-lint.json` | Which app paths the UI lint checks, and an optional ratchet baseline |
+| `standards-core/`, `lint-core/` | Generated copies of the core `standards/` and `lint/`. Never edit by hand |
 | `standards-local/script-lint.json` | Which script paths the script lint checks (PowerShell and Python), the Python floor and an optional baseline. Required once `parameters.md` declares the `powershell`, `python` or `iac` stack: without it the script lint skips, and `core-status.py --require-lint-config` (run by `core-drift.yml`) fails the drift check |
 | `standards-local/` | Business-specific standards and parameter values |
 | `scripts/sync-core.py` | Refreshes `standards-core/`, the pin and the core template workflows the repo has (per-repo settings kept) |
@@ -32,7 +31,7 @@ scripts. `standards-local/` is the one consumer-owned folder in the overlay.
 ## Lint sweep
 
 `.github/workflows/lint-sweep.yml` is copied like `core-ci.yml` (a sync refreshes it and keeps
-its `OVERLAY` value at the top). Every Monday, and on demand, it runs the overlay's UI lint and script lint over the configured
+its `OVERLAY` value at the top). Every Monday, and on demand, it runs the overlay's script lint over the configured
 paths and the repo's own full-tree lint from the parameters row `Lint sweep command` (empty: only the
 overlay lints). While it fails it keeps one issue labelled `source:lint-sweep` open: it creates the issue
 the first time, then edits that issue's body and comments on it, and never opens a second one; the
@@ -70,9 +69,9 @@ not read the pull request, and a push to the default branch runs only `core-secr
 
 | Step | Proves | Runs |
 |---|---|---|
-| `core-secret-scan` | secrets-and-credentials.md 1.8 | PRs and the default branch; the base commit's scanner config (or the default rules plus a path allowlist for `tokens-core/wpf/`), ignore files and `gitleaks:allow` comments off |
+| `core-secret-scan` | secrets-and-credentials.md 1.8 | PRs and the default branch; the base commit's scanner config (or the default rules plus a path allowlist for design token files), ignore files and `gitleaks:allow` comments off |
 | `core-workflow-lint` | ci-cd-release.md 1 | every workflow: sha pins with a version comment, image digests, a top-level `permissions:` block, frozen installs |
-| `core-ascii` | pr-review-and-merge.md 1.19, wpf-design-system.md 6.1, with `core-powershell` wpf-powershell-gui.md 6 and scripting-powershell.md 1.7 | every tracked text file (section "ASCII in every file") |
+| `core-ascii` | pr-review-and-merge.md 1.19, with `core-powershell` scripting-powershell.md 1.7 | every tracked text file (section "ASCII in every file") |
 | `core-pr-title`, `core-commitlint` | ci-cd-release.md 3, pr-review-and-merge.md 1.2 | PRs |
 | `core-pr-issue` | pr-review-and-merge.md 1.20 | PRs; the body must hold exactly one of `Closes #N`, `Refs #N` plus `Remaining: ...`, or `No issue: ...`; reverts and dependency bots pass; rows `PR issue exempt authors`, `PR issue app authors` (exempt on bot branches), `PR issue bot branches` and `PR issue exempt repos` (name prefixes) name the rest, each also settable by a `PR_ISSUE_*` env var |
 | `core-attribution`, `core-identity` | pr-review-and-merge.md 1.4 | PRs; `standards-local/denylist.sha256` (optional, sha256 per lowercased term) adds the private term guard over tracked files, commits, title and body, reported by kind and place only |
@@ -81,13 +80,11 @@ not read the pull request, and a push to the default branch runs only `core-secr
 | `core-python` | scripting-python.md 1.1 and 1.10 | `python` stack: the floor interpreter, the committed ruff config's target, `ruff check`, `ruff format --check`, the test command |
 | `core-powershell` | with `core-ascii`, the two PowerShell rules above | `powershell` or `wpf` stack: parser errors and `PSUseCompatibleSyntax` for 5.1 and 7 |
 | `core-node-pin` | (ci-cd-release.md 1 principles) | `web` stack: one Node major across `.nvmrc`, `.node-version`, `engines.node` and every workflow |
-| `core-kit-peers` | (kit/MIGRATION.md step 0) | an overlay with `kit-core/`: nothing the kit root reaches imports an optional peer (`recharts`, `@xyflow/react`, `@scalar/api-reference-react`), every tsconfig that includes the whole copy excludes each optional entry (`charts`, `graph`, `api-reference`) whose peer the app does not declare, and where the repo has installed `tsc` the copy typechecks with those entries excluded and their peers blocked |
 
 Values come from `standards-local/parameters.md`: Stacks, Python floor and test command, commit
 emails, changelog file, version files, ASCII patterns, Node major. The repository variable
 `CORE_CI_RUNNER` sets `runs-on` as JSON; unset, the job runs on `ubuntu-24.04` (the Python floor, 3.9, has no build on newer images). Require `core-checks`
-in the merge gate (section "Required checks"). Exclude the vendored copies (`standards-core/`, `lint-core/`,
-`tokens-core/`, `kit-core/`) in the ruff config, as for any formatter.
+in the merge gate (section "Required checks"). Exclude the vendored copies (`standards-core/`, `lint-core/`) in the ruff config, as for any formatter.
 
 `core-status.py --ci` reads the latest default-branch run of `core-ci.yml` and turns each
 `overlay-ci` rule into pass or fail; without it an installed workflow leaves the rule unverified,
@@ -98,8 +95,6 @@ the head of the last merged pull request with the same tree.
 **Reusable alternative (v1.12.0).** A repo may call the core's reusable `core-ci` workflow from a pinned
 caller instead of copying this file; the check is then `core-checks / core-checks`. A sync leaves such a
 caller alone. See CONSUMING.md, "Alternative: call the reusable `core-ci` workflow".
-
-The workflow file gained the `kit-peers` job and the setup output `kit` in v0.57.0; a sync refreshes it.
 
 **Job names (v0.77.0).** Every job id and check name starts with `core-` (`core-python`,
 `core-identity`; `core-setup` is the helper no gate requires). Before, the template's `python` job and
@@ -155,8 +150,7 @@ repo with existing non-ASCII files gets green. It records a time-boxed exception
 `Scope` is a path, a folder or a glob (comma-separated for several). While the row is current, the
 job reports each hit inside its scope as a warning naming the exception and passes; once `Review by`
 passes, the hits fail again and `check-exceptions.py` fails the row. An exception for this rule never
-covers a `.ps1`, `.psm1`, `.psd1` or `.xaml` file: those stay under scripting-powershell.md 1.7 and
-wpf-design-system.md 6.1. The core runs the same selection over its own files
+covers a `.ps1`, `.psm1`, `.psd1` or `.xaml` file: those stay under scripting-powershell.md 1.7. The core runs the same selection over its own files
 (`checks/check-ascii.py`), with no narrowing and no exception.
 
 ### Secret scanners and token files
@@ -172,7 +166,6 @@ useDefault = true          # keep every default rule; this file only adds allowa
 [[allowlists]]
 description = "design token files hold colour hex values, not secrets"
 paths = [
-  '''(^|/)tokens-core/''',
   '''(^|/)[^/]*[Tt]okens?[^/]*\.(xaml|css|json)$''',
   '''(^|/)Themes?/[^/]*\.xaml$''',
 ]
@@ -195,8 +188,6 @@ secret scan: this snippet is for a consumer repo's scanner config only.
 Fix the source with escapes first, then a time-boxed exception for generated or vendor files, then the
 `ascii_ignore` table below the parameters in `standards-local/parameters.md` (columns `Path` and `Reason`,
 every row needs a reason, script and XAML files cannot be listed). CONSUMING.md has the order and an example.
-The `UI adoption stage` parameter (`none`, `partial`, `adopted`; empty keeps the gate on) makes the drift
-workflow report the UI adoption step as N/A until the UI series lands.
 
 ## Staying current
 
@@ -245,7 +236,7 @@ names. `checks/check-sanitised.py` in the core must pass.
 
 ## Keeping vendored copies intact
 
-The synced copies (`standards-core/`, `tokens-core/`, and every `targets.map` destination) are
+The synced copies (`standards-core/` and every `targets.map` destination) are
 content-hashed. Two classes of consumer tooling will break the hash or fail on them unless they
 are excluded:
 
@@ -253,12 +244,8 @@ are excluded:
   silently rewriting the bytes; the drift check then fails with a content hash mismatch. Add
   ignore globs for the vendored directories and every `targets.map` destination, in the
   formatter config, not just the hook (CI formatters count too). For biome:
-  `"!standards-overlay/standards-core/**"`, `"!standards-overlay/tokens-core/**"`, plus each
+  `"!standards-overlay/standards-core/**"`, plus each
   mapped destination.
-- Secret scanners (gitleaks) hit the vendored WPF resource dictionaries in `tokens-core/wpf/`,
-  where `generic-api-key` matches `Key="..."` attributes. Allowlist the vendored paths in the
-  consumer scan; the content is reviewed in the core before release, which is where scanning it
-  belongs.
 
 The typed mirror in a UI package (a `T` object alongside `tokens.css`) is consumer-owned: when a
 sync moves a CSS custom property, the mirror's parity test fails by design. Update the mirrored

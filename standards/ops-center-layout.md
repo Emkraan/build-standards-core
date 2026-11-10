@@ -10,7 +10,7 @@ consumer records an explicit exception (README, "Source of truth and explicit ex
 
 Related: [Local Ops App](local-ops-app.md) (the server, the problem list, the polling budget),
 [Live Actions](live-actions.md) (what an action does to the object it acts on),
-[Web Design System](web-ui.md) (tone, tabs, dialogs), [Automation Safety](automation-safety.md)
+Web Design System (the web-ui-standard doc) (tone, tabs, dialogs), [Automation Safety](automation-safety.md)
 (dry run first, re-verify before acting).
 
 ---

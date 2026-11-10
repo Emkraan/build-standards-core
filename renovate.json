@@ -6,17 +6,7 @@
   ],
   "packageRules": [
     {
-      "description": "Hold express at v4 until app-server route naming (shell-packages/app-server/index.js, mountTemplateOf) can read Express 5 routers (path-to-regexp 8, no layer.regexp); re-enable when that support lands.",
-      "matchPackageNames": [
-        "express"
-      ],
-      "matchUpdateTypes": [
-        "major"
-      ],
-      "enabled": false
-    },
-    {
-      "description": "Move the Playwright container tag in visual.yml and @playwright/test in kit/package.json together: Playwright refuses to start when the browser image and the library differ.",
+      "description": "Move the Playwright container tag in visual.yml and @playwright/test in opscenter/kit/package.json together: Playwright refuses to start when the browser image and the library differ.",
       "groupName": "playwright",
       "matchPackageNames": [
         "@playwright/test",

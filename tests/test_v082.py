@@ -80,7 +80,7 @@ class WorkflowMerge(unittest.TestCase):
         )
         new = corehash.merge_workflow(tpl, local)
         self.assertIn("python3 ov/scripts/check-core-sync.py", new)
-        self.assertIn("python3 ov/lint-core/ui_lint.py", new)
+        self.assertIn("python3 ov/lint-core/script_lint.py", new)
         self.assertNotIn("python3 scripts/", new)
         self.assertEqual(corehash.merge_workflow(tpl, tpl), tpl)
 

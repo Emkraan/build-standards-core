@@ -7,7 +7,7 @@ the hub DB corruption incident and are implemented in the hub in `server/src/cor
 `safety.ts` and `lifecycle.ts`, with runbooks in `docs/DEPLOYMENT.md`.
 
 Related: [CI/CD and Release Standard](ci-cd-release.md) (serialized deploys,
-pre-deploy backup, health gate, off-site backup), [First-Party Build Standard](web-build.md#5-data-and-migrations)
+pre-deploy backup, health gate, off-site backup), First-Party Build Standard (the web-build-standard doc)
 (migrations).
 
 ---
