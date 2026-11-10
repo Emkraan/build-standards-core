@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-09 (v1.195.0, data-safety-sqlite: WAL on local disk with continuous replication, conditional)
+## 2026-11-09 (v1.196.0, data-safety-sqlite: WAL on local disk with continuous replication, conditional)
 
 Opt in for a web consumer. The new allowance is settling: it is conditional on a passing restore test, which the app it came from has built but not yet run.
 
@@ -8,6 +8,31 @@ Opt in for a web consumer. The new allowance is settling: it is conditional on a
 - New section 8, "Local-disk WAL with continuous replication (conditional)": the live file, `-wal` and `-shm` on local disk; a snapshot chain plus shipped WAL frames replicated to blob storage without touching the live file; sealed blobs to fence out an old writer; a restore test that passes before the switch and reruns on a schedule. Evidence: a network file share was about 57 times slower than local disk for small synced writes (200 writes of 4 KB: 4.54 s against 0.08 s).
 - `standards/rules.json`: `data-safety-sqlite.2.4` reworded, `data-safety-sqlite.8.1` to `8.4` added (the last is a review rule); the generated `core-practices` skill is rebuilt.
 - Tests: `tests/test_rules_sqlite_wal.py` (4) pins the reworded rule, the retained share ban, the new rules, the settling status and the updated list.
+
+## 2026-11-09 (v1.195.0, slow upstream queries: cache, single flight, admission limits; tests independent of the time of day)
+
+Opt in for a web consumer; takes effect by moving its pinned core release and registering the rules.
+
+- `standards/web-api-runtime.md` section 10, "Slow upstream queries", five rules: cache a query result and serve it stale while it refreshes, single flight per query, bounded running and waiting counts with 429 beyond them, back off when the upstream throttles, and a one-shot worker per query that exits when answered. It cross-references `createSwrReader` (`standards/web-shell-packages.md` section 5.11), the same stale-while-refresh pattern for a status reading, and `standards/web-process-health.md` for the worker. A checklist line is added to section 8.
+- `standards/web-build.md` section 9.1: tests do not depend on the time of day; day buckets in a test are anchored to the UTC day of an injected instant. Evidence: a test anchored to the current time failed every evening until it was anchored to the UTC day.
+- `standards/rules.json` registers `web-api-runtime.10.1` to `10.5` and `web-build.9.1` (check kind `test`, scope `web`); the generated `core-practices` skill is rebuilt.
+- Tests: `tests/test_rules_slow_upstream.py` (5) pins the registered rules, the absence of unregistered ones, the prevents and acceptance lines, the cross-references and the evidence.
+
+## 2026-11-09 (v1.194.0, renovate: the Playwright image and @playwright/test move together)
+
+Repository change, no consumer effect.
+
+- `renovate.json` groups `@playwright/test` (`kit/package.json`) and the `mcr.microsoft.com/playwright` container image (`.github/workflows/visual.yml`) under one `playwright` update, so one pull request moves both and the visual gate never runs a library that differs from its browser image (Playwright refuses to start on a mismatch).
+
+## 2026-11-09 (v1.193.0, web-process-health: a new standard for a responsive web process)
+
+Opt in for a web consumer; takes effect by moving its pinned core release and registering the four rules.
+
+- New `standards/web-process-health.md` with four rules: a long read runs in a one-shot worker, an event-loop watchdog ends a frozen process after about 90 s, every background timer is created through one job registry (a CI check rejects any other), and startup is staggered with a lock takeover that never waits on a full check. Each rule names what it prevents, its evidence and its acceptance line.
+- Evidence from the app the rules came from: takeover after a restart waited 729,682 ms on a full check before the check moved off the main thread and was deferred, then 633 ms; a frozen process stayed up for 10 minutes until the watchdog was added.
+- The jobs-in-one-process rule stays in `standards/web-shell-server.md` section 5 and the `jobs` package in `standards/web-shell-packages.md` section 5.4; the new doc cross-references them and does not repeat them.
+- `standards/rules.json` registers `web-process-health.1.1` to `1.4` (check kind `test`, scope `web`); the README standards table has one new row; the generated `core-practices` skill is rebuilt.
+- Tests: `tests/test_rules_web_process_health.py` (5) pins the four registered rules, the absence of an unregistered fifth, the prevents, evidence and acceptance lines of each rule, the measured evidence and cross-references, and the README row.
 
 ## 2026-11-09 (v1.192.0, kit: Segmented glides its selected pill)
 
