@@ -318,7 +318,7 @@ code) works through these steps in order. Each step's key lives in the `apply` o
 | ui | every registered repo, per its mode (section 3) | `apply.ui` (on) |
 | claude | the coding-agent CLI layer: hooks, plugins, MCP servers, context compression | `apply.claude` (off; also skipped quietly when the CLI is not installed) |
 | safe-restart | the safe-restart agent and the paused restart jobs | `apply.safe_restart` (off) |
-| report | the upward scan into this account's `consumer-report` issue (section 7) | `apply.report` (on) |
+| report | the optional report sections, only when `report_repo` is set; without it the step logs "no report_repo configured; nothing filed" (section 7) | `apply.report` (on) |
 | consumption | writes `~/.config/build-standards-core/consumption.json`, the feed every ops center's Core consumption panel renders (section 5); read-only on every remote | `apply.consumption` (on) |
 
 Turn the off-by-default steps on (or any step back off) without editing the file:
@@ -353,7 +353,6 @@ Version 2 is the current shape:
     "report": true,
     "consumption": true
   },
-  "report_repo": "OWNER/PRIVATE-INTAKE",
   "ui_consumers": [
     {
       "repo": "OWNER/REPO",
@@ -385,8 +384,8 @@ Version 2 is the current shape:
 | `ui_consumers[].apply_via` | `ops-center` only: `pr` lands each release as a pull request through the repo's own CI gate and merges it at once; `direct` commits to the default branch; missing: detected (a remote whose default branch requires status checks, or the repo's own pre-push guard, means `pr`) | v0.64.0 |
 | `ui_consumers[].changelog_cmd` | `ops-center` with `apply_via` `pr`: a command run from the worktree after the sync pull request opened, with `{pr}` and `{version}` filled in (split like a shell would, no shell); what it changes is committed as one new commit on the sync branch, so a repo that wants a `CHANGELOG.md` entry per PR number can meet it; a failing command closes the pull request like any failed step. Missing: nothing runs. A `workflow` consumer sets the repository variable `CORE_UPDATE_CHANGELOG_CMD` instead (run with `bash -c`) | v1.124.0 |
 | `ui_consumers[].pr_timeout_min` | `ops-center` with `apply_via` `pr`: minutes to wait for the repo's own checks before the pull request is closed (default 60) | v0.64.0 |
-| `report_issue` | number of the open `consumer-report` issue in the intake that the nightly updates (also `CORE_REPORT_ISSUE`); when set and open it is used before any search, so a search lag or a changed label never opens a second issue; unset: the open `consumer-report` issues of this account are searched, by the search index and then by the REST listing | v1.27.6 |
-| `report_repo` | `OWNER/REPO` of the private intake that receives this account's consumer report (section 7); set it with `hermes/setup.py --report-repo OWNER/REPO` | v0.102.0 |
+| `report_issue` | optional, with `report_repo` only: number of the open `consumer-report` issue there that the nightly updates (also `CORE_REPORT_ISSUE`); when set and open it is used before any search, so a search lag or a changed label never opens a second issue; unset: the open `consumer-report` issues of this account are searched, by the search index and then by the REST listing | v1.27.6 |
+| `report_repo` | optional, unset by default: `OWNER/REPO` of a private repository where the nightly keeps its machine-made report sections (section 7); set it with `hermes/setup.py --report-repo OWNER/REPO`. Unset, nothing is filed or read | v0.102.0 |
 | `ui_consumers[].pin` | `vendored` only: a file on this machine where the vendoring tool writes the release it copied (the first `vX.Y.Z` in it is read); optional when the tool records the source hash instead | v0.58.0 |
 
 A release that adds a key adds its row here with the release, and the nightly fills the default in
@@ -418,8 +417,8 @@ entry too (#117 G-031). Its counts reach the report through `core-status.py --ve
 `~/.config/build-standards-core/consumption.json` (schema versioned, written atomically): per
 registered consumer its class, pin, latest, behind count, open sync pull request with CI state,
 core-status counts and adoption suggestions, this account's report items waiting for a
-decision or approved with no core pull request yet, and a `peers` block read from every open
-`consumer-report` issue in the private intake (`report_repo`). Every ops center renders its Core consumption panel from it
+decision or approved with no core pull request yet, and a `peers` block, both only when the
+optional `report_repo` is set (otherwise `not_collected` says so). Every ops center renders its Core consumption panel from it
 (standards/local-ops-app.md section 19, which holds the schema). The feed is read-only on every
 remote and never writes to another account's issue.
 
@@ -465,42 +464,39 @@ longer exists.
 
 ## 7. The upward path
 
-You do not open a pull request on this repo from a build, and the nightly never opens one either.
-What a build learns goes into one place: this account's single open `consumer-report` issue in the
-owner's PRIVATE intake repository, named on this machine as `report_repo` in `consumer.json` (set it
-with `hermes/setup.py --report-repo OWNER/REPO`), created from the intake's `consumer-report`
-template on the first report run. The core is public, so a report is never filed on it: with no
-`report_repo`, a `report_repo` equal to the core, or one that is not private, the nightly files nothing
-and says why.
+The nightly files nothing upward by itself, and no build opens a pull request on this repo before
+the owner approves the change. When a consumer's agent finds a shareable improvement, it opens one
+plain, sanitised issue on the core repository: described by role, with no names, hosts, addresses,
+tokens or paths, since the core is public. The owner approves the item in the issue; the account
+that owns the approved item opens the core pull request, declares the outcome with `Refs #N` or
+`Closes #N`, and merges it once `ci` and `visual` pass. The scope test and the sanitising rules are
+in [CONTRIBUTING.md](CONTRIBUTING.md#reporting-from-a-consumer).
 
-The nightly (`hermes/report.py`) keeps its own section current between the issue's two markers
-`<!-- nightly:candidates:start -->` and `<!-- nightly:candidates:end -->`: local parts that
-duplicate or extend a kit role, local tokens or classes the lint flags, and new local additions
-since the last run. It updates the issue only when that section changed, runs the sanitiser on the
-text first and holds locally on a hit, and never touches anything outside the markers.
-
-It keeps a second section the same way, between `<!-- nightly:changes:start -->` and
-`<!-- nightly:changes:end -->`: per registered UI repo (named by a hashed label, never the repo),
-local parts added, removed or with a changed signature, the counts of local tokens and kit-class
-restyles the lint flags, the core-status count deltas, and new local parts that match a kit role.
-Its state is kept in `~/.config/build-standards-core/changes__*.json`; a quiet night keeps the last
-change set and edits nothing.
-
-The full report is produced on demand. On a consumer machine with Hermes, run:
+On a consumer machine with Hermes, run:
 
 ```bash
-hermes chat -Q -s core-consumer-report -q "Produce and file this account's consumer report now, following the core-consumer-report skill."
+hermes chat -Q -s core-improvement-issue -q "Open a core issue for this improvement, following the core-improvement-issue skill: <one line, by role>"
 ```
 
 `-s` preloads the shared skill the nightly installs, `-q` with `-Q` answers and exits. Run it where
 `gh` is signed in as the account and `CORE_REPO` is set as for the nightly. An agent without Hermes
-gets the same result by reading `hermes/skills/core-consumer-report/SKILL.md` in the core clone and
+gets the same result by reading `hermes/skills/core-improvement-issue/SKILL.md` in the core clone and
 following it step by step.
 
-Everything else you add goes outside the markers, following the report outline, the scope test and
-the sanitising rules in [CONTRIBUTING.md](CONTRIBUTING.md#reporting-from-a-consumer). The owner
-approves items in the issue; the account that owns an approved item opens the core pull request and
-links the issue.
+Optional report sections. With no `report_repo` in `consumer.json` (the default) the nightly's
+report step logs "no report_repo configured; nothing filed" and makes no call. An owner who wants
+the nightly's machine-made scan kept somewhere sets `report_repo` to a PRIVATE repository
+(`hermes/setup.py --report-repo OWNER/REPO`); a `report_repo` equal to the core, or one that is not
+private, is refused the same way. With it set, `hermes/report.py` keeps two sections current in one
+open issue labelled `consumer-report` there, each between its own markers:
+`<!-- nightly:candidates:start -->` to `<!-- nightly:candidates:end -->` (local parts that
+duplicate or extend a kit role, local tokens or classes the lint flags, new local additions) and
+`<!-- nightly:changes:start -->` to `<!-- nightly:changes:end -->` (per registered UI repo, named
+by a hashed label: local parts added, removed or with a changed signature, lint counts and
+core-status count deltas). It edits the issue only when a section changed, runs the sanitiser on
+the text first and holds locally on a hit, and keeps its state in
+`~/.config/build-standards-core/changes__*.json`. The ops center's account and peers lists are read
+from the same repository.
 
 ## 8. Rule status, proofs and the repo checks
 
@@ -709,11 +705,10 @@ web and WPF standards, their UI lint and the scrolling rules live in the owner's
 
 - The core is public. Reading it, syncing it and calling its reusable workflow need no account, invitation
   or token.
-- A build's agent never opens a pull request on this repo and never files a report on it. Findings go to the
-  account's one open `consumer-report` issue in the owner's private intake repository (section 7). The owner
-  approves items there; the account that owns an approved item opens the core pull request, links the issue
-  with `Refs #N` or `for #N` (never a closing keyword in front of a report issue: `check-closing-refs.py`
-  fails it), and merges it once `ci` and `visual` pass.
+- A build's agent never opens a pull request on this repo before approval. A shareable finding goes up as
+  one plain, sanitised issue on this repository (section 7). The owner approves items there; the account
+  that owns an approved item opens the core pull request, declares the outcome with `Refs #N` or
+  `Closes #N`, and merges it once `ci` and `visual` pass.
 - A pull request from a fork of the public core runs the same checks. `merge-pr.py` refuses a branch on a
   fork (it cannot rewrite it), so such a pull request is merged by an owner account, and one with no
   approved item behind it is closed unmerged (CONTRIBUTING.md).
@@ -845,7 +840,6 @@ python3 checks/check-rules.py
 python3 checks/check-hermes-skills.py        # regenerate with python3 hermes/build_skills.py when a source doc changed
 python3 checks/check-changelog.py origin/main
 python3 checks/check-authors.py origin/main
-python3 checks/check-closing-refs.py origin/main
 python3 -m unittest discover -s tests -p "test_*.py"
 ruff check . && ruff format --check .
 ```
@@ -869,7 +863,6 @@ scripts/core-status.py --require-lint-config` exits 0, `core-checks`
 | `DRIFT` or `content hash ... does not match the lock` | someone edited a synced copy, or a formatter reflowed it | rerun `sync-core.py` and commit both; exclude the synced folders from formatters (README) |
 | `version 3.9 was not found` on a runner | a job set up Python 3.9 on an image that has none (`ubuntu-latest`) | run on `ubuntu-24.04`, which the template and reusable workflows default to; `CORE_RUNNER` and `CORE_CI_RUNNER` override |
 | A script fails with a syntax or import error on the system Python | a construct newer than 3.9 | Python 3.9 is the floor for every shipped script and for core CI: no `match`, no `X | Y` types at runtime without `from __future__ import annotations`, no `tomllib` without a fallback |
-| `check-closing-refs` fails | a closing keyword sits in front of a `consumer-report` reference | write `Refs #N` or `for #N` |
 | A proof reads `WARNING ... does not name the rule` | the test file lacks the rule id | add the comment `core-rule: <rule id>` |
 
 ### Gate and workflow disagree (bootstrap)
@@ -928,7 +921,7 @@ job names change.
 | Token efficiency policy for an agent home | `hermes/token-efficiency.md` |
 | Per-tool decisions the nightly job installs | `hermes/tools.json` |
 | How a repo consumes the core | README "Consuming the core", `templates/overlay/` |
-| How a build reports to the core | the private intake's `consumer-report` template (`report_repo`), `CONTRIBUTING.md` |
+| How a build reports to the core | a plain issue on the core, the `core-improvement-issue` skill, `CONTRIBUTING.md` |
 | How to contribute | `CONTRIBUTING.md`, `hermes/README.md` section 4, sections 10, 11 and 13 above |
 | Rule statuses, proof records, the `RC001` to `RC027` checks | section 8, `standards/rules.json` |
 | Script lint config | section 9, `lint/README.md` |

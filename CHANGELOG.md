@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-11-11 (v2.4.0, the upward path is a plain issue on the core)
+
+The private repository that received consumer reports is retired, so nothing could be filed there. The upward path is now a plain issue on this repository, and the nightly files nothing upward by itself.
+
+- Changed: `CONTRIBUTING.md` ("Reporting from a consumer" and the Authority bullet), `CONSUMING.md`, `README.md` and `hermes/README.md` describe the new path: a consumer's agent opens one plain, sanitised issue on the core, described by role with no names, hosts, addresses, tokens or paths; the owner approves the item; the account that owns it opens the pull request, declares the outcome with `Refs #N` or `Closes #N`, and merges it once `ci` and `visual` pass.
+- Added: the shared Hermes skill `core-improvement-issue`, the procedure for that issue (scope test, draft by role, the three sanitising checks, `gh issue create` on the core). `core-practices` points at it.
+- Removed: the `core-consumer-report` skill (the full report into a single per-account issue in the retired repository). The skill sync removes it from each consumer on the next nightly.
+- Removed: `checks/check-closing-refs.py` and its `checks.yml` step. It guarded issues labelled `consumer-report`, which never exist on this repository; pull requests now declare `Closes #N` freely.
+- Kept, inert by default: `hermes/report.py` (the `nightly:candidates` and `nightly:changes` sections) and the account and peers lists in `hermes/consumption.py`. With no `report_repo` in `consumer.json` (the default, and the documented path) the report step logs "no report_repo configured; nothing filed" and makes no call, and the feed lists the account and peers as not collected. An owner may still set `report_repo` to a private repository; the scan helpers stay because the consumption feed uses them for adoption suggestions.
+- Migration: none required. A machine that has `report_repo` set to the retired repository gets a "cannot confirm ... is private" line each night until the key is removed from `consumer.json`.
+- Tests: 1 new in `tests/test_nightly_config.py` (the nightly report step with no `report_repo` logs the line, files nothing and calls no `gh`); updated in `tests/test_nightly_report.py` and `tests/test_consumption.py` for the new messages; the closing-reference tests are removed with the check.
+
 ## 2026-11-10 (v2.3.1, the overlay lock hash covers only the copies the sync writes)
 
 Fix for #264. In the overlay's `scripts/corehash.py`, `COPIES` listed `standards-core`, `tokens-core`, `lint-core` and `kit-core`, but the sync writes only `standards-core` and `lint-core` (`SYNC_MAP`). Since v2.0.0 the consumer owns `kit-core` and `tokens-core`, yet an edit to either made `check-core-sync.py` report drift.

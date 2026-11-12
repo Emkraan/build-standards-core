@@ -103,11 +103,10 @@ one consumer-owned directory inside the overlay: parameters, exceptions and the 
 standards live there. Anything else a consumer writes for itself lives in the repo's own
 tree, outside the synced directories, so no sync ever overwrites it.
 
-The upward path. A build's agent does not open a pull request here. Each account keeps one
-open issue labeled `consumer-report`, in the owner's private intake repository and never in this
-public one, carrying its report and the nightly's candidate
-findings; the owner approves items there, and the account that owns the change opens the core
-pull request for the approved items
+The upward path. The nightly files nothing upward by itself, and a build's agent does not open a
+pull request here before approval. When it finds a shareable improvement it opens one plain,
+sanitised issue on this repository, describing it by role; the owner approves the item there, and
+the account that owns the change opens the core pull request for it
 ([CONTRIBUTING.md](CONTRIBUTING.md#reporting-from-a-consumer)).
 
 The core names no build. Nothing shipped names a product, business, host or tenant; a build
@@ -545,24 +544,23 @@ best-practice patterns.
 ## Contributing back
 
 Improvements reach this repo through the upward path, not through drive-by pull requests: a
-build's agent reports, the owner approves, and the account that owns the change opens the
+build's agent opens an issue, the owner approves, and the account that owns the change opens the
 pull request. Nobody pushes to `main`.
 
-1. The consumer files what it found on its account's open `consumer-report` issue, created
-   from the `consumer-report` issue template in the owner's private intake repository (reports are never filed in this public repository);
-   the nightly appends what it finds on its own into that issue's candidate section. A
-   proposal that is not ready to adopt carries `settling` until its open questions close.
-2. The owner approves items in the issue.
+1. The consumer's agent opens one plain, sanitised issue on this repository for the improvement,
+   following the `core-improvement-issue` skill: described by role, with no names, hosts,
+   addresses, tokens or paths. The nightly files nothing upward by itself.
+2. The owner approves the item in the issue.
 3. The account that owns an approved item branches from `main` and opens the pull request
-   linking the issue. Use Conventional Commits for the commit and the PR title. Make the
-   change agnostic: name no employer, product, hostname, tenant or person; where a rule
+   declaring the outcome with `Refs #N` or `Closes #N`. Use Conventional Commits for the commit
+   and the PR title. Make the change agnostic: name no employer, product, hostname, tenant or person; where a rule
    needs a value, expose it as a parameter and document the default. Add a dated entry to
    `CHANGELOG.md` in the same pull request.
 4. Run the [checks](#checks) below (CONSUMING.md section 13 lists the pre-merge set). All must pass.
 5. If the change comes from a source repo, state in the pull request which parts were adopted, adapted
    or rejected, by role and never by name. The provenance record that would name the source stays with the
    contributing account, not in this public repo. A source repo feeds later changes the same way any
-   other consumer does: report, approval, pull request.
+   other consumer does: issue, approval, pull request.
 
 A rule is adopted when it is generic, adapted when it becomes generic once a name or platform is
 turned into a parameter, and rejected when it only makes sense inside one business. Record the
@@ -598,7 +596,6 @@ python3 checks/check-placeholders.py  # no placeholder prose standing in for rem
 python3 checks/check-links.py       # every relative markdown link and heading anchor resolves
 python3 checks/check-authors.py origin/main  # every commit uses a GitHub noreply email
 python3 checks/check-changelog.py origin/main  # shipped content changed, so the changelog changed
-python3 checks/check-closing-refs.py origin/main  # no closing keyword before a consumer-report reference
 python3 opscenter/tokens/build.py --check  # ops center token outputs are current and every contrast rule passes
 python3 lint/script_lint.py --self-test  # the script lint still catches every fixture violation
 python3 checks/check-css-vars.py    # every var() in the core CSS resolves
@@ -703,6 +700,6 @@ is looser, either meet the core or open a pull request here to change it.
 MIT, see [LICENSE](LICENSE). The standards were assembled from build standards and operating
 practice written by the repository owner's own accounts, restated as business-agnostic rules;
 the owner confirmed the right to publish all of it on 2026-10-24. Item references such as
-`(#117 G-031)` in the changelog and comments point at the owner's private intake for consumer
-reports, not at this repository's issues.
+`(#117 G-031)` in older changelog entries and comments point at consumer reports kept outside this
+repository (that channel is retired), not at this repository's issues.
 

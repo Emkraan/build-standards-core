@@ -101,6 +101,30 @@ class Dispatch(unittest.TestCase):
             nightly.shutil.which = real
         self.assertEqual((run.info, run.problems), ([], []))
 
+    def test_upward_files_nothing_without_report_repo(self):
+        # No report_repo in consumer.json is the default: the nightly logs it, files nothing, calls no gh.
+        run = nightly.Run(
+            {
+                "core": ".",
+                "hermes_home": ".",
+                "apply": dict(nightly.APPLY_DEFAULTS),
+                "ui_consumers": [{"repo": "o/r", "mode": "workflow", "path": "."}],
+            },
+            True,
+            0,
+        )
+        calls = []
+        real_sh, real_env = nightly.sh, nightly.os.environ.pop("CORE_REPORT_REPO", None)
+        nightly.sh = lambda cmd, *a, **k: calls.append(cmd) or (0, "")
+        try:
+            run.upward()
+        finally:
+            nightly.sh = real_sh
+            if real_env is not None:
+                nightly.os.environ["CORE_REPORT_REPO"] = real_env
+        self.assertEqual(run.info, ["report: no report_repo configured; nothing filed"])
+        self.assertEqual((run.problems, calls), ([], []))
+
     def test_claude_off_by_default(self):
         cfg = nightly.load_config(__import__("pathlib").Path("absent.json"))
         self.assertFalse(cfg["apply"]["claude"])
