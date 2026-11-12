@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
-"""Keep the account's upward report on the core current: one issue, one machine-owned section.
+"""Optional machine-kept report sections, off by default: written only when report_repo is set.
 
-Called by hermes/nightly.py once per nightly with every UI consumer that has a local clone, when
-apply.report is on; each section is computed for all of them in one pass, grouped per repo under a
-hashed label, and written in at most one issue edit. Each
-account has one open issue labelled `consumer-report` on the core, authored by that account. This
-module keeps the text between the markers
+The upward path does not need this module. A consumer's agent that finds a shareable improvement
+opens a plain, sanitised issue on the core itself (CONTRIBUTING.md "Reporting from a consumer"), and
+the nightly files nothing on its own. With no report_repo in consumer.json (the default) the
+nightly logs "no report_repo configured; nothing filed" and this module writes nothing. The scan
+helpers below (snapshot, local_parts, kit_parts, relation, repo_label) are also used by
+hermes/consumption.py for the adoption suggestions, whatever report_repo says.
+
+When an owner does set report_repo to a PRIVATE repository, hermes/nightly.py calls update and
+update_changes once per nightly with every UI consumer that has a local clone, when apply.report is
+on. Each section is computed for all of them in one pass, grouped per repo under a hashed label,
+and written in at most one issue edit to one open issue labelled `consumer-report` in that
+repository, authored by this account. This module keeps the text between the markers
 
     <!-- nightly:candidates:start -->  ...  <!-- nightly:candidates:end -->
 
@@ -17,8 +24,8 @@ and local additions since the last run. A second machine-owned section,
 holds, per registered UI repo, what changed since the previous nightly: local parts added, removed or
 with a changed signature, the count of local tokens and kit-class restyles the lint flags, the
 core-status count deltas, and new local parts that match a kit role (update_changes). State for it is
-kept under ~/.config/build-standards-core/. Text outside the markers belongs to the people and is
-never touched. The rules, each with its reason:
+kept under ~/.config/build-standards-core/. Text outside the markers is never touched. The rules,
+each with its reason:
 
 - Update only when the section changed. An unchanged section is not rewritten, so the issue shows
   no nightly noise and the notification stream stays quiet. Test: tests/test_nightly_report.py.
@@ -30,9 +37,8 @@ never touched. The rules, each with its reason:
   both sections: the section that creates the issue records its number there, and the other reads
   that number directly instead of listing again. A create whose number cannot be read is never
   followed by a second create in the same run. Test: tests/test_nightly_report.py.
-- Never open a PR before approval. The owner approves items in the issue; only then does the owning
-  account open the core PR and link the issue. Labels: `consumer-report` (the report) and `settling` (a proposal that is not
-  ready yet, set by people, never by this module).
+- Never on the core, never a pull request. The core is public; this module refuses a report_repo
+  equal to it or not private, and it never opens a pull request.
 
 Python 3.9, stdlib only. Network access only through the gh CLI.
 """
@@ -186,19 +192,19 @@ def sanitise(core: Path, body: str, sh: Sh) -> str:
 
 
 def report_target(report_repo: str, core_repo: str, sh: Sh) -> tuple[str, str]:
-    """(repo, "") when the upward report may be filed in report_repo, else ("", reason).
+    """(repo, "") when the optional report sections may be written in report_repo, else ("", reason).
 
-    A report carries one account's design inventory and evidence, so it is filed only in a PRIVATE
-    intake repository named in the machine config (report_repo), never in the core itself, which may
-    be public. No intake configured, the intake equal to the core, an intake that is not private or
-    whose visibility cannot be read: nothing is filed."""
+    The sections carry one account's local design data, so they are written only in a PRIVATE
+    repository named in the machine config (report_repo), never in the core itself, which is public.
+    No report_repo (the default), one equal to the core, one that is not private or whose visibility
+    cannot be read: nothing is filed."""
     target = (report_repo or "").strip()
     if not target:
-        return "", "no report_repo configured (a private intake repository); nothing filed"
+        return "", "no report_repo configured; nothing filed"
     if core_repo and target.lower() == core_repo.strip().lower():
         return (
             "",
-            f"report_repo {target} is the core repository; reports go to a private intake only",
+            f"report_repo {target} is the core repository; the optional report sections go to a private repository only",
         )
     rc, out = sh(["gh", "repo", "view", target, "--json", "visibility", "--jq", ".visibility"])
     if rc != 0:
@@ -206,7 +212,7 @@ def report_target(report_repo: str, core_repo: str, sh: Sh) -> tuple[str, str]:
     if out.strip().upper() != "PRIVATE":
         return (
             "",
-            f"report_repo {target} is {out.strip() or 'not private'}; reports go to a private repository only",
+            f"report_repo {target} is {out.strip() or 'not private'}; the optional report sections go to a private repository only",
         )
     return target, ""
 

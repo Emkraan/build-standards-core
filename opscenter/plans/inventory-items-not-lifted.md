@@ -1,6 +1,6 @@
 # Ops center and shell items the core did not lift
 
-Source: the ops center and shell inventories (intake issue 117, comments 6645998172 and 6645998639). Everything not listed here was lifted,
+Source: the ops center and shell inventories from a consumer report (a channel since retired). Everything not listed here was lifted,
 compared and found already present, or is the shell session's; the lifts are in the pull requests of the same release series.
 
 | Item | What it is | Why it was not lifted | What it needs to be lifted |

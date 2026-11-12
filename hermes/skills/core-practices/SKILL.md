@@ -16,9 +16,9 @@ How to use it:
 2. Where the work breaks a rule, fix the work. Where the rule cannot hold for a good reason, record an
    explicit exception in the consumer overlay, never a silent deviation.
 3. When the work finds a pattern another consumer's agent would want, knowing nothing about this
-   machine, and it carries no name, path or value of this estate, add it to this account's
-   `consumer-report` issue on the core (CONTRIBUTING.md "Does it belong in the core?"). Anything that
-   fails that test stays local.
+   machine, and it carries no name, path or value of this estate, open a plain, sanitised issue for
+   it on the core (the `core-improvement-issue` skill; CONTRIBUTING.md "Does it belong in the
+   core?"). Anything that fails that test stays local.
 
 ## automation-safety.md
 

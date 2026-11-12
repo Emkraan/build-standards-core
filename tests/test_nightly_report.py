@@ -233,9 +233,13 @@ class ReportTarget(unittest.TestCase):
 
         return run, calls
 
-    def test_no_intake_files_nothing(self):
+    def test_no_report_repo_files_nothing(self):
+        # The default: the upward path is a plain issue on the core, so nothing is filed or read.
         run, calls = self.sh("PRIVATE")
-        self.assertEqual(report.report_target("", "o/core", run)[0], "")
+        self.assertEqual(
+            report.report_target("", "o/core", run),
+            ("", "no report_repo configured; nothing filed"),
+        )
         self.assertEqual(calls, [])
 
     def test_the_core_is_never_the_target(self):
@@ -244,15 +248,15 @@ class ReportTarget(unittest.TestCase):
         self.assertEqual(repo, "")
         self.assertIn("core repository", why)
 
-    def test_only_a_private_intake(self):
+    def test_only_a_private_report_repo(self):
         for vis in ("PUBLIC", "INTERNAL", ""):
             run, _ = self.sh(vis)
-            self.assertEqual(report.report_target("o/intake", "o/core", run)[0], "", vis)
+            self.assertEqual(report.report_target("o/private", "o/core", run)[0], "", vis)
         run, _ = self.sh("PRIVATE\n")
-        self.assertEqual(report.report_target("o/intake", "o/core", run), ("o/intake", ""))
+        self.assertEqual(report.report_target("o/private", "o/core", run), ("o/private", ""))
 
     def test_unreadable_visibility_files_nothing(self):
         run, _ = self.sh("not found", rc=1)
-        repo, why = report.report_target("o/intake", "o/core", run)
+        repo, why = report.report_target("o/private", "o/core", run)
         self.assertEqual(repo, "")
         self.assertIn("cannot confirm", why)

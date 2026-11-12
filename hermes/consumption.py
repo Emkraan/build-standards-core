@@ -13,10 +13,10 @@ section 19.2):
     sync pull request with its CI state (workflow and vendored repos), the core-status counts and UI
     verdict, and adoption suggestions (local parts a kit part now covers, with the adoption-risk
     level when this account's consumer report gives one);
-  - account: this account's consumer-report items waiting for an owner decision, and approved items
-    this account owns with no core pull request open for them;
-  - peers: every open consumer-report issue's items with their status, and approved D items from
-    other accounts that shipped in the kit, as suggestions this machine's apps could adopt.
+  - account and peers, only with the optional report_repo (unset by default, so both are listed in
+    not_collected): this account's report items waiting for an owner decision and approved items it
+    owns with no core pull request open; every open report issue's items with their status, and
+    approved D items from other accounts that shipped in the kit, as suggestions to adopt.
 
 The rules, each with its reason:
 - Read-only. Every gh call here is a read; nothing is written to any issue, pull request or repo,
@@ -488,9 +488,10 @@ def build(
 ) -> dict:
     """The whole feed. Every read failure lands in not_collected; nothing here writes remotely.
 
-    Report issues (peers and this account's own) are read from report_repo, the private intake; core
-    pull requests are read from core_repo. Approvals are comments by report_repo's owner, the account
-    that owns the intake, which is a user even when the core belongs to an organisation."""
+    Report issues (peers and this account's own) are read only from the optional report_repo, a
+    private repository, never from the core; with none set (the default) nothing is read and
+    not_collected says so. Core pull requests are read from core_repo. Approvals are comments by
+    report_repo's owner, which is a user even when the core belongs to an organisation."""
     data = {
         "format": FORMAT,
         "generated_at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -562,9 +563,7 @@ def build(
         except Exception as exc:
             data["not_collected"].append(f"account report issues: {exc}")
     else:
-        data["not_collected"].append(
-            "peers and account: no private intake configured (report_repo)"
-        )
+        data["not_collected"].append("peers and account: no report_repo configured (optional)")
     if core_repo:
         try:
             open_prs = _json(
