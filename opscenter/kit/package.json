@@ -35,7 +35,7 @@
     "react-dom": ">=18 <20"
   },
   "devDependencies": {
-    "@axe-core/playwright": "4.13.0",
+    "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.64.0",
     "@scalar/api-reference-react": "^0.9.81",
     "@testing-library/dom": "^10.4.2",
