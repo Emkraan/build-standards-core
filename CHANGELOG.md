@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-15 (v2.4.5, the changelog check skips merge queue runs)
+## 2026-11-15 (v2.5.1, the changelog check skips merge queue runs)
 
 Clean Renovate dependency pull requests were ejected from the merge queue because `check-changelog.py` ran again on the queue's synthetic branch and failed there.
 
