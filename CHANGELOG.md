@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-15 (v2.4.1, dependency bumps need no changelog entry)
+
+`check-changelog.py` failed every Renovate pull request that touched a dependency manifest, so five dependency updates sat red and never merged.
+
+- Fixed: a pull request from a `renovate/` branch whose every changed file is a dependency manifest or lockfile (`package.json`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `requirements.txt`, `requirements-dev.txt`) no longer needs a changelog entry. Any other file in the diff, or any other branch, keeps the rule.
+- Migration: none.
+- Tests: 4 new in `tests/test_check_changelog.py`.
+
 ## 2026-11-11 (v2.4.0, the upward path is a plain issue on the core)
 
 The private repository that received consumer reports is retired, so nothing could be filed there. The upward path is now a plain issue on this repository, and the nightly files nothing upward by itself.
