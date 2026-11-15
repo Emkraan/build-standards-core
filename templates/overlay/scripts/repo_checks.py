@@ -380,55 +380,6 @@ def rc004(repo):
 
 # ---------------------------------------------------------------- RC005 CORS lives in the app only
 
-CORS_FILES = (
-    "vercel.json",
-    "staticwebapp.config.json",
-    "netlify.toml",
-    "_headers",
-    "web.config",
-    "host.json",
-    "firebase.json",
-    "now.json",
-)
-CORS_HEADER = re.compile(r"access-control-allow-origin", re.I)
-TF_CORS = re.compile(r"\bcors\s*\{[^}]*allowed_origins", re.S)
-BICEP_CORS = re.compile(r"\bcors\s*:\s*\{[^}]*allowedOrigins", re.S | re.I)
-WEB_CONFIG_CORS = re.compile(r"<\s*cors\b", re.I)
-
-
-def rc005(repo):
-    out = []
-    for p in repo.paths:
-        base = p.rsplit("/", 1)[-1]
-        if base in CORS_FILES:
-            text = repo.text(p)
-            m = CORS_HEADER.search(text) or (
-                WEB_CONFIG_CORS.search(text) if base == "web.config" else None
-            )
-            if m:
-                out.append(
-                    (
-                        p,
-                        line_of(text, m.start()),
-                        "the hosting config sets a platform CORS origin; keep CORS in the app",
-                    )
-                )
-        elif p.endswith(".tf") or p.endswith(".bicep"):
-            text = repo.text(p)
-            m = (TF_CORS if p.endswith(".tf") else BICEP_CORS).search(text)
-            if m:
-                out.append(
-                    (
-                        p,
-                        line_of(text, m.start()),
-                        "the infrastructure code sets a platform CORS origin list",
-                    )
-                )
-    return out
-
-
-# ---------------------------------------------------------------- RC006 deploys are serialised and health gated
-
 
 def uses_sqlite(repo):
     for p in repo.select(
@@ -634,26 +585,6 @@ def rc008(repo):
 # ---------------------------------------------------------------- RC009 one boot module for every app
 
 JS_EXTS = (".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx")
-AUTH_REDIRECT = re.compile(r"\.handleRedirectPromise\s*\(")
-
-
-def rc009(repo):
-    hits = {}
-    for p in repo.select(exts=JS_EXTS, tests=False):
-        lines = repo.text(p).splitlines()
-        for i, ln in enumerate(lines):
-            if not is_comment(ln) and not skipped(lines, i) and AUTH_REDIRECT.search(ln):
-                hits.setdefault(p, i + 1)
-    if len(hits) <= 1:
-        return []
-    return [
-        (p, n, f"the auth redirect is handled in {len(hits)} files; one boot module owns it")
-        for p, n in sorted(hits.items())
-    ]
-
-
-# ---------------------------------------------------------------- RC010 every secret is documented
-
 SECRET_REF = re.compile(
     r"\bsecrets\.([A-Za-z_][A-Za-z0-9_]*)|secrets\[\s*['\"]([A-Za-z_][A-Za-z0-9_]*)['\"]\s*\]"
 )
@@ -1098,84 +1029,6 @@ def rc013(repo):
 
 # ---------------------------------------------------------------- RC014 verify in both themes
 
-UI_EXTS = (".tsx", ".jsx", ".vue", ".svelte")
-
-
-def has_ui(repo):
-    return bool(repo.select(exts=UI_EXTS, tests=False)) or any(
-        p.rsplit("/", 1)[-1] == "index.html" for p in repo.paths
-    )
-
-
-def rc014(repo):
-    if not has_ui(repo):
-        return []
-    specs = [
-        p
-        for p in repo.select(exts=(".ts", ".js", ".mjs", ".tsx"))
-        if TEST_PART.search(p) or re.search(r"(^|/)(visual|playwright)(/|$)", p)
-    ]
-    text = "\n".join(repo.text(p) for p in specs)
-    if not specs:
-        return [
-            (
-                "playwright.config.ts",
-                1,
-                "a web app has no test suite that could run axe in both themes",
-            )
-        ]
-    out = []
-    if not re.search(r"AxeBuilder|axe-core|@axe-core/playwright|checkA11y", text):
-        out.append((specs[0], 1, "no test runs axe"))
-    if not (re.search(r"[\"'`]dark[\"'`]", text) and re.search(r"[\"'`]light[\"'`]", text)):
-        out.append((specs[0], 1, "no test covers both the light and the dark theme"))
-    return out
-
-
-# ---------------------------------------------------------------- RC015 required chrome is mounted
-
-
-def rc015(repo):
-    files = repo.select(exts=(".tsx", ".jsx"), tests=False)
-    shells = [p for p in files if re.search(r"<AppShell\b", repo.text(p))]
-    if not shells:
-        return []
-    if any(re.search(r"\bBuildCard\b", repo.text(p)) for p in files):
-        return []
-    return [(shells[0], 1, "an app shell is mounted and no file renders the build card")]
-
-
-# ---------------------------------------------------------------- RC016 one local gate
-
-
-def rc016(repo):
-    if "package.json" not in repo.paths:
-        return []
-    try:
-        scripts = json.loads(repo.text("package.json")).get("scripts", {})
-    except ValueError:
-        return [("package.json", 1, "package.json cannot be read")]
-    if not isinstance(scripts, dict):
-        return []
-    verify = scripts.get("verify")
-    if not verify:
-        return [("package.json", 1, "no verify script: one local gate that runs what CI runs")]
-    body = verify
-    for m in re.finditer(r"(?:node|bash|sh|python3?|tsx)\s+(\S+\.(?:mjs|js|cjs|ts|sh|py))", verify):
-        if m.group(1) in repo.paths:
-            body += "\n" + repo.text(m.group(1))
-    out = []
-    wanted = [k for k in scripts if k.startswith("check:")] + [
-        k for k in ("typecheck", "lint", "build", "test") if k in scripts
-    ]
-    for k in wanted:
-        if not re.search(rf"(?<![\w:-]){re.escape(k)}(?![\w:-])", body):
-            out.append(("package.json", 1, f"the verify script does not run {k}"))
-    return out
-
-
-# ---------------------------------------------------------------- RC017 no secret in a subprocess argument
-
 SECRET_NAME = re.compile(r"password|passwd|secret|token|api[_-]?key|credential", re.I)
 SAFE_SUFFIX = re.compile(r"(stdin|file|path|env|name|id|url|dir|src)$", re.I)
 WRAPPERS = {"str", "Path", "PurePath", "fspath", "join", "abspath", "realpath", "expanduser"}
@@ -1269,61 +1122,7 @@ def rc017(repo):
 # ---------------------------------------------------------------- RC018 long-lived vendor chunks
 
 
-def rc018(repo):
-    out = []
-    for p in repo.paths:
-        if re.search(r"(^|/)vite\.config\.[a-z]+$", p) and "manualChunks" not in repo.text(p):
-            out.append((p, 1, "the build config names no vendor chunks (manualChunks)"))
-    return out
-
-
 # ---------------------------------------------------------------- RC019 entry chunk budget
-
-BUNDLER = re.compile(r"(^|/)(vite|webpack|rollup|rspack)\.config\.[a-z]+$")
-BUDGET_FILE = re.compile(
-    r"(^|/)(\.size-limit|size-limit\.config|bundlewatch\.config|\.bundlewatch)"
-)
-BUDGET_WORD = re.compile(
-    r"size-limit|bundlewatch|bundlesize|bundle-size|check:size|check:bundle|budget", re.I
-)
-
-
-def rc019(repo):
-    bundled = [p for p in repo.paths if BUNDLER.search(p)]
-    if not bundled:
-        return []
-    if any(BUDGET_FILE.search(p) for p in repo.paths):
-        return []
-    for p in repo.paths:
-        if p.rsplit("/", 1)[-1] == "package.json":
-            try:
-                scripts = json.loads(repo.text(p)).get("scripts", {})
-            except ValueError:
-                continue
-            if isinstance(scripts, dict) and any(
-                BUDGET_WORD.search(k) or BUDGET_WORD.search(str(v)) for k, v in scripts.items()
-            ):
-                return []
-    return [(bundled[0], 1, "a bundled app has no bundle size budget check")]
-
-
-# ---------------------------------------------------------------- RC020 large inline assets become files
-
-
-def rc020(repo):
-    out = []
-    for p in repo.paths:
-        if re.search(r"(^|/)vite\.config\.[a-z]+$", p) and "assetsInlineLimit" not in repo.text(p):
-            out.append((p, 1, "the build config sets no assetsInlineLimit"))
-    return out
-
-
-# ---------------------------------------------------------------- RC021 one client package
-
-BEARER = re.compile(r"[\"'`]Bearer\s|Authorization[\"']?\s*[:=]")
-
-
-SERVER_PART = re.compile(r"(^|/)(server|backend|api|scripts|tools|functions|workers?|cli)/")
 
 
 def app_root(path):
@@ -1346,18 +1145,6 @@ def many_files_per_app(hits, what):
         if len(files) > 1
         for p, n in files
     ]
-
-
-def rc021(repo):
-    hits = {}
-    for p in repo.select(exts=JS_EXTS, tests=False):
-        if SERVER_PART.search(p):
-            continue
-        lines = repo.text(p).splitlines()
-        for i, ln in enumerate(lines):
-            if not is_comment(ln) and not skipped(lines, i) and BEARER.search(ln):
-                hits.setdefault(p, i + 1)
-    return many_files_per_app(hits, "the bearer header is built; one client package owns it")
 
 
 # ---------------------------------------------------------------- RC022 guards come from one module
@@ -1404,9 +1191,24 @@ def ops_center_files(repo, exts):
 COUNT_COMPARE = re.compile(
     r"(?:\.length|[Cc]ount|[Tt]otal|[Ff]ailed|[Ff]ailing|[Ee]rrors?|[Pp]roblems?)\)?\s*(>=|<=|===|==|>|<)\s*(\d+)\b"
 )
+# A tone that reports a problem: the badge and severity paths, or a quoted problem value (bad, warn, danger, needs-me, amber, red).
+# A display-only label (a meeting chip that reads "next" or "later") is not a problem tone and is not matched; a threshold that
+# only styles such a label may also carry the marker `display-only: <why>` in a comment on its line or the line above.
 TONE_WORD = re.compile(
-    r"\b(?:tone|badge|severity|variant|level)\b|['\"`](?:bad|warn|warning|crit|critical|danger|needs[-_ ]?me|worth)"
+    r"\b(?:badge|severity)\b|['\"`](?:bad|warn|warning|alert|error|fail|failed|failing|crit|critical|danger|needs[-_ ]?me|worth|amber|red|yellow|orange)\b"
 )
+DISPLAY_ONLY = "display-only"
+# An age or a duration is a threshold just like a count: a name that says time (age, hours, minutes, seconds, days, ms, elapsed,
+# stale, duration, ago) compared with a number, a clock difference compared with a number, or anything compared with a product of
+# time units (30 * 3600 * 1000).
+AGE_COMPARE = re.compile(
+    r"(?:[Aa]ge\w*|\w*(?:[Hh]ours?|[Hh]rs|[Mm]ins?|[Mm]inutes|[Ss]ecs?|[Ss]econds|[Dd]ays?|Ms|[Mm]illis)\w*|[Ee]lapsed\w*|[Dd]uration\w*|[Ss]tale\w*|[Aa]go)"
+    r"\)?\s*(>=|<=|===|==|>|<)\s*(\d[\d_.]*(?:e\d+)?)\b"
+)
+CLOCK_COMPARE = re.compile(
+    r"(?:Date\.now\(\)|new Date\(\)\.getTime\(\)|performance\.now\(\))[^;{}]*?(>=|<=|>|<)\s*(\d[\d_.]*(?:e\d+)?)\b"
+)
+DURATION_EXPR = re.compile(r"(>=|<=|>|<)\s*\(?\s*\d+(?:\.\d+)?\s*(?:\*\s*\d+(?:\.\d+)?\s*)+\)?")
 
 
 def _is_threshold(op, n):
@@ -1423,6 +1225,19 @@ def _is_threshold(op, n):
     return not (op == "<=" and n == 0)
 
 
+def _display_only(lines, i):
+    """True when line i or the line above carries the marker `display-only: <why>` (a threshold that only styles a label)."""
+    return DISPLAY_ONLY + ":" in lines[i] or (i > 0 and DISPLAY_ONLY + ":" in lines[i - 1])
+
+
+def _is_age_threshold(op, n):
+    """Any age or duration compared with a number other than zero is a threshold (0 asks only whether there is one)."""
+    try:
+        return float(n.replace("_", "")) != 0
+    except ValueError:
+        return True
+
+
 def rc023(repo):
     if not is_ops_center(repo):
         return []
@@ -1430,7 +1245,7 @@ def rc023(repo):
     for p in ops_center_files(repo, (".ts", ".tsx", ".js", ".jsx")):
         lines = repo.text(p).splitlines()
         for i, ln in enumerate(lines):
-            if is_comment(ln) or skipped(lines, i):
+            if is_comment(ln) or skipped(lines, i) or _display_only(lines, i):
                 continue
             prev = (
                 lines[i - 1]
@@ -1438,16 +1253,174 @@ def rc023(repo):
                 else ""
             )
             window = prev + " " + ln
-            for m in COUNT_COMPARE.finditer(ln):
-                if _is_threshold(m.group(1), m.group(2)) and TONE_WORD.search(window):
+            if not TONE_WORD.search(window):
+                continue
+            if any(_is_threshold(m.group(1), m.group(2)) for m in COUNT_COMPARE.finditer(ln)):
+                what = "a count"
+            elif (
+                any(_is_age_threshold(m.group(1), m.group(2)) for m in AGE_COMPARE.finditer(ln))
+                or any(
+                    _is_age_threshold(m.group(1), m.group(2)) for m in CLOCK_COMPARE.finditer(ln)
+                )
+                or DURATION_EXPR.search(ln)
+            ):
+                what = "an age or a duration"
+            else:
+                continue
+            out.append(
+                (
+                    p,
+                    i + 1,
+                    f"{what} is compared with a number to decide a tone or badge; the server problem list decides",
+                )
+            )
+    return out
+
+
+OVERRIDE_WORD = re.compile(r"override|bypass", re.I)
+OFF_VERB = re.compile(
+    r"\b(?:clear|reset|expire|revoke|disable|turn[_ ]?off|unset|remove|delete|purge|wipe)\w*", re.I
+)
+# A file that schedules work: by its path, or by code that does (a cron entry, a timer, a scheduled call). Words in a string
+# literal or in JSX text (help text such as "turns itself off at midnight") are never code and never match.
+SCHEDULED_PATH = re.compile(r"cron|schedul|timer|nightly|midnight", re.I)
+SCHEDULED = re.compile(
+    r"\bcron\b|crontab|setInterval|setTimeout|apscheduler|\bsched\.|schedule\.|@scheduled|launchd|systemd|\.every\(|\bTimer\(|add_job\(",
+    re.I,
+)
+STRING_LITERAL = re.compile(r"\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`")
+JSX_TEXT = re.compile(r">[^<>{}]*[A-Za-z][^<>{}]*<|^\s*[A-Za-z][^<>{}=;()]*$")
+
+
+def _code(line):
+    """The line without its string literals and JSX text, which carry words and no behaviour."""
+    return JSX_TEXT.sub("><", STRING_LITERAL.sub('""', line))
+
+
+OPEN_RETURN = re.compile(
+    r"return\s+(?:True|true)\b|return\s*\{[^}]*\b(?:on|active|allowed|bypass\w*)\b[\"']?\s*:\s*(?:True|true)\b"
+)
+ENCLOSING = re.compile(r"(?:def|function)\s+([A-Za-z_]\w*)|(?:const|let)\s+([A-Za-z_]\w*)\s*=")
+
+
+def _enclosing_name(lines, i):
+    for j in range(i, -1, -1):
+        m = ENCLOSING.search(lines[j])
+        if m:
+            return m.group(1) or m.group(2)
+    return ""
+
+
+def rc025(repo):
+    """An override fails closed and nothing turns it off (ops-center-layout.md 1.10): no override or bypass reader answers
+    yes from an error handler, and no scheduled job clears, expires or revokes an override."""
+    if not is_ops_center(repo):
+        return []
+    out = []
+    for p in ops_center_files(repo, (".py", ".ts", ".tsx", ".js", ".jsx")):
+        text = repo.text(p)
+        lines = text.splitlines()
+        code = [_code(ln) for ln in lines]
+        scheduled = bool(
+            SCHEDULED_PATH.search(p)
+            or any(SCHEDULED.search(c) for ln, c in zip(lines, code) if not is_comment(ln))
+        )
+        for i, ln in enumerate(lines):
+            if is_comment(ln) or skipped(lines, i):
+                continue
+            if scheduled and OVERRIDE_WORD.search(code[i]) and OFF_VERB.search(code[i]):
+                out.append(
+                    (
+                        p,
+                        i + 1,
+                        "a scheduled job turns an override off; the stored expiry does that on every read",
+                    )
+                )
+            if re.match(r"\s*(?:except\b|\}?\s*catch\b)", ln) and OVERRIDE_WORD.search(
+                _enclosing_name(lines, i)
+            ):
+                tail = " ".join(lines[i : i + 4])
+                if OPEN_RETURN.search(tail):
                     out.append(
                         (
                             p,
                             i + 1,
-                            "a count is compared with a number to decide a tone or badge; the server problem list decides",
+                            "an override reader answers yes from an error handler; a missing or unreadable store means no override",
                         )
                     )
-                    break
+    return out
+
+
+INSTALL_PATH = re.compile(r"install|deploy|setup|update|upgrade", re.I)
+SCRIPT_TARGET = r"[^\s\"';|&]*\.(?:sh|bash|py)\b"
+IN_PLACE_WRITE = re.compile(
+    r"^\s*(?:cp|install|rsync)\b[^#|;&]*?\s(" + SCRIPT_TARGET + r")[\"']?\s*$"
+    r"|^\s*(?:cat|echo|printf)\b[^#|;&]*>\s*(" + SCRIPT_TARGET + r")"
+    r"|^\s*tee\b[^#|;&]*?\s(" + SCRIPT_TARGET + r")"
+)
+STAGED = re.compile(r"\.(?:new|tmp|partial|staged)\b|\$\{?(?:tmp|TMP|new|NEW|staged)|mktemp")
+
+
+def rc026(repo):
+    """An installer replaces a script by renaming a new file into place (automation-safety.md 1.11): an install, deploy or
+    update shell script that writes a shell or Python file at its final name, with no rename (mv) anywhere in the file."""
+    out = []
+    for p in repo.select(exts=(".sh", ".bash"), tests=False):
+        if not INSTALL_PATH.search(p):
+            continue
+        text = repo.text(p)
+        lines = text.splitlines()
+        if re.search(r"^\s*(?:mv|ln\s+-[a-z]*f[a-z]*)\s", text, re.M):
+            continue
+        for i, ln in enumerate(lines):
+            if is_comment(ln) or skipped(lines, i):
+                continue
+            m = IN_PLACE_WRITE.search(ln)
+            target = next((g for g in m.groups() if g), "") if m else ""
+            if target and not STAGED.search(target) and not STAGED.search(ln):
+                out.append(
+                    (
+                        p,
+                        i + 1,
+                        "a script is written in place; write a new file beside it and rename it over the old one",
+                    )
+                )
+    return out
+
+
+CODEMOD_PATH = re.compile(r"codemod", re.I)
+FIXER_PATH = re.compile(r"auto-?fix|lint-?fix|fixer", re.I)
+REGEX_REWRITE = re.compile(r"\bre\.(?:sub|subn)\(|\.replace\(\s*/|\.replaceAll\(\s*/")
+IN_PLACE_EDIT = re.compile(r"\bsed\s+-i|\bperl\s+-[a-z]*p[a-z]*i")
+
+
+def rc027(repo):
+    """An automatic lint fix is an AST codemod (automation-safety.md 1.12): a script named codemod that rewrites code with a
+    regular expression, and a fix, autofix or lint-fix script that edits files in place with sed or perl, are flagged. A
+    regular expression that only normalises text in an autofix lane (a key, a catalog line) is not a code rewrite."""
+    out = []
+    for p in repo.select(exts=(".py", ".js", ".mjs", ".ts", ".sh"), tests=False):
+        pat = (
+            REGEX_REWRITE
+            if CODEMOD_PATH.search(p)
+            else IN_PLACE_EDIT
+            if FIXER_PATH.search(p)
+            else None
+        )
+        if pat is None:
+            continue
+        lines = repo.text(p).splitlines()
+        for i, ln in enumerate(lines):
+            if is_comment(ln) or skipped(lines, i):
+                continue
+            if pat.search(ln) or (pat is REGEX_REWRITE and IN_PLACE_EDIT.search(ln)):
+                out.append(
+                    (
+                        p,
+                        i + 1,
+                        "a codemod rewrites code with a regular expression or sed; read the syntax tree instead, or list the rule as vetted",
+                    )
+                )
     return out
 
 
@@ -1513,26 +1486,20 @@ CHECKS = {
     "RC002": ("merge without the head sha", "pr-review-and-merge.md 1.6", rc002),
     "RC003": ("major updates auto-merge", "ci-cd-release.md 4", rc003),
     "RC004": ("merge gate runs PR code", "ci-cd-release.md 5", rc004),
-    "RC005": ("platform CORS config", "web-api-runtime.md 3.3", rc005),
     "RC006": ("deploy not serialised or health gated", "data-safety-sqlite.md 2.10", rc006),
     "RC007": ("destructive migration", "data-safety-sqlite.md 2.12", rc007),
     "RC008": ("real-looking fixture address", "identity-and-people-data.md 1.7", rc008),
-    "RC009": ("auth redirect handled outside one module", "web-client-runtime.md 1.2", rc009),
     "RC010": ("undocumented secret", "ci-cd-release.md 9", rc010),
     "RC011": ("cross-repo checkout without a deploy key", "secrets-and-credentials.md 1.4", rc011),
     "RC012": ("import outside the standard library not pinned", "scripting-python.md 1.2", rc012),
     "RC013": ("deploy without CI or health gate", "ci-cd-release.md 6", rc013),
-    "RC014": ("no axe run in both themes", "web-ui.md 9", rc014),
-    "RC015": ("app shell without the build card", "web-ui.md 25", rc015),
-    "RC016": ("no complete verify script", "web-build.md 8.1", rc016),
     "RC017": ("secret in a subprocess argument", "scripting-python.md 1.3", rc017),
-    "RC018": ("no vendor chunks", "web-client-runtime.md 4.2", rc018),
-    "RC019": ("no bundle size budget", "web-client-runtime.md 4.1", rc019),
-    "RC020": ("no inline asset limit", "web-client-runtime.md 4.3", rc020),
-    "RC021": ("bearer header built in many files", "web-client-runtime.md 5.1", rc021),
     "RC022": ("permissions compared by hand in many files", "rbac.md 3", rc022),
-    "RC023": ("client-side count threshold", "ops-center-layout.md 1.4", rc023),
+    "RC023": ("client-side count, age or duration threshold", "ops-center-layout.md 1.4", rc023),
     "RC024": ("route removed without a redirect", "ops-center-layout.md 1.9", rc024),
+    "RC025": ("override fails open or is turned off by a job", "ops-center-layout.md 1.10", rc025),
+    "RC026": ("a script is installed in place", "automation-safety.md 1.11", rc026),
+    "RC027": ("a codemod rewrites by regular expression", "automation-safety.md 1.12", rc027),
 }
 
 

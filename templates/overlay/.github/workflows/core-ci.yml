@@ -18,9 +18,9 @@ name: core-ci
 #   the check name `core-checks` is the one the merge gate reads, and an edit that starts seconds after
 #   a push cancels that push's run through the concurrency group. A lighter edit run would then report
 #   a green `core-checks` for a commit whose full checks were cancelled or had failed.
-#   push to the default branch: only core-secret-scan, the one check that covers a commit that lands
-#   without a pull request. The merge gate requires an up to date head, so re-running the rest after
-#   the merge would re-test the tree the pull request run proved.
+#   push to the default branch: not a trigger. The rulesets allow a change to land only through a pull
+#   request, and the merge gate requires an up to date head, so a run after the merge would re-test the
+#   tree the pull request run proved (one run per merge, for nothing).
 #
 # Configure: OVERLAY is the overlay folder relative to the repo root ("." when it is the root).
 # scripts/sync-core.py refreshes this file on every sync and keeps the repo's OVERLAY value.
@@ -34,8 +34,6 @@ on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
   merge_group:
-  push:
-    branches: [main]
 permissions:
   contents: read
 concurrency:
@@ -84,6 +82,15 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: python3 "$OVERLAY/scripts/core-ci.py" pr-title
 
+      - name: core-pr-issue
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: python3 "$OVERLAY/scripts/core-ci.py" pr-issue
+
       - name: core-commitlint
         if: ${{ !cancelled() && env.COMMITS == 'true' }}
         run: python3 "$OVERLAY/scripts/core-ci.py" commitlint "$BASE" "$HEAD"
@@ -98,6 +105,10 @@ jobs:
       - name: core-identity
         if: ${{ !cancelled() && env.COMMITS == 'true' }}
         run: python3 "$OVERLAY/scripts/core-ci.py" identity "$BASE" "$HEAD"
+
+      - name: core-repo-checks
+        if: ${{ !cancelled() && env.FULL == 'true' }}
+        run: python3 "$OVERLAY/scripts/core-ci.py" repo-checks
 
       # One entry per pull request, append-only, when the parameters row "Changelog entries" is per-pr.
       - name: core-changelog
@@ -133,12 +144,6 @@ jobs:
       - name: core-node-pin
         if: ${{ !cancelled() && env.FULL == 'true' && steps.p.outputs.web == 'true' }}
         run: python3 "$OVERLAY/scripts/core-ci.py" node-pin
-
-      # Static checks always; tsc runs too when the repo has installed it (add an install step before
-      # this one to typecheck the copy with the optional peers blocked).
-      - name: core-kit-peers
-        if: ${{ !cancelled() && env.FULL == 'true' && steps.p.outputs.kit == 'true' }}
-        run: python3 "$OVERLAY/scripts/core-ci.py" kit-peers
 
       # A REQUIRED_CHECKS list in a gate workflow must name every core-ci job and no removed one (a
       # repo gated by a ruleset has no list and skips). Fails the sync pull request that renames a job

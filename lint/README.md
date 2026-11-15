@@ -1,86 +1,15 @@
-# UI lint
+# Script lint
 
-`ui_lint.py` is the static half of the web-ui rules. It runs in every overlay's `core-drift.yml`
-against the paths in `standards-local/ui-lint.json`, and in core CI against its own fixtures
+`script_lint.py` is the mechanical half of the PowerShell and Python scripting rules. Findings are
+suppressed only with `core-exception: EXC-NNN` on the line or the line above, naming the rule: the
+ID must be an active row in `standards-local/exceptions.md` whose rule is the finding's rule, and an
+expired exception stops suppressing. There is no switch that turns a rule off. A baseline ratchet
+(`--write-baseline`, `--json`) lets an app that starts with findings record them and burn them down,
+one exception row per rule with findings. It runs in core CI against its own fixtures
 (`--self-test`). Standard library Python, no install.
 
-| Rule | Catches | Standard |
-|---|---|---|
-| UI001 | Edge-bar accents: a coloured or 2px+ single-side border, an inset side stripe, a thin edge pseudo-element, a first or last grid track of 6px or less in a file where a painted cell stretches or takes full height, a non-pseudo element 6px or less wide with a painted background (dots, where the height is at most twice the width, are fine) | web-ui 0.1 |
-| UI002 | `window.alert`, `confirm`, `prompt`, or a bare `alert(`, `confirm(`, `prompt(` the file never binds itself. `const { confirm, dialog } = useConfirm()` then `confirm(...)` is not flagged | web-ui 0.7 |
-| UI003 | A colour literal outside the token files (hex, rgb, hsl, oklch, named colours) | web-ui 2 |
-| UI004 | A raw z-index (0 and -1 are allowed for local stacking) | web-ui 5 |
-| UI005 | A raw transition or animation time | web-ui 14 |
-| UI006 | Em or en dash, curly quote, NBSP, zero-width or ellipsis character | web-ui 4 |
-| UI007 | `data-app-accent` set more than once, or an accent token set in app CSS | web-ui 16 |
-| UI008 | A `[data-theme]` or `prefers-color-scheme` selector in app CSS (a theme is a token swap) | web-ui 1 |
-| UI009 | A kit control class (`btn`, `badge`, `tab`, `input`...) borrowed by an element that restyles its box inline | web-ui 0.10 |
-| UI010 | An app stylesheet that declares a core token (`--surface-1`, `--text-primary`, `--radius-md`...) | web-ui 0.11 |
-| UI011 | A kit `Button` or `IconButton` (imported from the kit package or alias) with `disabled` and no `disabledReason`. A spread, `loading`, `disabled={false}` and a component the file declares or imports by a relative path are left alone | web-ui 27.2 |
-| UI012 | A control that holds only an icon (`<button>` or `<a>` around an icon or `<svg>`, a kit `Button` with `icon` and no children) and lacks an accessible name or a tip (`title` counts as a tip) | web-ui 27.1 |
-| UI013 | A `data-tip`, `tip` or `disabledReason` written as a literal over 200 characters or in three or more sentences | web-ui 27.8 |
-
-## Config (`standards-local/ui-lint.json`)
-
-```json
-{ "paths": ["src"], "exclude": [], "token_files": [], "data_palettes": [], "baseline": null }
-```
-
-`token_files` adds files allowed to hold colour literals (the synced `tokens-core/` is always
-allowed). A custom accent block printed by `tokens-core/build.py --accent` is recognised by its
-header and may set accent tokens.
-
-`data_palettes` lists globs of files that hold data colours (a chart theme, a table of category colours)
-rather than theme colours. Colour literals in those files are exempt from UI003. Every other rule still
-applies to them, and a colour literal anywhere else still fails.
-
-## Neutral dividers
-
-A one-sided border under 2px in a neutral grey (equal channels, or saturation of 10% or less) is a hairline
-divider, so UI001 does not flag it. A coloured hairline, a 2px or thicker one-sided border, an accent edge
-bar and every other UI001 shape still fail. A literal grey in that border is still a colour literal (UI003)
-unless the file is a data palette: the fix is a `--border-*` token.
-
-## Suppression is traceable
-
-- `edge-ok` on the line or the line above, UI001 only, for data marks that look like bars.
-- `core-exception: EXC-NNN` on the line or the line above. The ID must be an active row in
-  `standards-local/exceptions.md`, and that row must name the finding's rule (UI001 needs a row for
-  `web-ui.md 0.1`). An expired exception stops suppressing.
-
-There is no switch that turns a rule off.
-
-## Adoption ratchet
-
-**Not for a UI consumer.** An app that takes the kit (a `kit-core/` copy or a vendored kit) may not
-keep a baseline: `ui_lint.py` refuses one ("a baseline is not allowed for a UI consumer",
-[web-ui.md](../standards/web-ui.md) 0.11), and an empty baseline file left behind holds the nightly
-update. A UI consumer clears its findings during adoption instead ([kit/MIGRATION.md](../kit/MIGRATION.md),
-"Close the baseline"). The ratchet below is for the script lint and for an app that runs the UI lint
-without taking the kit.
-
-An app of that kind that starts with findings records a baseline, then burns it down. One rule, one exception,
-one expiry: each rule with findings needs its own active exception row naming that rule.
-
-```bash
-# 1. add one exception row per rule with findings, for example
-#    | EXC-001 | web-ui.md 0.1 | src | Edge bars kept during migration | ... | 2026-10-12 | 2027-01-10 |
-# 2. set "baseline": "standards-local/ui-lint-baseline.json" in ui-lint.json
-python3 lint-core/ui_lint.py --write-baseline
-```
-
-`--write-baseline` refuses when a rule with findings has no exception and names the rows to add.
-CI then fails only when a file and rule count rises above the baseline. Each run prints how many
-findings were fixed since the baseline, and `--write-baseline` locks the progress in. When a rule's
-exception expires, that rule's baseline stops counting and its findings fail.
-
-`--json` prints findings, counts over the baseline and fixes since the baseline for tooling.
-
-## Script lint (`script_lint.py`)
-
-The mechanical half of the PowerShell and Python scripting rules. Same suppression
-(`core-exception: EXC-NNN` naming the rule) and the same ratchet (`--write-baseline`, `--json`) as
-the UI lint. It runs only when the overlay has `standards-local/script-lint.json`, otherwise it
+The UI lint that used to sit beside it is retired: the web and WPF standards and their lint now live in
+the owner's standards repo. The lint runs only when the overlay has `standards-local/script-lint.json`; otherwise it
 prints one skip line and exits 0, so adopting it is a deliberate step.
 
 ```json

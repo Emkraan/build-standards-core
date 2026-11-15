@@ -8,7 +8,7 @@ implementation is the reference app repo (`.github/workflows/`, `scripts/`,
 Security, no branch protection, no paid scanners. Because there is no branch protection, the
 auto-merge workflow is what enforces "all checks green before merge".
 
-Related: [First-Party Build Standard](web-build.md) (stack and commands),
+Related: First-Party Build Standard (the web-build-standard doc) (stack and commands),
 [Data Safety - SQLite](data-safety-sqlite.md) (why the deploy is shaped this way).
 
 ---
@@ -59,7 +59,8 @@ so no core-ci check shares a name with a job of the repo's own workflows: a gate
 names would read two jobs called `python` as one. A repo lists `core-checks` next to its own checks.
 
 Why one job: each core check is a short script, so a job's cost is mostly runner start and checkout.
-One job per pull request run and a push to the default branch that runs only the secret scan keep
+One job per pull request run, and no run on a push to the default branch (the merge gate requires an
+up to date head, so that run would re-test the tree the pull request run proved), keep
 the shared runner pool free (twelve jobs per run used to be most of a busy consumer's queue). A title or
 body edit is a pull request event, so it runs every check.
 
@@ -97,10 +98,10 @@ gate.
 | `core-ci.yml` step `core-ascii` | req | req | req | - |
 | `core-ci.yml` step `core-pr-title`, `core-commitlint` | req | req | req | - |
 | `core-ci.yml` step `core-attribution`, `core-identity` | req | req | req | - |
+| `core-ci.yml` step `core-pr-issue` | req | req | req | - |
 | `core-ci.yml` step `core-changelog` | req | req | req | - |
 | `core-ci.yml` step `core-python`, `core-powershell` | stack | stack | - | - |
 | `core-ci.yml` step `core-node-pin` | req | stack | - | - |
-| `core-ci.yml` step `core-kit-peers` | req (with `kit-core`) | req (with `kit-core`) | - | - |
 | Build, typecheck, lint and tests (`lint-and-build` or the repo's own name) | req | req, per changed app | - | local gate: typecheck, build, verify |
 | Dependency audit and OSV scan (`audit`, `osv`) | req | req | - | - |
 | Static analysis (`semgrep`) | req | req | - | - |
@@ -232,8 +233,8 @@ failing unnoticed until someone touches them. A repo with a lint step **should**
 template `lint-sweep.yml` (templates/overlay): once a week it lints the whole tree (the overlay's UI
 and script lint over the configured paths, plus the repo's own full-tree command from the
 parameters row "Lint sweep command"), and while the sweep fails it keeps exactly one open issue
-labelled `lint-sweep`: it opens it on the first failure, updates the same issue on every later
-failure, never opens a second, and closes it on the first green sweep. Its actions are SHA-pinned and
+labelled `source:lint-sweep`: it opens it on the first failure, updates the same issue on every later
+failure, never opens a second, and closes it on the first green sweep (the lookup also accepts the former label `lint-sweep` while existing issues are renamed). Its actions are SHA-pinned and
 it runs on `CORE_CI_RUNNER` like the other templates. A runner need not carry Node: when the repo is
 a web stack and sets a sweep command, the job sets up Node at the repo's Node major (lts/* when none
 is pinned), enables corepack so `package.json` "packageManager" decides the package manager, and
@@ -245,6 +246,15 @@ lint issue, because a missing tool is not a lint finding.
   a reason its author did not cause.
 - Acceptance (overlay-ci): `lint-sweep.yml` is installed and its `sweep` job's latest default-branch
   run succeeded.
+
+### 2.2 The local gate
+
+Before every push the author merges the latest `origin/main` into the branch and runs every check CI runs, from one
+command (a `verify` script is the usual name). That includes the check scripts that otherwise run only in CI (the
+attribution, identity and private-reference checks, the dialog check and the code scan), so a PR does not go up to
+learn what a script would have told it locally. A check that exists only in CI is a gap in the local gate, not a reason
+to skip it. **Acceptance (review):** the one command lists the same checks as the required CI set, and a new CI check
+is added to it in the same PR.
 
 ## 3. Conventional commits and semver
 
@@ -320,7 +330,7 @@ a merge queue) once all checks pass. The `--squash` flags below stand for the de
   env:
     REQUIRED_CHECKS: >-
       lint-and-build core-secret-scan core-workflow-lint core-ascii core-pr-title core-commitlint
-      core-attribution core-identity core-changelog core-python core-node-pin core-kit-peers
+      core-attribution core-pr-issue core-identity core-changelog core-python core-node-pin
   ```
 - **Gate:** every check run on the head SHA concluded `success`, `skipped` or `neutral`, nothing is
   still running, and every name in `REQUIRED_CHECKS` is present. The PR must be mergeable and its
@@ -416,6 +426,14 @@ passing canary and early; a device offered an older version refuses it.
 
 `/health` and `/api/ops/*` are excluded from platform-level auth. Every `/api/ops/*` route requires the Bearer
 secret (timing-safe compare) and answers 403 when it is wrong or unset.
+
+**6.1 The post-deploy smoke retries for a bounded window, then fails.** One attempt straight after the container swaps reads a cold start as a failure and teaches the team that red is normal, so a real failure hides in it. The smoke check retries every few seconds for a bounded window (default 5 minutes, `SMOKE_TIMEOUT_SEC`), passes on the first good answer and fails when the window ends, naming each attempt's last answer. A deploy that stays red after the window raises an alert through the notification path (notifications.md), once per deploy, so a red deploy is a signal and never the usual state. **Acceptance (test):** a smoke that fails twice and then answers passes; one that never answers fails after the window with each attempt listed and raises one alert.
+
+**6.2 A deploy goes through a standby slot and swaps.** On a platform with deployment slots, the build is deployed to a standby slot, started and health-gated there (step 7 against the slot's own address, on the new version and commit SHA), and only then swapped into production. The previous release is left in the standby slot after the swap, which makes rollback a swap back. The slot never opens the database before the swap: the lock rules of [Data Safety](data-safety-sqlite.md) section 2 decide who holds it, so the slot waits in `starting` and the swap does not corrupt anything. Slots are serialised with deploys by the same concurrency group as step 2. Prevents: users meeting a cold start, a half-started build or a failed deploy in production, and a rollback that needs a rebuild. **Acceptance (review):** the deploy workflow targets a slot, gates on it and swaps; a failing gate leaves production untouched and the swap step does not run.
+
+**6.3 The post-swap smoke polls, and a 500 is retried like any other non-answer.** After the swap the smoke check polls production as step 8 and 6.1 describe, and keeps no list of statuses or messages it will retry: a 500, a 502, a 503, a timeout or a connection reset during the platform's restart is just "not yet", and only the end of the window turns the run red. A pass needs the first good answer with the expected version and commit SHA. Prevents: a healthy deploy marked failed because the platform answered 500 for a few seconds while it restarted, and a growing list of errors somebody must remember to add. Evidence: a one-shot smoke check marked healthy deploys as failed while the platform answered 500 during a restart; polling that retries a 500 without a check list removed the false failures. **Acceptance (test):** a smoke whose fake server answers 500, then a connection reset, then 200 with the right version passes; one that answers 500 for the whole window fails and lists each attempt's last answer.
+
+**6.4 Old slots are reclaimed by a scheduled reaper that does not trust the deploy workflow.** A scheduled job (not a step of the deploy workflow) lists every slot of every app it covers from the platform itself, keeps the production slot and the one standby slot holding the previous release, and stops and deletes any other slot older than a stated age (a parameter the consumer sets). It decides from the platform's list and each slot's own timestamps, never from a record the deploy wrote, so a deploy that failed, was cancelled or was never recorded still gets cleaned up. It logs what it removed and what it kept, and raises the alert path ([Notifications](notifications.md)) when a delete fails. Prevents: old slots that were never reclaimed staying up, running jobs against the same data and costing a plan. Evidence: slots that were never reclaimed stayed running until a scheduled reaper that does not rely on the deploy workflow reclaimed them. **Acceptance (test):** against a fake platform holding a production slot, the previous standby, a stale slot from a failed deploy and a young slot from a deploy in progress, one run removes only the stale slot, and a second run removes nothing.
 
 ## 7. Rollback
 
@@ -526,7 +544,7 @@ these files unchanged except `ci/Policy.psd1` and the `EXCLUDE` list in `scripts
 The owner's rule for how a release of the shared core reaches an app. Every consumer is in one of
 two classes, and the way it is registered with (`consumer.json` `mode`) decides which.
 
-| Class | Who | How a release lands | How new kit parts are adopted |
+| Class | Who | How a release lands | How new changes are adopted |
 |---|---|---|---|
 | apply-at-once | the ops center (a local, single-operator app) and the agent home | the nightly applies every release at once, behind the ops center's own gate, with rollback; an ops center whose source is a repo with its own CI gate gets it as a pull request that merges as soon as that CI passes, never waiting for the owner | the ops center's own pull requests or commits |
 | approval-gated | every other app: product repos, hubs, multi-module shells, vendored copies | a pull request per release (the `workflow` way's sync pull request, or the vendoring tool's pull request for `vendored`) that merges only after the owner approves it | planned pull requests the owner approves |

@@ -1,0 +1,81 @@
+/* A small typed client for the reports module routes, so an app does not write the same fetch code again. Opt in: an app
+   that has its own client does not use it. It speaks the module's envelope `{ success, data, message }`, sends the
+   same-origin credentials, and turns any failure into an Error with the server's message. The base path is the app's. */
+
+import type { DashboardDefinition, DashboardRow, DashboardRun } from './types';
+
+interface Envelope<T> {
+  success?: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
+}
+
+export interface RunRequest {
+  /** A saved dashboard by key, or a definition to preview. */
+  key?: string | undefined;
+  def?: DashboardDefinition | undefined;
+  range: string;
+  /** Filter picks by filter id. */
+  selections: Readonly<Record<string, string>>;
+}
+
+/** One definition an import refused: its position, key and the reason. A plain string is also read. */
+export interface ImportProblem {
+  index?: number | undefined;
+  key?: string | undefined;
+  message: string;
+}
+
+export interface ImportResult {
+  created: number;
+  updated: number;
+  /** Each definition is stored or refused on its own. */
+  errors: (ImportProblem | string)[];
+}
+
+/** An import problem as one line of text. */
+export function importProblemText(p: ImportProblem | string): string {
+  return typeof p === 'string' ? p : `${p.key ?? (p.index !== undefined ? `#${p.index + 1}` : 'definition')}: ${p.message}`;
+}
+
+export interface ReportsClientOptions {
+  /** Where the module's routes live, for example `/api/reports/dashboards`. */
+  base: string;
+  fetch?: typeof fetch | undefined;
+}
+
+/**
+ * The module's routes: the server registry has only GET and POST, so a save, a delete and a reset are POSTs. The base
+ * is where they live (`/api/dashboards`); a save sends `{ def }` and import and export carry `{ dashboards }`.
+ */
+export function createDashboardsClient({ base, fetch: f }: ReportsClientOptions) {
+  const root = base.replace(/\/+$/, '');
+  async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+    const res = await (f ?? fetch)(`${root}${path}`, {
+      method,
+      credentials: 'same-origin',
+      ...(body === undefined ? {} : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+    });
+    const json = (await res.json().catch(() => ({}))) as Envelope<T>;
+    if (!res.ok || json.success === false) throw new Error(json.message ?? json.error ?? `Request failed (${res.status})`);
+    return json.data as T;
+  }
+  const seg = encodeURIComponent;
+  return {
+    list: () => call<DashboardRow[]>('GET', ''),
+    create: (def: DashboardDefinition) => call<DashboardRow>('POST', '', { def }),
+    save: (key: string, def: DashboardDefinition) => call<DashboardRow>('POST', `/${seg(key)}`, { def }),
+    remove: (key: string) => call<void>('POST', `/${seg(key)}/delete`, {}),
+    reset: (key: string) => call<DashboardRow>('POST', `/${seg(key)}/reset`, {}),
+    // The export is a list of definitions, or `{ dashboards }` around one: both are read.
+    exportAll: async () => {
+      const out = await call<DashboardDefinition[] | { dashboards: DashboardDefinition[] }>('GET', '/export');
+      return Array.isArray(out) ? out : (out.dashboards ?? []);
+    },
+    importAll: (dashboards: readonly DashboardDefinition[]) => call<ImportResult>('POST', '/import', { dashboards }),
+    run: (req: RunRequest) => call<DashboardRun>('POST', '/run', req),
+  };
+}
+
+export type DashboardsClient = ReturnType<typeof createDashboardsClient>;

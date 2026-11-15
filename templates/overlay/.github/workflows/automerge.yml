@@ -8,7 +8,7 @@ name: automerge
 # REQUIRED_CHECKS lists only the repo's own checks (space separated; empty when it has none).
 #
 # Merging: a pull request is merged with the declared method once every check on its head sha is
-# success, skipped or neutral, every required name is present, and the pull request is mergeable and
+# success, skipped or neutral (a cancelled run is re-run, not counted as a failure), every required name is present, and the pull request is mergeable and
 # not a draft. The label no-automerge opts out. The merge call carries the head sha it reviewed, so a
 # head that moved since is refused. The job checks out the default branch only and never runs pull
 # request code. Bootstrap, when this file on the default branch and the fix pull request disagree:
@@ -39,6 +39,7 @@ jobs:
       pull-requests: write
       checks: read
       statuses: read
+      actions: write  # core-ci.py ready --rerun-cancelled
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -55,15 +56,11 @@ jobs:
           gh pr list -R "$REPO" --state open --json number,headRefOid,isDraft,labels,mergeable \
             --jq '.[] | select(.isDraft | not) | select(any(.labels[]; .name == "no-automerge") | not) | select(.mergeable == "MERGEABLE") | [.number, .headRefOid] | @tsv' |
           while IFS=$'\t' read -r n sha; do
-            runs=$(gh api "repos/$REPO/commits/$sha/check-runs?per_page=100" --paginate \
-              --jq '.check_runs[] | [.name, .status, (.conclusion // "")] | @tsv')
-            bad=$(printf '%s\n' "$runs" | awk -F'\t' 'NF && ($2 != "completed" || ($3 != "success" && $3 != "skipped" && $3 != "neutral"))' | wc -l)
-            [ "$bad" -eq 0 ] || { echo "PR $n: checks not green yet"; continue; }
-            missing=""
-            for name in $required; do
-              printf '%s\n' "$runs" | cut -f1 | grep -Fxq "$name" || missing="$missing $name"
-            done
-            [ -z "$missing" ] || { echo "PR $n: required checks missing:$missing"; continue; }
+            # One read of the head's checks by core-ci.py: the newest run of each check decides, so a run that a later push or
+            # a label edit cancelled never blocks a head that has a green run after it, and a head whose runs were all cancelled
+            # is re-run (at most 3 attempts each) instead of stalling until someone re-runs it by hand.
+            python3 "$OVERLAY/scripts/core-ci.py" ready "$sha" --repo "$REPO" --expect "$required" --rerun-cancelled \
+              || { echo "PR $n: checks not green yet"; continue; }
             body=$(jq -n --arg sha "$sha" --arg method "$MERGE_METHOD" '{sha: $sha, merge_method: $method}')
             gh api -X PUT "repos/$REPO/pulls/$n/merge" --input - <<< "$body" && echo "PR $n merged at $sha" || echo "PR $n: merge refused"
           done

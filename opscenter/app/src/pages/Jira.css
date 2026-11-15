@@ -408,3 +408,10 @@
 .nm-act > .pill {
   align-self: flex-end;
 }
+
+/* ---- closed sprints and the trend card ---- */
+.jr-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}

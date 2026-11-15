@@ -150,6 +150,13 @@ try:
         with open(os.environ["CORE_SYNC_NOTES"], "a", encoding="utf8") as f:
             f.write("\n".join(notes) + "\n")
     digest = ch.content_hash()
+    if ch.read_lock().get("content_sha256") not in (None, digest) and any(
+        (ch.ROOT / d).is_dir() for d in ("kit-core", "tokens-core")
+    ):
+        print(
+            "lock: content_sha256 now covers standards-core and lint-core only; "
+            "kit-core and tokens-core are your own code and are no longer hashed"
+        )
     ch.write_lock(ref, sha, digest)
     print(f"synced core@{sha[:8]} (content {digest[:12]})")
     if skipped and STRICT:

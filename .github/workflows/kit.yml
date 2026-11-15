@@ -2,10 +2,8 @@ name: kit
 on:
   pull_request:
     paths:
-      - 'kit/**'
-      - 'tokens/**'
-      - 'shell-packages/**'
-      - 'tests/fixtures/console-module/**'
+      - 'opscenter/kit/**'
+      - 'opscenter/tokens/**'
       - '.github/workflows/kit.yml'
 permissions:
   contents: read
@@ -14,7 +12,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.CORE_RUNNER || '"ubuntu-latest"') }}
     defaults:
       run:
-        working-directory: kit
+        working-directory: opscenter/kit
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -24,7 +22,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: kit/package-lock.json
+          cache-dependency-path: opscenter/kit/package-lock.json
       - run: npm ci
       # An app that excludes the optional entries (charts, graph, api-reference) and never installs
       # their peers still typechecks the kit: the peers resolve to an empty stub here.

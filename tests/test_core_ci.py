@@ -94,6 +94,95 @@ class PrHygiene(Overlay):
         self.assertEqual(rc, 1)
         self.assertIn("1 bad subject", out)
 
+    def test_commitlint_matches_consumer_rules(self):
+        for subject in (
+            "feat: " + "x" * 100,
+            "feat: ends with a stop.",
+            "feat(Scope): upper case scope",
+        ):
+            head = self.commit(subject, {"b": subject})
+            rc, out = self.ci("commitlint", self.base, head)
+            self.assertEqual(rc, 1, subject)
+            git(self.repo, "reset", "-q", "--hard", self.base)
+
+    def test_commitlint_header_at_limit_passes(self):
+        head = self.commit("feat(ui): " + "x" * 90, {"c": "1"})
+        self.assertEqual(self.ci("commitlint", self.base, head)[0], 0)
+
+    def test_pr_issue_declaration(self):
+        def run(body, title="feat: x", author="rp", branch="feat/x", repo="acme/apps"):
+            return self.ci(
+                "pr-issue",
+                env={
+                    "PR_TITLE": title,
+                    "PR_BODY": body,
+                    "PR_AUTHOR": author,
+                    "PR_BRANCH": branch,
+                    "GITHUB_REPOSITORY": repo,
+                },
+            )
+
+        for ok in (
+            "Closes #12",
+            "fixes: acme/docs#9 and resolves #3",
+            "Refs #4\nRemaining: the live check",
+            "No issue: typo fix",
+            "Closes #1\n<!-- Refs #2 -->\n```\nNo issue: x\n```",
+        ):
+            self.assertEqual(run(ok)[0], 0, ok)
+        rc, out = run("just a description")
+        self.assertEqual(rc, 1)
+        self.assertIn("declare what this PR does", out)
+        rc, out = run("Closes #1\nNo issue: also")
+        self.assertEqual((rc, "exactly one form" in out), (1, True))
+        rc, out = run("Closes #1\nRefs #2\nRemaining: x")
+        self.assertEqual((rc, "exactly one form" in out), (1, True))
+        rc, out = run("Refs #4")
+        self.assertEqual((rc, "needs a line" in out), (1, True))
+        self.assertEqual(run("Remaining: x")[0], 1)
+
+    def test_pr_issue_exemptions(self):
+        def run(body="", **kw):
+            env = {"PR_TITLE": "feat: x", "PR_BODY": body, "PR_AUTHOR": "rp", "PR_BRANCH": "feat/x"}
+            env["GITHUB_REPOSITORY"] = "acme/apps"
+            env.update({k.upper(): v for k, v in kw.items()})
+            return self.ci("pr-issue", env=env)[0]
+
+        self.assertEqual(run(pr_author="renovate[bot]"), 0)
+        self.assertEqual(run(pr_author="acme-deploy-bot"), 1)
+        self.assertEqual(
+            run(pr_author="acme-deploy-bot", pr_issue_exempt_authors="acme-deploy-bot"), 0
+        )
+        app = {"pr_issue_app_authors": "acme-app[bot]"}
+        for br in ("chore/pin-x", "pin/x", "standards-sync/y", "fold/z"):
+            self.assertEqual(run(pr_author="acme-app[bot]", pr_branch=br, **app), 0, br)
+        self.assertEqual(run(pr_author="acme-app[bot]", pr_branch="feat/x", **app), 1)
+        self.assertEqual(run(pr_author="rp", pr_branch="chore/x", **app), 1)
+        self.assertEqual(run(github_repository="acme/ha-meter", pr_issue_exempt_repos="ha-"), 0)
+        self.assertEqual(run(github_repository="acme/ha-meter"), 1)
+        self.assertEqual(run(pr_title='Revert "feat: x"'), 0)
+        self.assertEqual(run("This reverts commit abc123."), 0)
+
+    def test_pr_issue_exemptions_from_parameters(self):
+        self.params(
+            "",
+            "| PR issue exempt authors | acme-deploy-bot | x |\n"
+            "| PR issue app authors | acme-app[bot] | x |\n"
+            "| PR issue exempt repos | ha- | x |\n",
+        )
+        env = {
+            "PR_TITLE": "feat: x",
+            "PR_BODY": "",
+            "PR_AUTHOR": "acme-deploy-bot",
+            "PR_BRANCH": "b",
+        }
+        env["GITHUB_REPOSITORY"] = "acme/apps"
+        self.assertEqual(self.ci("pr-issue", env=env)[0], 0)
+        env.update(PR_AUTHOR="acme-app[bot]", PR_BRANCH="pin/x")
+        self.assertEqual(self.ci("pr-issue", env=env)[0], 0)
+        env.update(PR_AUTHOR="rp", PR_BRANCH="x", GITHUB_REPOSITORY="acme/ha-one")
+        self.assertEqual(self.ci("pr-issue", env=env)[0], 0)
+
     def test_attribution_commit_title_body(self):
         head = self.commit("feat: one", {"a": "1"})
         self.assertEqual(
@@ -373,52 +462,185 @@ class AsciiNodePython(Overlay):
 @unittest.skipUnless(
     shutil.which("gitleaks") or os.environ.get("GITLEAKS"), "gitleaks not installed"
 )
-class KitPeers(Overlay):
-    def kit(self, extra=None):
-        files = {
-            "kit-core/index.ts": "export { useChartTheme } from './charts/chartTheme';\n",
-            "kit-core/charts/chartTheme.ts": "export const useChartTheme = 1;\n",
-            "kit-core/charts/Charts.tsx": "import { Area } from 'recharts';\nexport { Area };\n",
-            "kit-core/graph/index.ts": "export * from '@xyflow/react';\n",
-            "kit-core/api-reference/index.ts": "export * from '@scalar/api-reference-react';\n",
+class RepoChecksGate(Overlay):
+    """core-ci.py repo-checks: the repo checks of the rules the Repo checks gate row opts into fail the run."""
+
+    ROW = "| Repo checks gate | {} | x |\n"
+
+    def setUp(self):
+        super().setUp()
+        shutil.copyfile(SCRIPTS / "repo_checks.py", self.repo / "scripts" / "repo_checks.py")
+        rules = [
+            r
+            for r in json.loads((ROOT / "standards" / "rules.json").read_text())["rules"]
+            if r["id"] in ("ops-center-layout.1.4", "ops-center-layout.1.9")
+        ]
+        (self.repo / "standards-core").mkdir()
+        (self.repo / "standards-core" / "rules.json").write_text(json.dumps({"rules": rules}))
+        (self.repo / "standards.lock").write_text("ref=v0.0.0\ncommit=abc\n")
+        self.commit(
+            "chore: ops center",
+            {
+                "opscenter/app/src/Badge.tsx": "const tone = failedCount > 3 ? 'warn' : 'ok'\n",
+                "opscenter/app/src/App.tsx": "const x = 1\n",
+            },
+        )
+
+    def gate(self, value, extra=""):
+        self.params("", self.ROW.format(value) + extra)
+        return self.ci("repo-checks")
+
+    def test_off_by_default_is_a_clean_skip(self):
+        rc, out = self.ci("repo-checks")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("skip repo-checks", out)
+
+    def test_an_opted_in_rule_with_a_finding_fails_with_the_place(self):
+        rc, out = self.gate("ops-center-layout")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("file=opscenter/app/src/Badge.tsx,line=1", out)
+        self.assertIn("RC023", out)
+
+    def test_a_rule_not_opted_in_is_not_gated(self):
+        rc, out = self.gate("ops-center-layout.1.9")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("1 gated rule(s), 0 not passing", out)
+
+    def test_all_and_an_unknown_name(self):
+        self.assertEqual(self.gate("all")[0], 1)
+        rc, out = self.gate("ops-center-layout.1.9, nonsense")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("nonsense names no repo-check rule", out)
+
+    def test_clean_repo_passes(self):
+        self.commit("fix: client", {"opscenter/app/src/Badge.tsx": "const tone = problems.tone\n"})
+        rc, out = self.gate("all")
+        self.assertEqual(rc, 0, out)
+
+
+class DeliverySteps(Overlay):
+    """pre-push, pr-watch, changelog-lines and list-shrinks."""
+
+    def setUp(self):
+        super().setUp()
+        self.mod = load("core_ci_delivery", "templates/overlay/scripts/core-ci.py")
+
+    # ---- pr-watch: every stop point, and a report at the end
+    def watch(self, reads, timeout=100, interval=10):
+        it = iter(reads)
+        clock = {"t": 0}
+        out = []
+
+        def sleep(sec):
+            clock["t"] += sec
+
+        code, report = self.mod.watch_pr(
+            lambda: next(it),
+            timeout,
+            interval,
+            sleep=sleep,
+            clock=lambda: clock["t"],
+            out=out.append,
+        )
+        return code, report, out
+
+    def read(
+        self,
+        state="OPEN",
+        merged=False,
+        mergeable="MERGEABLE",
+        verdict="wait",
+        detail="running: ci",
+    ):
+        return {
+            "state": state,
+            "merged": merged,
+            "mergeable": mergeable,
+            "checks": (verdict, detail),
         }
-        files.update(extra or {})
-        self.commit("feat: kit", files)
 
-    def test_root_reaching_a_peer_fails(self):
-        self.kit()
-        self.assertEqual(self.ci("kit-peers")[0], 0)
-        self.commit(
-            "feat: bad",
-            {
-                "kit-core/charts/chartTheme.ts": "import 'recharts';\nexport const useChartTheme = 1;\n"
-            },
+    def test_pr_watch_stops_at_merged_with_a_report(self):
+        code, report, out = self.watch(
+            [self.read(), self.read(), self.read("MERGED", True, None, "green", "3 check(s) green")]
         )
-        rc, out = self.ci("kit-peers")
-        self.assertEqual(rc, 1)
-        self.assertIn("optional peer recharts", out)
+        self.assertEqual(code, 0)
+        self.assertIn("merged", report)
+        self.assertEqual(len(out), 2)  # a line only when the state changed
 
-    def test_tsconfig_must_exclude_entries_without_peers(self):
-        self.kit(
-            {
-                "app/package.json": '{"dependencies": {"recharts": "3"}}',
-                "app/tsconfig.json": '{\n  // app\n  "include": ["src", "../kit-core"],\n'
-                '  "exclude": ["../kit-core/graph"],\n}\n',
-            }
-        )
-        rc, out = self.ci("kit-peers")
-        self.assertEqual(rc, 1)
-        self.assertIn("api-reference", out)
-        self.assertNotIn("the charts peer", out)
-        self.assertNotIn("the graph peer", out)
+    def test_pr_watch_stops_on_failed_checks_conflict_closed_and_timeout(self):
+        code, report, _ = self.watch([self.read(verdict="fail", detail="failed: ci")])
+        self.assertEqual((code, "failed: ci" in report), (1, True))
+        code, report, _ = self.watch([self.read(mergeable="CONFLICTING")])
+        self.assertEqual((code, "merge the base branch in" in report), (4, True))
+        code, report, _ = self.watch([self.read("CLOSED", False)])
+        self.assertEqual((code, "closed without merging" in report), (3, True))
+        code, report, _ = self.watch([self.read()] * 50, timeout=60, interval=20)
+        self.assertEqual((code, "stopped after 1 min" in report), (5, True))
+
+    # ---- changelog-lines
+    def test_changelog_lines_come_from_changelog_lines_in_the_message_bodies(self):
         self.commit(
-            "fix: x",
-            {
-                "app/tsconfig.json": '{"include": ["src", "../kit-core/**"], '
-                '"exclude": ["../kit-core/graph", "../kit-core/api-reference/**"]}'
-            },
+            "feat(x): a\n\nBody.\nChangelog: Reports open with a filter bar.", {"a.txt": "1\n"}
         )
-        self.assertEqual(self.ci("kit-peers")[0], 0)
+        self.commit("fix: b\n\nchangelog: A retry no longer loops.", {"b.txt": "1\n"})
+        self.commit("docs: c\n\nChangelog: ignored, a docs commit", {"c.txt": "1\n"})
+        self.commit("chore: d\n\nChangelog: ignored, a chore commit", {"d.txt": "1\n"})
+        self.commit("feat: e", {"e.txt": "1\n"})  # no line: nothing from it
+        rc, out = self.ci("changelog-lines")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("- Reports open with a filter bar.", out)
+        self.assertIn("- A retry no longer loops.", out)
+        self.assertNotIn("ignored", out)
+
+    def test_changelog_lines_with_none_gives_one_generic_line(self):
+        self.commit("feat: nothing to say", {"a.txt": "1\n"})
+        rc, out = self.ci("changelog-lines")
+        self.assertEqual((rc, out), (0, "- Maintenance and internal changes."))
+
+    # ---- list-shrinks
+    def test_a_shrink_only_list_may_lose_entries_and_never_gain_one(self):
+        base = self.commit("chore: list", {"ex.txt": "# exemptions\nroutes/a\nroutes/b\n"})
+        shrunk = self.commit("chore: shrink", {"ex.txt": "# exemptions\nroutes/a\n"})
+        grown = self.commit("chore: grow", {"ex.txt": "# exemptions\nroutes/a\nroutes/c\n"})
+        rc, out = self.ci("list-shrinks", base, shrunk, "ex.txt")
+        self.assertEqual(rc, 0, out)
+        rc, out = self.ci("list-shrinks", shrunk, grown, "ex.txt")
+        self.assertEqual(rc, 1)
+        self.assertIn("new entry 'routes/c'", out)
+        rc, out = self.ci("list-shrinks", base, grown)
+        self.assertEqual(rc, 0)
+        self.assertIn("skip list-shrinks", out)
+
+    # ---- pre-push
+    def test_pre_push_needs_the_latest_main_and_every_check(self):
+        git(self.repo, "checkout", "-q", "-b", "feature")
+        self.commit("feat: mine", {"mine.txt": "1\n"})
+        git(self.repo, "checkout", "-q", "main")
+        self.commit("feat: theirs", {"theirs.txt": "1\n"})
+        git(self.repo, "checkout", "-q", "feature")
+        rc, out = self.ci("pre-push", "--base", "main", "--skip-fetch")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("does not contain main; merge main first", out)
+        git(self.repo, "merge", "-q", "-m", "chore: merge main", "main")
+        rc, out = self.ci("pre-push", "--base", "main", "--skip-fetch")
+        self.assertEqual(rc, 0, out)
+        for name in (
+            "commitlint",
+            "attribution",
+            "identity",
+            "ascii",
+            "changelog-entries",
+            "repo-checks",
+        ):
+            self.assertIn(f"pre-push: {name}", out)
+        self.assertIn("7 of 7 check(s) passed", out)
+
+    def test_pre_push_runs_the_attribution_and_identity_scripts(self):
+        self.commit("feat: ok", {"a.txt": "1\n"})
+        self.commit(f"fix: by {WORD}\n\nCo-Authored-By: {WORD} <x@example.com>", {"b.txt": "1\n"})
+        rc, out = self.ci("pre-push", "--base", self.base, "--skip-fetch")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("failed: attribution", out)
 
 
 class RequiredChecks(Overlay):
@@ -501,6 +723,86 @@ class RequiredChecks(Overlay):
             rep["problems"],
         )
 
+    def test_a_cancelled_run_is_neither_green_nor_a_failure(self):
+        v = self.mod.checks_verdict
+        self.assertEqual(v([("a", "completed", "cancelled")], [], [])[0], "wait")
+        self.assertIn("cancelled", v([("a", "completed", "cancelled")], [], [])[1])
+        self.assertEqual(
+            v([("a", "completed", "cancelled"), ("b", "completed", "failure")], [], [])[0], "fail"
+        )
+        self.assertEqual(
+            v([("a", "completed", "cancelled"), ("b", "in_progress", None)], [], [])[0], "wait"
+        )
+        self.assertEqual(self.mod.check_counts([("a", "completed", "cancelled")], []), (0, 1, 0))
+
+    def test_rerun_cancelled_reruns_the_newest_cancelled_run_of_a_workflow_up_to_the_limit(self):
+        calls = []
+
+        def run(args):
+            calls.append(args)
+
+            class R:
+                returncode = 0
+                stdout = json.dumps(
+                    [
+                        {
+                            "databaseId": 10,
+                            "conclusion": "cancelled",
+                            "attempt": 1,
+                            "workflowName": "ci",
+                            "status": "completed",
+                        },
+                        {
+                            "databaseId": 11,
+                            "conclusion": "success",
+                            "attempt": 1,
+                            "workflowName": "ci",
+                            "status": "completed",
+                        },
+                        {
+                            "databaseId": 20,
+                            "conclusion": "cancelled",
+                            "attempt": 1,
+                            "workflowName": "e2e",
+                            "status": "completed",
+                        },
+                        {
+                            "databaseId": 30,
+                            "conclusion": "cancelled",
+                            "attempt": 3,
+                            "workflowName": "lint",
+                            "status": "completed",
+                        },
+                        {
+                            "databaseId": 40,
+                            "conclusion": None,
+                            "attempt": 1,
+                            "workflowName": "build",
+                            "status": "in_progress",
+                        },
+                    ]
+                )
+
+            return R()
+
+        done = self.mod.rerun_cancelled("o/r", "abc", run)
+        self.assertEqual(
+            done, [20]
+        )  # ci was replaced by a green run, lint is out of attempts, build is running
+        self.assertIn(["run", "rerun", "20", "-R", "o/r"], calls)
+        self.assertFalse(
+            any(c[:2] == ["run", "rerun"] and c[2] in ("10", "30", "40") for c in calls)
+        )
+
+    def test_the_automerge_template_reads_the_head_through_ready_and_may_rerun(self):
+        text = (ROOT / "templates/overlay/.github/workflows/automerge.yml").read_text()
+        self.assertIn('core-ci.py" ready "$sha"', text)
+        self.assertIn("--rerun-cancelled", text)
+        self.assertIn("actions: write", text)
+        self.assertNotIn(
+            '$3 != "success"', text
+        )  # the inline conclusion filter that counted cancelled as failed is gone
+
     def test_verdict_and_wait(self):
         v = self.mod.checks_verdict
         self.assertEqual(v([], [], [])[0], "wait")
@@ -546,6 +848,19 @@ class RequiredChecks(Overlay):
         self.assertEqual(
             self.mod.wait_loop(lambda: next(reads), [], 600, 1, 2, sleep=lambda s: None), 1
         )
+
+    def test_update_workflow_declares_no_issue_and_runs_the_changelog_hook_before_the_wait(self):
+        text = (ROOT / "templates/overlay/.github/workflows/core-update.yml").read_text()
+        self.assertIn("No issue: core release sync to $TAG", text)
+        self.assertIn("CHANGELOG_CMD: ${{ vars.CORE_UPDATE_CHANGELOG_CMD }}", text)
+        self.assertLess(text.index('if [ -n "$CHANGELOG_CMD" ]'), text.rindex("wait-checks"))
+        # the placeholder substitution, run as the workflow runs it
+        snippet = (
+            'CHANGELOG_CMD="echo pr {pr} v {version}"; PR_NUMBER=7; TAG=v9\n'
+            'CMD="${CHANGELOG_CMD//\\{pr\\}/$PR_NUMBER}"\nCMD="${CMD//\\{version\\}/$TAG}"\nbash -c "$CMD"\n'
+        )
+        rc, out = sh(["bash", "-c", snippet])
+        self.assertEqual((rc, out), (0, "pr 7 v v9"))
 
     def test_update_workflow_never_auto_merges(self):
         text = (ROOT / "templates/overlay/.github/workflows/core-update.yml").read_text()
@@ -661,25 +976,6 @@ class CoreStatus(Overlay):
             self.assertEqual(
                 self.by_id(self.status("--ci-results", res)[1])["a.1"]["status"], want, conclusion
             )
-
-    def test_kit_core_ci_rule_is_not_applicable_without_ui_adoption(self):
-        rules = json.loads((self.repo / "standards-core" / "rules.json").read_text())["rules"]
-        rules.append(
-            {
-                "id": "a.9",
-                "ref": "a.md 9",
-                "title": "T9",
-                "statement": "s",
-                "level": "must",
-                "applies_to": ["all"],
-                "check": {"kind": "core-ci", "command": "x", "requires": "ui-adoption"},
-                "acceptance": "x",
-            }
-        )
-        (self.repo / "standards-core" / "rules.json").write_text(json.dumps({"rules": rules}))
-        rc, rep = self.status()
-        self.assertEqual(self.by_id(rep)["a.9"]["status"], "not_applicable")
-        self.assertEqual(rep["summary"]["not_applicable"], 1)
 
     def test_proofs(self):
         (self.repo / "tests").mkdir()

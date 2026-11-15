@@ -899,6 +899,103 @@ export const useDarkLaunches = createLiveStore(
 export const postDarkLaunch = (act: 'dry-run' | 'enable' | 'disable', id: string, confirm?: string) =>
   docPost<{ id: string; done: string[]; already?: boolean }>(`api/dark-launches/${act}`, { id, confirm })
 
+// ---- Docs drift (OC-10): pages behind the code they document, report only ----
+// GET /api/docs-drift exists only when the consumer configured a provider (server/modules/docs_drift.py);
+// a 404 means no provider and the Knowledge tab stays hidden.
+export interface DriftRow {
+  thing: string
+  page: string
+  title: string
+  link: string
+  basis: string
+  since: string
+  commits: number
+  files: unknown[]
+  files_total: number
+  edited: string
+  status: string
+  detail: string
+}
+export interface DriftFacts {
+  thing: string
+  name: string
+  version: string
+  latest_release: string
+  home: string
+  readme: { status?: string; lines?: number; detail?: string }
+  changelog: { status?: string; missing?: unknown[]; page?: string }
+}
+export interface DocsDrift {
+  fetched_utc: string | null
+  run: { id?: string | number; created?: string; head?: string; url?: string } | null
+  counts: Record<string, number>
+  bases: Record<string, number>
+  total: number
+  behind: DriftRow[]
+  behind_total: number
+  no_verdict: DriftRow[]
+  facts: DriftFacts[]
+  pending_run: { since: string; after_run: string | number | null } | null
+  errors: number
+  error: string | null
+  refreshing: boolean
+}
+export type DocsDriftState = { configured: false } | ({ configured: true } & DocsDrift)
+export const useDocsDrift = createLiveStore<DocsDriftState>(async () => {
+  const res = await fetch(`${BASE}api/docs-drift`, { cache: 'no-cache' })
+  if (res.status === 404) return { configured: false }
+  if (!res.ok) throw new Error(`api/docs-drift -> ${res.status}`)
+  return { configured: true, ...((await res.json()) as DocsDrift) }
+}, 60_000)
+/** Check again (refresh) or start a run (run). A refusal carries its reason. */
+export async function postDocsDrift(act: 'refresh' | 'run'): Promise<{ started?: boolean }> {
+  const res = await fetch(`${BASE}api/docs-drift/${act}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+  const j = (await res.json().catch(() => ({}))) as { reason?: string; error?: string; started?: boolean }
+  if (!res.ok) throw new Error(j.reason || j.error || `api/docs-drift/${act} -> ${res.status}`)
+  return j
+}
+
+// ---- Sprint trend (OC-18): the last closed sprints plus the active one, and a read-only closed sprint view ----
+// A 404 or 501 means the tracker has no sprint source and the card and the closed sprints tab stay hidden.
+export interface SprintTrendRow {
+  id: number
+  name: string
+  start: string
+  end: string
+  active: boolean
+  items: number
+  done: number
+  points: number
+  points_done: number
+  carried: number
+  committed?: number
+}
+export interface ClosedSprint {
+  id: number
+  name: string
+  start: string
+  end: string
+  complete: string
+}
+export type Optional<T> = { available: false } | ({ available: true } & T)
+async function optionalGet<T extends object>(path: string, fresh = false): Promise<Optional<T>> {
+  const res = await fetch(`${BASE}${path}${fresh ? `${path.includes('?') ? '&' : '?'}fresh=1` : ''}`, { cache: 'no-cache' })
+  if (res.status === 404 || res.status === 501) return { available: false }
+  const j = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error((j as { error?: string }).error || `${path} -> ${res.status}`)
+  return { available: true, ...(j as T) }
+}
+export const useSprintTrend = createLiveStore(
+  (fresh = false) => optionalGet<{ generated_utc: string; sprints: SprintTrendRow[] }>('api/jira/sprint-trend', fresh),
+  10 * 60_000,
+)
+export const useClosedSprints = createLiveStore(
+  (fresh = false) => optionalGet<{ generated_utc: string; sprints: ClosedSprint[] }>('api/jira/sprints', fresh),
+  10 * 60_000,
+)
+/** One closed sprint, read only. The server accepts only ids from the closed list. */
+export const fetchClosedSprint = (id: number) => jiraGet<SprintData>(`api/jira/sprint?id=${encodeURIComponent(String(id))}`)
+
 // ---- Action Center routing: rules are data in ac-routing.json ----
 export type AcRoute = 'action_center' | 'analysis' | 'elsewhere' | 'nowhere'
 export type AcScope = 'all' | 'items' | 'candidates'

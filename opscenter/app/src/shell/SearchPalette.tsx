@@ -1,4 +1,4 @@
-// Global search on the kit command palette (web-ui.md sections 13 and 25). Cmd or Ctrl and K, or
+// Global search on the kit command palette (the web-ui-standard doc). Cmd or Ctrl and K, or
 // /, opens it from anywhere. It lists the pages, tabs, open Action Center items, the 1:1 people and
 // the theme commands, and as I type it asks the same /api/search the Search page uses. The first
 // row always runs the full search on /search (which adds Jira and the file viewer).

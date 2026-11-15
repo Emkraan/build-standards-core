@@ -9,6 +9,14 @@ Purpose: Owner-applied Terraform roots (a root whose spec says applied_by owner:
            owner_roots.py plan-all
            owner_roots.py plan <name> <tier>
            owner_roots.py apply <name> <tier> <plan_sha256>
+           owner_roots.py guard <name> <tier> [--allow-pr N ...] [--allow-missing-status]
+             read only: exit 3 when the saved plan would undo what a PR applied, and also (fail closed, the cause is
+             printed) when the status file is corrupt or unreadable, or missing unless --allow-missing-status is given
+             (an install that never recorded a hold). --allow-pr N skips PR N, for a PR meant to lose its objects.
+           owner_roots.py --log-start --root <name>:<tier> --sha <sha> [--by <account>]
+           owner_roots.py --log-done  --root <name>:<tier> --sha <sha> [--result <text>]
+             for an owner apply run from a terminal: append owner_apply_started or owner_apply_done to the decisions log
+             in the module's own record shape. Exit 0 logged, 2 bad arguments or a write error.
          Status: <cache>/status.json (OWNER_ROOTS_CACHE). Decisions: OWNER_ROOTS_DECISIONS (decision owner_apply_*).
 
          Nothing about a cloud is in this module. The roots spec is a JSON file in the clone (OWNER_ROOTS_SPEC, default
@@ -18,18 +26,29 @@ Purpose: Owner-applied Terraform roots (a root whose spec says applied_by owner:
            expected_identity (str) and identity() -> str   the signed-in account must equal it before a plan or an apply
            signin_cmd() -> [argv]                           the interactive sign-in the Sign in button runs
            backend_args(tier_spec, backend) -> [str]        extra `terraform init` arguments for the tier's state backend
-           before_apply(deletes, log) -> state              e.g. lift the resource locks the plan's deletes need
-           after_apply(state, log) -> (restored, [errors])  restore them; any error fails the apply loudly
+           before_apply(deletes, log[, state_dir]) -> state e.g. lift the resource locks the plan's deletes need. Lift
+                                                            only what covers a delete and raise before lifting anything
+                                                            when a wider protection covers one. A third parameter gets a
+                                                            private directory to record the lift in before the first lift.
+                                                            An exception carrying a `state` attribute (what was already
+                                                            lifted) still reaches after_apply
+           after_apply(state, log) -> (restored, [errors])  restore them and verify; any error fails the apply loudly
+           is_protection(id) -> bool                        an id the plan deletes that is itself a protection (a lock):
+                                                            left out of `deletes`, so it is never lifted or restored
            error_kinds() -> [(kind, regex, next step)]      extra failure classes, checked before the built-in ones
+           retry_kinds() -> [kind]                          error kinds (from error_kinds) that mean a lift has not
+                                                            settled yet: the apply is retried on them after a lift
          With no provider there is no identity check, no sign-in, no backend arguments and no lock handling.
 Date:    2026-10-12
 """
 
+import argparse
 import contextlib
 import datetime as dt
 import fcntl
 import hashlib
 import importlib.util
+import inspect
 import json
 import os
 import re
@@ -209,6 +228,26 @@ def _load_status():
         return {"items": {}}
 
 
+def _read_status_strict():
+    """(status, None) or (None, cause). For the guard, which fails closed: a missing, unreadable or corrupt status
+    file is a cause, never an empty status. The cause starts with `missing` when the file is not there."""
+    try:
+        text = STATUS.read_text()
+    except FileNotFoundError:
+        return None, f"missing: no status file at {STATUS}"
+    except OSError as e:
+        return None, f"unreadable status file {STATUS}: {e}"
+    try:
+        st = json.loads(text)
+    except ValueError as e:
+        return None, f"corrupt status file {STATUS}: {e}"
+    if not isinstance(st, dict) or not isinstance(st.get("items", {}), dict):
+        return None, f"corrupt status file {STATUS}: not an object with items"
+    if not isinstance(st.get("pr_applied") or {}, dict):
+        return None, f"corrupt status file {STATUS}: pr_applied is not an object"
+    return st, None
+
+
 def _update(key, **fields):
     CACHE.mkdir(parents=True, exist_ok=True)
     with open(STATUS_LOCK, "w") as lk:
@@ -347,6 +386,7 @@ def plan(name, tier, sha=None):
                 resources=[],
                 plan_sha256=None,
                 apply_failures=None,
+                ahead_of_main=_hold_check(name, tier, [], sha),
                 error=None,
             )
             _close_alert(name, tier, "The root re-planned clean, nothing is left to apply.")
@@ -366,6 +406,7 @@ def plan(name, tier, sha=None):
             resources=resources,
             plan_sha256=digest,
             planned_at=_now(),
+            ahead_of_main=_hold_check(name, tier, resources, sha),
             error=None,
         )
         if not it.get("pending_since"):
@@ -404,7 +445,8 @@ def _tail(p):
 
 def _plan_deletes(show):
     """The ids a saved plan deletes (replaces included), from terraform show -json: what a provider needs to
-    decide what to protect or unprotect around the apply."""
+    decide what to protect or unprotect around the apply. An id the provider's is_protection names (a lock the plan
+    itself deletes) is left out, so the lift never touches it and the restore never brings it back."""
     ids = set()
     for rc in show.get("resource_changes") or []:
         change = rc.get("change") or {}
@@ -414,7 +456,9 @@ def _plan_deletes(show):
         for field in ("id", "resource_id"):
             val = before.get(field)
             if isinstance(val, str) and val:
-                ids.add(val.split("|")[0])
+                val = val.split("|")[0]
+                if not _hook("is_protection", val, default=False):
+                    ids.add(val)
     return sorted(ids)
 
 
@@ -423,13 +467,396 @@ def log_event(rec):
     _log(rec)
 
 
+# ---------------------------------------------------------------------------------------------------------------------
+# Ahead of main. A pull request can apply a root from its own branch before it merges (the consumer's PR apply flow records
+# the hold with set_pr_hold). While it is ahead of main, main's plan of that root would destroy what the PR applied, so the
+# card says "ahead of main, waiting on #N" and Apply is refused by the server and by the worker; the hold clears when main
+# contains the PR merge commit or the PR closes unmerged. A PR left ahead of main for more than AHEAD_CARD_S becomes an
+# Action Center item. Provider hooks (all optional, the null default keeps every hold):
+#   pr_state(pr)        -> (state, merge_commit): "open", "merged", "closed" or "unknown"
+#   contains(oid, sha)  -> True when commit oid is in sha's history
+#   pr_url(pr)          -> the link of a pull request;  owner_name() -> who the item is for
+#   detect_ahead(root)  -> {pr, head, addresses} | None: for a root with no hold record (a hand apply, or status from
+#                          before holds were recorded), an open PR whose objects are live: the addresses it holds. Asked
+#                          only when main's plan destroys something; a hit is recorded as a detected hold, a failed read
+#                          changes nothing.
+#   open_pr_addresses(root) -> [{number, addresses}] | None: the addresses each open PR declares for this root, read
+#                          live. The guard then also refuses a delete of one of them; a failed read refuses.
+# `root` is the `name:tier` key. An address matches with or without an index suffix on either side, so a hold of x.a
+# covers a delete of x.a["k"] and a hold of x.a["k"] covers a delete of x.a.
+# ---------------------------------------------------------------------------------------------------------------------
+AHEAD_CARD_S = int(os.environ.get("OWNER_ROOTS_AHEAD_CARD_S", str(2 * 86400)))
+AHEAD_PREFIX = "ahead-"
+HOLD_TTL_S = int(os.environ.get("OWNER_ROOTS_HOLD_TTL_S", "120"))
+_HOLD_CHECKED = {"at": 0.0}
+_INDEX_RE = re.compile(r'\["(?:[^"\\]|\\.)*"\]|\[[^\]"]*\]')
+
+
+def base_address(addr):
+    """x.a["k"] -> x.a, module.m["a"].x.y[0] -> module.m.x.y (every index suffix dropped, the module path kept)."""
+    return _INDEX_RE.sub("", str(addr or ""))
+
+
+def _addr_hits(deleted, held):
+    """The deleted addresses `held` covers: equal, or equal once the index suffix is dropped from one side (a base
+    address covers each of its instances and an instance covers a delete of its base). Two different instances of
+    the same base never match."""
+    held = set(held or [])
+    bases = {base_address(a) for a in held}
+    return sorted(
+        {
+            d
+            for d in deleted
+            if d in held or base_address(d) in held or (d in bases and d == base_address(d))
+        }
+    )
+
+
+def _deleted(resources):
+    return [
+        r["address"]
+        for r in resources or []
+        if r.get("action") in ("destroy", "replace") and r.get("address")
+    ]
+
+
+def _holds():
+    return _load_status().get("pr_applied") or {}
+
+
+def _set_hold(key, rec):
+    CACHE.mkdir(parents=True, exist_ok=True)
+    with open(STATUS_LOCK, "w") as lk:
+        fcntl.flock(lk, fcntl.LOCK_EX)
+        st = _load_status()
+        d = st.setdefault("pr_applied", {})
+        if rec is None:
+            d.pop(key, None)
+        else:
+            d[key] = rec
+        tmp = STATUS.with_suffix(".tmp")
+        tmp.write_text(json.dumps(st, indent=1))
+        os.replace(tmp, STATUS)
+
+
+def set_pr_hold(name, tier, pr, head, digest, resources, applied_at=None, source=None):
+    """Record that pull request `pr` applied this root from its branch at `head`: main's plan must not destroy what it applied
+    until the PR merges. `resources` are the applied plan's resources ({address, action}); only add, change, replace and
+    import addresses are held."""
+    addrs = sorted(
+        {
+            r["address"]
+            for r in resources
+            if r.get("address") and r.get("action") in ("add", "change", "replace", "import")
+        }
+    )
+    rec = {
+        "pr": int(pr),
+        "head": head,
+        "plan_sha256": digest,
+        "applied_at": applied_at or _now(),
+        "addresses": addrs,
+        "pr_state": "open",
+        "merge_commit": None,
+    }
+    if source:
+        rec["source"] = source
+    _set_hold(_key(name, tier), rec)
+    _log(
+        {
+            "decision": "owner_apply_pr_hold",
+            "root": _key(name, tier),
+            "pr": int(pr),
+            "head": head,
+            "resources": len(addrs),
+        }
+    )
+    return rec
+
+
+def _pr_state(pr):
+    """(open|merged|closed|unknown, merge commit sha). An unreadable or unconfigured read is unknown, which keeps a hold."""
+    try:
+        d = _hook("pr_state", int(pr), default=None)
+    except Exception:  # noqa: BLE001 - an unreadable PR keeps its hold
+        return "unknown", None
+    if not d:
+        return "unknown", None
+    state, oid = (list(d) + [None])[:2]
+    return (str(state or "").lower() or "unknown"), oid
+
+
+def _contains(oid, sha):
+    if not oid or not sha:
+        return False
+    try:
+        return bool(_hook("contains", oid, sha, default=False))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _hold_check(name, tier, resources, sha):
+    """Main-side safety. While a root a PR applied is ahead of main, the main plan that would destroy what the PR applied is
+    marked ahead of main (its Apply is refused). The hold clears once main contains the PR merge commit, or when the PR closes
+    unmerged. Returns the ahead-of-main record or None."""
+    key = _key(name, tier)
+    rec = _holds().get(key)
+    if not rec:
+        return _detect_ahead(name, tier, resources)
+    state, oid = _pr_state(rec["pr"])
+    if (state == "merged" and _contains(oid, sha)) or state == "closed":
+        _set_hold(key, None)
+        _log(
+            {
+                "decision": "owner_apply_pr_released",
+                "root": key,
+                "pr": rec["pr"],
+                "pr_state": state,
+                "main": sha,
+            }
+        )
+        return None
+    hit = _addr_hits(_deleted(resources), rec.get("addresses"))
+    if not hit:
+        return None
+    _log(
+        {
+            "decision": "owner_apply_pr_ahead",
+            "root": key,
+            "pr": rec["pr"],
+            "head": rec["head"],
+            "destroys": hit,
+        }
+    )
+    return {"pr": rec["pr"], "head": rec["head"], "addresses": hit}
+
+
+def _detect_ahead(name, tier, resources):
+    """Ahead of main with no record of an apply (a hand apply, or status from before holds were recorded). Only when
+    main's plan destroys something, the provider's detect_ahead names the open PR whose objects are live and the
+    addresses it holds; the ones main would destroy become a detected hold, which survives restarts and clears by the
+    same rules as a recorded one. A read that fails, or an answer of the wrong shape, changes nothing."""
+    key = _key(name, tier)
+    main_destroys = _deleted(resources)
+    if not main_destroys:
+        return None
+    try:
+        found = _hook("detect_ahead", key, default=None)
+        if not found:
+            return None
+        pr, head = int(found["pr"]), found.get("head")
+        addresses = found.get("addresses") or []
+        if not isinstance(addresses, list):
+            raise ValueError("addresses is not a list")
+    except Exception as e:  # noqa: BLE001 - the card keeps showing its deletes
+        _log({"decision": "owner_apply_pr_ahead_unread", "root": key, "detail": str(e)[:300]})
+        return None
+    hit = _addr_hits(main_destroys, [str(a) for a in addresses])
+    if not hit:
+        return None
+    _set_hold(
+        key,
+        {
+            "pr": pr,
+            "head": head,
+            "plan_sha256": found.get("plan_sha256"),
+            "applied_at": None,
+            "addresses": hit,
+            "pr_state": "open",
+            "merge_commit": None,
+            "source": "detected",
+            "detected_at": _now(),
+        },
+    )
+    _log(
+        {
+            "decision": "owner_apply_pr_ahead",
+            "root": key,
+            "pr": pr,
+            "head": head,
+            "destroys": hit,
+            "source": "detected",
+        }
+    )
+    return {"pr": pr, "head": head, "addresses": hit}
+
+
+def _ahead_text(ahead):
+    addrs = ahead.get("addresses") or []
+    first = f", for example {addrs[0]}" if addrs else ""
+    return (
+        f"Ahead of main, waiting on #{ahead.get('pr')}. This plan would destroy {len(addrs)} resource(s) that PR "
+        f"#{ahead.get('pr')} applied from its head {str(ahead.get('head') or '')[:8]}{first}. Apply is refused until main "
+        "contains the PR merge commit; the root is re-planned by itself then."
+    )
+
+
+def guard_refusal(name, tier, it, allow=(), holds=None):
+    """The owner apply guard: why this saved plan may not be applied, or None. It refuses when any resource the plan deletes
+    (a destroy or a replace) is an address a pull request that is still open (or unreadable) already applied from its branch,
+    whether or not the card was marked, so a stale mark never lets a delete through. The apply on main then cannot undo a
+    branch apply. With the provider's open_pr_addresses it also refuses a delete of an address an open PR declares for
+    this root (read live, so a PR that never recorded an apply and a hand apply are covered too); that read failing
+    refuses as well. `allow` holds PR numbers meant to lose their objects (the CLI's --allow-pr); `holds` is the
+    already read hold map (the CLI passes the one it read strictly)."""
+    key = _key(name, tier)
+    allow = {int(x) for x in allow or ()}
+    deleted = _deleted(it.get("resources"))
+    rec = (_holds() if holds is None else holds).get(key)
+    why = []
+    if (
+        rec
+        and rec.get("pr_state") not in ("merged", "closed")
+        and int(rec.get("pr") or 0) not in allow
+    ):
+        hit = _addr_hits(deleted, rec.get("addresses"))
+        if hit:
+            why.append(_ahead_text({"pr": rec["pr"], "head": rec.get("head"), "addresses": hit}))
+    if deleted:
+        why.extend(_open_pr_refusals(key, deleted, allow))
+    return " ".join(why) or None
+
+
+def _open_pr_refusals(key, deleted, allow):
+    """Refusal lines from the provider's open_pr_addresses: none when there is no such hook (the null default)."""
+    try:
+        p = provider()
+        fn = getattr(p, "open_pr_addresses", None) if p is not None else None
+        if not callable(fn):
+            return []
+        prs = fn(key)
+        if prs is None:
+            return []
+        rows = [(int(x["number"]), [str(a) for a in x.get("addresses") or []]) for x in prs]
+    except Exception as e:  # noqa: BLE001 - fail closed: an unread open PR may hold what this plan deletes
+        return [
+            f"Refused: the open pull requests of {key} could not be read ({type(e).__name__}: {str(e)[:200]}), so "
+            "this plan's deletes cannot be checked against them."
+        ]
+    out = []
+    for pr, addrs in sorted(rows):
+        if pr in allow:
+            continue
+        hit = _addr_hits(deleted, addrs)
+        if hit:
+            out.append(
+                f"Refused: this plan deletes {len(hit)} resource(s) open PR #{pr} declares in {key}, for example "
+                f"{hit[0]}. Apply from a tree that includes that PR's changes to this root, or merge it first; "
+                f"--allow-pr {pr} only when that PR is meant to lose them."
+            )
+    return out
+
+
+def _ahead_refusal(name, tier, it):
+    ahead = it.get("ahead_of_main")
+    if ahead and _holds().get(_key(name, tier)):
+        return _ahead_text(ahead)
+    return guard_refusal(name, tier, it)
+
+
+def ahead_items(now=None):
+    """Action Center items for roots an open PR holds ahead of main for more than AHEAD_CARD_S. The age runs from the apply
+    (applied_at) or, for a hold found without a record, from when it was detected. A merged PR is skipped (the next main plan
+    releases it); a hold with no time yet counts from now, so it shows up later instead of never."""
+    now = time.time() if now is None else now
+    out = []
+    for key, rec in sorted(_holds().items()):
+        if rec.get("pr_state") not in ("open", "unknown", None):
+            continue
+        since = rec.get("applied_at") or rec.get("detected_at")
+        if not _epoch(since):
+            _set_hold(key, dict(rec, detected_at=_now()))
+            continue
+        age = now - _epoch(since)
+        if age < AHEAD_CARD_S:
+            continue
+        pr, days = int(rec["pr"]), int(age // 86400)
+        n = len(rec.get("addresses") or [])
+        how = "applied from its branch" if rec.get("applied_at") else "found live ahead of main"
+        url = _hook("pr_url", pr, default=None)
+        out.append(
+            {
+                "key": f"{AHEAD_PREFIX}{key.replace(':', '-')}-pr{pr}",
+                "priority": "medium",
+                "title": f"PR #{pr} has been live ahead of main for {days} days ({key})",
+                "why": (
+                    f"{n} resource(s) in {key} were {how} {days} days ago and PR #{pr} is still not merged. Main cannot "
+                    "apply this root until the PR merges, and the cloud holds changes main does not describe."
+                ),
+                "action": f"Merge PR #{pr}, or close it and remove what it applied from {key}.",
+                "owner": str(_hook("owner_name", default="") or ""),
+                "refs": [f"PR #{pr}"],
+                "sources": ["Owner roots"],
+                "links": [{"label": f"PR #{pr}", "url": url}] if url else [],
+            }
+        )
+    return out
+
+
+def refresh_holds(force=False):
+    """Re-read each held PR (every HOLD_TTL_S). A PR closed unmerged releases its hold and the ahead mark on main's item. A
+    merged one is recorded and clears when main is planned at or past its merge commit."""
+    if not force and time.time() - _HOLD_CHECKED["at"] < HOLD_TTL_S:
+        return
+    _HOLD_CHECKED["at"] = time.time()
+    for key, rec in list(_holds().items()):
+        state, oid = _pr_state(rec["pr"])
+        if state == "closed":
+            _set_hold(key, None)
+            _update(key, ahead_of_main=None)
+            _log(
+                {
+                    "decision": "owner_apply_pr_released",
+                    "root": key,
+                    "pr": rec["pr"],
+                    "pr_state": state,
+                }
+            )
+        elif state in ("open", "merged"):
+            _set_hold(key, dict(rec, pr_state=state, merge_commit=oid, checked=_now()))
+
+
+def _before_apply(deletes, log, lock_state):
+    """The provider's before_apply; one that takes a third parameter gets a private directory to record its lift in
+    before the first lift."""
+    p = provider()
+    fn = getattr(p, "before_apply", None) if p is not None else None
+    if not callable(fn):
+        return None
+    try:
+        params = [
+            x
+            for x in inspect.signature(fn).parameters.values()
+            if x.kind in (x.POSITIONAL_ONLY, x.POSITIONAL_OR_KEYWORD, x.VAR_POSITIONAL)
+        ]
+    except (TypeError, ValueError):
+        params = []
+    if len(params) >= 3 or any(x.kind == x.VAR_POSITIONAL for x in params):
+        Path(lock_state).mkdir(parents=True, exist_ok=True)
+        return fn(deletes, log, Path(lock_state))
+    return fn(deletes, log)
+
+
+def _lift_lag(output):
+    """True when a failed apply after a lift looks like the lift has not settled: the output's error kind is one the
+    provider's retry_kinds names (its own class for a protection still in force), or the output says retry."""
+    kinds = {str(k) for k in (_hook("retry_kinds", default=None) or [])}
+    if kinds and classify_error(output)[0] in kinds:
+        return True
+    return "retry" in (output or "").lower()
+
+
 def _apply_with_hooks(key, root, planfile, deletes, lock_state, log):
     """Run the provider's before_apply, apply the saved plan, then the provider's after_apply whatever happened. Returns
     (apply summary, restored). Raises when the apply fails, and also when after_apply reports an error (that one wins,
     it is worse)."""
     state, apply_err, summary = None, None, None
     try:
-        state = _hook("before_apply", deletes, log, default=None)
+        try:
+            state = _before_apply(deletes, log, lock_state)
+        except Exception as e:  # noqa: BLE001 - a partial lift the provider reports is still restored
+            state = getattr(e, "state", None)
+            raise
         for attempt in range(APPLY_TRIES):
             p = _run(
                 [TF, "apply", "-input=false", "-no-color", "-lock-timeout=120s", str(planfile)],
@@ -443,13 +870,9 @@ def _apply_with_hooks(key, root, planfile, deletes, lock_state, log):
                     "Apply complete.",
                 )
                 break
-            # Terraform refuses a saved plan the state moved past, so a retry after a transient refusal cannot apply
-            # anything twice.
-            if (
-                state is not None
-                and "retry" in (p.stderr + p.stdout).lower()
-                and attempt < APPLY_TRIES - 1
-            ):
+            # A lift can lag behind in the cloud. Terraform refuses a saved plan the state moved past, so a retry after
+            # a transient refusal cannot apply anything twice.
+            if state and _lift_lag(p.stderr + p.stdout) and attempt < APPLY_TRIES - 1:
                 time.sleep(float(os.environ.get("OWNER_ROOTS_RETRY_S", "10")))
                 continue
             raise RuntimeError("terraform apply failed: " + _tail(p))
@@ -529,6 +952,50 @@ def _apply_failed(key, msg, **extra):
     )
 
 
+# Terraform refuses a saved plan once the state moved after it was made (someone applied the root another way, or main
+# moved under the worktree). Nothing failed, the plan is just old. Matches only the plan_changed kind, so a lock left
+# off or any real error never takes this path (layout standard rule 12).
+STALE_RE = re.compile(r"Saved plan is stale|worktree moved since the plan", re.I)
+STALE_PENDING_MSG = (
+    "The saved plan went stale before the apply (the state changed after it was made), so it was re-planned "
+    "at once. The fresh plan below still has changes: review it and apply it."
+)
+
+
+def _replan_after_stale(name, tier, key, msg):
+    """Re-plan straight after a stale saved plan. True when it handled the failure: a clean plan means nothing is left
+    to apply, so the card clears and the repeat alert closes; a plan with changes keeps one plain line asking for a
+    review of the fresh plan. False (the normal failure path runs) when it is not a stale plan or the re-plan itself
+    fails. A stale plan never counts toward the repeat alert."""
+    if classify_error(msg)[0] != "plan_changed" or not STALE_RE.search(msg or ""):
+        return False
+    try:
+        plan(name, tier)
+    except Exception as e:  # noqa: BLE001 - the normal failure path reports it
+        print(f"re-plan after a stale plan failed for {key}: {e}", file=sys.stderr)
+        return False
+    state = (_load_status().get("items", {}).get(key) or {}).get("state")
+    _log({"decision": "owner_apply_stale_replanned", "root": key, "detail": msg, "state": state})
+    if state == "clean":
+        _update(
+            key,
+            last_apply_error=None,
+            apply_failures=None,
+            stale_replanned={"at": _now(), "state": state},
+        )
+        _close_alert(name, tier, "The saved plan was stale and the re-plan came back clean.")
+        return True
+    if state == "pending":
+        _update(
+            key,
+            last_apply_error={"at": _now(), "message": STALE_PENDING_MSG},
+            apply_failures=None,
+            stale_replanned={"at": _now(), "state": state},
+        )
+        return True
+    return False
+
+
 def apply(name, tier, digest):
     key = _key(name, tier)
     it = _load_status().get("items", {}).get(key) or {}
@@ -539,6 +1006,11 @@ def apply(name, tier, digest):
         return
     if hashlib.sha256(planfile.read_bytes()).hexdigest() != digest:
         _apply_failed(key, "The saved plan file does not match what the owner reviewed. Re-plan.")
+        return
+    refusal = _ahead_refusal(name, tier, it)
+    if refusal:
+        _apply_failed(key, refusal)
+        planfile.unlink(missing_ok=True)
         return
     _update(key, state="applying", started=_now(), error=None)
     _log(
@@ -590,6 +1062,9 @@ def apply(name, tier, digest):
         )
     except Exception as e:  # noqa: BLE001
         msg = str(e)[:600]
+        planfile.unlink(missing_ok=True)
+        if _replan_after_stale(name, tier, key, msg):
+            return
         kind, _ = classify_error(msg)
         prev = it.get("apply_failures") or {}
         same = prev.get("kind") == kind and prev.get("main_sha") == it.get("main_sha")
@@ -914,9 +1389,12 @@ def get():
         else:
             phase = "idle"
         kind, step = classify_error(it.get("error")) if state in ("error", "auth") else (None, None)
+        ahead = it.get("ahead_of_main") if state == "pending" and _holds().get(k) else None
         items.append(
             dict(
                 it,
+                ahead_of_main=ahead,
+                ahead_text=_ahead_text(ahead) if ahead else None,
                 key=k,
                 stale=bool(age and age > STALE_S),
                 plan_file=None,
@@ -950,6 +1428,7 @@ def maybe_refresh():
     older than REFRESH_S. Called by the server thread every minute and on every GET."""
     if not configured():
         return
+    refresh_holds()
     st = _load_status()
     items = [i for i in st.get("items", {}).values() if i.get("state") != "gone"]
     newest = max((_epoch(i.get("finished")) for i in items if i.get("finished")), default=0)
@@ -1014,6 +1493,9 @@ def request(payload, act):
             return 409, {
                 "error": "The plan changed since you loaded it. Refresh and review it again."
             }
+        ahead = _ahead_refusal(name, tier, it)
+        if ahead:
+            return 409, {"error": ahead}
         if str(payload.get("confirm") or "").strip() != name:
             return 400, {"error": f"Type {name} to confirm."}
         if time.time() - _epoch(it.get("planned_at")) > STALE_S:
@@ -1029,10 +1511,107 @@ def request(payload, act):
     return 404, {"error": "unknown action"}
 
 
+GUARD_REFUSED = 3
+_ROOT_RE = re.compile(r"^[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+$")
+
+
+class _Args(argparse.ArgumentParser):
+    def error(self, message):
+        raise ValueError(message)
+
+
+def guard_main(argv):
+    """`guard <name> <tier> [--allow-pr N ...] [--allow-missing-status]`. Exit 0 ok, 3 refused, with the cause printed.
+    Fails closed: a status file that is corrupt or unreadable refuses, and so does a missing one unless
+    --allow-missing-status says this install has never recorded a hold."""
+    ap = _Args(prog="owner_roots.py guard")
+    ap.add_argument("name")
+    ap.add_argument("tier")
+    ap.add_argument("--allow-pr", type=int, action="append", default=[])
+    ap.add_argument("--allow-missing-status", action="store_true")
+    try:
+        a = ap.parse_args(argv)
+    except ValueError as e:
+        print(f"owner-roots guard: {e}", file=sys.stderr)
+        return 2
+    st, cause = _read_status_strict()
+    if cause:
+        if not (cause.startswith("missing") and a.allow_missing_status):
+            print(f"REFUSED (fail closed): {cause}")
+            return GUARD_REFUSED
+        st = {"items": {}}
+    try:
+        it = (st.get("items") or {}).get(_key(a.name, a.tier)) or {}
+        why = guard_refusal(a.name, a.tier, it, allow=a.allow_pr, holds=st.get("pr_applied") or {})
+    except Exception as e:  # noqa: BLE001 - fail closed: a hold or plan record the guard cannot read refuses
+        print(
+            f"REFUSED (fail closed): the status could not be checked ({type(e).__name__}: {str(e)[:200]})"
+        )
+        return GUARD_REFUSED
+    print(why or "ok")
+    return GUARD_REFUSED if why else 0
+
+
+def log_main(argv):
+    """Terminal apply logging: --log-start or --log-done appends owner_apply_started or owner_apply_done to the
+    decisions log in the module's own record shape, so an owner apply run from a terminal is attributed like one run
+    from the Ops Center. Exit 0 logged, 2 bad arguments or a write error."""
+    ap = _Args(prog="owner_roots.py")
+    mode = ap.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--log-start", action="store_true")
+    mode.add_argument("--log-done", action="store_true")
+    ap.add_argument("--root", required=True, help="<root name>:<tier>")
+    ap.add_argument("--sha", required=True)
+    ap.add_argument("--by", default=None)
+    ap.add_argument("--result", default="terminal apply")
+    try:
+        a = ap.parse_args(argv)
+    except ValueError as e:
+        print(f"owner-roots: {e}", file=sys.stderr)
+        return 2
+    if not _ROOT_RE.match(a.root):
+        print("owner-roots: --root must look like name:tier", file=sys.stderr)
+        return 2
+    if a.log_start:
+        try:
+            by = a.by if a.by is not None else _expected_identity()
+        except ProviderRefused as e:
+            print(f"owner-roots: {e}", file=sys.stderr)
+            return 2
+        if not by:
+            print(
+                "owner-roots: --by is required when no provider names the expected identity",
+                file=sys.stderr,
+            )
+            return 2
+        rec = {"decision": "owner_apply_started", "root": a.root, "sha": a.sha, "by": by.lower()}
+    else:
+        rec = {
+            "decision": "owner_apply_done",
+            "root": a.root,
+            "sha": a.sha,
+            "result": a.result,
+            "locks_restored": 0,
+        }
+    try:
+        _log(rec)
+    except OSError as e:
+        print(f"owner-roots: could not write the log: {e}", file=sys.stderr)
+        return 2
+    print(f"owner-roots: logged {rec['decision']} for {a.root}")
+    return 0
+
+
 def main(argv):
     CACHE.mkdir(parents=True, exist_ok=True)
     if argv[:1] == ["signin"]:
         return signin_worker()  # takes the operation lock itself, only after the sign-in lands
+    if any(x in ("--log-start", "--log-done") for x in argv):
+        return log_main(argv)
+    if argv[:1] == [
+        "guard"
+    ]:  # read only: exit 3 when the saved plan would undo a PR's branch apply
+        return guard_main(argv[1:])
     with open(LOCK, "a") as lk:
         try:
             fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)

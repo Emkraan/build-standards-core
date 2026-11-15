@@ -20,7 +20,7 @@ export function Card({ title, sub, children, accent }: { title?: string; sub?: s
 
 const STAT_TONE: Record<Tone, StatTone> = { good: 'success', warn: 'warning', alert: 'danger' }
 
-/** A hero KPI, rendered by the kit StatTile (the only stat primitive, web-ui.md rule 4). */
+/** A hero KPI, rendered by the kit StatTile (the only stat primitive, the web-ui-standard doc). */
 export function Kpi({ value, label, tone }: { value: string | number; label: string; tone?: Tone }) {
   return <StatTile value={value} label={label} tone={tone ? STAT_TONE[tone] : 'accent'} />
 }

@@ -6,8 +6,8 @@ import { HashRouter } from 'react-router-dom'
 // (index.css here, App.css, shell.css and the page sheets through App.tsx and the pages) so app
 // rules win ties.
 import './layers.css'
-import '../../../tokens/tokens.css'
-import '../../../tokens/hub-layer.css'
+import '../../tokens/tokens.css'
+import '../../tokens/hub-layer.css'
 import '@kit/styles/kit.css'
 import './index.css'
 import App from './App.tsx'

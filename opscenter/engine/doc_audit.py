@@ -17,8 +17,16 @@ Configuration: `DOC_AUDIT_CONFIG` (default `<state>/dashboard/doc-audit-config.j
   closeout_state   JSON of the sprint close-out (rule R12)
   cron_jobs, cron_catalog   the agent's job list and the catalog that must describe each job (rule R10)
   owner_exclude    names skipped when picking the responsible person
+  mirror           {"repo": clone path, "repo_slug": "owner/name", "map": [{"repo_prefix", "live_dir"}], "grace_hours": 30, "sync_pr_hours": 24,
+                   "sync_branch_prefix": "sync/", "sync_title": "sync"}   rule R16 (a backup mirror behind live code); absent: R16 does not run
   discovery        {"dirs": [{"repo", "parent", "label"}], "file_trees": [{"repo", "dir", "ext", "label", "gap_id", "legacy_match"}]}
                    what rule R9 looks for that no registry entry covers; registry key `discovery_ignore` lists "<repo>:<dir>" to skip
+
+Rules R13, R15 and R16 are opt in. R13 (a page that says it is retired but still shows a Live status) runs when `dup_roots` is set or the
+registry has a retired thing; R15 (a retired or merged page outside the Archive) runs when the registry sets `archive_page` (a page id; absent:
+silent); R16 runs when `mirror` is configured. The registry's `things[].status` is `live`, `wip` or `retired`; `retired_note` is free text the audit
+ignores. Each of the three has its own internal pseudo thing (`_backup`, `_retired_live`, `_archive`) at low severity, so they surface on the
+Knowledge page and never on the Action Center.
 
 Usage:   doc_audit.py            run the audit, write doc-gaps.json, print only on failure
          doc_audit.py --report   also print a per-thing summary
@@ -33,6 +41,7 @@ import argparse
 import datetime as dt
 import fcntl
 import fnmatch
+import hashlib
 import json
 import os
 import re
@@ -664,6 +673,213 @@ def internal_gaps():
     ]
 
 
+RETIRED_MARK = re.compile(
+    r"<strong>\s*Retired\b|>\s*RETIRED\s*<|Status</p></t[hd]><td><p>\s*Retired|this page is kept for history",
+    re.I,
+)
+LIVE_MARK = re.compile(
+    r'data-type="status"[^>]*>\s*LIVE\s*<|Status\s*:?\s*</strong>\s*:?\s*Live\b|Status</p></t[hd]><td><p>\s*Live\b'
+)
+RETIRED_HEAD_CHARS = 1500
+
+
+def page_html(conf, page_id):
+    """A page's title and its body as html (the retired and live marks are read from the markup)."""
+    key = ("html", page_id)
+    if key not in conf.cache:
+        p = conf._call("getConfluencePage", {"pageId": str(page_id), "contentFormat": "html"})
+        body = p.get("body") or ""
+        if isinstance(body, dict):
+            body = body.get("value") or (body.get("storage") or {}).get("value") or ""
+        conf.cache[key] = {"title": p.get("title") or "", "html": body}
+    return conf.cache[key]
+
+
+def retired_search(conf, root_id, term, rule):
+    """Pages under a root whose text matches `term`. A result with no results field, or a truncated one, raises: the rule fails closed."""
+    d = conf._call(
+        "searchConfluenceUsingCql",
+        {"cql": f"ancestor = {root_id} AND type = page AND ({term})", "limit": 250},
+    )
+    if d.get("results") is None:
+        raise AuditError(f"{rule} search returned no results field for {root_id}")
+    if d.get("totalSize", 0) > len(d["results"]):
+        raise AuditError(f"{rule} search under {root_id} truncated at {len(d['results'])}")
+    return [str(r["content"]["id"]) for r in d["results"]]
+
+
+def retired_live_enabled(registry):
+    return bool(config().get("dup_roots")) or any(
+        t.get("status") == "retired" for t in registry.get("things", [])
+    )
+
+
+def retired_live_gaps(conf, registry):
+    """R13: a page that says it is retired (a banner, a status row or the title, near the top) while a status badge or Status line on it still says
+    Live, plus the home of every registry thing marked retired that still says Live. One low gap per page."""
+    cands = {}
+    for rid in config().get("dup_roots") or {}:
+        for pid in retired_search(conf, rid, 'text ~ "retired"', "R13"):
+            cands[pid] = False
+    for t in registry.get("things", []):
+        if t.get("status") == "retired" and t.get("confluence_home"):
+            cands[str(t["confluence_home"])] = True
+    gaps = []
+    for pid, known_retired in sorted(cands.items()):
+        p = page_html(conf, pid)
+        head = p["html"][:RETIRED_HEAD_CHARS]
+        retired = (
+            known_retired
+            or RETIRED_MARK.search(head)
+            or re.search(r"\bretired\b", p["title"], re.I)
+        )
+        if retired and LIVE_MARK.search(p["html"]):
+            gaps.append(
+                gap(
+                    f"R13:{pid}",
+                    "R13",
+                    "low",
+                    f"'{p['title']}' ({wiki_url()}{pid}) is marked retired but a status badge or Status line on it still says Live.",
+                )
+            )
+    return gaps
+
+
+def under_page(conf, pid, target, limit=12):
+    """True when `target` is in pid's real parent chain. CQL ancestor lags a move by minutes, so the chain is walked."""
+    cur = str(pid)
+    roots = set(map(str, config().get("dup_roots") or {}))
+    for _ in range(limit):
+        try:
+            parent = str(conf.page(cur).get("parent") or "")
+        except AuditError:
+            return False  # a folder in the chain (the pages API answers 404 for folders)
+        if not parent or parent in roots:
+            return False
+        if parent == target:
+            return True
+        cur = parent
+    return False
+
+
+def archive_enabled(registry):
+    return bool(str(registry.get("archive_page") or ""))
+
+
+def archive_gaps(conf, registry):
+    """R15: a retired or merged page whose top page sits outside the Archive (registry `archive_page`). The retired test is the one R13 uses; a
+    child of a retired page is not listed again because it moves with it. Silent until `archive_page` is set."""
+    arch = str(registry.get("archive_page") or "")
+    if not arch:
+        return []
+    inside = {p["id"] for p in tree_pages(conf, arch)} | {arch}
+    retired = {}
+    for rid in config().get("dup_roots") or {}:
+        for pid in retired_search(conf, rid, 'text ~ "retired" OR text ~ "merged"', "R15"):
+            if pid in inside or under_page(conf, pid, arch):
+                continue
+            p = page_html(conf, pid)
+            if RETIRED_MARK.search(p["html"][:RETIRED_HEAD_CHARS]):
+                retired[pid] = (p["title"], conf.page(pid)["parent"])
+    return [
+        gap(
+            f"R15:{pid}",
+            "R15",
+            "low",
+            f"'{title}' ({wiki_url()}{pid}) is retired or merged but sits outside the Archive. Move it, with its child pages, under the archive.",
+        )
+        for pid, (title, parent) in sorted(retired.items())
+        if parent not in retired
+    ]
+
+
+def git_blob_sha(data):
+    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
+
+
+def mirror_config():
+    m = config().get("mirror")
+    return m if isinstance(m, dict) and m.get("repo") and m.get("map") else None
+
+
+def backup_drift(now=None, run=subprocess.run, cfg=None):
+    """R16: live files that a backup mirror's main is behind on. The mirror is filled by a pull request on a schedule, so a file is drift only once
+    its live copy has been unchanged for `grace_hours` and still differs from the mirror's main (its blob sha), which means a sync pull request is
+    stuck or the sync failed. Also names any sync pull request open longer than `sync_pr_hours`. `now` and `run` are injected so a test gives a
+    clock and a fake runner. Returns a list of text lines."""
+    cfg = cfg or mirror_config()
+    if not cfg:
+        return []
+    now = now or dt.datetime.now(dt.timezone.utc).timestamp()
+    repo = str(cfg["repo"])
+    grace = float(cfg.get("grace_hours", 30))
+    pairs = [(m["repo_prefix"], Path(m["live_dir"])) for m in cfg["map"]]
+    g = ["git", "-C", repo]
+    run([*g, "fetch", "-q", "origin", "main"], capture_output=True, timeout=60)
+    ls = run(
+        [*g, "ls-tree", "-r", "origin/main", "--", *[p for p, _ in pairs]],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    if ls.returncode != 0:
+        return [f"Could not read the backup repo at {repo} (git ls-tree exit {ls.returncode})."]
+    behind = []
+    for line in ls.stdout.splitlines():
+        meta, rel = line.split("\t", 1)
+        sha = meta.split()[2]
+        live = next((root / rel[len(p) :] for p, root in pairs if rel.startswith(p)), None)
+        if live is None or not live.is_file():
+            continue  # a deletion rides a different export, not tracked here
+        if now - live.stat().st_mtime < grace * 3600:
+            continue  # a fresh edit: the next sync carries it
+        if git_blob_sha(live.read_bytes()) != sha:
+            behind.append(rel)
+    out = []
+    if behind:
+        out.append(
+            f"{len(behind)} live file(s) unchanged for {grace:g}h still differ from the backup repo main, "
+            f"so the sync has not landed them: {', '.join(sorted(behind)[:5])}{' and more' if len(behind) > 5 else ''}."
+        )
+    slug = cfg.get("repo_slug")
+    if slug:
+        prs = run(
+            [
+                "gh",
+                "pr",
+                "list",
+                "-R",
+                str(slug),
+                "--state",
+                "open",
+                "--search",
+                f"{cfg.get('sync_title', 'sync')} in:title",
+                "--json",
+                "number,createdAt,headRefName,url",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if prs.returncode == 0:
+            limit = float(cfg.get("sync_pr_hours", 24))
+            prefix = cfg.get("sync_branch_prefix", "sync/")
+            for pr in json.loads(prs.stdout or "[]"):
+                if not pr["headRefName"].startswith(prefix):
+                    continue
+                created = dt.datetime.fromisoformat(
+                    pr["createdAt"].replace("Z", "+00:00")
+                ).timestamp()
+                age = now - created
+                if age > limit * 3600:
+                    out.append(
+                        f"Sync pull request #{pr['number']} has been open {int(age // 3600)}h without merging ({pr.get('url') or ''})."
+                    )
+        else:
+            out.append("Could not list open sync pull requests with gh.")
+    return out
+
+
 # ------------------------------------------------------------- store
 
 
@@ -797,6 +1013,40 @@ def run(args):
             "status": "live",
         },
     }
+
+    if mirror_config():
+        results["_backup"] = {
+            "gaps": [gap(f"R16:{i}", "R16", "low", t) for i, t in enumerate(backup_drift())],
+            "links": [],
+            "meta": {
+                "id": "_backup",
+                "name": "Backup repo behind live code",
+                "tier": "internal",
+                "status": "live",
+            },
+        }
+    if retired_live_enabled(registry):
+        results["_retired_live"] = {
+            "gaps": retired_live_gaps(conf, registry),
+            "links": [],
+            "meta": {
+                "id": "_retired_live",
+                "name": "Retired pages still marked Live",
+                "tier": "internal",
+                "status": "live",
+            },
+        }
+    if archive_enabled(registry):
+        results["_archive"] = {
+            "gaps": archive_gaps(conf, registry),
+            "links": [],
+            "meta": {
+                "id": "_archive",
+                "name": "Retired pages outside the Archive",
+                "tier": "internal",
+                "status": "live",
+            },
+        }
 
     for tid, extra in closeout_gaps(conf, set(results)).items():
         results[tid]["gaps"].extend(extra)

@@ -84,6 +84,7 @@ jobs:
           TAG: ${{ steps.sync.outputs.tag }}
           MERGE: ${{ vars.CORE_UPDATE_MERGE || 'approve' }}
           WAIT_MINUTES: ${{ vars.CORE_UPDATE_WAIT_MINUTES || '60' }}
+          CHANGELOG_CMD: ${{ vars.CORE_UPDATE_CHANGELOG_CMD }}
         run: |
           git config user.name "core-update"
           git config user.email "core-update@users.noreply.github.com"
@@ -94,11 +95,24 @@ jobs:
           DRAFT=""
           if [ "$MERGE" = approve ]; then DRAFT="--draft"; fi
           BODY="$RUNNER_TEMP/core-sync-body.md"
-          echo "Automated sync to core release $TAG. See the core CHANGELOG. Waits for the owner's approval unless the owner set CORE_UPDATE_MERGE for this repo." > "$BODY"
+          printf '%s\n\n%s\n' "Automated sync to core release $TAG. See the core CHANGELOG. Waits for the owner's approval unless the owner set CORE_UPDATE_MERGE for this repo." "No issue: core release sync to $TAG" > "$BODY"
           if [ -s "$RUNNER_TEMP/core-sync-notes.txt" ]; then
             { echo; echo '```'; cat "$RUNNER_TEMP/core-sync-notes.txt"; echo '```'; } >> "$BODY"
           fi
           gh pr create $DRAFT --title "chore(standards): sync core $TAG" --body-file "$BODY" || true
+          # An optional consumer command (the repository variable CORE_UPDATE_CHANGELOG_CMD) runs now that the pull request
+          # has a number, with {pr} and {version} filled in; what it changes is pushed as one new commit on the sync branch.
+          if [ -n "$CHANGELOG_CMD" ]; then
+            PR_NUMBER=$(gh pr view "chore/core-$TAG" --json number --jq .number)
+            CMD="${CHANGELOG_CMD//\{pr\}/$PR_NUMBER}"
+            CMD="${CMD//\{version\}/$TAG}"
+            bash -c "$CMD"
+            if [ -n "$(git status --porcelain)" ]; then
+              git add -A
+              git commit -m "docs(changelog): sync core $TAG (#$PR_NUMBER)"
+              git push origin "chore/core-$TAG"
+            fi
+          fi
           case "$MERGE" in
             approve) echo "core-update: pull request left for the owner's approval"; exit 0 ;;
             gate) echo "core-update: merge left to the repo's merge gate"; exit 0 ;;

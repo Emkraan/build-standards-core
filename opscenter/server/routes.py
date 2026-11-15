@@ -238,7 +238,27 @@ def _table():
             ),
         ),
         # work tracker (tracker/)
-        (G, "/api/jira/sprint", "work", "sprint", lambda m: lambda r: m.sprint(_fresh(r))),
+        (
+            G,
+            "/api/jira/sprint",
+            "work",
+            "sprint",
+            lambda m: lambda r: m.sprint(_fresh(r), r.arg("id") or None),
+        ),
+        (
+            G,
+            "/api/jira/sprints",
+            "work",
+            "closed_sprints",
+            lambda m: lambda r: m.closed_sprints(_fresh(r)),
+        ),
+        (
+            G,
+            "/api/jira/sprint-trend",
+            "work",
+            "sprint_trend",
+            lambda m: lambda r: m.sprint_trend(_fresh(r)),
+        ),
         (G, "/api/jira/backlog", "work", "backlog", lambda m: lambda r: m.backlog(_fresh(r))),
         (G, "/api/jira/approvals", "work", "approvals", lambda m: lambda r: m.approvals(_fresh(r))),
         (
@@ -717,6 +737,9 @@ def build(registry=None):
     acc = load("model_accounts")
     if acc is not None and hasattr(acc, "sample"):
         r.background.append((acc.sample, 600))
+    import optional
+
+    optional.register(r)  # the optional modules, only the ones a consumer turned on
     return r
 
 

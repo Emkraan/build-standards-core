@@ -1,5 +1,831 @@
 # Changelog
 
+## 2026-11-15 (v2.4.1, dependency bumps need no changelog entry)
+
+`check-changelog.py` failed every Renovate pull request that touched a dependency manifest, so five dependency updates sat red and never merged.
+
+- Fixed: a pull request from a `renovate/` branch whose every changed file is a dependency manifest or lockfile (`package.json`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `requirements.txt`, `requirements-dev.txt`) no longer needs a changelog entry. Any other file in the diff, or any other branch, keeps the rule.
+- Migration: none.
+- Tests: 4 new in `tests/test_check_changelog.py`.
+
+## 2026-11-11 (v2.4.0, the upward path is a plain issue on the core)
+
+The private repository that received consumer reports is retired, so nothing could be filed there. The upward path is now a plain issue on this repository, and the nightly files nothing upward by itself.
+
+- Changed: `CONTRIBUTING.md` ("Reporting from a consumer" and the Authority bullet), `CONSUMING.md`, `README.md` and `hermes/README.md` describe the new path: a consumer's agent opens one plain, sanitised issue on the core, described by role with no names, hosts, addresses, tokens or paths; the owner approves the item; the account that owns it opens the pull request, declares the outcome with `Refs #N` or `Closes #N`, and merges it once `ci` and `visual` pass.
+- Added: the shared Hermes skill `core-improvement-issue`, the procedure for that issue (scope test, draft by role, the three sanitising checks, `gh issue create` on the core). `core-practices` points at it.
+- Removed: the `core-consumer-report` skill (the full report into a single per-account issue in the retired repository). The skill sync removes it from each consumer on the next nightly.
+- Removed: `checks/check-closing-refs.py` and its `checks.yml` step. It guarded issues labelled `consumer-report`, which never exist on this repository; pull requests now declare `Closes #N` freely.
+- Kept, inert by default: `hermes/report.py` (the `nightly:candidates` and `nightly:changes` sections) and the account and peers lists in `hermes/consumption.py`. With no `report_repo` in `consumer.json` (the default, and the documented path) the report step logs "no report_repo configured; nothing filed" and makes no call, and the feed lists the account and peers as not collected. An owner may still set `report_repo` to a private repository; the scan helpers stay because the consumption feed uses them for adoption suggestions.
+- Migration: none required. A machine that has `report_repo` set to the retired repository gets a "cannot confirm ... is private" line each night until the key is removed from `consumer.json`.
+- Tests: 1 new in `tests/test_nightly_config.py` (the nightly report step with no `report_repo` logs the line, files nothing and calls no `gh`); updated in `tests/test_nightly_report.py` and `tests/test_consumption.py` for the new messages; the closing-reference tests are removed with the check.
+
+## 2026-11-10 (v2.3.1, the overlay lock hash covers only the copies the sync writes)
+
+Fix for #264. In the overlay's `scripts/corehash.py`, `COPIES` listed `standards-core`, `tokens-core`, `lint-core` and `kit-core`, but the sync writes only `standards-core` and `lint-core` (`SYNC_MAP`). Since v2.0.0 the consumer owns `kit-core` and `tokens-core`, yet an edit to either made `check-core-sync.py` report drift.
+
+- Fixed: `COPIES` is now derived from `SYNC_MAP`, so `content_sha256` in `standards.lock` covers `standards-core` and `lint-core` only. Editing `kit-core` or `tokens-core` no longer changes the hash. The hand refresh with `corehash.write_lock` in those pull requests is no longer needed.
+- Migration: none by hand. An existing lock holds the old four folder hash, so the gate reports drift on the old scripts only until the next `scripts/sync-core.py`. That sync refreshes the overlay scripts, rewrites `standards.lock` with the new hash and prints a note when a consumer has `kit-core` or `tokens-core`. Pull v2.3.1 and run the sync, then commit `standards.lock` with the refreshed scripts.
+- Not changed: the folder lists in `check-exceptions.py` and `core-ci.py` are path exclusions, not hashing, and still name all four.
+- Tests: 1 in `tests/test_checks.py` (own code folders leave the hash unchanged, each synced folder still changes it).
+
+## 2026-11-10 (v2.3.0, safe Hermes restart: freeze new work, backend before gateway, behind a flag)
+
+Hermes safe restart gains a fenced mode (#254). It is off by default, so restart behaviour does not change until the owner approves a live run and the default is turned on in a later change.
+
+- Added: a freeze window in `hermes/safe-restart/safe_hermes_restart_exec.py`. The helper writes a freeze marker (30 seconds by default, a parameter), re-runs the whole idle proof inside the window and restarts nothing if work started. The freeze is released on every exit path, including a failed step and an exception, and the marker expires on its own.
+- Added: a stated and enforced order, backend first then gateway, each verified (a new process that stays up 30 seconds). A backend that does not come back stops the run before the gateway is touched.
+- Added: the flag, off by default: `~/.hermes/state/safe-restart.fence`, `SAFE_RESTART_FENCE=1` or a `fence` token in the trigger file. With it off the helper does the original single gateway kickstart.
+- Changed: the helper no longer runs `main()` on import (it runs under `__main__`), so it can be tested.
+- Documented: `hermes/safe-restart/README.md` (fenced mode) and `hermes/configurations.md` section 14. No rule is added, so `standards/rules.json` is untouched.
+- Tests: 7 in `tests/test_safe_restart_fence.py`: freeze release on failure and on a raise, freeze held during the re-check, the order, the flag and its window parameter, and flag off equals the old behaviour.
+
+Refs #254, which stays open until the live run is approved.
+
+## 2026-11-10 (v2.2.1, run the ops center app browser tests in CI)
+
+CI only (#260). `.github/workflows/opscenter-app.yml` now runs `npm run test:browser` (axe, live actions and the three tabs) after the build,
+on the same runner as the rest of the job (`vars.CORE_RUNNER`), with no fallback to a hosted runner, so a consumer that keeps its runners
+local gets the same gate. The runner needs no Chrome of its own: the Chromium named by the pinned `playwright-core` is downloaded once per
+version into a cached directory and passed as `CHROME_BIN`, with `CHROME_NO_SANDBOX=1`. The gate still fails, never skips, when the browser is missing.
+
+## 2026-11-10 (v2.2.0, ops center app tabs for docs drift, sprint trend and live automation)
+
+The ops center app gets the three tabs that were left unbuilt when their server pieces were lifted (#255). Each tab is hidden
+when its provider is not configured, is built on the ops center's own kit and tokens, and has a page-level accessibility test
+in the light and the dark theme (`opscenter/app/tests/ocTabs.test.mjs`, run by `npm run test:browser`).
+
+- Added: the Docs drift tab in Knowledge (`/knowledge/drift`, OC-10). It reads `GET /api/docs-drift` and shows the newest drift run,
+  the pages behind the code (most commits first), the pages with no verdict, and each app's README and changelog facts, with
+  Check again and Run now. A 404 (no `OPSCENTER_DOCS_DRIFT_PROVIDER`) hides the tab and sends its route to Proposals.
+- Added: the sprint trend card under the Jira Sprint tab and the Closed sprints tab (`/jira/closed`, `/jira/closed/<sprint id>`, OC-18).
+  The card reads `GET /api/jira/sprint-trend` (the last closed sprints and the active one: items in sprint, done today, points
+  done, carried on) and labels the figures as the tracker gives them, with no start of sprint snapshot. The tab lists the closed
+  sprints and opens one read only through `GET /api/jira/sprint?id=`, which the server serves only for an id in the closed list; an
+  id outside it shows a refusal and no tickets. A 404 or 501 from the sprint endpoints hides the card and the tab, and `/jira/closed`
+  then lands on the Sprint tab. `routes.lock.json` gains `/jira/:tab/:sprintId`.
+- Added: the Live automation item in Operations, Automation (`/operations/automation/live-automation`, OC-20). An enabled dark launch
+  (its live switch reads on, or unreadable with the registry recording it as enabled) leaves the Action Center and is listed
+  here with a Disable switch that asks first and sets the launch back to dark, where it returns to the Action Center. The Overview
+  gets one card for it. The item is hidden when no dark launch is registered and its route then lands on the Overview.
+- Decided: `standards/ops-center-layout.md` 1.3 section 6 records where live automation sits (an item in the existing Automation
+  section, not a new section) and gains a change log table. No rule is added or changed, so `standards/rules.json` is untouched.
+- Fixed: `opscenter/app/vite.config.ts` now dedupes `react` and `react-dom`, so a build in a checkout that also has the kit's own
+  dependencies installed no longer bundles two copies of react (the page rendered blank and every browser test failed).
+
+## 2026-11-10 (v2.1.0, register rules for the CMTrace logging standard)
+
+Registry and documentation. `standards/cmtrace-logging.md` had no entries in `standards/rules.json`, so the status tool and the core-practices skill could not see it (#252).
+
+- Added: section 13 "Registered rules" in `standards/cmtrace-logging.md` (version 1.2), 25 numbered rules that restate the enforceable statements of sections 1 to 9 without changing any of them.
+- Added: 25 rules `cmtrace-logging.13.1` to `cmtrace-logging.13.25` in `standards/rules.json` (236 rules), scoped to `powershell`: 12 proved by a Pester test in the consumer (`test`), 13 checked in review (`review`, attested: static lint cannot prove format, path or content rules). `script_lint` PS001 and PS003 still cover the ASCII and empty-catch parts of rules 13.5 and 13.15 without owning them.
+- Regenerated: `hermes/skills/core-practices/SKILL.md` from the registry.
+
+## 2026-11-10 (v2.0.1, retire the hub log intake and reports plans)
+
+Documentation only. The hub no longer consumes the core, so the owner retired the hub log intake and hub reports plans on 2026-11-10.
+
+- Removed: `opscenter/plans/hub-log-intake-plan.md` and `opscenter/plans/hub-reports-plan.md`. Plan items that were not built are dropped.
+- Kept: the built optional modules `server/modules/log_intake/` and `server/modules/reports/` with their tests, unchanged in behaviour.
+- Reworded: `opscenter/DESIGN.md` (sections 12.57, 12.60, 12.61, 12.62), the two module docstrings and `opscenter/plans/README.md` no longer point at the plans.
+
+## 2026-11-10 (v2.0.0, breaking: the core narrows to Hermes and the ops center)
+
+Breaking. The core now holds only the Hermes tooling, the ops center and the standards those two rely on.
+The shared web, shell and WPF standards are the owner's standards repo's (`web-ui-standard`, `web-ui-components-standard`,
+`web-build-standard`, `web-api-runtime-standard`, `web-client-runtime-standard`, `web-shell-standard`,
+`web-shell-modules-standard`, `wpf-design-system-standard`, `wpf-powershell-gui-standard`). Two former consumers stop consuming the core and one keeps its own overlay copy. Pinned older tags are unchanged
+and keep working, including `templates/overlay/scripts/core-ci.py` at an old sha.
+
+- Moved: `kit/` to `opscenter/kit/` and `tokens/` to `opscenter/tokens/`, as the ops center's own UI code
+  (not a shared standard and not an overlay for other apps). The `@kit` alias in `opscenter/app`
+  (`vite.config.ts`, `tsconfig.app.json`), the token imports, `operations.test.mjs`, the token build and
+  its generated headers, the workflows (`kit.yml`, `opscenter-app.yml`, `visual.yml`,
+  `gallery-release.yml`, `checks.yml`) and the docs follow. Behaviour is unchanged: the app builds, tests
+  and bundles as before and the token build still certifies 359 of 359 contrast checks.
+- Removed: `shell-packages/`, `lint/ui_lint.py` and its fixtures and tests, the web, shell and WPF standards
+  (`web-ui`, `web-build`, `web-api-runtime`, `web-client-runtime`, `web-process-health`, `web-shell` and
+  its `-auth`, `-deploy`, `-gateway`, `-manifest`, `-packages` and `-server` parts, `wpf-design-system`,
+  `wpf-powershell-gui`), `standards/schemas/console.module.schema.json`, their 135 entries in
+  `standards/rules.json` (211 rules remain), the kit tests and fixtures that tested `shell-packages/`,
+  `kit/consumer/` and `kit/MIGRATION.md` (consumer adoption material), `checks/check-kit-comments.py`,
+  the `kit-peers` check and its `core-kit-peers` step, the UI adoption verdict and
+  `--require-ui-adopted` in `core-status.py`, the repo checks RC005, RC009, RC014, RC015, RC016, RC018,
+  RC019, RC020 and RC021 (their rules went with the standards), and the express hold in `renovate.json`.
+- `lint/script_lint.py` keeps the exception and counting helpers it used to import from `ui_lint.py`.
+  The overlay sync no longer copies `tokens/`, `kit/src` or the kit scripts; it copies `standards/` and
+  `lint/`. `hermes/skills/core-practices/SKILL.md` is regenerated from the smaller registry.
+- Docs: `README.md`, `CONSUMING.md`, `CONTRIBUTING.md`, `lint/README.md`, `templates/overlay/README.md`,
+  `opscenter/DESIGN.md`, `opscenter/kit/README.md`, `opscenter/tokens/README.md` and the retained
+  standards describe the narrowed scope and point at the doc names in the owner's standards repo, never a core path.
+  `checks/check-links.py` skips `CHANGELOG.md`, whose older entries link docs that moved.
+
+No issue: narrowing the core to Hermes and ops center per owner decision.
+
+## 2026-11-10 (v1.200.0, tokens: the build fails a status ink pair that deuteranopia pulls under 5)
+
+Token build change, no consumer effect: the shipped colours do not change.
+
+- `tokens/build.py` simulates deuteranopia (Machado 2009, severity 1) on the five status inks (success, warning, urgent, danger, info) in both modes and fails the build, `--check` included, when any pair is under 5 CIEDE2000 apart. Today's closest pairs are warning to urgent (6.9 dark, 5.2 light) and urgent to danger (10.1 dark, 5.7 light).
+- The two descriptions of the urgent ink in `tokens/tokens.json` now state the measured dark numbers (6.9 and 10.1, they said 7.5 and 9) and the new floor; `tokens/tokens.css` regenerates with them.
+- Tests: `tests/test_token_status_separation.py` (the published CIEDE2000 reference pair, all 20 pairs pass, the documented light distances, a pair under the floor is reported).
+
+No issue: approved intake item cmarko89/build-standards-core-intake#56 item 7, decided by the owner on 2026-11-10.
+
+## 2026-11-10 (v1.199.0, fix: a merge-pending test stops failing when the shipped window passes its fixed date)
+
+Test fix, no consumer effect.
+
+- `platform_reviews_merge_pending_test.py` built its fixture with fixed 2026-10-27 stamps while the reviews lane only lists a merged item for `shipped_days` (14), so from 2026-11-10 10:00Z two of its tests failed and `ci` went red on every pull request. The fixture now stamps relative to the current time (`_ago`), so it stays inside the window on any date.
+
+No issue: ci red on every pull request since the 14 day shipped window passed the test's fixed dates.
+
+## 2026-11-09 (v1.198.0, report wording: which pull-request rule applies before approval and which after)
+
+Wording only. The nightly rewrites the candidates note in an open report issue on its next run.
+
+- `hermes/skills/core-consumer-report/SKILL.md`: "never open a pull request on the core" now says it is the rule before approval, and that after the owner approves an item the account that owns it opens the core pull request and links the issue.
+- `hermes/report.py`: the `nightly:candidates` note says the owning account opens the core pull request only after the owner approves the item, and never before. The module docstring says the same.
+- Test: `tests/test_nightly_report.py` pins the new sentence in the rendered note.
+
+## 2026-11-09 (v1.197.0, ci-cd-release: standby-slot deploy, polling post-swap smoke, slot reaper)
+
+Opt in for a consumer that deploys to a platform with deployment slots; takes effect by moving its pinned core release.
+
+- `standards/ci-cd-release.md` section 6 gains three rules after 6.1: 6.2, a deploy goes through a standby slot, is health-gated there and swaps, the previous release staying in the standby slot and the slot never opening the database before the swap; 6.3, the post-swap smoke polls and retries a 500 (and any other non-answer) with no list of retryable statuses, only the end of the window failing the run (it extends 6.1, which already requires the bounded window); 6.4, a scheduled reaper outside the deploy workflow reclaims old slots from the platform's own list and timestamps, never from a record the deploy wrote.
+- Evidence: a one-shot smoke check marked healthy deploys as failed while the platform answered 500 during a restart, and polling removed the false failures; slots that were never reclaimed stayed running until the reaper was added.
+- `standards/rules.json` registers `ci-cd-release.6.2` (review), `6.3` and `6.4` (test); the generated `core-practices` skill is rebuilt.
+- Tests: `tests/test_rules_deploy_slots.py` (4) pins the registered rules, the retained 6.1, the no-list wording of 6.3 and the reaper's independence.
+
+## 2026-11-09 (v1.196.0, data-safety-sqlite: WAL on local disk with continuous replication, conditional)
+
+Opt in for a web consumer. The new allowance is settling: it is conditional on a passing restore test, which the app it came from has built but not yet run.
+
+- `standards/data-safety-sqlite.md` rule 2.4 is reworded. It said WAL is never allowed on cloud hosts. It now says WAL is never allowed on a network file share, and is allowed on a cloud host only on the host's local disk with continuous replication and a passing restore test of the replica. Until those hold, the cloud default stays `journal_mode=DELETE` with `synchronous=FULL`. The "what not to do" list is updated to match.
+- New section 8, "Local-disk WAL with continuous replication (conditional)": the live file, `-wal` and `-shm` on local disk; a snapshot chain plus shipped WAL frames replicated to blob storage without touching the live file; sealed blobs to fence out an old writer; a restore test that passes before the switch and reruns on a schedule. Evidence: a network file share was about 57 times slower than local disk for small synced writes (200 writes of 4 KB: 4.54 s against 0.08 s).
+- `standards/rules.json`: `data-safety-sqlite.2.4` reworded, `data-safety-sqlite.8.1` to `8.4` added (the last is a review rule); the generated `core-practices` skill is rebuilt.
+- Tests: `tests/test_rules_sqlite_wal.py` (4) pins the reworded rule, the retained share ban, the new rules, the settling status and the updated list.
+
+## 2026-11-09 (v1.195.0, slow upstream queries: cache, single flight, admission limits; tests independent of the time of day)
+
+Opt in for a web consumer; takes effect by moving its pinned core release and registering the rules.
+
+- `standards/web-api-runtime.md` section 10, "Slow upstream queries", five rules: cache a query result and serve it stale while it refreshes, single flight per query, bounded running and waiting counts with 429 beyond them, back off when the upstream throttles, and a one-shot worker per query that exits when answered. It cross-references `createSwrReader` (`standards/web-shell-packages.md` section 5.11), the same stale-while-refresh pattern for a status reading, and `standards/web-process-health.md` for the worker. A checklist line is added to section 8.
+- `standards/web-build.md` section 9.1: tests do not depend on the time of day; day buckets in a test are anchored to the UTC day of an injected instant. Evidence: a test anchored to the current time failed every evening until it was anchored to the UTC day.
+- `standards/rules.json` registers `web-api-runtime.10.1` to `10.5` and `web-build.9.1` (check kind `test`, scope `web`); the generated `core-practices` skill is rebuilt.
+- Tests: `tests/test_rules_slow_upstream.py` (5) pins the registered rules, the absence of unregistered ones, the prevents and acceptance lines, the cross-references and the evidence.
+
+## 2026-11-09 (v1.194.0, renovate: the Playwright image and @playwright/test move together)
+
+Repository change, no consumer effect.
+
+- `renovate.json` groups `@playwright/test` (`kit/package.json`) and the `mcr.microsoft.com/playwright` container image (`.github/workflows/visual.yml`) under one `playwright` update, so one pull request moves both and the visual gate never runs a library that differs from its browser image (Playwright refuses to start on a mismatch).
+
+## 2026-11-09 (v1.193.0, web-process-health: a new standard for a responsive web process)
+
+Opt in for a web consumer; takes effect by moving its pinned core release and registering the four rules.
+
+- New `standards/web-process-health.md` with four rules: a long read runs in a one-shot worker, an event-loop watchdog ends a frozen process after about 90 s, every background timer is created through one job registry (a CI check rejects any other), and startup is staggered with a lock takeover that never waits on a full check. Each rule names what it prevents, its evidence and its acceptance line.
+- Evidence from the app the rules came from: takeover after a restart waited 729,682 ms on a full check before the check moved off the main thread and was deferred, then 633 ms; a frozen process stayed up for 10 minutes until the watchdog was added.
+- The jobs-in-one-process rule stays in `standards/web-shell-server.md` section 5 and the `jobs` package in `standards/web-shell-packages.md` section 5.4; the new doc cross-references them and does not repeat them.
+- `standards/rules.json` registers `web-process-health.1.1` to `1.4` (check kind `test`, scope `web`); the README standards table has one new row; the generated `core-practices` skill is rebuilt.
+- Tests: `tests/test_rules_web_process_health.py` (5) pins the four registered rules, the absence of an unregistered fifth, the prevents, evidence and acceptance lines of each rule, the measured evidence and cross-references, and the README row.
+
+## 2026-11-09 (v1.192.0, kit: Segmented glides its selected pill)
+
+Kit change, a consumer takes it by moving its pinned release.
+
+- `Segmented` draws its selected pill as one marker (`.seg-glider`, decorative) that slides to the pressed option, as `standards/web-ui.md` section 7 requires, instead of filling each option. The marker is placed without a transition the first time, so it never glides in from the corner, and reduced motion turns the slide off. Radio-group semantics, arrow keys and `aria-pressed` are unchanged.
+- Test: `kit/tests/segmented-glide.test.tsx`.
+
+## 2026-11-09 (v1.191.0, kit: 24 px feed strip pager dots, global selection and scrollbar base styles)
+
+Kit change, a consumer takes it by moving its pinned release. Visual baselines are refreshed by CI.
+
+- The feed strip pager dots (`.presenter-dot`) are 24 by 24 CSS pixel targets (WCAG 2.2 2.5.8) that still draw the 6 px dot, 16 px wide when active. The gallery axe run no longer turns `target-size` off.
+- `kit.css` ships the global base styles `standards/web-ui.md` asks for: `::selection` takes the accent wash with `--text-primary`, and scrollbars are thin with a `--border-default` thumb on a transparent track (`scrollbar-width`, `scrollbar-color` and the WebKit pseudo elements). An app's unlayered rule still wins.
+- Intake item 3 (the `.is-selected[class]` accent shadow) needs no change: `tokens/hub-layer.css` already uses the neutral recipe (`--surface-3`, `inset 0 0 0 1px var(--border-strong)`, sheen, `--shadow-xs`).
+
+## 2026-11-09 (v1.190.0, architecture-article: a system change merges with its article updated)
+
+Opt in, extends the v1.189.0 subcommand; a consumer takes it by moving its pinned core release.
+
+- `core-ci.py architecture-article` accepts `--base SHA --head SHA`. For each system the range touches, it fetches the manifests of that system folder at both commits and calls the documentation repository's own `coupling_findings` (fetched with the shape script): the article's technology table against the manifests at HEAD, and, when the system's structure changed, its `stack_verified` against the range's first commit. Without a range the gate checks existence and shape only, as before.
+- A shape script without `coupling_findings` is a setup error, so a gate that cannot see the coupling rules never passes silently. The coupling rules stay with the documentation repository, never here.
+- Tests: 5 added in `tests/test_architecture_article.py` over real git history in a scratch repository (both sides and the first commit date reach the rules, only the touched system is checked, a finding fails the gate, a change outside every system checks none, no range checks shape only, a missing coupling function is a setup error).
+
+## 2026-11-09 (v1.189.0, architecture-article: every system in the checkout merges with its article)
+
+Opt in, a pull-request gate for monorepos: a new `core-ci.py` subcommand.
+
+- `core-ci.py architecture-article --kind apps|stacks --repo OWNER/DOCS_REPO [--ref main] [--root DIR]` derives the system folders present in the checkout (the app folders under `apps/`, or the top-level stack folders that are not support code), fetches each system's architecture article from the documentation repository through its GitHub contents API (`GH_TOKEN` or `GITHUB_TOKEN`; a short-lived app token scoped to read-only contents of that one repository is enough), and fails the pull request on a missing article or one failing the shape check.
+- The article rules stay with the documentation repository, never here: the shape script the standard ships is fetched at run time and applied to each fetched article, and the support-folder set is read from the same module, so an article definition keeps exactly one implementation.
+- Tests: 10 in `tests/test_architecture_article.py` (derivation for both kinds, a checkout with no app folder, support and dot folders skipped, missing and malformed articles, the setup error when the shape script is absent, usage and token errors, two full command passes), the docs repository an injected fetch over a fixture shape module, no network.
+
+## 2026-11-08 (v1.188.0, the nightly moves a core clone left on a clean, pushed branch back to main)
+
+Template change, takes effect in a consumer on its next nightly pull.
+
+- `hermes/nightly.py`: the pull step is a fast-forward of main, so a core clone left on a feature branch (as `feat/kit-context-panel` was on 2026-10-28) failed every night with "Not possible to fast-forward". When the clone is on a branch other than main, the tree is clean (untracked files aside) and the branch has nothing its upstream lacks, the nightly now checks out main with one log line and pulls. With local edits, an unpushed commit, no upstream or a detached HEAD it changes nothing and fails with the recovery command `git -C <clone> checkout main`. `--check` reports what it would do and changes nothing.
+- `tests/test_nightly_branch.py` covers the move, untracked files, a dirty tree, an unpushed commit, no upstream, a detached HEAD, check mode and a clone already on main. `CONSUMING.md` section 6 describes it.
+
+Refs #118
+
+## 2026-11-08 (v1.187.0, lint-sweep label renamed to source:lint-sweep)
+
+Consumer effect: `lint-sweep.yml` is a core-managed template, so a consumer picks the change up on its next core sync (no manual step).
+
+- `templates/overlay/.github/workflows/lint-sweep.yml` creates the label `source:lint-sweep` (the `family:value` convention), applies it to the sweep issue it opens, and adds it to an existing sweep issue it updates.
+- The lookup for the open sweep issue accepts either `source:lint-sweep` or the former `lint-sweep`, so an issue opened before the rename is still found, updated and closed on the first green sweep. A central rename of existing labels runs separately.
+- `standards/ci-cd-release.md` (2.1), `standards/rules.json`, the overlay README and the `core-practices` skill name the new label. A test pins the template.
+
+Refs #119
+
+## 2026-11-08 (v1.186.0, kit a11y tests split so no single test nears the timeout)
+
+Repository change, no consumer effect.
+
+- The kit axe suite was one 60 second test per theme running eight axe passes in sequence. Each pass walks the whole gallery document (about 4800 nodes) and takes 2 to 5 seconds, so a single test ran 36 to 60 seconds and CI load pushed it past its limit (60.6s against 60s on the v1.182.0 run). It is now one test per overlay in `kit/tests/a11y-scenarios.tsx`, with the light and dark themes in `a11y.light.test.tsx` and `a11y.dark.test.tsx` so vitest runs them in parallel workers. `standards/rules.json` (web-ui.24) and `standards/web-ui.md` name the two files.
+- Measured locally: before, 53s to 108s for the file with a single test of 36s or more per theme; after, 40s to 43s for both files with the slowest single test at about 6s against the 20s default timeout. Same 16 axe passes, same rules, no timeout raised.
+
+Refs #232
+
+## 2026-11-08 (v1.185.0, renovate holds the express major bump)
+
+Repository change, no consumer effect.
+
+- `renovate.json` disables major `express` updates. Express 5 has no `layer.regexp`, so the route naming in `shell-packages/app-server/index.js` (it rebuilds mount templates from Express 4 layer regexps) names every mount "-" and six `routes.test.js` cases fail (Renovate PR #231, closed).
+- Remove the rule once route naming supports the Express 5 router.
+
+Refs #231
+
+## 2026-11-08 (v1.184.0, core commitlint holds the consumer commitlint rules, changelog conflict markers removed)
+
+Template change, takes effect in a consumer on its next sync.
+
+- `core-ci.py commitlint` now enforces what a consumer's `commitlint.config.mjs` (config-conventional with subject case and body line length off) enforces: a header of at most 100 characters, no full stop at the end of the subject, a lower case type and scope, a blank line between header and body, besides the Conventional Commit shape it already checked. A consumer can drop its separate commitlint step.
+- `tests/test_core_ci.py` covers the long header, the full stop and the upper case scope.
+- `CHANGELOG.md`: stray merge conflict marker lines from an earlier bad merge are removed (the text between them was all kept). `checks/check-changelog-versions.py` now fails on a conflict marker line, with tests (the conflict marker half of #232).
+
+Closes #229
+
+
+## 2026-11-08 (v1.183.0, core-ci no longer runs on a push to the default branch)
+
+Template change, takes effect in a consumer on its next sync. Standard text amended to match.
+
+- `templates/overlay/.github/workflows/core-ci.yml` drops its `push: branches: [main]` trigger. That run only did the secret scan, on a tree the pull request run had already scanned (a change reaches the default branch only through a pull request, and the merge gate requires an up to date head), and it cost one runner job per merge to main.
+- `ci-cd-release.md` (why one job), `secrets-and-credentials.md` section 6 and the acceptance text of the secret-scan rule in `rules.json` no longer name a push to the default branch.
+
+No issue: a consumer's runner-queue reduction follow-up.
+
+## 2026-11-08 (v1.182.0, the app client moves to MSAL Browser v5)
+
+Dependency major, `@azure/msal-browser` 3 to 5, with the code changes it needs. Renovate branch renovate/major-azure-ad-microsoft-authentication-library-for-js-monorepo (#163).
+
+- `shell-packages/app-client/src/auth.ts`: `navigateToLoginRequestUrl` and `storeAuthStateInCookie` are removed from the MSAL configuration (v5 no longer has either; v5 never navigates back to the login request URL, which is what `false` meant here, and cookie auth state is gone). The account-change callback listens for `LOGOUT_SUCCESS`, `LOGIN_SUCCESS` and `ACTIVE_ACCOUNT_CHANGED`, since v5 removed `ACCOUNT_ADDED` and `ACCOUNT_REMOVED`; the storage and focus listeners still re-check the account as the cross-tab fallback.
+- `shell-packages/app-client/src/oidc.ts`: the OIDC adapter emits `LOGOUT_SUCCESS` where it emitted `ACCOUNT_REMOVED`.
+- The id-token expiry safeguards are unchanged: `acquireTokenSilent` does not check id-token expiry, so the explicit expiry check stays.
+- Tests: `tests/app-client/auth.test.ts` passes the now-required correlation id to `InteractionRequiredAuthError`, `BrowserAuthError` and `ServerError`.
+
+No issue: Renovate major update, supersedes the failing automatic bump in #163.
+
+## 2026-11-08 (v1.181.0, the repository's Renovate config turns the Dependency Dashboard off)
+
+Record fix. `renovate.json` sets `dependencyDashboard: false`; no shipped standard changes.
+
+- The Dependency Dashboard issue is disabled fleet-wide by operator decision 2026-11-08 (zero open issues); Renovate behavior is otherwise unchanged.
+
+No issue: operator order 2026-11-08.
+
+## 2026-11-07 (v1.180.0, the changelog and the tags agree, and a check holds them to it)
+
+Record fixes, one new check and one recorded decision. No tag is edited.
+
+- Three entries were headed with a number that another entry already held, so auto-release tagged the first and never tagged the second; the second entry's change shipped inside a later release. Each is folded into the release it shipped in, under that release's heading, with its body kept: "the manifest client folder may be spa" (headed v1.134.0, ships in v1.138.0), "script rule U6: the cause is Windows PowerShell 5.1" (headed v1.162.0, ships in v1.166.0) and "shell gaps from the console redesign against Olympus" (headed v1.168.0, ships in v1.169.0). The v1.117.0 heading was an exact repeat of itself and is now one entry.
+- New `checks/check-changelog-versions.py`, run by `checks`: from v1.0.0 a version has at most one heading, a heading has a tag unless it is above every existing tag (the unreleased entry a pull request adds), and a tag has a heading. The 0.x headings predate tagging and are left alone. On main as it was it reports exactly the four defects above and none after this change; it fails closed in CI when no tags are visible.
+- Decision recorded in `web-shell-packages.md` section 7: the core ships no module frame and no location store. A consumer builds its own frame on `kit-core` and keeps its own location store; the host code in the Olympus shell is wired to its five tool packages and was not lifted.
+- Tests: 8 in `tests/test_changelog_versions.py`, including the v1.168.0 case.
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
+
+## 2026-11-07 (v1.179.0, health reads: the stale-while-revalidate reader and the liveness route)
+
+Opt in, SH-11 from the Olympus shell source (K-source-refresh), the generic part. New package `shell-packages/health`. Documented in `web-shell-packages.md` section 5.11.
+
+- `createSwrReader` (answer from the last reading, one refresh at a time, keep the last good reading through a failed refresh, report its age) and `healthRoute` (public per-subsystem liveness, 503 only when a critical one is down, no raw error text in production). The source's estate page reads Azure Resource Graph and probes the owner's own apps (a subscription id and product names in its code), its tools directory reads that estate, and its health route is bound to its own database and secret box; those are the owner's product code and are not lifted. The read pattern all three share is.
+- Tests: 9 (the source's estate and tools tests exercise the owner's own probes, so these were written for the two primitives).
+
+## 2026-11-07 (v1.178.0, Postgres with a directory token, the user directory and the user binding)
+
+Opt in, `app-server`, from the Olympus shell source (the code the owner's main gained after the earlier snapshot, K-source-refresh). Documented in `web-shell-packages.md` section 5.10.
+
+- `pgPoolConfig`, `pgEntraPassword`, `usesPgEntraAuth`, `pgUserForToken`, `entraPgClient`, `PG_ENTRA_SCOPE`; `createUserDirectory`; `createUserBinding`. The comments that named the source's own standard are reworded; no behaviour changed.
+- The internal `appServiceToken` gains an optional `timeoutMs` argument (default 5000, the old value), which `pgEntraPassword` needs; existing callers are unchanged.
+- Tests: the source's 31 (13 pool and token, 4 directory, 14 binding), with synthetic names. Two of the source's binding tests scan the consumer's own route files for the 503 and 409 call-site pattern; they stay with the consumer, since they read a tree the core does not have.
+
+## 2026-11-07 (v1.177.0, route conformance: the proof for every route gated or stated)
+
+Test time only, SH-12 from the Olympus shell source (K-source-refresh). New package `shell-packages/route-conformance`, the engine of the test `web-shell-server.md` section 1 rule 3 asks for. Documented in `web-shell-packages.md` section 5.9.
+
+- `routeTable`, `checkRoutes`, `checkGates`, `checkAuthOrder`, `checkNoLiteralKeys`, `checkNoErrorDetail`, `DEFAULT_GATE`. The source was one test file hard coded to its own routes and files; here each check is a function over a folder or a source string and answers a list of problems, so a consumer writes its own allowlist and pinned files and calls them.
+- Beyond the source: a reason that is empty fails, `minRoutes` catches a moved routes folder, the router name and the gate pattern are options, and a public path list replaces the fixed one. The source's classification of its own routes stays in its test.
+- Tests: 12, each check driven on fixture sources written to a temp folder so every failure branch runs (the source's test ran only against its own tree, where nothing was failing).
+
+## 2026-11-07 (v1.176.0, home pins: the server routes and the client stores)
+
+Opt in, SH-13 from the Olympus shell source (K-source-refresh). Documented in `web-shell-packages.md` section 5.8 and the client table in section 4.
+
+- `shell-packages/home-pins`: `homePinRoutes`, `validatePin`, `declaredRoutes`, `MAX_PINS`. The source route was bound to the shell's pool, permission module and manifest registry; here the database, the gate, the caller and the manifests are options.
+- `app-client`: `createServerPinsStore` (the shape of the kit's `PinsStore`, over the pins routes) and `createRecents` (per account, in this browser). The source stores were module singletons bound to the shell's API client and account module; here each is a factory over a request function, a key prefix and an account reader, and `createServerPinsStore` gains `reset` and drops the answer of a read started before it.
+- The header button and the Home block stay the kit's (`PinButton`, `HomeBlocks`); the source's own copies are the consumer's to retire.
+- Tests: 8 for the routes (the source's, adapted, plus the limit option and a missing email) and 11 for the client stores. `test:server` runs `tests/*/*.test.js`.
+
+## 2026-11-07 (v1.175.0, the external tools store and routes)
+
+Opt in, new package `shell-packages/external-tools` from the Olympus shell source (SH-10, K-source-refresh). Documented in `web-shell-packages.md` section 5.7.
+
+- `validateTool`, `toTool`, `publicTool`, `auditShape`, `visibleTools`, `externalToolRoutes`, `Invalid`, `HUES`, `MAX_TOOLS`, `ID_RE`. The source was CommonJS bound to the shell's pool, audit, RBAC registry and group resolver; here the registry (`permissions`), the gate (`manage`), the group lookup (`callerGroups`) and the permission read (`callerHasPermission`) are options. `HUES` is a local copy of the `console-modules` list (a test holds them equal) so the package copies on its own.
+- The launcher client, the Console admin page and the permission id stay in the consumer.
+- Tests: 60 (the source's 16 route tests and its 41 field cases, adapted, plus 4 for the pure parts and the hue list); the source's registry, seed and migration tests stay with the consumer. `test:server` now runs `tests/*/*.test.js`, so a new test folder needs no `package.json` edit.
+
+## 2026-11-07 (v1.174.0, the announcements store and routes)
+
+Opt in, new package `shell-packages/announcements` from the Olympus shell source (SH-9, K-source-refresh). Documented in `web-shell-packages.md` section 5.6.
+
+- `validate`, `cleanText`, `cleanHref`, `toApi`, `stateOf`, `STATE_SQL`; `createAnnouncements({ db })` with the cached `listActive` and `invalidate`; `announcementRoutes(router, { db, audit, store, manage, caller })` for the audited admin routes. The source was CommonJS bound to the shell's pool, audit and permission modules; here each is an option, and `manage` is the consumer's gate (the source's permission id stays the consumer's). The audit option takes the `transaction` of `shell-packages/audit` or any object with the same shape.
+- The feed route that reads the announcements and the client panel stay in the consumer (the feed also folds in the consumer's own health items).
+- Tests: 14, adapted from the source's announcement tests (its feed tests stay with the consumer): validation, the states, every route gated, audited writes, the 503 rollback on every write, the retried create and the 409, check violations, the cache.
+- New package only, nothing existing changes. Typings added.
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
+
+## 2026-11-07 (v1.173.0, rbac names the removal ceiling)
+
+Opt in, `rbac`. New exports `removalBeyond` and `removalCeilingMessage` (SH-3, K-source-refresh): deleting a role, an assignment or an override takes away the permissions it confers, so the caller must hold every one of them, and only a genuine wildcard holder removes the wildcard. It answers what `permissionsBeyond` answers (stale ids and unreadable text fail closed) with a message that says removal. Documented in `web-shell-packages.md` section 3; the rule itself is `rbac.md` section 3.
+
+- The source applies the ceiling in its admin routes and resolves a sign-in claim role to the system role row (its F4); both are the consumer's route code and stay there. Only the pure rule is lifted.
+- Tests: 4 in `kit/tests/shell-rbac.test.ts` (inside and above the caller's access, the wildcard, stale ids and unreadable text, parity with the grant ceiling).
+
+## 2026-11-07 (v1.172.0, the jobs package and the job leader)
+
+Opt in, two new pieces from the Olympus shell source: `shell-packages/jobs` (`createScheduler`, `jobRoutes`, the cron and Automation Account schedule helpers) and `createJobLeader` plus `jobLockKey` in `app-server`. Documented in `web-shell-packages.md` section 5.4.
+
+- `createScheduler`: daily jobs in Eastern time with a live on/off switch in the tool's own `scheduled_jobs` table, a run claimed with one `UPDATE` so instances never double run, a three hour catch-up window, `GET /jobs` and an audited `PUT /jobs/:id`. The environment variable that stops a runner is the `offEnv` option (default `JOBS`; the source hard coded its own name).
+- `createJobLeader`: one process runs the background jobs at a time through a Postgres session advisory lock. The key prefix is the `lockPrefix` option (default `jobs`; the source hard coded its own prefix, so a consumer that already runs a leader passes that prefix to keep its lock key).
+- Both are new exports with no effect on an existing consumer. Typings added.
+- Tests: 17 for the jobs package (the source's 16, plus the `offEnv` one) and 10 for the leader (the source's 9, plus the prefix one), added to `test:server`.
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117, SH-15).
+
+## 2026-11-07 (v1.171.0, the documentation drift feed, a provider slot)
+
+Opt in: `OPSCENTER_DOCS_DRIFT_PROVIDER` (`path/to/file.py:ClassName`). Without it there is no route and nothing is imported (a null slot hides the tab).
+
+- `server/modules/docs_drift.py`: the core owns the summary shape (counts by status and basis, the 40 pages most behind, the pages with no verdict, per app README and changelog facts, the write preview filtered and trimmed), the status vocabulary (closed sets, an unknown value is kept), the cache (900 s), the one background refresh a GET starts (a GET never waits on the source) and the three routes.
+- The consumer owns where the report comes from: `docs_drift_source(now)`, optional `docs_drift_latest_run()` (the same run id means no second fetch) and `docs_drift_dispatch()` (absent: Run now answers 501; a refusal answers 409 with its reason). A failed fetch keeps the last good data and names the error.
+- `authorize(headers, action, key)` gates all three routes (`docs-drift.read`, `docs-drift.run`) and refuses everything until a provider supplies it.
+
+## 2026-11-07 (v1.170.0, the sprint trend and the closed sprint view)
+
+- `tracker/sprint_trend.py` (new, pure): the trend rows (the last six closed sprints oldest first, then the active one: items, done today, points, points done, carried into a later sprint), the recent closed sprint list (one per id, newest first, at most 12) and the id allow list for the per sprint view (400 for a non number, 404 for an id that is not a recent closed sprint). A sprint the source cannot read fails the trend instead of reading as empty.
+- `tracker/work.py`: `closed_sprints`, `sprint_trend` and `sprint(sprint_id)` read the Sprint field through the driver as the sprint view already does. The optional source `OPSCENTER_TRACKER_SPRINT_PROVIDER` (`tracker_closed_sprints(limit)`, `tracker_sprint_items(sprint_id)`) replaces that read for a tracker without such a field.
+- Routes: `GET /api/jira/sprints`, `GET /api/jira/sprint-trend`, `GET /api/jira/sprint?id=`. The first two are new; the third answers the active sprint exactly as before when `id` is absent.
+- "Done" is what the tracker shows today: there is no committed at start snapshot (a source can give one as `committed`).
+
+## 2026-11-07 (v1.169.0, the audit chain and the sealed settings, with tests)
+
+Opt in, two new packages from the Olympus shell source (SH-4 and SH-5, K-source-refresh). Documented in `web-shell-packages.md` section 5.5.
+
+- `shell-packages/audit`: `createAudit` (write, transaction, list, listAll, count, stats, `verify`) over a Postgres `audit_log` with the HMAC hash chain, plus `stableStringify`, `canonicalizeEntry`, `csvCell` and `clientPublicIp`. The source was a CommonJS module bound to the shell's pool; here the database, the environment, the HMAC variable name (`hmacEnv`) and the address reader are options, and the chain queue is per `createAudit`. The audit log schema is in the file header.
+- `shell-packages/settings`: `createSecretbox` (AES-256-GCM, HKDF) and `createAppSettings`. `info`, which the source fixed to its own label, is now a required option: a consumer that already stores sealed values passes its old label to keep reading them.
+- One behaviour change from the source, in `open`: a sealed value with more than four segments now opens to `null` (the source ignored the extra segments). `seal` only ever writes four.
+- The source had no test for the secret box or the settings and only a smoke test for `verify`. Written here: 18 for the audit chain (intact, edited, removed, reordered, deleted head, key mode, wrong key, concurrent writes, non-fatal write, both transaction outcomes, the address reader, `csvCell`) and 8 for the settings, all in `test:server`, on in-memory fakes of the tables, not a real Postgres.
+- New exports only, nothing existing changes. Typings added.
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
+
+
+Also in this release: shell gaps from the console redesign against Olympus. This entry was first headed v1.168.0 by mistake (v1.168.0 is the dark launches release, tagged earlier); the change ships in v1.169.0.
+
+Three default compatible kit changes from the redesign's measurements (the screenshots and `measurements.json` in the private handoff repo). Nothing changes for a consumer that does not use them, except the floors, which only act where the control was too small.
+
+- Card surface: `.card` reads `--card-bg` (default `--surface-1`, so unchanged). `data-card-surface="raised"` on any ancestor, or `--card-bg: var(--surface-2)`, puts cards one step up in the light theme (the soft blue-white `#f3f6fb` instead of white). In the dark theme the Olympus card already equals `--surface-1`.
+- The sidebar pin control is a target of at least 24px whatever its icon size (`.rail-pin` floor in `kit.css`, so it holds without the hub layer's padding).
+- The header search trigger keeps its own width: `.search-btn` does not shrink and `.header-center` will not go below its content, so a long title ellipsizes first.
+- Checked and not changed: the tool launcher already respects `prefers-reduced-motion` (nothing moves on its own), pauses on hover, focus and interaction, has a stop button, and `autoAdvanceMs: 0` turns it off. Olympus's copy of the launcher is byte identical to core's, so there is no difference to match.
+
+## 2026-11-07 (v1.168.0, dark launches: a launch can name its own job)
+
+- Registry key `job` (optional) on a dark launch. When several launches share one workflow, the dry run passes on that launch's job only, so an unrelated failing job in the same workflow no longer blocks Enable, and a skipped or missing job is never a pass. A malformed job name fails the whole registry closed (503), like any other bad entry. A launch without `job` behaves exactly as before and reads no job data.
+- The dry run in the card names the job it judged on. The live automation tab itself (an enabled launch leaves the Action Center and lives on its own tab, acting first) needs no new data: the cards already carry it.
+
+## 2026-11-07 (v1.167.0, the documentation audit gains rules R13, R15 and R16)
+
+Opt in, each off until configured: with none of them set the audit writes the same store as before (no extra internal thing appears).
+
+- R13 (retired but still marked Live): a page whose banner, status row or title says retired while a status badge or Status line still says Live, plus the home of every registry thing with `status: retired`. Runs when `dup_roots` is set or the registry has a retired thing. A truncated or malformed search fails closed.
+- R15 (retired or merged page outside the Archive): runs only when the registry sets `archive_page`; walks the real parent chain (the search lags a move), skips children that move with their parent.
+- R16 (backup mirror behind live code): config `mirror` (`repo`, `repo_slug`, `map` of `{repo_prefix, live_dir}`, `grace_hours` 30, `sync_pr_hours` 24). A file is drift only once unchanged for the grace window and its git blob sha differs from the mirror's main; a sync pull request open too long is named; an unreadable mirror is one line, never a pass.
+- The three surface on the Knowledge page only (low severity, pseudo things `_retired_live`, `_archive`, `_backup`), never on the Action Center. The consumer-only moved-page rule (R14) stays out.
+
+## 2026-11-07 (v1.166.0, the owner apply guard fails closed and covers open PRs)
+
+`opscenter/server/modules/owner_roots.py`.
+
+- Behaviour change: `owner_roots.py guard <name> <tier>` fails closed. A corrupt or unreadable status file refuses (exit 3, the cause printed), and so does a missing one unless `--allow-missing-status` is given. An install that runs the guard but never recorded a hold, and so has no status file, must add that flag or plan once first.
+- `guard ... --allow-pr N` (repeatable) skips a PR meant to lose its objects. Bad guard arguments exit 2.
+- An address matches with or without an index suffix on either side: a hold of `x.a` covers a delete of `x.a["k"]` and a hold of `x.a["k"]` covers a delete of `x.a`. Two different instances never match. This applies to the ahead of main mark and the guard.
+- Opt in provider hooks, null by default: `open_pr_addresses(root)` (the guard and the Apply refusal also refuse a delete of an address an open PR declares, and refuse when that read fails), `detect_ahead(root)` (a root with no hold record whose main plan destroys what an open PR holds gets a detected hold), `is_protection(id)` (a lock the plan itself deletes is left out of the deletes handed to the lift), `retry_kinds()` (the apply is retried after a lift when the failure is one of the provider's own error kinds, not only when the output says retry), and a third `before_apply` parameter, a private directory to record the lift in before the first lift. An exception from `before_apply` that carries a `state` attribute reaches `after_apply`, so a partial lift is restored.
+- Behaviour change: the lift lag retry needs a non empty state from `before_apply` (it used to be any state that is not None), so nothing lifted means no retry.
+- Terminal apply logging: `owner_roots.py --log-start --root <name>:<tier> --sha <sha> [--by <account>]` and `--log-done ... [--result <text>]` append `owner_apply_started` and `owner_apply_done` in the module's own record shape. `--by` defaults to the provider's expected identity.
+
+Also in this release: script rule U6: the cause is Windows PowerShell 5.1. This entry was first headed v1.162.0 by mistake (v1.162.0 is the processing indicator release, tagged earlier); the change ships in v1.166.0.
+
+`scripting-powershell.md`: the `ConvertFrom-Json` array rule now names the right cause, from the hub consumer's check against its scripts repo. Windows PowerShell 5.1 returns a JSON array from `ConvertFrom-Json` as a single object, so a pipeline wrapped in `@(...)` yields an array inside an array; assign the result, then enumerate `@($rows)`. It no longer reads as a variant of the PowerShell 7 `Invoke-RestMethod` note, which is a separate problem. The acceptance fixture (empty array, one object, several, counts 0, 1 and N) now runs on Windows PowerShell 5.1 specifically (`tests/fixtures/powershell-51/ConvertFromJsonShape.ps1`) and says so and skips on any other host, never passing in silence. Core CI has no 5.1 host, so it checks the fixture's shape and the skip; the 5.1 run is the consumer's.
+
+
+## 2026-11-07 (v1.165.0, the run watches read a failed run once and pick the real error line)
+
+`lanes/run_watches.py` (OC-8 drift watch, OC-9 main watch). Two changes to what runs today:
+- Error lines: the first `Error:` line of the failed job's log is preferred (colour codes, timestamps and a box drawing prefix dropped), else the first `##[error]` annotation; the runner's `Process completed with exit code N.` line is never returned (a log with only that line gives no error line), and the word failed in ordinary output, `FATAL` and `Traceback` no longer match. The drift item now shows every error line of each failing job (up to 3), the main item the first.
+- API budget: a failed run's jobs and logs are read once and cached by repo, run id and attempt (newest 20 kept), so a run that stays red costs one runs list per collect instead of a jobs and log read each time. A log that could not be read is not cached and is read again. The cache lives in the process by default; the optional `cache_file` config key keeps it between runs of the `items` CLI. Job logs are read with `--allow-escape-sequences` (a gh without that flag is asked again without it).
+- `collect`, `main_item` and `drift_item` take an optional `cache`; the runs list asks for `attempt`. Tests port the scenarios of the reference main and drift watch tests onto `collect()`.
+
+## 2026-11-07 (v1.164.0, the CI-only freeze exemption holds more, and the draft gate checks an apply)
+
+Ops center lanes. `lanes/freeze_ci_only.py` (opt in, policy `freeze_ci_only`) now holds four kinds of pull request it used to exempt from a change freeze: a workflow on `pull_request_target` (it runs with the base branch's permissions and secrets), a reusable workflow whose file name starts with `_`, a workflow that names a deployment environment outside an allowlist (policy `own_pr_merge.freeze_ci_environments`, null: only `terraform-plan`; an environment block or an unreadable expression is held), and a workflow whose `on:` block is malformed (the reader has no YAML library, so it is now strict and fails closed). Changed behaviour: a consumer that relied on any of these being exempt sees them held during a freeze; set `freeze_ci_environments` to admit its own CI environments. Decisions cached under the old rules are made again. `lanes/pr_gate.py` gains a built-in `applied: <number>` kind: met only when that pull request is merged and a run of the apply workflow on the apply branch that started at or after the merge succeeded; a failed run after the merge is named. The workflow and branch come from policy `own_pr_merge.gate_apply_workflow` and `gate_apply_branch` (passed by the own-PR lane to a gate plug-in whose `evaluate` takes `config`) or from `OPSCENTER_GATE_APPLY_WORKFLOW` and `OPSCENTER_GATE_APPLY_BRANCH`; null by default, and the kind is then never met and says so.
+
+## 2026-11-07 (v1.163.0, rbac matches a stored user row by directory object id)
+
+Opt in, `rbac`. New exports `cleanOid`, `userRowMatches` and `pickUserRow` from the Olympus shell source (SH-3 family, K-source-refresh): a grant to a person binds to their directory object id, the email stays a label and is the match only for rows with no object id. A caller whose token has no object id matches only rows that have none (fail closed); `pickUserRow` prefers the row bound to the id whatever the row order. Documented in `web-shell-packages.md` section 3.
+
+- New exports only, nothing existing changes; typings added.
+- Tests: the source's 5 (`kit/tests/rbac/oid-binding.test.js`, example addresses in place of the source's), run in `test:server`.
+
+## 2026-11-07 (v1.162.0, the processing indicator can stop reads)
+
+Closes the gap against the hub's handoff tag (the busy bar spec): the indicator's Cancel request, the stop on leaving the page and the server run stop. A second opt in on top of `installBusyTracking`; with `cancel` off nothing changes.
+
+- `installBusyTracking({ cancel: true, keepAcrossRoutes, runs })`: a counted read carries a signal of its own joined with the caller's. `cancelBusyReads()` stops every stoppable read with `Request cancelled`; `abortStaleReads(route)` stops reads that outlived their route after 1.5 s of grace (`The page was left before the request finished`); a hidden page stops them all. Writes are never stopped. `runs` tags the server's stoppable runs with an id header and tells the server on every stop (a beacon, then a keepalive POST).
+- `BusyIndicator`: a chip with the elapsed seconds after 5 s and, while a stoppable read is in flight, a Cancel request button; the bar itself still takes no input. `route`, `cancelAfterMs`, `cancelLabel` and `onCancel` are props.
+- `BusyState` gains `cancellable`; `CANCELLED_MESSAGE`, `LEFT_PAGE_MESSAGE` and `NAV_GRACE_MS` are exported.
+
+## 2026-11-07 (v1.161.0, a consumer can validate the manifest keys it adds)
+
+Opt in, `console-modules`. `validateManifest` and `validateRegistry` take a second argument: `keys` maps a key to a validator `(value, manifest)` that returns a problem string, a list, or nothing, and runs only when the manifest carries the key; `strictKeys: true` rejects a top-level key that is neither a core key nor registered. Closes the gap where a malformed consumer key (a jobs path) passed core validation because unknown keys are carried untouched.
+
+- Default is unchanged: with no options both functions behave as before. Typings and `web-shell-manifest.md` section 2.1 updated.
+- Tests: 3 in `kit/tests/console-modules/layout.test.js` (registered validator, strict keys, registry passes the options).
+
+No issue: requested by the core consolidation session (build-standards-core-intake#117).
+
+## 2026-11-07 (v1.160.0, the reports client reads the server's export and import answers)
+
+Opt in, `kit-core/reports`. The client reads an export as a list of definitions or as `{ dashboards }`, and an import answer whose `errors` are `{ index, key, message }` objects (each definition is stored or refused on its own) as well as plain strings; `importProblemText` turns one into a line.
+
+## 2026-11-07 (v1.159.0, the dashboard routes match the kit client)
+
+- `POST /api/dashboards` and `POST /api/dashboards/<key>` take the definition as the body (the `{def}` wrapper still works). Export is a list. Import answers `{created, updated, errors: [{index, key, message}]}`: each definition is stored whole or refused with its reason, and one bad definition no longer stops the others.
+- A panel `type`, when present, is validated on the server (stat, line, area, bar, hbar, donut, table).
+
+## 2026-11-07 (v1.158.0, the reports client follows the server routes)
+
+Aligns the `kit-core/reports` client with the routes the core server registers (the registry has only GET and POST). Opt in, same entry.
+
+- `createDashboardsClient`: a save is `POST <base>/<key>` with `{ def }`, a create `POST <base>` with `{ def }`, a delete `POST <base>/<key>/delete`, a reset `POST <base>/<key>/reset`; `exportAll` unwraps `{ dashboards }`. No PUT and no DELETE.
+- A panel names a `measure` (a number tile) or a `spec` (the report query for a chart or table); one is required, `validateDefinition` says so in the server's words. Panels also carry `timeField` and any other stat option the server passes through.
+- "View rows" shows only for a panel whose result carries a `rowsSpec`, and `onRows` and `onFutureRows` hand the app that spec; a drill link can carry a `spec` instead of a `measure`.
+
+## 2026-11-07 (v1.157.0, the optional modules at the server: routes, providers and the off state)
+
+Opt in: `OPSCENTER_LOG_INTAKE` and `OPSCENTER_REPORTS`. With neither set nothing is imported, no route or background task is added and no file is created (a test runs a fresh interpreter and checks the module list).
+
+- `server/optional.py` registers only the modules that are on; `routes.build()` calls it last.
+- Log intake routes: the device post `POST /api/log-streams/<key>/ingest` (key through the provider's `verify_key`, null refuses every key; `Retry-After` kept), stream list, read, create, update, schema (dry run and confirm), delete, the sink checks and the marked test row. Two background tasks: the forwarder flush (only with a sink) and retention.
+- Reports routes: dashboards list, save, delete, reset, export, import (a bad definition refuses the whole batch) and run, plus an ad hoc report query. Shipped dashboards seed by version from the provider; an edited copy is never overwritten.
+- Providers (`OPSCENTER_LOG_INTAKE_PROVIDER`, `OPSCENTER_REPORTS_PROVIDER`, `path/to/file.py:ClassName`, every method optional). `authorize(headers, action, key)` gates every admin and dashboard route and has a null default that refuses everything, so a route is closed until a consumer says who may use it.
+- Writes are POST (the registry has no PUT or DELETE). A panel may carry a `spec` instead of a `measure` (definitions validation).
+- To confirm with the reference owner: a new stream keeps its sink data for 180 days by default (the reference code and its test say 180); its inventory text said 90. The report time zone defaults to UTC (`OPSCENTER_REPORTS_TZ`).
+
+## 2026-11-07 (v1.156.0, dashboards: the editor, definitions import and export, the client)
+
+The R2 half of the `kit-core/reports` entry. Opt in, same entry as the dashboards.
+
+- `DashboardEditor`: a name, a description, the definition as JSON with its problems named before a save, add panel, a live preview, save, reset to the shipped copy and delete after a confirm.
+- `validateDefinition`, `parseDefinitions`, `exportDefinitions`, `newPanel`, `blankDefinition`, `slugFor`: definitions are validated in the browser as the server does (a file with any problem is refused whole) and exported as one JSON file.
+- `createDashboardsClient`: a small typed client for the module's routes.
+
+## 2026-11-07 (v1.155.0, the optional reports module: the report engine, the source slot and dashboard runs)
+
+Opt in: `server/modules/reports/{query,sources,dashboards}.py`, imported only when a consumer uses them or sets `OPSCENTER_REPORTS`; no import side effect, no file or database touched until a function that needs it runs.
+
+- `query.py`: a report is a spec, never SQL. Fields are checked against the stream, values are bound parameters, and the SQL is assembled from fixed fragments, so a spec cannot reach another stream or run anything. Filters (17 operators), grouping, 8 metrics, time buckets (local day, Monday week, month), looked-up fields joined from the lookups cache, sort, limit and a truncation flag. The time zone is `OPSCENTER_REPORTS_TZ` (default UTC).
+- `sources.py`: the source slot. A panel names a stream and a measure; a source (`get_stream`, `run`, optional `options`) turns that into columns and rows. `LocalSource` reads the log intake tables.
+- `dashboards.py`: `check_dashboard` and `run_dashboard` with the range, dropdowns that narrow only panels whose stream has the field, stat panels with a comparison against the period before or a share, future-dated events kept off time panels and reported with the rows behind them, and one broken panel never taking the page down.
+
+## 2026-11-07 (v1.154.0, the reports entry: dashboards with click to cross-filter and deep links)
+
+A new optional entry, `kit-core/reports`, the client side of the reports module (R1, R4, and the dashboard half of R5). It reads the kit charts (recharts, an optional peer), so an app that shows no dashboard never loads it. Lifted from the hub tool features and made generic: a panel names a stream and a measure, never a store.
+
+- `Dashboard`, `DashboardFilterBar`, `PanelView`: a dashboard that opens populated with one slim filter bar (dashboard, range, one choice per filter, removable chips) and no Run button; panels on a twelve column grid drawn with the kit charts and tiles; a failed panel says so in its own card; a click on a panel sets its filter, a second click clears it, and each chart offers the same choice to the keyboard.
+- Deep links: `?d=<key>&range=<preset>&f.<filter>=<value>` read and written without losing other parameters, and a `drill` link that carries the rows behind a panel.
+- `dashboardSheets`: a Summary tab and a tab per panel for `kit-core/export`.
+- `BarChart` and `DonutChart` take `onSelect` (click a bar or slice); nothing changes without it.
+
+## 2026-11-07 (v1.153.0, the optional reports module: directory and catalog lookups)
+
+Opt in: `server/modules/reports/{directory,catalog,lookup_db}.py`, imported only when a consumer uses them or sets `OPSCENTER_REPORTS`; no import side effect (the database `OPSCENTER_REPORTS_DB` is created on first use).
+
+- `directory.py`: account names to directory people at ingest, behind a `lookup(kind, value)` slot. One lookup per name, cached 30 days found, 1 day miss, 1 hour error; computer and service accounts and the posting device are "not a person"; two matches are not found, never guessed; an outage pauses lookups for 10 minutes and never fails the caller; at most 200 per run.
+- `catalog.py`: ids (for example extensions) resolved once behind a `fetch(id)` slot, cached 30 days found and 7 days miss; an outage caches nothing and pauses for an hour; a publisher a person typed is never overwritten and never expires; at most 100 per run; the id pattern is configuration.
+
+## 2026-11-07 (v1.152.0, the optional log intake module: receiver, streams, snapshots, buffer, sink checks)
+
+Opt in: `server/modules/log_intake/`, imported only when a consumer sets `OPSCENTER_LOG_INTAKE`; no import side effect, no database until first use, no route or task registered by this change.
+
+- Streams as data (E1 to E3): the pure rules (namespace for sink tables, field validation, a schema plan that never reuses a column, record cleaning with a capped Extra), the stream store (audited, destructive edits confirmed, a synced table never deleted, the table name typed to delete), and the receiver (`ingest.handle`: 404, 401, 413, 400, 503, 429, 202; the key check is a slot with a null default that refuses every key).
+- The latest snapshot per device or every post for an events stream (E5), the local buffer and the forwarder to a sink slot (E2, E6), and the sink access test with a marked test row (E6): a missing right is reported with the role and scope that would grant it.
+- Ported from the reference implementation; the table prefix and suffix, the sink and its reserved names, and the key check are configuration or slots. The reference's workspace retention default is 180 days in its code (its inventory said 90); the code value is used.
+- Not in this change: the routes that register the module, the sink providers, the settings page (the kit's), directory and publisher lookups (R6).
+
+## 2026-11-07 (v1.151.0, the export entry: formula safe CSV and a spreadsheet workbook)
+
+A new optional entry, `kit-core/export`, with no dependency; an app that exports nothing never loads it. Lifted from the hub tool features (R5 and R9), made generic.
+
+- `csvCell`, `toCsv`, `downloadCsv`: every cell quoted, a text cell starting with = + - @ tab or CR gets a leading apostrophe, real numbers stay numeric, UTF-8 byte order mark on download.
+- `buildXlsx`, `downloadXlsx`: a workbook with a tab per table, bold frozen header, sized columns, numbers that stay numbers, text as inline strings (never formulas) and an optional Excel table. Written by a store-only zip (no compression library); pass `zip` to compress.
+- Not lifted: pivot tables. A hand-written pivot part passes the Open XML check yet crashes the spreadsheet app on open, so none ships until a generated file has been opened in the app on Mac and Windows.
+
+## 2026-11-07 (v1.150.0, one processing indicator, action buttons by purpose, chart theme test)
+
+Lifts from the consumer inventory. All opt in: `installBusyTracking` is never called for you, and `data-act` only affects a button that carries it.
+
+- `BusyIndicator`, `trackBusy`, `quietly`, `useBusy` and `installBusyTracking`: one slim bar that appears after 350 ms, says Loading or Saving, never blocks input, and holds 450 ms. `installBusyTracking()` is explicit and reversible. Cancelling a request stays with the app.
+- `data-act` on a `Button` (create, link, transfer) colours page actions by purpose, with `scripts/check-action-buttons.mjs` to fail an untagged action button.
+- `useChartTheme` already existed; it now has a test that the colours follow the tokens and the theme attribute.
+
+## 2026-11-07 (v1.149.0, the optional reports module: the workbook export)
+
+Opt in: `server/modules/reports/export_xlsx.py`, imported only when a consumer uses it or sets `OPSCENTER_REPORTS`; standard library only, no import side effect.
+
+- One workbook: a Summary tab and one tab per panel, each a real table (a header, a matching ref, unique column names). Text is always an inline string and never a formula. Sheet and table names are made valid and unique. Deterministic output.
+- Pre-built pivot tables stay off (`PREBUILT_PIVOTS = False`, with a test): hand-written pivot parts crash the spreadsheet application for Mac on open, so nothing beyond these parts ships until a generated file was opened on Mac and Windows without a repair prompt or a crash.
+- Not verified here: the workbook was read back with a standard zip and XML reader, not opened in the desktop spreadsheet application. Open one generated file on Mac and Windows before relying on it (this is the hub's own rule for any new workbook part).
+
+## 2026-11-07 (v1.148.0, the optional reports module: dates, definitions, grants, preview)
+
+Opt in: all of it sits under `server/modules/reports/`, is imported only when a consumer sets `OPSCENTER_REPORTS`, and has no import side effect.
+
+- `dateranges.py` (R4, R7): whole-day filters in a named zone with the end day counted in full across a clock change; rows dated more than a day ahead are separated from time panels and counted, never dropped.
+- `definitions.py` (R2): definitions as data; shipped defaults seeded by version, an edited copy never overwritten, reset, export and import by key, bad definitions refused whole.
+- `grants.py` (P1, P4): effective rights are the union of roles and user grants; separate global rights for reports and dashboards plus per-object rights; a grant is removed when its object is deleted and swept when it outlived it.
+- `view_as.py` (P3): a read-only role preview with a pinned allowlist of read-only query POSTs.
+- Built from the hub's text and tests; the API shapes are mine (the hub source is not in the core), flagged.
+
+## 2026-11-07 (v1.147.0, the CSV formula guard, the first part of the optional reports module)
+
+Opt in: the helper is used by a consumer's own export; the reports module itself stays off and unloaded until `OPSCENTER_REPORTS` is set.
+
+- `opscenter/server/modules/reports/export_csv.py`: `guard`, `cell` and `to_csv`. A text value starting with `=`, `+`, `-`, `@`, a tab or a carriage return gets a leading apostrophe; numbers, booleans and None are written as they are; commas, quotes and line breaks are quoted; CRLF line ends. No import side effect.
+- New rule web-api-runtime 9.2: every CSV or spreadsheet export goes through one formula guard.
+- The reports folder joins the unit test discovery.
+
+## 2026-11-07 (v1.146.0, KeepRedirect and the flat hub index tab)
+
+Opt in: a consumer that does not import them sees nothing.
+
+- `KeepRedirect` and `redirectTarget`: a redirect for a moved route that keeps the query string and hash (layout standard rule 9). Router free (`onRedirect`), same-site paths only, so a redirect built from data cannot leave the site.
+- `HubHeader` with `tabs` takes `indexKey`: the index tab's route is `<base>` itself (not `<base>/<key>`) and it is the tab selected when the route has no item.
+
+## 2026-11-06 (v1.145.0, build plan for the optional hub modules and the items not lifted)
+
+Documentation only: `opscenter/plans/` holds the build plan for two optional core modules the owner decided to build (a log intake module and a reports module, never mandatory, absent when off) with the opt-in contract, a module layout, and per entry whether the hub's text and tests specify it or the source is still needed; and a note of the ops center and shell items the core did not lift, with what each needs. Nothing is built by this change.
+
+## 2026-11-06 (v1.144.0, rules from the consumers' inventories: freeze lane, sign-offs, review threads, evidence, ticket comments, ahead of main, status files, watches)
+
+Rule text for what the ops center lifts, so the standard states what the code does. Opt in: reported by core-status; each is a `test` rule a consumer proves with its own tests, and the ops center layout rules apply to an ops center app only.
+
+- automation-safety 1.13 to 1.19: a change freeze holds what can deploy (a CI-only PR is not held); who applied a label is read from the newest timeline events; a green PR the lane never merged is re-run once, then reported once; a sign-off covers every rule hit, is bound to the head and never covers a destroy or a replace; a reply or resolve from a card fails closed and never tags an automated reviewer; approval evidence comes from system data, never a model; an automatic ticket comment runs only when its inputs changed.
+- iac-governance 1.12: an owner apply never undoes what an open pull request applied from its branch.
+- ops-center-layout 1.13 to 1.16: a status card shows unknown when its source is missing, stale or unreadable; a lapsed sign-in is never silent; a job that stays red is raised on the board; a change that takes minutes to reach its destination shows its in-flight rollout. Rule 1.5 now also says a running build is never red and a cancelled or superseded run never counts.
+- Already in core and now stated: the sign-off fingerprint and the destroy and replace exclusion (`signoff_store`, `own_pr_merge`), the fail-closed review conversations (`review_threads`).
+
+## 2026-11-06 (v1.143.0, sessions and cards: session on it, curation, inbound files, CI test runner, page renderer)
+
+Sessions and cards from rpmm23's inventory (OC-11, OC-12, OC-13, OC-14, OC-15, OC-21, OC-23). Opt in: every module is called by a consumer or configured by environment; `eng_backlog.py` gains behaviour for every consumer of the debt page (below).
+
+- OC-11 `server/modules/pr_sessions.py`: find a live session working a pull request (a running delegated task, a session dedicated by title, a session working the branch worktree); reading a PR is never working it. Title patterns, state database and repo clones are configuration.
+- OC-12 `server/modules/tackle_session.py`: bind a launch from a card to the session whose first user message is its staged prompt, not the session a desktop plugin reports.
+- OC-13 `server/modules/eng_curate.py`: the curation front door (`add`, `similar`) and the scheduled pass (`run`): auto-close, fold into the clear best match, hints, all logged and undoable. `eng_backlog.py` now reads the common status words ("DONE 10/24", "Superseded by TD-075", "In review"), links folded rows to their parent, and has the fold, ship, withdraw and undo acts; a status the old reader dropped into "Needs decision" may now land in a different bucket.
+- OC-14 `people/inbound_files.py`: files a report sends (chat attachment, mail attachment, document share) become Action Center items. Written for the core's roster and feeds from the reference, with a test suite (the reference had none).
+- OC-15 `tools/ci_tests.py`: one process per test file, a live-state skip list printed every run, listed proofs that must exist.
+- OC-21 `engine/doc_render.py`: repo markdown to docs home HTML with ASCII and prose rules, a verified-against footer and a configurable internal-terms check. Written with tests (the reference had none).
+- OC-23: compared, already in `engine/handled.py` (identical module and tests apart from wording); nothing lifted.
+
+## 2026-11-06 (v1.142.0, hub tab working marker and inline pending note colour)
+
+Two look details from the ops center adoption, both inside the hub pieces; the plain `Spinner` and every other badge are unchanged.
+
+- The hub tab working marker is 9px with a 1.6px arc turning on 900ms (was 8px, 1.5px, 800ms). It is scoped to `.hub-head .tab-badge`, so no other spinner changes. The existing 5px gap between the marker and the count stays on its right.
+- `PendingReason inline` follows the text colour of the line it sits in (it is a next step, not a warning); the block form keeps the warning colour.
+
+## 2026-11-06 (v1.141.0, a public module needs no rbac)
+
+Opt in. A manifest that declares `"public": true` may omit `rbac`, and its pages may list an empty `requires`.
+
+- `validateManifest`, the JSON schema, the typings and `web-shell-manifest.md` 2.3: with `public: true` no `rbac` is needed and a page's `requires` may be empty (open to every caller); a declared `rbac` and any non-empty `requires` are still validated. `public` must be a boolean. Without `public: true` nothing changes: `rbac` and a non-empty `requires` stay required, with the same messages.
+- `effectiveLayout` gives a public module `public: true` and `rbac: null` (typed non-null so a consumer with no public module compiles unchanged); a module that is not public gets no `public` key and its `rbac` object as before. `validateRegistry` refuses a `permissionSource` or a peer id that names a public module, since it has no permission read. Tests: 8 across the module, validator and schema suites; five fail on the old code. Not run: a shell rendering a public module.
+
+## 2026-11-07 (v1.140.0, a test race fix)
+
+Test only: `pool_view_test` no longer races the background refresh threads of the previous test, which wrote a stale answer into the cache after it was cleared and failed `test_a_failed_read_is_unknown_never_a_pass` now and then in CI.
+
+## 2026-11-06 (v1.139.0, the Kong gateway option and the minimal console module)
+
+Text only, `standards/web-shell-gateway.md`, from a consumer's shell move.
+
+- New 4.1 documents a gateway that mints no token (Kong): routing by path prefix, who may reach an API, the bearer token validated by the API itself, what `scopeEnv` and the scope value are, and exactly what `gatewayGuard` does and does not enforce (it checks the gateway token only; under Kong mount it with `enforce: false` or leave it out).
+- Section 1 records the shell-owned console module (launcher, Home and one `/me` aggregation answering `rbac.me`) as an allowed pattern for a consumer with no console API. It needs no code in the packages. A module with no `rbac` at all is not covered: the manifest still requires it.
+
+## 2026-11-06 (v1.138.0, a consumer can refresh its own visual baselines)
+
+`kit/scripts/visual-update.mjs` takes a project root. Default behaviour for the core kit is unchanged.
+
+- New options: `--root` (the consumer's Playwright project), `--baselines`, `--build`, `--workflow` and `--artifact`, so a consumer refreshes its own baselines against the kit it syncs with the same pinned image, the same full-set replacement and the same CI-first rule. A typo or a missing value now stops with a usage error before any CI run or container starts. The Docker run for another root mounts the repository, works inside the root and keeps `node_modules` in a volume of its own. Documented in the README beside the kit's gate.
+- `parseArgs` and `dockerArgs` are exported with typings; the Docker command for the kit itself is asserted identical to the old one. Tests: 9. Not run: a real CI or Docker baseline refresh on a consumer.
+
+Also in this release: the manifest client folder may be spa. This entry was first headed v1.134.0 by mistake (v1.134.0 is the hub routing release, tagged earlier); the change ships in v1.138.0.
+
+
+
+## 2026-11-06 (v1.137.0, the manifest client folder may be spa)
+
+Additive. `console.module.json` `client` accepts `apps/<dir>/spa` as well as `apps/<dir>/client`.
+
+- `validateManifest`, the JSON schema and `web-shell-manifest.md` take either folder name, for an app that already names its client folder `spa`. Nothing that validated before stops validating. The generator reads the field as plain data and needed no change. Tests: accepted for both names, rejected for another folder name and for a trailing path, in the TypeScript and the Python schema suites.
+
+## 2026-11-06 (v1.136.0, an OIDC sign-in beside MSAL in the client package)
+
+`shell-packages/app-client`: `createOidcAuth(manager, options)` and `createOidcClient(manager)`. Opt in; `createAuth` and the MSAL path are unchanged.
+
+- The same `createAuth` (boot, return target in state, loop guard, config-error and silent-only answers, shell and module modes, bounce, bypass) over an OIDC manager the app builds (oidc-client-ts or anything with its few methods), for a fleet that signs in through an identity broker. No OIDC dependency in the package; refresh-token renewal only, never a hidden frame; the provider callback parameters are stripped after boot; an end-session fallback for a provider without one; other-tab sign-out and user changes are seen.
+- `web-shell-auth.md` 2.1 documents it as the second sign-in shape and keeps the rule that no app in a brokered fleet wires straight to the upstream directory. Tests: 17 over a fake manager. Not run: a live provider and browser sign-in.
+
+## 2026-11-06 (v1.135.0, owner roots ahead of main, the owner apply guard, the draft gate grammar)
+
+Gating and owner roots from rpmm23's inventory (OC-4, OC-5, OC-6, OC-19). Opt in: the hold needs the consumer's PR apply flow to record it and provider hooks to read a PR; with none, nothing changes.
+
+- OC-6, `owner_roots.py`: `set_pr_hold` records a root a PR applied from its branch; main's plan that would destroy it is marked "ahead of main, waiting on #N" and Apply is refused by the server and the worker; the hold clears when main contains the merge commit or the PR closes; an unreadable PR keeps it. Hooks `pr_state`, `contains`, `pr_url`, `owner_name`.
+- OC-5, the owner apply guard: `guard_refusal` and `owner_roots.py guard <name> <tier>` (exit 3) refuse a saved plan that deletes an address an open PR applied, whether or not the card was marked.
+- OC-19, `ahead_items`: an Action Center item for a PR left ahead of main for more than two days (`OWNER_ROOTS_AHEAD_CARD_S`).
+- OC-8 and OC-9, `lanes/run_watches.py`: a main watch (the newest completed run of a deploy or apply workflow on main raises one item with the failed job, its first error line and the run link; a later success closes it; cancelled and skipped runs count neither way) and a drift watch (the newest N scheduled runs all failed: one item naming each failing job; manual and branch runs never count). A watch that cannot be read is an item, never clear.
+- RL-1 and RL-2, `server/modules/status_source.py`: a missing, stale, unreadable or malformed status file reads as unknown, never in sync; a collector that loses its sign-in keeps its last reading marked stale and exits non-zero after the lapse limit (240 minutes).
+- OC-4, `lanes/pr_gate.py`: the draft gate block grammar the own-PR lane's gate plug-in loads, with two built-in kinds and a consumer kinds file. Written from the inventory text and test names, not from reference code; the branch-apply flow and the detection of an unrecorded branch apply are not lifted.
+
+## 2026-11-06 (v1.134.0, hub routing, run dialog and override defects)
+
+Fixes from the consumer review of v1.125.0. Opt in pieces only; a look that worked before is unchanged.
+
+- Hub routing: a section with no items no longer loops (it resolves to the Overview and gets no tab); `hubSectionProblems` reports a section or item key used twice and the first one wins; route segments are decoded when read and encoded when written; an item the section does not have selects the first tab.
+- `RunDialog`: `RunInput.publishesWhen` and `RunSpec.publishes` decide what publishes ahead of the `dry_run` and `mode` name rule; inputs that arrive after the form opened take their defaults and keep what was typed; submit honours the same guards as the button; a refusal from the last attempt no longer locks Run (only the `refusal` prop does) and clears when an input changes; a branch name is checked for plausible characters; `onClose` is not called when the app closed the dialog first.
+- `AreaCard` sends its link through the guarded link, so an unsafe `to` never reaches the app's link component; duplicate detail lines, section keys and item keys no longer collide as React keys. `OverrideBar` and `OverrideButton` send one write at a time from the click on.
+
+## 2026-11-06 (v1.133.0, roles and gate rules from the hub review)
+
+Text only, from the hub consumer's inventory. Standards: `rbac.md`, `ci-cd-release.md`, `scripting-powershell.md`.
+
+- `rbac.md`: grants follow their report or dashboard (removed on delete, swept after seeding); the View-As preview allows a pinned list of read-only query POSTs only; the Roles page gives a tool with its own area its own heading and lists every tool.
+- `ci-cd-release.md` 2.2: the local gate merges `origin/main` and runs every CI check, including the CI-only scripts, from one command.
+- `scripting-powershell.md`: do not wrap `ConvertFrom-Json` output in `@(...)` in the same expression. Already in core and recorded as such: the additive union of grants, route contracts, changelog lines from PR bodies, and the kit action-button styling.
+
+## 2026-11-06 (v1.132.0, the freeze lane: human bypass, CI-only exemption, GraphQL labeler, stale green)
+
+Four own-PR lane additions from rpmm23's inventory (OC-1, OC-2, OC-3, OC-16). Opt in: the bypass needs a store and a PR read (null default, the freeze holds), the CI-only exemption is off by default (`freeze_ci_only`); the labeler and stale-green changes take effect for every lane.
+
+- `lanes/freeze_bypass.py` (OC-1): one PR for this window only, or all own PRs until the next midnight in the owner's zone, on the override store: window-scoped, expiry read on every read, fail closed, own open PRs only, every change logged, a bypass logged once per head by the lane.
+- `lanes/freeze_ci_only.py` (OC-2): a PR that only changes how CI checks pull requests is not held by a freeze; both sides of each changed workflow, every workflow that names a changed script (also through another script), anything unreadable held. Written from the inventory description, not from reference code.
+- `override_by_me` (OC-3) reads the newest labeler from the GraphQL timeline; the REST events list truncates at about 300 entries. A read error is not an override.
+- `unstick` (OC-16): a ready PR the lane never merged gets its CI run re-run once per head after `stale_ready_min` minutes, then one alert.
+
+## 2026-11-06 (v1.131.0, delivery: cancelled runs, pre-push, pr-watch, release notes, shrink-only lists)
+
+Delivery steps from the hub's gaps D2, D3, U4, U5 and the route exemption list. Opt in: new `core-ci.py` subcommands and a parameters row; the merge gate template is copied once, so only a repo that copies it again changes.
+
+- Cancelled runs (D2): `core-ci.py ready SHA` reads the newest run of each check and treats a cancelled one as wait, not failure; `--rerun-cancelled` re-runs a head whose runs were cancelled, at most 3 attempts per workflow run. `wait-checks` and the progress counts agree. The `automerge.yml` template uses it, so a cancelled run no longer stalls a PR until someone re-runs it (rule pr-review-and-merge 1.22).
+- `core-ci.py pre-push` (U4): fails unless the branch contains the latest default branch, then runs commitlint, attribution with the private term guard, identity, ascii, changelog, changelog-entries and repo-checks locally (rule 1.21).
+- `core-ci.py pr-watch PR` (D3): watches a PR to a stop point (merged, checks failed, closed, conflict, timeout), prints a line at every change and ends with a report (rule 1.23).
+- `core-ci.py changelog-lines` (U5): release notes from `Changelog:` lines in PR bodies; docs, test, ci, chore, style and build commits ignored; one generic line when there is none (docs-and-changelog 1.10).
+- `core-ci.py list-shrinks BASE HEAD` and the parameters row `Shrink-only lists` (U3): an exemption list may lose entries and never gain one.
+
+## 2026-11-06 (v1.130.0, shell server rules)
+
+New `standards/web-shell-server.md`: the server rules a multi-module shell meets beyond the shared runtime, from the consumer inventory. Text only; each rule carries the proof a shell owns, and no rule is registered for enforcement yet.
+
+- Rights: the removal ceiling, a module opening on its own permission, every route gated or explained, group ids from role assignments only. Relays: a closed target list, forward the caller's token and status unchanged under an allowlist. Stores: sealed console secrets, a keyed audit chain, plain-text announcements, validated display-only external tools, per-user state keyed by lowercased identity. Health and boot: health never invented, paint from the persisted identity. Data and config: additive idempotent migrations, an unset environment is production, settings and vault references, per-item bulk results, one-process background jobs.
+- `rbac.md` section 6 and `web-api-runtime.md` section 7 gain a pointer line each. Code for the stores, the job leader and the scheduler follows in separate releases. Not run: the consumer's platform tree has no axe or live-action browser tests.
+
+## 2026-11-06 (v1.129.0, the layout merge carries unknown manifest keys)
+
+`shell-packages/console-modules`: `effectiveLayout` no longer drops a manifest key the contract does not name.
+
+- A consumer's own field (a `jobs` list) on a module, group, page, link or tile comes through as a deep copy on the matching output entry. Before, it vanished with no error and no test failing. `validateManifest` still ignores unknown keys.
+- A carried key never shadows a computed field (`enabled`, `account`, `basePath`); a module with no extra keys gets an identical result. `EffectiveModule` gains an index signature. Tests: 3, two of which fail on the old code. Not run: the consumer's platform tree has no axe or live-action browser tests.
+
+## 2026-11-06 (v1.128.0, rules: smoke retries, route contracts, installs, codemods)
+
+Four rules from the consumers' inventories, with two repo checks. Opt in: the rules are reported by core-status; RC026 and RC027 run on the local-ops stack only and fail a PR only where a consumer sets the `Repo checks gate` row.
+
+- ci-cd-release 6.1: the post-deploy smoke retries for a bounded window (default 5 minutes), then fails; a deploy that stays red raises one alert.
+- web-api-runtime 9.1: every route has a contract, the reference is generated and checked, and the exemption list only shrinks (`core-ci.py list-shrinks`).
+- automation-safety 1.11 and RC026: an installer replaces a script by renaming a new file into place, never overwrites one that may be running.
+- automation-safety 1.12 and RC027: an unattended lint fix comes from an AST codemod or a vetted rule list; a codemod that rewrites by regular expression, or an autofix script that edits files in place with sed, is flagged.
+
+## 2026-11-06 (v1.126.0, override store window and extra, problems provider healthy items)
+
+Two consumer-requested extensions. Opt in: both are optional arguments and methods; nothing that runs changes.
+
+- `override_store.py`: `set(..., window=, extra=)` stores the window id the entry was made in (its scope when none is given) and a JSON map; `entry(key, scope)` reads a live entry back, failing closed like `allowed`; `expires_at_local_midnight(tz)` gives the end of the owner's day in an IANA zone. One file, still copyable verbatim.
+- Problems provider: `headlines()` values may be a map `{headline, details, label, url}`, a new `healthy()` method adds items that are fine but carry live facts, and a source may carry `count`. This is what moving a consumer's browser-clock and accounts-feed headlines onto the server needs.
+
+## 2026-11-02 (v1.125.0, hub and override polish from the ops center adoption)
+
+Opt in: hub and override pieces, and one new spinner form; nothing changes unless a consumer uses them.
+
+- `.hub-overview` is a grid with `gap: var(--space-4)`, so the 12px summary margin no longer collapses into the first section (the extra gap between sections is taken out of their top margin, so section spacing is unchanged).
+- `Spinner` takes `arc`: an open arc with no track ring. The hub tab working marker uses it.
+- `OverrideBar` and `OverrideButton`: the confirm closes first, then the write runs; a failed write shows the returned message on the bar (beside the button for the button) and never leaves a dialog open. `OverrideButton` reads "Working..." while the write runs (`busyLabel`).
+- `PendingReason` takes `inline` and renders a span.
+- `HubHeader` takes `headerOnly`: the page header with no tabs and no Overview; `base` and `onNavigate` become optional.
+
+## 2026-11-02 (v1.124.0, the core sync pull request declares no issue and runs a consumer changelog hook)
+
+The core sync pull request passes rule 1.20 and a consumer can meet its own changelog rule. Opt in for the hook: nothing changes until `changelog_cmd` or `CORE_UPDATE_CHANGELOG_CMD` is set; the body change applies to every sync.
+
+- The sync pull request body (`hermes/ops_center.py`, both pull request paths, and `core-update.yml`) carries `No issue: core release sync to vX`, so `core-pr-issue` (pr-review-and-merge.md 1.20) passes with no exempt-author row. Before, a sync PR had no declaration and the sync rolled back.
+- New consumer setting `ui_consumers[].changelog_cmd` (ops-center, `apply_via` pr) and repository variable `CORE_UPDATE_CHANGELOG_CMD` (the workflow): a command run after the pull request opened, with `{pr}` and `{version}` filled in; what it changes is committed as one new commit on the sync branch before the checks are awaited, so a repo that wants a changelog entry per PR number can meet it. A failing command closes the pull request like any failed step.
+- The contract (the body declares `No issue: <reason>`; a changelog step runs once the number is known) is in CONSUMING.md for any other tool that opens a sync pull request.
+
+## 2026-11-02 (v1.123.0, RC023 and RC025 false hits)
+
+Two false hits of the ops center repo checks reported by a consumer are fixed. Opt in: only a repo with an ops center app.
+
+- RC023 scopes to tones that report a problem: the badge and severity paths and a quoted bad, warn, alert, danger, needs-me, amber or red value. A display-only label (a meeting chip `next` or `later`) no longer matches, and a one-line comment `display-only: <why>` marks a threshold that only styles such a label. `ageHours > 30 ? 'warn'` and the count cases still fail. Rule 1.4 says so.
+- RC025 reads code only: help text in string literals and JSX text ("Turns itself off at midnight") never matches; a cron entry, a timer or a scheduled call that clears an override still does.
+
+## 2026-11-01 (v1.122.0, every PR declares what it does to issues)
+
+New rule pr-review-and-merge 1.20 and the `core-pr-issue` step of `core-ci.yml` (template and reusable workflow). Opt in by sync: a consumer gets the step on its next core sync, and a PR body without a declaration then fails `core-checks`.
+
+- The body holds exactly one of `Closes #N` (or `Fixes`, `Resolves`), `Refs #N` plus a `Remaining: <what is left>` line, or `No issue: <reason>`. Zero forms, two forms, `Refs` without `Remaining` and a lone `Remaining` fail. Comments and fenced blocks are ignored.
+- Passes without a declaration: a revert (title or body), Renovate and dependabot. The consumer names the rest in parameters rows (or `PR_ISSUE_*` env vars): `PR issue exempt authors`, `PR issue app authors` (exempt only on `chore/`, `pin/`, `standards-sync/`, `fold/` branches, prefixes in `PR issue bot branches`) and `PR issue exempt repos` (repo name prefixes).
+- `python3 scripts/core-ci.py pr-issue` reads `PR_TITLE`, `PR_BODY`, `PR_AUTHOR`, `PR_BRANCH` and `GITHUB_REPOSITORY`.
+
+## 2026-11-01 (v1.121.0, gate override kit pieces)
+
+The kit pieces for rules 10 and 11 of the ops center layout standard. Opt in: a consumer that does not import them sees nothing.
+
+- `OverrideBar` (gate line, all-items switch, confirm before turning on), `OverrideButton` (per item: turn on with confirm, undo, hidden when the all-items override covers the item), `OverrideTag` and `PendingReason` (after an action the card shows the server's pending line, never the reason the action removed). Each renders nothing, or the plain reason, when the app gives it no data; the gate, expiry and wording stay with the app and the core override store.
+
+## 2026-11-01 (v1.120.0, hub Overview and header polish)
+
+Opt in: only the hub pieces change; a consumer that does not use `HubHeader` or `HubOverview` sees nothing.
+
+- `AreaCard` status renders as a pill (`.badge.pill`, `--radius-pill`), not a squared badge. Detail lines keep full text colour; the secondary colour is for the summary and status lines only. `.hub-overview-summary` has a 12px block margin, label size and the secondary colour, and is a block, so a consumer can pass a node without a wrapper.
+- `HubHeader` takes a flat tab list (`tabs`, route `<base>/<item>`) for hubs with a single tab row: no sections, no second row.
+- `AreaCard` renders a provider `headline` (live facts) ahead of the server `status` text, and reads a per-item `running` boolean as the live state (info tone, never red). Both fields are optional, so absence is tolerated.
+
+## 2026-11-01 (v1.119.0, ops center rules 10 to 12: overrides, pending next step, self-healing)
+
+Three rules join the ops center layout standard (1.10 to 1.12), with a core helper and a check. Opt in: the helper and the check are used by a consumer's own gate; the stale plan re-plan changes the core owner apply for everyone.
+
+- Rule 10, a gate override is scoped, time-boxed and fails closed: `opscenter/server/modules/override_store.py` (stored expiry compared on every read, scope per entry, a missing, unreadable, foreign-scope or expired store means no override, one writer under a lock with a log, a `qualify` slot for ownership). New repo check RC025 fails an override reader that answers yes from an error handler and a scheduled job that clears an override.
+- Rule 11, a card never shows a stale reason after an action: `pending_line` is the server wording; the kit override bar, override button and pending-next-step card state are not in this release and go to the kit.
+- Rule 12, known transient failures heal themselves: the owner apply re-plans at once on a stale saved plan (clean clears the card and the alert, changes ask for one review, never counts toward the repeat alert; real failures keep the normal path).
+- Where the standard text was ambiguous, the reading is in the pull request.
+
+## 2026-11-01 (v1.118.0, core-ci runs the repo checks)
+
+`core-ci.yml` and `core-ci-reusable.yml` gain a `core-repo-checks` step, so a consumer no longer wires the repo checks into its CI by hand. Opt in: nothing changes until the overlay sets the new parameters row.
+
+- New row `Repo checks gate` in `standards-local/parameters.md`: rule ids, doc names (for example `ops-center-layout`) or `all`. `python3 scripts/core-ci.py repo-checks` runs `core-status.py --json` and fails the run when a named repo-check rule fails, prints the file and line of every finding, treats an active exception as excepted and a rule the overlay cannot run as a failure. The row empty (the default) is a clean skip.
+- `core-repo-checks` is one more named step of `core-checks`; it adds no job, so no merge gate changes. A sync refreshes the workflow.
+
+## 2026-11-01 (v1.117.0, RC023 flags ages and durations)
+
+Rule 1.4 of the ops center layout standard covers every threshold that decides a tone, not only counts. Opt in: only a repo with an ops center app (RC023 runs there only).
+
+- RC023 also fails a client source that decides a tone, badge or severity from an age or a duration compared with a number: a name that says time (`ageHours`, `minutesSince`, `elapsed`, `stale_days`, `...Ms`) compared with a number, a clock difference (`Date.now() - t`) compared with a number, or anything compared with a product of time units (`30 * 3600 * 1000`). Comparison with zero is not a threshold; the exception marker works as before. Tone words now include amber, red, yellow and orange.
+- The core app's meeting schedule state is renamed from `tone` to `phase` (it is a schedule label, not a severity); no behaviour changes.
+
+## 2026-11-01 (v1.115.0, ops center problem list: headlines, provider slots, count unit)
+
+The server problem list carries what a consumer's own list needs. Opt in: a provider slot, null by default; the count unit changes for everyone.
+
+- `OPSCENTER_PROBLEMS_PROVIDER` (`path/to/file.py:ClassName`, optional methods) fills the live headline of any item (`headlines()`), marks any item running (`running()`, a spinner, never red) and adds a consumer's own sources: `needs_me()` for what waits on the owner (a refused deploy waiting on a click, a run waiting on an approval) and `worth_a_look()` for amber lines (spend headroom, an account read error). A source on an existing item adds its lines and only raises its tone. A provider that cannot be read is one needs_me item.
+- Count unit: an item's `count` is its number of problem lines (two failing jobs and a stale heartbeat read 3), and `counts.lines` is the total for the rail badge. Section and item counts are sums of lines, so the tabs add up to the badge. The app needs no change.
+- Standard `ops-center-layout.md` 1.1 rules 3 and 4 and section 4 state both; DESIGN 12.50 documents the slot.
+
 ## 2026-10-30 (v1.114.0, ops center layout adoption)
 
 The core ops center app adopts the approved layout. Opt in: the app only; consumers sync it with the kit.

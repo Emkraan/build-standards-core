@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: kit
+        working-directory: opscenter/kit
     env:
       TAG: ${{ inputs.tag || github.ref_name }}
       GH_TOKEN: ${{ github.token }}
@@ -37,7 +37,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: kit/package-lock.json
+          cache-dependency-path: opscenter/kit/package-lock.json
       - run: npm ci
       - run: npm run gallery:build
       - name: Zip the gallery
@@ -47,7 +47,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: kit-gallery-${{ env.TAG }}
-          path: kit/kit-gallery-${{ env.TAG }}.zip
+          path: opscenter/kit/kit-gallery-${{ env.TAG }}.zip
           if-no-files-found: error
       # Consumers pin the newest release, not the newest tag (update-core.py), so a tag without a
       # release never reaches them. A tag push therefore publishes its release when none exists,
@@ -60,4 +60,4 @@ jobs:
             [ -s notes.md ] || echo "See CHANGELOG.md." > notes.md
             gh release create "$TAG" --verify-tag --title "$TAG" --notes-file notes.md -R "$GITHUB_REPOSITORY"
           fi
-          gh release upload "$TAG" "kit/kit-gallery-${TAG}.zip" --clobber -R "$GITHUB_REPOSITORY"
+          gh release upload "$TAG" "opscenter/kit/kit-gallery-${TAG}.zip" --clobber -R "$GITHUB_REPOSITORY"

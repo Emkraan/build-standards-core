@@ -7,7 +7,7 @@ paints). This check collects every declared custom property in the core CSS and 
 var(--name) with no fallback whose name is never declared. Runtime variables set from script
 (--i, --hue) must carry a fallback where they are read, or be declared on their component.
 
-Usage: python3 checks/check-css-vars.py [FILE_OR_DIR ...]   (default: tokens/ and kit/src/)
+Usage: python3 checks/check-css-vars.py [FILE_OR_DIR ...]   (default: opscenter/tokens/ and opscenter/kit/src/)
 Exit codes: 0 every reference resolves, 1 unresolved references.
 """
 
@@ -16,7 +16,7 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-DEFAULT = ["tokens", "kit/src"]
+DEFAULT = ["opscenter/tokens", "opscenter/kit/src"]
 DECL = re.compile(r"(?<![\w-])(--[A-Za-z0-9_-]+)\s*:")
 REF = re.compile(r"var\(\s*(--[A-Za-z0-9_-]+)\s*(,)?")
 

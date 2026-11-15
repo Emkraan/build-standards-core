@@ -1,4 +1,4 @@
-// The Ops Center shell on the shared kit (web-ui.md sections 6, 11, 19 and 25): the hover rail
+// The Ops Center shell on the shared kit (the web-ui-standard doc): the hover rail
 // with pin and the gliding active marker, the header on every page, the live feed strip, the build
 // card with release notes, the command palette, the shortcut sheet, tooltips and toasts.
 import type { KitLinkProps, ReleaseNote } from '@kit'
@@ -278,6 +278,7 @@ export default function App() {
               <Route path="/platform/:tab" element={<PlatformRedirect />} />
               <Route path="/jira" element={<JiraHub />} />
               <Route path="/jira/:tab" element={<JiraHub />} />
+              <Route path="/jira/:tab/:sprintId" element={<JiraHub />} />
               <Route path="/debt" element={<EngBacklog />} />
               <Route path="/debt/:tab" element={<EngBacklog />} />
               <Route path="/knowledge" element={<Knowledge />} />

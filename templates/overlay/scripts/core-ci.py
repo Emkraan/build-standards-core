@@ -5,6 +5,9 @@ Usage (run from the consumer repo root; the overlay may sit in a subfolder):
   python3 scripts/core-ci.py params [--github-output]       parameters the workflow needs, from
                                                              standards-local/parameters.md
   python3 scripts/core-ci.py pr-title [TITLE]                Conventional Commit PR title (PR_TITLE)
+  python3 scripts/core-ci.py pr-issue                        the PR body declares what it does to issues
+                                                             (PR_TITLE, PR_BODY, PR_AUTHOR, PR_BRANCH,
+                                                             GITHUB_REPOSITORY)
   python3 scripts/core-ci.py commitlint BASE HEAD            every commit subject in BASE..HEAD
   python3 scripts/core-ci.py attribution BASE HEAD           no tool attribution in commits, PR title
                                                              and body (PR_TITLE, PR_BODY), plus the
@@ -21,6 +24,12 @@ Usage (run from the consumer repo root; the overlay may sit in a subfolder):
                                                              frozen installs (default .github/workflows);
                                                              warns when a workflow_run trigger lists
                                                              workflows but not core-ci
+  python3 scripts/core-ci.py repo-checks                     the repo checks (scripts/repo_checks.py, RC0nn)
+                                                             of the rules the Repo checks gate parameter
+                                                             opts into (rule ids, doc names or `all`;
+                                                             empty: off) fail the run on a finding, as
+                                                             core-status.py reads it (an active exception
+                                                             excepts a rule)
   python3 scripts/core-ci.py ascii                           no byte above 127 in any tracked text file
                                                              (binaries, synced copies and lockfiles
                                                              skipped); the ASCII patterns parameter
@@ -34,12 +43,6 @@ Usage (run from the consumer repo root; the overlay may sit in a subfolder):
   python3 scripts/core-ci.py secret-scan BASE HEAD [--gitleaks BIN]
                                                              scan BASE..HEAD with the base commit's
                                                              config, ignore files and allow comments off
-  python3 scripts/core-ci.py kit-peers [DIR]                 the kit copy (default kit-core) typechecks
-                                                             without its optional peers: no root file
-                                                             imports one, every tsconfig that includes
-                                                             the copy excludes an entry whose peer the
-                                                             app does not declare, and tsc (when the
-                                                             repo has it) passes with the peers blocked
   python3 scripts/core-ci.py required-checks [--repo R] [--branch B] [--api-json FILE] [--fix [--no-write]]
                                                              which core-ci.yml jobs the merge gate does
                                                              not require (branch protection, rulesets,
@@ -49,6 +52,29 @@ Usage (run from the consumer repo root; the overlay may sit in a subfolder):
                                                              file:line) and prints the ruleset commands;
                                                              --lists-only checks only such a list; exits
                                                              1 on any mismatch
+  python3 scripts/core-ci.py ready SHA [--repo R] [--expect "a b"] [--rerun-cancelled]
+                                                             one read of the checks on a head for a merge
+                                                             gate: exit 0 green, 1 wait (running, or a
+                                                             cancelled run, which is neither a pass nor a
+                                                             failure and is re-run at most 3 attempts with
+                                                             --rerun-cancelled), 2 failed
+  python3 scripts/core-ci.py pre-push [--base REF] [--skip-fetch]
+                                                             before a push: the branch contains the latest
+                                                             default branch, then commitlint, attribution
+                                                             (and the private term guard), identity, ascii,
+                                                             changelog, changelog-entries and repo-checks
+                                                             run locally
+  python3 scripts/core-ci.py pr-watch PR [--repo R] [--timeout MIN] [--interval SEC]
+                                                             watch a pull request to a stop point (merged 0,
+                                                             checks failed 1, closed 3, conflict 4, timeout
+                                                             5) and print a report line at every change
+  python3 scripts/core-ci.py changelog-lines [SINCE]         release notes from `Changelog:` lines in the
+                                                             pull request bodies a squash merge keeps; docs,
+                                                             test, ci, chore, style and build commits are
+                                                             ignored; no line at all gives one generic line
+  python3 scripts/core-ci.py list-shrinks BASE HEAD [FILE ...]
+                                                             a shrink-only list (an exemption list) gained
+                                                             no entry (parameters row "Shrink-only lists")
   python3 scripts/core-ci.py required-names [--github-output]
                                                              the core-ci job names a merge gate requires,
                                                              read from the synced core-ci.yml
@@ -61,6 +87,21 @@ Usage (run from the consumer repo root; the overlay may sit in a subfolder):
   python3 scripts/core-ci.py install-psscriptanalyzer DIR    the pinned analyzer, checksum verified
   python3 scripts/core-ci.py powershell [--analyzer DIR]     parser errors and PSUseCompatibleSyntax
                                                              (5.1 and 7) in tracked PowerShell files
+  python3 scripts/core-ci.py architecture-article --kind apps|stacks --repo OWNER/DOCS_REPO
+                                                             [--ref main] [--root DIR]
+                                                             [--base SHA --head SHA] every system
+                                                             directory in this checkout has a compliant
+                                                             architecture article merged in the docs
+                                                             repository (GH_TOKEN or GITHUB_TOKEN with
+                                                             contents:read there; the article rules live
+                                                             with the standard: the docs repository's own
+                                                             shape script is fetched and applied at run
+                                                             time, so one implementation defines them);
+                                                             with --base and --head, each system that
+                                                             range touches also has its article checked
+                                                             against the manifests at HEAD, and its
+                                                             stack_verified against the range's first
+                                                             commit when its structure changed
 
 A BASE of all zeros (a new branch push) scans or checks the whole history up to HEAD.
 Exit codes: 0 pass (or a clean skip, which prints a line starting "skip"), 1 findings, 2 usage or
@@ -71,6 +112,7 @@ from __future__ import annotations
 
 import fnmatch
 import hashlib
+import importlib.util
 import io
 import json
 import os
@@ -232,7 +274,6 @@ def params() -> dict:
         "python": str(on("python", probe="python")).lower(),
         "powershell": str(on("powershell", "wpf", probe="powershell")).lower(),
         "web": str(on("web", probe="web")).lower(),
-        "kit": str((ROOT / "kit-core").is_dir()).lower(),
         "python_floor": floor,
         "python_test": parameter("Python test command") or "python -m unittest discover",
         # The repo's own full-tree lint for lint-sweep.yml (empty: only the overlay lints run).
@@ -295,6 +336,99 @@ def cmd_pr_title(argv: list) -> int:
     return 1
 
 
+# A PR body declares exactly one outcome for issues, so finished work does not sit in open issues.
+ISSUE_REF = r"(?:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)?#\d+"
+CLOSING = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+" + ISSUE_REF, re.I)
+REFS = re.compile(r"(?:^|[^\w])(?:refs?|part of)\s*:?\s+" + ISSUE_REF, re.I | re.M)
+REMAINING = re.compile(r"^\s*(?:[-*]\s*)?Remaining:\s*\S", re.I | re.M)
+NO_ISSUE = re.compile(r"^\s*(?:[-*]\s*)?No issue:\s*\S", re.I | re.M)
+DEFAULT_EXEMPT_AUTHORS = ("renovate[bot]", "renovate", "dependabot[bot]")
+DEFAULT_BOT_BRANCHES = ("chore", "pin", "standards-sync", "fold")
+
+
+def pr_issue_config() -> dict:
+    """Exemptions: an env var, else the parameters row, else the default. Names stay with the consumer."""
+
+    def pick(env_name: str, row: str) -> list:
+        return listed(os.environ.get(env_name) or parameter(row))
+
+    return {
+        "authors": [a.lower() for a in pick("PR_ISSUE_EXEMPT_AUTHORS", "PR issue exempt authors")],
+        "app_authors": [a.lower() for a in pick("PR_ISSUE_APP_AUTHORS", "PR issue app authors")],
+        "branches": pick("PR_ISSUE_BOT_BRANCHES", "PR issue bot branches")
+        or list(DEFAULT_BOT_BRANCHES),
+        "repos": [r.lower() for r in pick("PR_ISSUE_EXEMPT_REPOS", "PR issue exempt repos")],
+    }
+
+
+def pr_issue_findings(
+    title: str,
+    body: str,
+    author: str = "",
+    branch: str = "",
+    repo: str = "",
+    cfg: dict | None = None,
+) -> list:
+    """Problems with a PR's issue declaration (empty list when it passes or is exempt).
+
+    Exempt: the always-exempt bots plus cfg authors; an app author (cfg app_authors) on a bot branch;
+    a repo whose name starts with a cfg exempt prefix; a revert (title or body)."""
+    cfg = cfg or {}
+    who = author.strip().lower()
+    if who in DEFAULT_EXEMPT_AUTHORS or who in cfg.get("authors", []):
+        return []
+    prefixes = cfg.get("branches") or list(DEFAULT_BOT_BRANCHES)
+    bot_branch = re.compile(
+        r"^(?:" + "|".join(re.escape(x) for x in prefixes) + r")(?:[/-]|$)", re.I
+    )
+    if who in cfg.get("app_authors", []) and bot_branch.match(branch.strip()):
+        return []
+    name = repo.split("/")[-1].lower()
+    if any(name.startswith(x) for x in cfg.get("repos", [])):
+        return []
+    if re.match(r"\s*revert\b", title or "", re.I) or "this reverts commit" in (body or "").lower():
+        return []
+    text = re.sub(r"<!--.*?-->", "", body or "", flags=re.S)
+    text = re.sub(r"```.*?```", "", text, flags=re.S)
+    forms = []
+    if CLOSING.search(text):
+        forms.append("Closes/Fixes/Resolves #N")
+    refs = bool(REFS.search(text))
+    remaining = bool(REMAINING.search(text))
+    if refs:
+        forms.append("Refs #N")
+    if NO_ISSUE.search(text):
+        forms.append("No issue: <reason>")
+    if not forms:
+        return [
+            "declare what this PR does to issues: Closes #N, or Refs #N with a Remaining: line, "
+            "or No issue: <reason>"
+        ]
+    if len(forms) > 1:
+        return [f"declare exactly one form, found {len(forms)}: " + "; ".join(forms)]
+    if refs and not remaining:
+        return [
+            "Refs #N needs a line 'Remaining: <what is left>' (or use Closes #N when nothing is left)"
+        ]
+    return []
+
+
+def cmd_pr_issue(argv: list) -> int:
+    env = os.environ.get
+    bad = pr_issue_findings(
+        env("PR_TITLE", ""),
+        env("PR_BODY", ""),
+        env("PR_AUTHOR", ""),
+        env("PR_BRANCH", ""),
+        env("GITHUB_REPOSITORY", ""),
+        pr_issue_config(),
+    )
+    for b in bad:
+        say(f"::error::pr-issue: {b}")
+    say(f"pr-issue: {'fail' if bad else 'ok'}")
+    return 1 if bad else 0
+
+
 def commits(base: str, head: str) -> list:
     """(sha, subject, full message, author email, committer email) for each non-merge commit."""
     raw = git(
@@ -308,15 +442,44 @@ def commits(base: str, head: str) -> list:
     return out
 
 
+HEADER_MAX = 100
+
+
+def commit_findings(subject: str, message: str) -> list:
+    """The rules of @commitlint/config-conventional that a consumer's own commitlint
+    config keeps: type-enum, type-case, scope-case lower-case, subject-empty,
+    subject-full-stop never, header-max-length 100, body-leading-blank. Subject case and
+    body line length are off."""
+    out = []
+    m = CC.match(subject)
+    if not m:
+        return ["subject is not a Conventional Commit"]
+    if len(subject) > HEADER_MAX:
+        out.append(f"header is {len(subject)} characters, the limit is {HEADER_MAX}")
+    if subject.rstrip().endswith("."):
+        out.append("subject must not end with a full stop")
+    if m.group(1) != m.group(1).lower():
+        out.append("type must be lower case")
+    scope = m.group(2)
+    if scope and scope[1:-1] != scope[1:-1].lower():
+        out.append("scope must be lower case")
+    lines = message.split("\n")
+    if len(lines) > 1 and lines[1].strip():
+        out.append("body must be separated from the header by a blank line")
+    return out
+
+
 def cmd_commitlint(argv: list) -> int:
     if len(argv) < 2:
         say("usage: core-ci.py commitlint BASE HEAD")
         return 2
-    bad = [c for c in commits(argv[0], argv[1]) if not CC.match(c[1])]
-    for c in bad:
-        say(f"::error::commitlint: commit {c[0][:8]} subject is not a Conventional Commit")
-    say(f"commitlint: {len(bad)} bad subject(s)")
-    return 1 if bad else 0
+    n = 0
+    for c in commits(argv[0], argv[1]):
+        for f in commit_findings(c[1], c[2]):
+            n += 1
+            say(f"::error::commitlint: commit {c[0][:8]} {f}")
+    say(f"commitlint: {n} bad subject(s)")
+    return 1 if n else 0
 
 
 def attribution_hits(text: str) -> list:
@@ -770,7 +933,7 @@ LOCKFILES = {
     "flake.lock",
 }
 # The every-file ASCII rule. An exception for it covers a path, never a script or XAML file: those
-# stay under their own rules (scripting-powershell.md 1.7, wpf-design-system.md 6.1).
+# stay under their own rules (scripting-powershell.md 1.7).
 ASCII_RULE = "pr-review-and-merge.md 1.19"
 SCRIPT_PATTERNS = ("*.ps1", "*.psm1", "*.psd1", "*.xaml")
 
@@ -952,6 +1115,73 @@ def cmd_ascii(argv: list) -> int:
         f"{n} line(s) with a byte above 127, {excused} excepted"
     )
     return 1 if n else 0
+
+
+def gated(rule: dict, wanted: list) -> bool:
+    """Does the Repo checks gate parameter opt this rule in: `all`, the rule id, a prefix of it, or its doc name."""
+    rid = rule.get("id", "")
+    return any(
+        w == "all" or rid == w or rid.startswith(w + ".") or rid.split(".")[0] == w for w in wanted
+    )
+
+
+def cmd_repo_checks(argv: list) -> int:
+    """The repo checks of the rules a consumer opted into fail the run (the parameters row "Repo checks gate").
+    Nothing opted in is a clean skip, so an overlay that has not set the row is unchanged. The status of each rule
+    is core-status.py's (an active exception makes it excepted), so the gate and the report never disagree."""
+    wanted = listed(parameter("Repo checks gate"))
+    if not wanted:
+        say("skip repo-checks: the Repo checks gate parameter is empty")
+        return 0
+    # The caller's own copies when there are (the reusable workflow runs the core's pinned scripts against the
+    # caller's repo, and core-status reads the overlay it sits in).
+    scripts = ROOT / "scripts" if (ROOT / "scripts" / "core-status.py").is_file() else HERE
+    status = scripts / "core-status.py"
+    top = git("rev-parse", "--show-toplevel").strip()
+    if not status.is_file():
+        say("::error::repo-checks: scripts/core-status.py is not in this overlay")
+        return 2
+    r = subprocess.run(
+        [sys.executable, str(status), "--json"],
+        cwd=top,
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+    try:
+        report = json.loads(r.stdout)
+    except ValueError:
+        raise RuntimeError(
+            "core-status.py --json did not answer: " + (r.stderr or r.stdout)[-300:]
+        ) from None
+    rules = [x for x in report.get("rules", []) if x.get("kind") == "repo-check"]
+    chosen = [x for x in rules if gated(x, wanted)]
+    unknown = [w for w in wanted if w != "all" and not any(gated(x, [w]) for x in rules)]
+    for w in unknown:
+        say(f"::warning::repo-checks: {w} names no repo-check rule in this core release")
+    bad = 0
+    try:
+        sys.path.insert(0, str(scripts))
+        import repo_checks  # noqa: PLC0415 - only when the gate is on
+    except ImportError:
+        repo_checks = None
+    for x in chosen:
+        if x["status"] == "pass":
+            continue
+        if x["status"] == "excepted":
+            say(f"::warning::repo-checks: {x['ref']} excepted ({x['title']})")
+            continue
+        bad += 1
+        say(
+            f"::error::repo-checks: {x['ref']} {x['title']}: {x['status']}, {x.get('findings', 0)} finding(s). {x.get('note', '')}"
+        )
+        if repo_checks is not None and x["status"] == "fail":
+            for cid2, (_, ref, _) in repo_checks.CHECKS.items():
+                if ref == x["ref"]:
+                    for path, line, msg in repo_checks.run(cid2, pathlib.Path(top)):
+                        say(f"::error file={path},line={line}::{cid2} {msg}")
+    say(f"repo-checks: {len(chosen)} gated rule(s), {bad} not passing")
+    return 1 if bad else 0
 
 
 def major(v: str) -> str | None:
@@ -1237,239 +1467,6 @@ def cmd_secret_scan(argv: list) -> int:
         return 2
     say(f"secret-scan: clean ({rev_range(base, head)})")
     return 0
-
-
-# ---------------------------------------------------------------- kit optional peers
-
-# Each optional kit entry and the peer it needs. The kit root never imports one, so an app that does
-# not install a peer excludes its entry from the typecheck (kit/MIGRATION.md step 0). A new optional
-# entry is added here in the same change that adds it to the kit.
-OPTIONAL_ENTRIES = {
-    "charts": ("recharts",),
-    "graph": ("@xyflow/react",),
-    "api-reference": ("@scalar/api-reference-react",),
-}
-IMPORT_RE = re.compile(
-    r"""(?:\bfrom\s*|\bimport\s*\(?\s*|@import\s+(?:url\()?\s*)["']([^"']+)["']"""
-)
-TS_SOURCES = (".ts", ".tsx", ".mts", ".cts", ".css")
-
-
-def peer_of(spec: str) -> str | None:
-    for entry, peers in OPTIONAL_ENTRIES.items():
-        for peer in peers:
-            if spec == peer or spec.startswith(peer + "/"):
-                return entry
-    return None
-
-
-def resolve_import(src: pathlib.Path, spec: str) -> pathlib.Path | None:
-    base = src.parent / spec
-    for cand in (
-        base,
-        *(base.with_name(base.name + e) for e in TS_SOURCES),
-        *(base / ("index" + e) for e in TS_SOURCES),
-    ):
-        if cand.is_file():
-            return cand.resolve()
-    return None
-
-
-def kit_root_imports(kit: pathlib.Path) -> list:
-    """(file, line, kind) for every peer import reachable from the kit root: the files outside the
-    optional entries and every file they import, at any depth. An entry's own files may import its peer;
-    a helper inside an entry folder that the root imports (the chart theme) must not."""
-    top = kit.resolve()
-    files = sorted(
-        f.resolve()
-        for f in kit.rglob("*")
-        if f.is_file() and f.suffix in TS_SOURCES and "node_modules" not in f.parts
-    )
-    todo = [f for f in files if f.relative_to(top).parts[0] not in OPTIONAL_ENTRIES]
-    seen, bad = set(todo), []
-    while todo:
-        f = todo.pop()
-        for i, line in enumerate(f.read_text(encoding="utf8", errors="replace").splitlines(), 1):
-            for spec in IMPORT_RE.findall(line):
-                if peer_of(spec):
-                    bad.append(
-                        (f, i, f"imports the optional peer {spec}, reachable from the kit root")
-                    )
-                elif spec.startswith("."):
-                    t = resolve_import(f, spec)
-                    if t and t not in seen and top in t.parents:
-                        seen.add(t)
-                        todo.append(t)
-    return sorted(bad)
-
-
-def load_jsonc(text: str):
-    """JSON with // and /* */ comments and trailing commas (a tsconfig), comments outside strings only."""
-    out, i, n, in_str = [], 0, len(text), False
-    while i < n:
-        c = text[i]
-        if in_str:
-            out.append(c)
-            if c == "\\" and i + 1 < n:
-                out.append(text[i + 1])
-                i += 1
-            elif c == '"':
-                in_str = False
-        elif c == '"':
-            in_str = True
-            out.append(c)
-        elif text.startswith("//", i):
-            while i < n and text[i] != "\n":
-                i += 1
-            continue
-        elif text.startswith("/*", i):
-            end = text.find("*/", i + 2)
-            i = n if end < 0 else end + 2
-            continue
-        else:
-            out.append(c)
-        i += 1
-    return json.loads(re.sub(r",(\s*[}\]])", r"\1", "".join(out)))
-
-
-def declared_packages(start: pathlib.Path, stop: pathlib.Path) -> set:
-    """Every dependency name in the package.json files from start up to stop (a workspace root counts)."""
-    names = set()
-    d, stop = start.resolve(), stop.resolve()
-    while True:
-        pkg = d / "package.json"
-        if pkg.is_file():
-            try:
-                data = json.loads(pkg.read_text(encoding="utf8"))
-            except ValueError:
-                data = {}
-            for key in (
-                "dependencies",
-                "devDependencies",
-                "peerDependencies",
-                "optionalDependencies",
-            ):
-                names |= set((data.get(key) or {}).keys())
-        if d == stop or d == d.parent or stop not in d.parents:
-            break
-        d = d.parent
-    return names
-
-
-def clean_glob(p: str) -> str:
-    p = p.replace("\\", "/")
-    while p.startswith("./"):
-        p = p[2:]
-    for tail in ("/**/*", "/**", "/*", "/"):
-        if p.endswith(tail):
-            p = p[: -len(tail)]
-    return p
-
-
-def tsconfig_gaps(repo: pathlib.Path, kit: pathlib.Path) -> list:
-    """(tsconfig, entry) for each tsconfig that includes the whole kit copy without excluding an optional
-    entry whose peer the app's package.json files do not declare."""
-    gaps = []
-    for name in tracked():
-        parts = pathlib.PurePosixPath(name).parts
-        if (
-            not (parts[-1].startswith("tsconfig") and parts[-1].endswith(".json"))
-            or set(parts) & SYNCED_COPIES
-        ):
-            continue
-        cfg = repo / name
-        try:
-            data = load_jsonc(cfg.read_text(encoding="utf8"))
-        except (OSError, ValueError):
-            continue
-        base = cfg.parent.resolve()
-        kit_rel = clean_glob(os.path.relpath(kit.resolve(), base))
-        if not any(
-            isinstance(p, str) and clean_glob(p) == kit_rel for p in data.get("include") or []
-        ):
-            continue
-        excludes = [clean_glob(str(x)) for x in data.get("exclude") or []]
-        have = declared_packages(base, repo)
-        for entry, peers in OPTIONAL_ENTRIES.items():
-            if not all(p in have for p in peers) and f"{kit_rel}/{entry}" not in excludes:
-                gaps.append((name, entry))
-    return gaps
-
-
-def find_tsc(start: pathlib.Path, stop: pathlib.Path) -> pathlib.Path | None:
-    d, stop = start.resolve(), stop.resolve()
-    while True:
-        cand = d / "node_modules" / ".bin" / "tsc"
-        if cand.is_file():
-            return cand
-        if d == stop or d == d.parent:
-            return None
-        d = d.parent
-
-
-def cmd_kit_peers(argv: list) -> int:
-    kit = pathlib.Path(argv[0]) if argv else ROOT / "kit-core"
-    if not kit.is_dir():
-        say(f"skip kit-peers: no kit copy at {kit}")
-        return 0
-    repo = pathlib.Path(git("rev-parse", "--show-toplevel").strip() or ".")
-    bad = 0
-    for f, i, kind in kit_root_imports(kit):
-        bad += 1
-        say(
-            f"::error file={f},line={i}::kit-peers: {kind}; the kit root never imports an optional entry or peer"
-        )
-    for name, entry in tsconfig_gaps(repo, kit):
-        bad += 1
-        say(
-            f"::error file={name}::kit-peers: {name} includes the kit copy but the app does not declare the "
-            f'{entry} peer ({", ".join(OPTIONAL_ENTRIES[entry])}); add the {entry} entry to "exclude" '
-            f"(kit/MIGRATION.md step 0)"
-        )
-    tsc = find_tsc(kit, repo)
-    note = "tsc not found under the repo, static checks only"
-    if tsc and not bad:
-        with tempfile.TemporaryDirectory(dir=os.environ.get("RUNNER_TEMP") or None) as tmp:
-            stub = pathlib.Path(tmp) / "no-peer.ts"
-            stub.write_text("export {};\n", encoding="utf8")
-            cfg = pathlib.Path(tmp) / "tsconfig.json"
-            cfg.write_text(
-                json.dumps(
-                    {
-                        "compilerOptions": {
-                            "target": "ES2022",
-                            "lib": ["ES2022", "DOM", "DOM.Iterable"],
-                            "module": "ESNext",
-                            "moduleResolution": "Bundler",
-                            "jsx": "react-jsx",
-                            "strict": True,
-                            "resolveJsonModule": True,
-                            "isolatedModules": True,
-                            "skipLibCheck": True,
-                            "noEmit": True,
-                            "types": [],
-                            "paths": {
-                                p: [str(stub)] for peers in OPTIONAL_ENTRIES.values() for p in peers
-                            },
-                        },
-                        "include": [str(kit.resolve())],
-                        "exclude": [str((kit / e).resolve()) for e in OPTIONAL_ENTRIES],
-                    }
-                ),
-                encoding="utf8",
-            )
-            r = subprocess.run(
-                [str(tsc), "-p", str(cfg)], capture_output=True, text=True, timeout=600
-            )
-        note = "tsc passed with the optional entries excluded and their peers blocked"
-        if r.returncode != 0:
-            sys.stdout.write(r.stdout + r.stderr)
-            bad += 1
-            say(
-                "::error::kit-peers: the kit copy fails tsc with the optional entries excluded and their peers blocked"
-            )
-    say(f"kit-peers: {bad} finding(s); {note}")
-    return 1 if bad else 0
 
 
 # ---------------------------------------------------------------- required checks and the merge wait
@@ -1994,13 +1991,20 @@ def checks_verdict(runs: list, statuses: list, expect: list) -> tuple:
     """('wait' | 'fail' | 'green', detail) for the check runs [(name, status, conclusion)] and commit
     statuses [(context, state)] on one sha. Green needs at least one check, every check completed as
     success, skipped or neutral, and every expected name present."""
-    failed = [n for n, st, c in runs if st == "completed" and (c or "") not in GREEN]
+    # A cancelled run is neither green nor a failure: a later push or a label edit cancels runs in flight, and the head
+    # needs a re-run (rerun_cancelled), so it waits.
+    failed = [
+        n for n, st, c in runs if st == "completed" and (c or "") not in GREEN | {"cancelled"}
+    ]
     failed += [n for n, state in statuses if state in ("failure", "error")]
     if failed:
         return "fail", "failed: " + ", ".join(sorted(set(failed)))
     pending = [n for n, st, _ in runs if st != "completed"] + [
         n for n, state in statuses if state == "pending"
     ]
+    cancelled = [n for n, st, c in runs if st == "completed" and c == "cancelled"]
+    if cancelled and not pending:
+        return "wait", "cancelled, waiting for a re-run: " + ", ".join(sorted(set(cancelled)))
     if pending:
         return "wait", "running: " + ", ".join(sorted(set(pending)))
     names = {n for n, _, _ in runs} | {n for n, _ in statuses}
@@ -2040,6 +2044,8 @@ def check_counts(runs: list, statuses: list) -> tuple:
             pending += 1
         elif (c or "") in GREEN:
             done += 1
+        elif c == "cancelled":
+            pending += 1
         else:
             failed += 1
     for _, state in statuses:
@@ -2103,6 +2109,68 @@ def wait_loop(
             say(f"::error::wait-checks: timed out ({detail}); not merging")
             return 1
         sleep(interval)
+
+
+RERUN_LIMIT = 3  # attempts of one workflow run before a cancelled head is left alone
+
+
+def rerun_cancelled(repo: str, sha: str, run=None) -> list:
+    """Re-run the workflow runs of this head whose newest attempt was cancelled (a later push or a label edit cancelled them),
+    at most RERUN_LIMIT attempts each. Returns the run ids re-run. `run(args)` runs gh (tests)."""
+    run = run or (lambda a: subprocess.run(["gh", *a], capture_output=True, text=True, timeout=120))
+    r = run(
+        [
+            "run",
+            "list",
+            "-R",
+            repo,
+            "--commit",
+            sha,
+            "--json",
+            "databaseId,conclusion,attempt,workflowName,status",
+            "--limit",
+            "50",
+        ]
+    )
+    try:
+        rows = json.loads(r.stdout or "[]")
+    except ValueError:
+        return []
+    newest = {}
+    for x in rows:  # the newest run of each workflow decides: an older cancelled one that a later run replaced is ignored
+        name = x.get("workflowName")
+        if name not in newest or (x.get("databaseId") or 0) > (newest[name].get("databaseId") or 0):
+            newest[name] = x
+    done = []
+    for x in newest.values():
+        cancelled = x.get("status") == "completed" and x.get("conclusion") == "cancelled"
+        if cancelled and int(x.get("attempt") or 1) < RERUN_LIMIT:
+            run(["run", "rerun", str(x["databaseId"]), "-R", repo])
+            done.append(x["databaseId"])
+    return done
+
+
+def cmd_ready(argv: list) -> int:
+    """One read of the checks on a head for a merge gate: exit 0 green, 1 wait (running, or cancelled and re-run), 2 failed.
+    `--expect "a b"` names the checks that must be present; `--rerun-cancelled` re-runs a head whose runs were cancelled."""
+    args = list(argv)
+    repo = take(args, "--repo", os.environ.get("GITHUB_REPOSITORY", ""))
+    expect = listed(take(args, "--expect", "").replace(" ", ","))
+    rerun = "--rerun-cancelled" in args
+    args = [a for a in args if a != "--rerun-cancelled"]
+    if not args:
+        say('usage: core-ci.py ready SHA [--repo R] [--expect "a b"] [--rerun-cancelled]')
+        return 2
+    sha = args[0]
+    repo = repo or repo_and_branch()[0]
+    runs, statuses = read_checks(repo, sha)
+    verdict, detail = checks_verdict(runs, statuses, expect)
+    if verdict == "wait" and rerun and detail.startswith("cancelled"):
+        ids = rerun_cancelled(repo, sha)
+        if ids:
+            detail += f" (re-run {', '.join(str(i) for i in ids)})"
+    say(f"ready: {verdict}: {detail}")
+    return {"green": 0, "wait": 1}.get(verdict, 2)
 
 
 def cmd_wait_checks(argv: list) -> int:
@@ -2182,9 +2250,365 @@ def cmd_powershell(argv: list) -> int:
     return 0 if r.returncode == 0 else 1
 
 
+# ---------------------------------------------------------------- pre-push, pr-watch, changelog-lines, list-shrinks
+
+
+def cmd_pre_push(argv: list) -> int:
+    """The gate before a push (pr-review-and-merge.md 1.21): the branch contains the latest default branch, and every check
+    script that can run locally passes, the attribution, identity and private term scripts included. Run from the repo root;
+    `--skip-fetch` reads origin/<default> as it is (tests, an offline run), `--base REF` names the base."""
+    args = list(argv)
+    skip = "--skip-fetch" in args
+    args = [a for a in args if a != "--skip-fetch"]
+    base = take(args, "--base", "")
+    if not base:
+        head_ref = git("symbolic-ref", "--short", "refs/remotes/origin/HEAD", check=False).strip()
+        base = head_ref or "origin/main"
+    if not skip:
+        git("fetch", "--quiet", base.split("/")[0], check=False)
+    if (
+        subprocess.run(
+            ["git", "merge-base", "--is-ancestor", base, "HEAD"], capture_output=True
+        ).returncode
+        != 0
+    ):
+        say(
+            f"::error::pre-push: this branch does not contain {base}; merge {base} first, then run the checks again"
+        )
+        return 1
+    steps = [
+        ("commitlint", cmd_commitlint),
+        ("attribution", cmd_attribution),
+        ("identity", cmd_identity),
+        ("ascii", cmd_ascii),
+        ("changelog", cmd_changelog),
+        ("changelog-entries", cmd_changelog_entries),
+        ("repo-checks", cmd_repo_checks),
+    ]
+    bad = []
+    for name, fn in steps:
+        say(f"pre-push: {name}")
+        rc = fn([] if name in ("ascii", "repo-checks") else [base, "HEAD"])
+        if rc != 0:
+            bad.append(name)
+    say(
+        f"pre-push: {len(steps) - len(bad)} of {len(steps)} check(s) passed"
+        + (f"; failed: {', '.join(bad)}" if bad else "")
+    )
+    return 1 if bad else 0
+
+
+WATCH_CODES = {"merged": 0, "failed": 1, "closed": 3, "conflict": 4, "timeout": 5}
+
+
+def watch_pr(
+    read, timeout: float, interval: float, sleep=time.sleep, clock=time.monotonic, out=say
+) -> tuple:
+    """Watch one pull request until a stop point. `read()` returns {state, merged, mergeable, checks: (verdict, detail)}.
+    Stops at: merged (0), checks failed (1), closed without merging (3), a merge conflict (4), or the timeout (5). Prints a line
+    on every change of state and returns (exit code, final report), so the loop always ends with a report."""
+    t0, last = clock(), None
+    while True:
+        r = read()
+        verdict, detail = r["checks"]
+        line = f"{r['state']}; {verdict}: {detail}"
+        if line != last:
+            out(f"pr-watch: {line}")
+            last = line
+        if r.get("merged"):
+            outcome = "merged"
+        elif r["state"] != "OPEN":
+            outcome = "closed"
+        elif r.get("mergeable") == "CONFLICTING":
+            outcome = "conflict"
+        elif verdict == "fail":
+            outcome = "failed"
+        elif clock() - t0 >= timeout:
+            outcome = "timeout"
+        else:
+            sleep(interval)
+            continue
+        report = {
+            "merged": "the pull request merged",
+            "closed": "the pull request was closed without merging",
+            "conflict": "the pull request conflicts with its base: merge the base branch in, resolve and push",
+            "failed": f"checks failed ({detail}): read the failing job, fix, push",
+            "timeout": f"stopped after {int(timeout // 60)} min with the checks still {verdict} ({detail})",
+        }[outcome]
+        return WATCH_CODES[outcome], f"pr-watch: {outcome}: {report}"
+
+
+def cmd_pr_watch(argv: list) -> int:
+    args = list(argv)
+    repo = take(args, "--repo", os.environ.get("GITHUB_REPOSITORY", ""))
+    timeout = float(take(args, "--timeout", "60")) * 60
+    interval = float(take(args, "--interval", "30"))
+    if not args:
+        say("usage: core-ci.py pr-watch PR [--repo R] [--timeout MIN] [--interval SEC]")
+        return 2
+    number = args[0]
+    repo = repo or repo_and_branch()[0]
+
+    def read():
+        r = subprocess.run(
+            [
+                "gh",
+                "pr",
+                "view",
+                number,
+                "-R",
+                repo,
+                "--json",
+                "state,mergedAt,mergeable,headRefOid",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        if r.returncode != 0:
+            raise RuntimeError(
+                f"cannot read pull request {number}: {(r.stderr or r.stdout).strip()[:200]}"
+            )
+        d = json.loads(r.stdout)
+        runs, statuses = read_checks(repo, d["headRefOid"])
+        return {
+            "state": d["state"],
+            "merged": bool(d.get("mergedAt")),
+            "mergeable": d.get("mergeable"),
+            "checks": checks_verdict(runs, statuses, []),
+        }
+
+    code, report = watch_pr(read, timeout, interval)
+    say(report)
+    return code
+
+
+CHANGELOG_IGNORED = ("docs", "test", "ci", "chore", "style", "build")
+CHANGELOG_LINE = re.compile(r"^\s*Changelog:\s*(\S.*)$", re.I | re.M)
+
+
+def changelog_lines(since: str = "") -> list:
+    """The release notes from the pull request bodies a squash merge keeps in its commit message: only `Changelog:` lines
+    count; a commit of type docs, test, ci, chore, style or build is ignored; with no line at all one generic line stands."""
+    since = since or git("describe", "--tags", "--abbrev=0", check=False).strip()
+    spec = f"{since}..HEAD" if since else "HEAD"
+    out = git("log", "--format=%H%x1f%s%x1f%B%x1e", spec, check=False)
+    lines = []
+    for rec in out.split("\x1e"):
+        parts = rec.strip("\n").split("\x1f")
+        if len(parts) < 3:
+            continue
+        m = re.match(r"^(\w+)(\([^)]*\))?!?:", parts[1])
+        if m and m.group(1).lower() in CHANGELOG_IGNORED:
+            continue
+        lines += [x.strip() for x in CHANGELOG_LINE.findall(parts[2])]
+    return lines or ["Maintenance and internal changes."]
+
+
+def cmd_changelog_lines(argv: list) -> int:
+    for ln in changelog_lines(argv[0] if argv else ""):
+        say(f"- {ln}")
+    return 0
+
+
+def list_entries(text: str) -> set:
+    return {
+        ln.strip() for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith("#")
+    }
+
+
+def cmd_list_shrinks(argv: list) -> int:
+    """A shrink-only list (an exemption list, a baseline) may lose entries and never gain one: every
+    non-comment line of each file at HEAD was already in it at BASE. The files come from the arguments or
+    the parameters row "Shrink-only lists" (comma-separated paths)."""
+    if len(argv) < 2:
+        say("usage: core-ci.py list-shrinks BASE HEAD [FILE ...]")
+        return 2
+    base, head = argv[0], argv[1]
+    files = argv[2:] or listed(parameter("Shrink-only lists"))
+    if not files:
+        say('skip list-shrinks: no files named and the parameters row "Shrink-only lists" is empty')
+        return 0
+    bad = 0
+    for f in files:
+        was = git("show", f"{base}:{f}", check=False)
+        now = git("show", f"{head}:{f}", check=False)
+        if not was.strip() and not now.strip():
+            say(f"list-shrinks: {f} is empty or absent at both ends")
+            continue
+        added = sorted(list_entries(now) - list_entries(was)) if was.strip() else []
+        for entry in added:
+            bad += 1
+            say(f"::error file={f}::list-shrinks: new entry {entry!r}; this list only shrinks")
+    say(f"list-shrinks: {len(files)} list(s), {bad} new entr(ies)")
+    return 1 if bad else 0
+
+
+# ---------------------------------------------------------------- architecture articles
+
+
+def api_file(repo: str, path: str, ref: str, token: str):
+    """The text of path at ref in the GitHub repository repo, or None when the file is not there.
+    The contents API answers raw, so there is no base64 hop. Any failure but a 404 is raised."""
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{repo}/contents/{path}?ref={ref}",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github.raw+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:  # noqa: S310 - fixed api.github.com URL
+            return r.read().decode("utf-8")
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return None
+        raise RuntimeError(f"api status {e.code} reading {path} from {repo} at {ref}") from e
+
+
+def architecture_systems(kind: str, root: pathlib.Path, support) -> list:
+    """The slugs of the systems present in a monorepo checkout: the app folders under apps/ for
+    apps, the top-level folders that are not support code for stacks; dot folders are never one."""
+    base = root / "apps" if kind == "apps" else root
+    if not base.is_dir():
+        return []
+    return sorted(
+        p.name
+        for p in base.iterdir()
+        if p.is_dir() and not p.name.startswith(".") and (kind == "apps" or p.name not in support)
+    )
+
+
+def system_changes(base: str, head: str, kind: str, slugs: list) -> dict:
+    """{slug: first commit date (ISO)} for the systems the change base..head touches: a system is
+    touched when a changed path is inside its folder. The date is the author date of the
+    earliest commit in the range, which a rebase leaves alone."""
+    changed = git("diff", "--name-only", base, head, check=False).splitlines()
+    dates = sorted(git("log", "--format=%aI", f"{base}..{head}", check=False).split())
+    since = dates[0] if dates else ""
+    touched = {}
+    for slug in slugs:
+        prefix = (f"apps/{slug}" if kind == "apps" else slug) + "/"
+        if since and any(c.startswith(prefix) for c in changed):
+            touched[slug] = since
+    return touched
+
+
+def manifests_at(rev: str, folder: str, is_manifest) -> dict:
+    """{path relative to folder: text} of the manifest files inside folder at rev."""
+    names = git("ls-tree", "-r", "--name-only", rev, "--", folder + "/", check=False).splitlines()
+    files = {}
+    for n in names:
+        rel = n[len(folder) + 1 :]
+        text = show(rev, n) if is_manifest(rel) else None
+        if text is not None:
+            files[rel] = text
+    return files
+
+
+def architecture_findings(
+    kind: str, root: str, fetch, shape_script: str, articles_dir: str, change=None
+) -> tuple:
+    """(systems, findings) for the checkout at root. fetch(path) answers the text of that path in
+    the docs repository, or None when it is not there. The article rules stay the docs repository's
+    own: the shape script named by shape_script is fetched and applied, so this ships the delivery
+    gate and never restates the standard, and the set of support folders is read from the same
+    module. A missing shape script is a setup error, not a finding: a gate that cannot see the
+    rules proves nothing. change is None (existence and shape only) or (base, head): the systems
+    that range touches also get the shape script's coupling_findings, the article compared with the
+    manifests at head and, when the structure changed, its stack_verified checked against the
+    range's first commit."""
+    src = fetch(shape_script)
+    if src is None:
+        raise RuntimeError(f"the shape script {shape_script} is not in the docs repository")
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = pathlib.Path(tmp)
+        script = tmp_path / "architecture_shape.py"
+        script.write_text(src, encoding="utf-8")
+        spec = importlib.util.spec_from_file_location("architecture_shape", script)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.ROOT = tmp_path  # findings name files under the fetched tree, not the runner's
+        support = set(getattr(mod, "STACK_SUPPORT_DIRS", ()))
+        slugs = architecture_systems(kind, pathlib.Path(root), support)
+        findings = []
+        for slug in slugs:
+            text = fetch(f"{articles_dir}/{slug}.md")
+            if text is None:
+                findings.append(
+                    f"{slug}: no architecture article merged in the docs repository; add "
+                    f"{articles_dir}/{slug}.md there and merge it before this pull request"
+                )
+                continue
+            article = tmp_path / articles_dir / f"{slug}.md"
+            article.parent.mkdir(parents=True, exist_ok=True)
+            article.write_text(text, encoding="utf-8")
+            findings.extend(mod.check_article(article))
+            if change:
+                touched = system_changes(change[0], change[1], kind, [slug])
+                if slug in touched:
+                    if not hasattr(mod, "coupling_findings"):
+                        raise RuntimeError(
+                            f"the shape script {shape_script} has no coupling_findings, so the "
+                            "change cannot be checked against the article"
+                        )
+                    folder = f"apps/{slug}" if kind == "apps" else slug
+                    findings.extend(
+                        mod.coupling_findings(
+                            slug,
+                            text,
+                            manifests_at(change[1], folder, mod.is_manifest),
+                            manifests_at(change[0], folder, mod.is_manifest),
+                            touched[slug],
+                        )
+                    )
+    return slugs, findings
+
+
+def cmd_architecture_article(argv: list) -> int:
+    opt = dict(zip(argv[::2], argv[1::2]))
+    kind, repo = opt.get("--kind", ""), opt.get("--repo", "")
+    if kind not in ("apps", "stacks") or not repo:
+        say(
+            "usage: core-ci.py architecture-article --kind apps|stacks --repo OWNER/DOCS_REPO"
+            " [--ref main] [--root DIR] [--base SHA --head SHA]; GH_TOKEN or GITHUB_TOKEN must carry contents:read on"
+            " the docs repository"
+        )
+        return 2
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN") or ""
+    if not token:
+        say(
+            "::error::architecture-article: no GH_TOKEN or GITHUB_TOKEN with contents:read on "
+            f"{repo}; a short-lived app token scoped to read-only contents of that repository is enough"
+        )
+        return 2
+    ref = opt.get("--ref", "main")
+
+    def fetch(path: str):
+        return api_file(repo, path, ref, token)
+
+    base, head = opt.get("--base", ""), opt.get("--head", "")
+    change = (base, head) if base and head and base != ZERO else None
+    slugs, findings = architecture_findings(
+        kind,
+        opt.get("--root", "."),
+        fetch,
+        "scripts/architecture-docs-compliance.py",
+        "docs/architecture",
+        change,
+    )
+    for f in findings:
+        say(f"::error::architecture-article: {f}")
+    scope = "with the change coupling" if change else "existence and shape only"
+    say(f"architecture-article: {len(slugs)} system(s), {len(findings)} finding(s), {scope}")
+    return 1 if findings else 0
+
+
 COMMANDS = {
     "params": cmd_params,
     "pr-title": cmd_pr_title,
+    "pr-issue": cmd_pr_issue,
     "commitlint": cmd_commitlint,
     "attribution": cmd_attribution,
     "identity": cmd_identity,
@@ -2199,10 +2623,16 @@ COMMANDS = {
     "secret-scan": cmd_secret_scan,
     "install-psscriptanalyzer": cmd_install_pssa,
     "powershell": cmd_powershell,
-    "kit-peers": cmd_kit_peers,
     "required-checks": cmd_required_checks,
     "required-names": cmd_required_names,
     "wait-checks": cmd_wait_checks,
+    "ready": cmd_ready,
+    "pre-push": cmd_pre_push,
+    "pr-watch": cmd_pr_watch,
+    "changelog-lines": cmd_changelog_lines,
+    "list-shrinks": cmd_list_shrinks,
+    "repo-checks": cmd_repo_checks,
+    "architecture-article": cmd_architecture_article,
 }
 
 

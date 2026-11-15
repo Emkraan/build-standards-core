@@ -257,8 +257,8 @@ def main() -> int:
     )
     ap.add_argument(
         "--report-repo",
-        help="OWNER/REPO of the PRIVATE intake that receives this account's consumer report "
-        "(report_repo); never the core",
+        help="optional OWNER/REPO of a PRIVATE repository for the nightly's report sections "
+        "(report_repo); unset by default, never the core",
     )
     ap.add_argument("--no-run", action="store_true")
     ap.add_argument("--check", action="store_true")

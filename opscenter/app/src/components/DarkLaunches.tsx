@@ -5,8 +5,10 @@
 // card only renders what it was told.
 import { Button, usePrompt } from '@kit'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { DarkLaunch } from '../lib/data'
 import { postDarkLaunch, relTime, useDarkLaunches } from '../lib/data'
+import { LIVE_AUTOMATION_PATH, splitLaunches } from '../lib/darkLaunches'
 import type { Tone } from '../pages/reviews/parts'
 import { LinkButton, Locked, ResultNote, ReviewItem, Tag } from '../pages/reviews/parts'
 
@@ -120,16 +122,26 @@ function DarkLaunchItem({ it, reload }: { it: DarkLaunch; reload: () => void }) 
   )
 }
 
-/** Cards for every registered dark launch. Renders nothing when none is registered. */
+/** Cards for the dark launches still waiting on a dry run and an Enable. An enabled launch is acting and lives under Operations,
+ *  Live automation (lib/darkLaunches.ts), so it leaves this page. Renders nothing when none is waiting and none is acting. */
 export default function DarkLaunches() {
   const { data, reload } = useDarkLaunches()
   if (!data || (data.launches.length === 0 && !data.error)) return null
+  const { acting, dark } = splitLaunches(data.launches)
+  if (dark.length === 0 && acting.length === 0 && !data.error) return null
   return (
     <section aria-label="Dark launches" style={{ marginBottom: 18 }}>
       {data.error && <ResultNote msg={{ ok: false, text: `Dark launch registry: ${data.error}` }} />}
-      {data.launches.map((l) => (
+      {dark.map((l) => (
         <DarkLaunchItem key={l.id} it={l} reload={reload} />
       ))}
+      {acting.length > 0 && (
+        <p>
+          <Link to={LIVE_AUTOMATION_PATH}>
+            {acting.length} live automation{acting.length === 1 ? ' is' : 's are'} acting: see Live automation
+          </Link>
+        </p>
+      )}
     </section>
   )
 }

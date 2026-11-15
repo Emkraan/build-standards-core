@@ -49,6 +49,9 @@ Related: [Secrets and Credentials](secrets-and-credentials.md) (pipeline identit
 11. **Owner applies never delete open work's objects.** When an owner applies a root from a branch before it merges, that root's state runs ahead of `main`, and any later owner apply from a tree that lacks the branch plans those objects as deletes. Before applying a saved plan of an owner-applied root, a guard compares every planned delete with the resources that open pull requests declare in that root, and refuses on a match unless the owner names that pull request as meant to lose them. Merge a branch-applied change to an owner root before anything else applies that root.
     - Prevents: an unrelated owner apply silently deleting grants or policy another open change depends on, which then fails that change's plans with access errors nobody can explain.
     - Acceptance (test): the guard's tests cover a refused delete declared by an open pull request, an allowed override, a plan with no deletes, and a lookup failure that refuses (fail closed).
+12. **An owner apply never undoes what an open pull request applied from its branch.** When a pull request applied an owner-applied root from its branch, the main plan that would destroy or replace what it applied is marked ahead of main and refused until main contains the merge commit, marked or not. An unreadable pull request keeps the hold, and one left ahead for more than two days becomes an item.
+   - Prevents: an owner apply from main that silently deletes what a branch applied, and a branch left live ahead of main until someone remembers it.
+   - Acceptance (test): tests assert the ahead mark, the refusal by the server and the worker, the guard with no mark, the release on merge or close, a kept hold on an unreadable pull request and the two-day item (`owner_roots_ahead_test.py`).
 
 ## 2. The pipeline shape
 

@@ -139,7 +139,11 @@ class GatedRepo(Gate):
         self.echoes.append(echo)
         if cmd[0] == "gh":
             if cmd[1:3] == ["pr", "create"]:
-                self.pr = {"number": "5", "head": cmd[cmd.index("--head") + 1]}
+                self.pr = {
+                    "number": "5",
+                    "head": cmd[cmd.index("--head") + 1],
+                    "body": cmd[cmd.index("--body") + 1],
+                }
                 return 0, "https://example.invalid/pull/5"
             if cmd[1:3] == ["pr", "view"]:
                 sha = sh(["git", "rev-parse", self.pr["head"]], cwd=self.bare)[1]
@@ -182,6 +186,41 @@ class GatedRepo(Gate):
         self.assertEqual(wait[0][2], "wait-checks")
         self.assertIn("--match-head-commit", merge[0])
         self.assertEqual(wait[0][3], merge[0][merge[0].index("--match-head-commit") + 1])
+
+    def test_the_sync_pr_body_declares_no_issue(self):
+        self.make_remote()
+        ops.apply(self.cfg, "v2", self.fake, self.state)
+        self.assertIn("\nNo issue: core release sync to v2", self.pr["body"])
+
+    def test_changelog_cmd_runs_after_the_pr_opens_and_lands_as_a_new_commit(self):
+        self.make_remote()
+        self.cfg["changelog_cmd"] = "sh -c 'echo \"pr {pr} sync {version}\" >> CHANGELOG.md'"
+        before = self.head()
+        r = ops.apply(self.cfg, "v2", self.fake, self.state)
+        self.assertEqual(r["status"], "applied", r)
+        self.assertEqual(self.head(), before)
+        log = sh(["git", "log", "--format=%s", "main", "-3"], cwd=self.bare)[1]
+        self.assertIn("docs(changelog): sync core v2 (#5)", log)
+        self.assertEqual(sh(["git", "show", "main:CHANGELOG.md"], cwd=self.bare)[1], "pr 5 sync v2")
+        merge = [c for c in self.calls if len(c) > 1 and c[1].endswith("merge-pr.py")][0]
+        self.assertEqual(
+            merge[merge.index("--match-head-commit") + 1],
+            sh(["git", "rev-parse", "main"], cwd=self.bare)[1],
+        )
+
+    def test_a_failing_changelog_cmd_rolls_the_sync_back(self):
+        self.make_remote()
+        self.cfg["changelog_cmd"] = "sh -c 'exit 3'"
+        r = ops.apply(self.cfg, "v2", self.fake, self.state)
+        self.assertEqual((r["status"], r["kind"]), ("failed", "pr-changelog"))
+        self.assertEqual(self.remote_pin(), "v1")
+        self.assertNotIn("chore/core-v2", self.branches())
+
+    def test_no_changelog_cmd_adds_no_commit(self):
+        self.make_remote()
+        ops.apply(self.cfg, "v2", self.fake, self.state)
+        log = sh(["git", "log", "--format=%s", "main"], cwd=self.bare)[1]
+        self.assertNotIn("docs(changelog)", log)
 
     def test_failed_checks_close_the_pr_delete_the_branch_and_keep_the_pin(self):
         self.make_remote(checks_rc=1)

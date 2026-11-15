@@ -11,24 +11,17 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 LOCK = ROOT / "standards.lock"
-COPIES = ("standards-core", "tokens-core", "lint-core", "kit-core")
 # Core folder -> synced copy in the overlay. A core folder that does not exist yet is skipped.
 SYNC_MAP = (
     ("standards", "standards-core"),
-    ("tokens", "tokens-core"),
     ("lint", "lint-core"),
-    ("kit/src", "kit-core"),
 )
+# The copies the sync writes, and so the only folders the lock hash covers. kit-core and tokens-core are
+# the consumer's own code since v2.0.0 and are never hashed, so editing them is not drift.
+COPIES = tuple(dst for _, dst in SYNC_MAP)
 # Overlay scripts are refreshed from the core template on every sync, so tooling fixes reach every overlay.
 # Single core files copied into the overlay on every sync, refreshed like the overlay scripts.
-SYNC_FILES = (
-    ("kit/scripts/gen-changelog.mjs", "scripts/gen-changelog.mjs"),
-    # Build tooling for a multi-module shell: the per-module CSS scope plugin and the registry generator.
-    ("kit/scripts/scope-css.mjs", "scripts/scope-css.mjs"),
-    ("kit/scripts/build-registry.mjs", "scripts/build-registry.mjs"),
-    # Makes kit-core a workspace package, so an app library imports 'kit-core' with no path alias.
-    ("kit/consumer/package.json", "kit-core/package.json"),
-)
+SYNC_FILES = ()
 # Install and build output inside a synced copy (a workspace package gets its own node_modules) is
 # not core content, so the hash never sees it.
 HASH_SKIP_DIRS = (

@@ -10,6 +10,7 @@ status text after "Earlier:", so every session that reads the file before sugges
 Snooze is page-only and lives in state/dashboard/eng-backlog-handled.json.
 """
 
+import contextlib
 import datetime as dt
 import fcntl
 import hashlib
@@ -50,50 +51,72 @@ def _field(body, name):
     return m.group(1).strip() if m else ""
 
 
+# Status vocabulary. The first words of a Status line decide the bucket. Sessions write statuses in
+# their own words ("DONE 10/24", "Resolved by #444", "Superseded by TD-075", "In review"), so the
+# page reads every common spelling instead of dropping unknown words into Needs decision.
+# (leading phrase, outcome) checked in order, longest phrases first where they overlap.
+_VOCAB = [
+    (r"folded|merged into|rolled into|absorbed into|tracked (?:in|under|as)", "folded"),
+    (
+        r"superseded|duplicate|dup\b|obsolete|no longer (?:applies|real|relevant)|moot|n/?a\b",
+        "withdrawn",
+    ),
+    (r"withdrawn|retracted|dropped|cancel+ed", "withdrawn"),
+    (r"declined|rejected|won'?t do|will not do", "declined"),
+    (r"retired|decommissioned", "retired"),
+    (r"resolved|fixed|closed", "resolved"),
+    (r"shipped|done|complete[d]?|delivered|live\b|landed|merged\b", "shipped"),
+    (r"risk accepted|accepted|won'?t fix", "accepted"),
+    (r"deferred|parked|on hold|later\b|backlog\b", "parked"),
+    (
+        r"in[- ]progress|in review|in flight|building|started|staged|partly|partial|underway|blocked",
+        "in-progress",
+    ),
+    (r"approved|planned|scheduled|queued", "approved"),
+    (r"built\b", "built"),
+    (r"suggested|proposed|new\b|idea\b", "suggested"),
+    (r"open|active|known|monitoring|watch", "open"),
+]
+_LEAD = r"^[\W_]*(?:(?:20\d\d-\d\d-\d\d|\d{1,2}/\d{1,2}(?:/\d{2,4})?)[\W_]*)?"
+_VOCAB_RE = [(re.compile(_LEAD + "(?:" + pat + r")", re.I), out) for pat, out in _VOCAB]
+_DONE = {"folded", "withdrawn", "declined", "retired", "resolved", "shipped"}
+PARENT_RE = re.compile(
+    r"^[\W_]*(?:folded|merged|rolled|absorbed|tracked)\s+(?:into|in|under|as)\s+\[?((?:TD|IMP)-\d{3})"
+    r"|^[\W_]*(?:superseded|replaced)\s+by\s+\[?((?:TD|IMP)-\d{3})",
+    re.I,
+)
+
+
+def canonical(kind, status):
+    """Outcome word for a Status line, or "" when the leading words are not in the vocabulary."""
+    s = (status or "").strip()
+    for rx, out in _VOCAB_RE:
+        if rx.match(s):
+            if kind == "TD" and out == "shipped":
+                return "resolved"
+            if kind == "IMP" and out in ("resolved", "retired"):
+                return "shipped"
+            return out
+    return ""
+
+
 def _bucket(kind, heading, status):
-    s = (status or "").lower()
     h = heading.lower()
-    if kind == "TD":
-        if re.match(r"\s*(resolved|closed|done|retired)", s) or "(resolved" in h:
-            return "done"
-        if re.match(r"\s*accepted", s) or "accepted workaround" in h:
-            return "parked"
-        return "todo"
-    if re.match(r"\s*(declined|withdrawn|folded|rejected)", s):
+    out = canonical(kind, status)
+    # A TD heading marked (RESOLVED ...) wins over a Status line nobody updated.
+    if out in _DONE or (kind == "TD" and "(resolved" in h):
         return "done"
-    if re.match(r"\s*shipped", s):
-        return "done"
-    if re.match(r"\s*(deferred|parked)", s):
+    if out in ("accepted", "parked") or (kind == "TD" and "accepted workaround" in h):
         return "parked"
-    if re.match(r"\s*(approved|in-progress|in progress|built|building)", s):
+    if kind == "TD":
         return "todo"
-    return "decide"  # suggested, proposed, blank
+    if out in ("in-progress", "approved", "built"):
+        return "todo"
+    return "decide"  # suggested, proposed, blank, unknown words
 
 
 def _outcome(kind, status):
-    s = (status or "").strip().lower()
-    for word in (
-        "resolved",
-        "closed",
-        "shipped",
-        "declined",
-        "withdrawn",
-        "folded",
-        "accepted",
-        "deferred",
-        "parked",
-        "approved",
-        "in-progress",
-        "in progress",
-        "built",
-        "suggested",
-        "proposed",
-        "open",
-        "active",
-    ):
-        if s.startswith(word):
-            return word.replace("in progress", "in-progress")
-    return "open" if kind == "TD" else "suggested"
+    return canonical(kind, status) or ("open" if kind == "TD" else "suggested")
 
 
 def _severity(heading, body, status):
@@ -140,6 +163,8 @@ def parse_file(path, kind):
         if kind == "TD" and bucket == "done" and outcome in ("open", "active"):
             outcome = "resolved"  # the heading says RESOLVED, the Status line was never updated
         uid = f"{m.group(2).lower()}-{hashlib.sha1(heading.encode()).hexdigest()[:6]}"
+        pm = PARENT_RE.match(status) if bucket == "done" else None
+        parent = (pm.group(1) or pm.group(2)).upper() if pm else ""
         goals = sorted(set(re.findall(r"\bG([1-4])\b", _field(body, "Goal") or body)))
         effort = _field(body, "Effort")
         if not effort:
@@ -164,6 +189,7 @@ def parse_file(path, kind):
                 "date": max(dates) if dates else "",
                 "body": body[:12000],
                 "file": str(path),
+                "parent": parent,
             }
         )
     return rows
@@ -184,11 +210,57 @@ def _save_handled(h):
     tmp.replace(HANDLED)
 
 
+def all_rows():
+    return link_children(parse_file(TD_FILE, "TD") + parse_file(IMP_FILE, "IMP"))
+
+
+def link_children(rows):
+    """Point each folded row at its open parent and give parents a `children` uid list.
+
+    Ids repeat across sessions, so a parent id resolves to the open row with that id, then the
+    newest row. A parent link that resolves to nothing (typo, deleted entry) is dropped.
+    """
+    by_id = {}
+    for r in rows:
+        by_id.setdefault(r["id"], []).append(r)
+    for r in rows:
+        r["children"] = []
+    for r in rows:
+        pid = r.get("parent")
+        if not pid:
+            continue
+        cands = by_id.get(pid, [])
+        target = next((c for c in cands if c["bucket"] != "done"), None) or (
+            cands[-1] if cands else None
+        )
+        if target is None or target is r:
+            r["parent"] = ""
+            continue
+        r["parent_uid"] = target["uid"]
+        target["children"].append(r["uid"])
+    return rows
+
+
+def resolve_id(key, rows=None):
+    """A uid, or an id that names exactly one open row (else exactly one row)."""
+    rows = rows if rows is not None else all_rows()
+    for r in rows:
+        if r["uid"] == key:
+            return r
+    hits = [r for r in rows if r["id"] == key.upper()]
+    live = [r for r in hits if r["bucket"] != "done"]
+    if len(live) == 1:
+        return live[0]
+    if len(hits) == 1:
+        return hits[0]
+    raise KeyError(key if not hits else f"{key} is ambiguous, use the uid")
+
+
 def items():
     """GET /api/eng-backlog payload. Snoozed rows keep their bucket and carry `snoozed`."""
     now = _now()
     handled = _load_handled()
-    rows = parse_file(TD_FILE, "TD") + parse_file(IMP_FILE, "IMP")
+    rows = all_rows()
     for r in rows:
         h = handled.get(r["uid"])
         r["snoozed"] = None
@@ -210,48 +282,31 @@ def items():
 
 
 def find(uid):
-    for r in parse_file(TD_FILE, "TD") + parse_file(IMP_FILE, "IMP"):
+    for r in all_rows():
         if r["uid"] == uid:
             return r
     raise KeyError(uid)
 
 
-# act -> (allowed kinds, allowed buckets, new status prefix)
-ACTS = {
-    "approve": (("IMP",), ("decide", "parked"), "approved"),
-    "park": (("IMP",), ("decide", "todo"), "parked"),
-    "decline": (("IMP",), ("decide", "parked", "todo"), "declined"),
-    "reopen": (("IMP",), ("parked", "done"), "suggested"),
-    "accept": (("TD",), ("todo",), "ACCEPTED"),
-    "resolve": (("TD",), ("todo", "parked"), "RESOLVED"),
-}
-
-
-def set_status(uid, act, note=""):
-    """Rewrite one entry's Status line in place. Returns the updated row."""
-    if act not in ACTS:
-        raise ValueError("act must be one of " + ", ".join(ACTS))
-    kinds, buckets, word = ACTS[act]
-    row = find(uid)
-    if row["kind"] not in kinds:
-        raise ValueError(f"{act} does not apply to {row['kind']} entries")
-    if row["bucket"] not in buckets:
-        raise ValueError(f"{row['id']} is {row['outcome']}, {act} does not apply")
-    note = re.sub(r"\s+", " ", (note or "")).strip()[:500]
-    if act in ("accept", "resolve") and not note:
-        raise ValueError("accepting a risk or closing debt needs a reason")
-    path = Path(row["file"])
-    today = _now().strftime("%Y-%m-%d")
-    new_status = f"{word} {today} (decided in the Ops Center)"
-    if note:
-        new_status += f". {note.rstrip('.')}."
-    else:
-        new_status += "."
-    if row["status"]:
-        new_status += f" Earlier: {row['status']}"
-    lock = path.with_name("." + path.name + ".lock")
+@contextlib.contextmanager
+def file_lock(path):
+    lock = Path(path).with_name("." + Path(path).name + ".lock")
     with open(lock, "w") as lk:
         fcntl.flock(lk, fcntl.LOCK_EX)
+        yield
+
+
+def atomic_write(path, text):
+    path = Path(path)
+    tmp = path.with_name(path.name + f".engbl.{os.getpid()}.tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def rewrite_status(row, new_status):
+    """Replace (or add) the Status line of one entry, under the file lock."""
+    path = Path(row["file"])
+    with file_lock(path):
         lines = path.read_text(encoding="utf-8").splitlines(True)
         hits = [i for i, ln in enumerate(lines) if ln.rstrip("\n") == row["heading"]]
         if len(hits) != 1:
@@ -271,9 +326,60 @@ def set_status(uid, act, note=""):
             while k > i + 1 and not lines[k - 1].strip():
                 k -= 1
             lines.insert(k, line)
-        tmp = path.with_name(path.name + ".engbl.tmp")
-        tmp.write_text("".join(lines), encoding="utf-8")
-        os.replace(tmp, path)
+        atomic_write(path, "".join(lines))
+
+
+# act -> (allowed kinds, allowed buckets, new status prefix)
+ACTS = {
+    "approve": (("IMP",), ("decide", "parked"), "approved"),
+    "park": (("IMP",), ("decide", "todo"), "parked"),
+    "decline": (("IMP",), ("decide", "parked", "todo"), "declined"),
+    "reopen": (("IMP",), ("parked", "done"), "suggested"),
+    "accept": (("TD",), ("todo",), "ACCEPTED"),
+    "resolve": (("TD",), ("todo", "parked"), "RESOLVED"),
+    "ship": (("IMP",), ("decide", "todo"), "shipped"),
+    "withdraw": (("IMP",), ("decide", "todo", "parked"), "withdrawn"),
+    "fold": (("TD", "IMP"), ("decide", "todo", "parked"), "folded into"),
+    "undo": (("TD", "IMP"), ("decide", "todo", "parked", "done"), ""),
+}
+
+
+def set_status(uid, act, note="", target=""):
+    """Rewrite one entry's Status line in place. Returns the updated row.
+
+    fold needs `target` (the id or uid of the entry it folds into). undo puts back the status the
+    entry had before its last change (the text after the first "Earlier:").
+    """
+    if act not in ACTS:
+        raise ValueError("act must be one of " + ", ".join(ACTS))
+    kinds, buckets, word = ACTS[act]
+    rows = all_rows()
+    row = next((r for r in rows if r["uid"] == uid), None)
+    if row is None:
+        raise KeyError(uid)
+    if row["kind"] not in kinds:
+        raise ValueError(f"{act} does not apply to {row['kind']} entries")
+    if row["bucket"] not in buckets:
+        raise ValueError(f"{row['id']} is {row['outcome']}, {act} does not apply")
+    note = re.sub(r"\s+", " ", (note or "")).strip()[:500]
+    if act in ("accept", "resolve") and not note:
+        raise ValueError("accepting a risk or closing debt needs a reason")
+    today = _now().strftime("%Y-%m-%d")
+    if act == "undo":
+        if " Earlier: " not in row["status"]:
+            raise ValueError(f"{row['id']} has no earlier status to go back to")
+        new_status = row["status"].split(" Earlier: ", 1)[1]
+    else:
+        if act == "fold":
+            parent = resolve_id(target or "", rows)
+            if parent["uid"] == row["uid"] or parent.get("parent"):
+                raise ValueError("fold into an open entry other than itself")
+            word = f"folded into {parent['id']} ({parent['title'][:70]})"
+        new_status = f"{word} {today} (decided in the Ops Center)"
+        new_status += f". {note.rstrip('.')}." if note else "."
+        if row["status"]:
+            new_status += f" Earlier: {row['status']}"
+    rewrite_status(row, new_status)
     handled = _load_handled()
     if handled.pop(uid, None) is not None:
         _save_handled(handled)

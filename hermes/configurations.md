@@ -321,6 +321,11 @@ agent outside the gateway. The idle proof must cover every runtime that can hold
 worker, no other cron run in progress, no busy model slot, and no chat turn in flight in the desktop
 backend. A probe that cannot be read counts as busy, never as idle.
 
+The helper also has a fenced mode, off by default until the owner approves a live run: it freezes new
+work for a bounded window (30 seconds, a parameter), re-checks idle inside it, restarts the backend and
+then the gateway, verifies each, and always releases the freeze. The order is fixed: backend first, so
+the backend never serves a stale gateway. Switches and steps are in `hermes/safe-restart/README.md`.
+
 ## 15. Fallback and kanban boards
 
 - **Prove the fallback with a real run.** A configured `fallback_providers` entry is not proof. Point

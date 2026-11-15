@@ -26,7 +26,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "server" / "modules"))
+import optional_provider  # noqa: E402
 import params  # noqa: E402
+import sprint_trend as trend_mod  # noqa: E402
 import swr  # noqa: E402
 
 CLOUD_ID = params.get("site_id", "")
@@ -259,26 +261,140 @@ def _row(i, my_id=None):
     }
 
 
-def sprint(fresh=False):
-    """Active sprint plus every item in it that belongs to the team, a direct report, or the owner. Each row
-    carries mine=True|False and the UI filters."""
+def _sprint_issues(sp):
+    """Every issue of the team, the owner or a direct report in one sprint."""
+    who = ([TEAM_CLAUSE] if TEAM_CLAUSE else []) + ["assignee = currentUser()"]
+    emails = _report_emails()
+    if emails:
+        who.append("assignee in (" + ", ".join(f'"{e}"' for e in emails) + ")")
+    jql = f"sprint = {int(sp['id'])} AND ({' OR '.join(who)}) ORDER BY rank ASC"
+    return _search_all(jql, ISSUE_FIELDS)
+
+
+def _sprint_rows(sp, my_id):
+    return [_row(i, my_id) for i in _sprint_issues(sp)]
+
+
+def _closed_obj(s):
+    return {
+        "id": s.get("id"),
+        "name": s.get("name") or "",
+        "start": s.get("startDate") or "",
+        "end": s.get("endDate") or "",
+        "complete": s.get("completeDate") or "",
+        "state": "closed",
+    }
+
+
+def _sprint_provider():
+    """The optional sprint source (OPSCENTER_TRACKER_SPRINT_PROVIDER, `path/to/file.py:ClassName`) with `tracker_closed_sprints(limit)` and
+    `tracker_sprint_items(sprint_id)` (see sprint_trend.py). None: the sprint field of the issues is read through the driver."""
+    return optional_provider.load("OPSCENTER_TRACKER_SPRINT_PROVIDER")
+
+
+def _closed_source(limit):
+    fn = optional_provider.method(_sprint_provider(), "tracker_closed_sprints")
+    if fn is not None:
+        return fn(limit) or []
+    jql = f"{_PROJECT_CLAUSE}{_TEAM_AND}sprint in closedSprints() AND updated >= -365d ORDER BY updated DESC"
+    found = {}
+    for i in _search_all(jql, [SPRINT_FIELD], pages=3):
+        for s in i.get("fields", {}).get(SPRINT_FIELD) or []:
+            if isinstance(s, dict) and s.get("state") == "closed" and s.get("id"):
+                found[s["id"]] = _closed_obj(s)
+    return list(found.values())
+
+
+def _items_source(sp):
+    fn = optional_provider.method(_sprint_provider(), "tracker_sprint_items")
+    if fn is not None:
+        return fn(sp["id"])
+    out = []
+    for i in _sprint_issues(sp):
+        f = i.get("fields") or {}
+        pts = f.get(POINTS_FIELD)
+        out.append(
+            {
+                "key": i.get("key") or "",
+                "status_category": ((f.get("status") or {}).get("statusCategory") or {}).get(
+                    "key", ""
+                ),
+                "points": pts if isinstance(pts, (int, float)) else None,
+                "later_sprint": any(
+                    isinstance(x, dict)
+                    and x.get("id") != sp["id"]
+                    and (x.get("startDate") or "9") > (sp.get("start") or "")
+                    for x in (f.get(SPRINT_FIELD) or [])
+                ),
+            }
+        )
+    return out
+
+
+def closed_sprints(fresh=False):
+    """The most recent closed sprints that held the team's work, newest first. Read through the Sprint field of issues in closed sprints (the
+    connector exposes no agile or board API), so only sprints the team had items in show; a sprint provider replaces that read."""
+
+    def load():
+        rows = trend_mod.recent_closed(
+            _closed_source(trend_mod.PAST_SPRINTS), trend_mod.PAST_SPRINTS
+        )
+        return {"generated_utc": _utc_now(), "sprints": rows}
+
+    return _cached("closed_sprints", 3600, load, fresh)
+
+
+def sprint_trend(fresh=False):
+    """Team totals for the last closed sprints plus the active one, oldest first. carried = items that also sit in a later sprint (they left this
+    sprint unfinished). done is what the tracker shows today (there is no committed at start snapshot)."""
+
+    def load():
+        closed = (closed_sprints(fresh).get("sprints") or [])[: trend_mod.TREND_SPRINTS]
+        act = active_sprint(fresh)
+        by_id = {s["id"]: s for s in closed}
+        if act and act.get("id"):
+            by_id[act["id"]] = act
+        rows = trend_mod.trend(
+            closed, act, lambda sid: _items_source(by_id[sid]) if sid in by_id else None
+        )
+        return {"generated_utc": _utc_now(), "sprints": rows}
+
+    return _cached("sprint_trend", 1800, load, fresh)
+
+
+def sprint(fresh=False, sprint_id=None):
+    """Active sprint (or, with sprint_id, one of the recent closed sprints) plus every item in it that belongs to the team, a direct report, or
+    the owner. Each row carries mine=True|False and the UI filters. A closed sprint is read only in the UI, and only ids from closed_sprints()
+    are accepted (400 for a non number, 404 for any other id)."""
+    if sprint_id not in (None, ""):
+        closed = closed_sprints().get("sprints") or []
+        try:
+            sid = trend_mod.allowed_closed_id(sprint_id, closed)
+        except trend_mod.BadSprint as e:
+            raise TrackerError(str(e), e.status) from None
+        sp = next(s for s in closed if s["id"] == sid)
+
+        def load_past():
+            my_id = me()
+            return {
+                "generated_utc": _utc_now(),
+                "sprint": sp,
+                "me": my_id,
+                "items": _sprint_rows(sp, my_id),
+            }
+
+        return _cached(f"sprint:{sid}", 600, load_past, fresh)
 
     def load():
         sp = active_sprint(fresh)
         my_id = me()
         if not sp or not sp.get("id"):
             return {"generated_utc": _utc_now(), "sprint": None, "me": my_id, "items": []}
-        who = ([TEAM_CLAUSE] if TEAM_CLAUSE else []) + ["assignee = currentUser()"]
-        emails = _report_emails()
-        if emails:
-            who.append("assignee in (" + ", ".join(f'"{e}"' for e in emails) + ")")
-        jql = f"sprint = {int(sp['id'])} AND ({' OR '.join(who)}) ORDER BY rank ASC"
-        issues = _search_all(jql, ISSUE_FIELDS)
         return {
             "generated_utc": _utc_now(),
             "sprint": sp,
             "me": my_id,
-            "items": [_row(i, my_id) for i in issues],
+            "items": _sprint_rows(sp, my_id),
         }
 
     return _cached("sprint", 60, load, fresh)

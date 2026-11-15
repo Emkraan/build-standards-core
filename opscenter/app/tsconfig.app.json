@@ -29,8 +29,8 @@
       "react/*": ["./node_modules/@types/react/*"],
       "react-dom": ["./node_modules/@types/react-dom"],
       "react-dom/*": ["./node_modules/@types/react-dom/*"],
-      "@kit": ["../../kit/src/index.ts"],
-      "@kit/*": ["../../kit/src/*"]
+      "@kit": ["../kit/src/index.ts"],
+      "@kit/*": ["../kit/src/*"]
     }
   },
   "include": ["src"]

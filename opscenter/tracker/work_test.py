@@ -36,6 +36,12 @@ if tool == "atlassianUserInfo":
     done({"account_id": "me-1"})
 if tool == "searchJiraIssuesUsingJql":
     jql = args["jql"]
+    import re as _re
+    m = _re.search(r"sprint = (\d+)", jql)
+    if m and m.group(1) in st.get("by_sprint", {}):
+        done({"issues": st["by_sprint"][m.group(1)]})
+    if "closedSprints()" in jql:
+        done({"issues": st["search"].get("closed", [])})
     key = "changes" if "Approvers" in jql else ("backlog" if "futureSprints()" in jql and "assignee = currentUser()" in jql and "sprint =" not in jql and "openSprints() AND" not in jql else ("sprint" if "sprint = " in jql else "active"))
     done({"issues": st["search"].get(key, [])})
 if tool == "getJiraIssue":
@@ -193,6 +199,106 @@ class Work(unittest.TestCase):
         self.assertEqual(work.my_open_item("ABC-9")["view"], "backlog")
         with self.assertRaises(KeyError):
             work.my_open_item("ABC-404")
+
+    def closed_issue(self, key, sprints, cat="done", pts=None):
+        return issue(key, "Done" if cat == "done" else "To Do", cat, sprints=sprints, pts=pts)
+
+    def sprint_fixture(self):
+        c1 = {
+            "id": 5,
+            "name": "Sprint 5",
+            "state": "closed",
+            "startDate": "2026-09-01T00:00:00Z",
+            "endDate": "2026-09-15T00:00:00Z",
+            "completeDate": "2026-09-15T01:00:00Z",
+        }
+        c2 = {
+            "id": 6,
+            "name": "Sprint 6",
+            "state": "closed",
+            "startDate": "2026-09-16T00:00:00Z",
+            "endDate": "2026-09-30T00:00:00Z",
+        }
+        act = dict(ACTIVE, startDate="2026-10-01T00:00:00Z")
+        self.state["search"]["closed"] = [
+            self.closed_issue("ABC-20", [c1, c2]),
+            self.closed_issue("ABC-21", [c2]),
+        ]
+        self.state["search"]["active"] = [issue("ABC-1", sprints=[act])]
+        self.state["by_sprint"] = {
+            "5": [
+                self.closed_issue("ABC-20", [c1, c2], "done", 3),
+                self.closed_issue("ABC-22", [c1], "done", 2),
+            ],
+            "6": [
+                self.closed_issue("ABC-20", [c1, c2], "done", 3),
+                self.closed_issue("ABC-21", [c2], "new", 5),
+            ],
+            "11": [self.closed_issue("ABC-1", [act], "new", 1)],
+        }
+        self.save()
+        return c1, c2, act
+
+    def test_closed_sprints_are_read_from_the_sprint_field_newest_first_and_cached(self):
+        self.sprint_fixture()
+        got = work.closed_sprints(fresh=True)
+        self.assertEqual([s["id"] for s in got["sprints"]], [6, 5])
+        self.assertEqual(got["sprints"][1]["complete"], "2026-09-15T01:00:00Z")
+        jql = [a["jql"] for t, a in self.calls() if "closedSprints()" in a.get("jql", "")][0]
+        self.assertTrue(
+            jql.startswith('project = ABC AND cf[1] = "team-1" AND sprint in closedSprints()')
+        )
+
+    def test_the_trend_counts_items_done_points_and_carried_oldest_first_with_the_active_last(self):
+        self.sprint_fixture()
+        rows = work.sprint_trend(fresh=True)["sprints"]
+        self.assertEqual([r["id"] for r in rows], [5, 6, 11])
+        by = {r["id"]: r for r in rows}
+        # sprint 5: two items, both done, 5 points; ABC-20 sits in sprint 6 which started later, so one was carried
+        self.assertEqual(
+            (
+                by[5]["items"],
+                by[5]["done"],
+                by[5]["points"],
+                by[5]["points_done"],
+                by[5]["carried"],
+            ),
+            (2, 2, 5.0, 5.0, 1),
+        )
+        self.assertEqual(
+            (by[6]["items"], by[6]["done"], by[6]["points_done"], by[6]["carried"]), (2, 1, 3.0, 0)
+        )
+        self.assertTrue(by[11]["active"] and not by[5]["active"])
+
+    def test_a_closed_sprint_view_only_opens_an_id_from_the_closed_list(self):
+        self.sprint_fixture()
+        got = work.sprint(fresh=True, sprint_id="6")
+        self.assertEqual((got["sprint"]["id"], len(got["items"])), (6, 2))
+        for bad, code in (("abc", 400), ("999", 404), ("11", 404)):
+            with self.assertRaises(work.TrackerError) as cm:
+                work.sprint(fresh=True, sprint_id=bad)
+            self.assertEqual(cm.exception.code, code, bad)
+        self.assertEqual(work.sprint(fresh=True)["sprint"]["id"], 11)
+
+    def test_a_sprint_provider_replaces_the_read(self):
+        prov = TMP / "sprint_provider.py"
+        prov.write_text(
+            "class P:\n"
+            "    def tracker_closed_sprints(self, limit):\n"
+            "        return [{'id': 1, 'name': 'One', 'start': '2026-01-01', 'end': '2026-01-14'}]\n"
+            "    def tracker_sprint_items(self, sid):\n"
+            "        return [{'key': 'X-1', 'status_category': 'done', 'points': 2, 'later_sprint': False}]\n"
+        )
+        os.environ["OPSCENTER_TRACKER_SPRINT_PROVIDER"] = f"{prov}:P"
+        self.addCleanup(os.environ.pop, "OPSCENTER_TRACKER_SPRINT_PROVIDER", None)
+        self.sprint_fixture()
+        rows = work.sprint_trend(fresh=True)["sprints"]
+        self.assertEqual([r["id"] for r in rows], [1, 11])
+        self.assertEqual((rows[0]["items"], rows[0]["points_done"]), (1, 2.0))
+        self.assertFalse(
+            [1 for t, a in self.calls() if "closedSprints()" in a.get("jql", "")],
+            "no closed sprint search through the driver",
+        )
 
     def test_an_invalid_key_is_refused_before_any_call(self):
         with self.assertRaises(work.TrackerError) as cm:

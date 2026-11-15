@@ -1,4 +1,17 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>Emkraan/.github//renovate.json"]
+  "dependencyDashboard": false,
+  "extends": [
+    "github>Emkraan/.github//renovate.json"
+  ],
+  "packageRules": [
+    {
+      "description": "Move the Playwright container tag in visual.yml and @playwright/test in opscenter/kit/package.json together: Playwright refuses to start when the browser image and the library differ.",
+      "groupName": "playwright",
+      "matchPackageNames": [
+        "@playwright/test",
+        "mcr.microsoft.com/playwright"
+      ]
+    }
+  ]
 }

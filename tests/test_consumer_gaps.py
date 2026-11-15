@@ -1,5 +1,5 @@
 """Consumer-reported gaps: latest by semantic version, the gate rewrite order, same-named workflows,
-the UI adoption stage and the ascii_ignore table. Fixtures live under .test-work, never /tmp."""
+the ascii_ignore table. Fixtures live under .test-work, never /tmp."""
 
 import os
 import shutil
@@ -219,24 +219,8 @@ class Params(Work):
         f.write_text(text)
         return f
 
-    def test_ui_stage_reads_the_row(self):
-        for value, want in (
-            ("none", "none"),
-            ("`Partial`", "partial"),
-            ("adopted", "adopted"),
-            ("", ""),
-            ("junk", ""),
-        ):
-            status.PARAMETERS = self.sheet(
-                f"| Parameter | Value | Used |\n|---|---|---|\n| UI adoption stage (x) | {value} | y |\n"
-            )
-            self.assertEqual(status.ui_stage(), want)
-        status.PARAMETERS = self.dir / "missing.md"
-        self.assertEqual(status.ui_stage(), "")
-
     def test_template_ships_the_rows(self):
         text = (ROOT / "templates/overlay/standards-local/parameters.md").read_text()
-        self.assertIn("| UI adoption stage", text)
         self.assertIn("## ascii_ignore", text)
         # the ignore table header is not mistaken for a parameter row by the sync
         self.assertIsNone(ch._row_cells("| Path | Reason |"))

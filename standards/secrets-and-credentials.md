@@ -106,8 +106,9 @@ signed URL signatures) lets a plain `secret = "..."` assignment through.
 
 ## 6. Secret scanning
 
-- Pin the scanner binary by version and checksum. Run on pull requests, on any merge queue event,
-  and on pushes to the default branch.
+- Pin the scanner binary by version and checksum. Run on pull requests and on any merge queue event.
+  A change reaches the default branch only through a pull request whose head was scanned, so a run on the
+  push would re-scan the same tree.
 - Check out the PR head commit with full history and no persisted credentials. Scan merge commits
   too.
 - Read the scanner config from the base commit. Delete every ignore file in the tree before the

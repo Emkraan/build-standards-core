@@ -6,8 +6,8 @@ record it here. An exception is a dated, owned, reviewable record, never a silen
 Rules for this file (checked by `scripts/check-exceptions.py`):
 
 - One row per exception. `ID` is `EXC-` plus three digits and is never reused.
-- `Rule` names the core doc and its section, for example `web-ui.md 0.1` (section 0, rule 1) or
-  `web-ui.md 25`. The doc must exist in `standards-core/`.
+- `Rule` names the core doc and its section, for example `scripting-python.md 1.8` (section 1, rule 8) or
+  `pr-review-and-merge.md 1.19`. The doc must exist in `standards-core/`.
 - `Scope` names the app or path the exception covers. Never `all`: an exception for everything is a
   core change, so open a pull request against the core instead.
 - `Review by` is required and at most 180 days after `Approved`. CI fails once it has passed.

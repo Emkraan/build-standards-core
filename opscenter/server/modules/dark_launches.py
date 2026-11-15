@@ -7,7 +7,10 @@ with one Enable click on the board after reviewing a dry run. This module is the
 It is the standard way an acting rule goes live (opscenter/DESIGN.md sections 2.5 and 12.3, item 11).
 
 Registry (config the owner edits, atomic, one writer): <state_dir>/dashboard/dark-launches.json
-  {"launches": [{id, repo, environment, variable, workflow, title, status, dry_run_input?}]}
+  {"launches": [{id, repo, environment, variable, workflow, title, status, dry_run_input?, job?}]}
+  job: the launch's own job name when the workflow is shared. The dry run then passes on that job's result
+       only, so unrelated jobs in the same workflow never block Enable, and a skipped or missing job is never
+       a pass (the dry run did not reach the launch's own code).
   status: dark (shipped, action off), enabled (turned on), retired (hidden).
 Log (append only): <state_dir>/dashboard/dark-launches-log.jsonl.
 
@@ -46,6 +49,7 @@ REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 ENV_RE = re.compile(r"^[A-Za-z0-9_.-]{1,60}$")
 VAR_RE = re.compile(r"^[A-Z][A-Z0-9_]{2,60}$")
 WF_RE = re.compile(r"^[A-Za-z0-9_.-]+\.ya?ml$")
+JOB_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ()_.,:/-]{0,99}$")
 INPUT_RE = re.compile(r"^[a-z][a-z0-9_]{0,40}$")
 STATUSES = ("dark", "enabled", "retired")
 DRY_RUN_MAX_AGE_S = 7 * 86400
@@ -102,6 +106,7 @@ def _clean(rec):
     }
     out["status"] = str(rec.get("status") or "dark").strip()
     out["dry_run_input"] = str(rec.get("dry_run_input") or "dry_run").strip()
+    out["job"] = str(rec.get("job") or "").strip()
     if not ID_RE.match(out["id"]):
         raise ValueError("bad id {!r}".format(out["id"]))
     if not REPO_RE.match(out["repo"]):
@@ -114,6 +119,8 @@ def _clean(rec):
         raise ValueError("{}: bad workflow file name".format(out["id"]))
     if not INPUT_RE.match(out["dry_run_input"]):
         raise ValueError("{}: bad dry_run_input".format(out["id"]))
+    if out["job"] and not JOB_RE.match(out["job"]):
+        raise ValueError("{}: bad job name".format(out["id"]))
     if not out["title"]:
         raise ValueError("{}: title required".format(out["id"]))
     if out["status"] not in STATUSES:
@@ -239,11 +246,23 @@ def dry_run_state(lc):
     r = max(mine, key=lambda x: x.get("createdAt") or "")
     if r.get("status") != "completed":
         return {"state": "running", "at": at, "url": r.get("url")}
-    return {
-        "state": "passed" if r.get("conclusion") == "success" else "failed",
-        "at": at,
-        "url": r.get("url"),
-    }
+    if not lc.get("job"):
+        return {
+            "state": "passed" if r.get("conclusion") == "success" else "failed",
+            "at": at,
+            "url": r.get("url"),
+        }
+    try:
+        jobs = json.loads(
+            _gh(["run", "view", str(r.get("databaseId")), "-R", lc["repo"], "--json", "jobs"])
+            or "{}"
+        )
+    except (DarkError, ValueError):
+        return {"state": "unknown", "at": at, "url": r.get("url")}
+    mine = [j for j in jobs.get("jobs") or [] if j.get("name") == lc["job"]]
+    # a skipped or missing job never counts as a pass: the dry run did not reach the launch's own code
+    ok = bool(mine) and all(j.get("conclusion") == "success" for j in mine)
+    return {"state": "passed" if ok else "failed", "at": at, "url": r.get("url"), "job": lc["job"]}
 
 
 def _card(lc):

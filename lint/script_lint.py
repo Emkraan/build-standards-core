@@ -43,7 +43,34 @@ import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from ui_lint import EXC_RE, active_exceptions, counts  # noqa: E402
+EXC_RE = re.compile(r"core-exception:\s*(EXC-\d{3})")
+
+
+def active_exceptions(root):
+    """{exception id: rule ref} for rows in standards-local/exceptions.md whose review date has not passed."""
+    f = root / "standards-local" / "exceptions.md"
+    out = {}
+    if not f.is_file():
+        return out
+    today = datetime.date.today()
+    for line in f.read_text(encoding="utf8").splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) == 8 and re.fullmatch(r"EXC-\d{3}", cells[0]):
+            try:
+                if datetime.date.fromisoformat(cells[7]) >= today:
+                    out[cells[0]] = cells[1]
+            except ValueError:
+                pass
+    return out
+
+
+def counts(findings):
+    out = {}
+    for f in findings:
+        k = f"{f['file']}::{f['rule']}"
+        out[k] = out.get(k, 0) + 1
+    return out
+
 
 RULES = {
     "PS001": (

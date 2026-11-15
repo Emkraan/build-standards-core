@@ -11,6 +11,7 @@ Date:    2026-10-27
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import os
 import sys
@@ -49,6 +50,12 @@ HEAD = "a" * 40
 PR = 77
 
 
+def _ago(hours):
+    """A UTC stamp a few hours back, so the fixture stays inside the shipped window on any date."""
+    when = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)
+    return when.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def queue_item(status="approved", pending=True, head=HEAD):
     it = {
         "pr": PR,
@@ -57,10 +64,10 @@ def queue_item(status="approved", pending=True, head=HEAD):
         "url": "https://example.invalid/pull/77",
         "head_sha": head,
         "status": status,
-        "updated": "2026-10-27T10:00:00Z",
-        "escalated_at": "2026-10-27T09:00:00Z",
+        "updated": _ago(2),
+        "escalated_at": _ago(3),
         "escalation": {},
-        "shipped_at": "2026-10-27T10:00:00Z",
+        "shipped_at": _ago(2),
     }
     if pending:
         it["merge_pending"] = {
@@ -68,7 +75,7 @@ def queue_item(status="approved", pending=True, head=HEAD):
             "head": HEAD,
             "text": "in merge queue (position 2)",
             "position": 2,
-            "at": "2026-10-27T10:00:00Z",
+            "at": _ago(2),
         }
     return it
 

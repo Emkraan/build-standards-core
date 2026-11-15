@@ -17,6 +17,7 @@
     "/infra/:tab",
     "/jira",
     "/jira/:tab",
+    "/jira/:tab/:sprintId",
     "/knowledge",
     "/knowledge/:tab",
     "/links",

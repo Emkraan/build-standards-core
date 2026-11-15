@@ -3,8 +3,8 @@
 
 A doc that names a custom property nobody declares sends readers to a token that resolves to
 nothing (the retired palette is the classic case). This check collects the custom properties
-declared by the token sheet generated from tokens/tokens.json, by tokens/hub-layer.css and by the
-kit's stylesheets (kit/src/**/*.css), then reads every standards/*.md and fails on a token name
+declared by the token sheet generated from opscenter/tokens/tokens.json, by opscenter/tokens/hub-layer.css and by the
+kit's stylesheets (opscenter/kit/src/**/*.css), then reads every standards/*.md and fails on a token name
 that is not declared.
 
 A token reference in a doc is any of:
@@ -64,7 +64,7 @@ def json_tokens() -> set[str]:
                 else:
                     walk(value)
 
-    path = ROOT / "tokens" / "tokens.json"
+    path = ROOT / "opscenter" / "tokens" / "tokens.json"
     if path.is_file():
         walk(json.loads(path.read_text(encoding="utf8")))
     return out
@@ -72,8 +72,11 @@ def json_tokens() -> set[str]:
 
 def declared() -> set[str]:
     names = json_tokens()
-    sheets = [ROOT / "tokens" / "tokens.css", ROOT / "tokens" / "hub-layer.css"]
-    sheets += sorted((ROOT / "kit" / "src").rglob("*.css"))
+    sheets = [
+        ROOT / "opscenter" / "tokens" / "tokens.css",
+        ROOT / "opscenter" / "tokens" / "hub-layer.css",
+    ]
+    sheets += sorted((ROOT / "opscenter" / "kit" / "src").rglob("*.css"))
     for f in sheets:
         if f.is_file() and "node_modules" not in f.parts:
             text = re.sub(r"/\*.*?\*/", " ", f.read_text(encoding="utf8"), flags=re.S)
@@ -118,7 +121,7 @@ def main(argv: list[str]) -> int:
                 rel = doc.resolve().relative_to(ROOT) if doc.resolve().is_relative_to(ROOT) else doc
                 kind = "no declared token starts with" if is_prefix else "unknown token"
                 bad.append(
-                    f"::error file={rel},line={line}::{kind} {name} (not in tokens.json, hub-layer.css or kit/src, a command-line flag goes in FLAGS)"
+                    f"::error file={rel},line={line}::{kind} {name} (not in tokens.json, hub-layer.css or opscenter/kit/src, a command-line flag goes in FLAGS)"
                 )
     for b in bad:
         print(b)

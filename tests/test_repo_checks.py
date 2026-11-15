@@ -69,6 +69,34 @@ class TestChecks(Tree):
             },
         )
 
+    def test_rc023_age_and_duration_thresholds(self):
+        for i, line in enumerate(
+            [
+                "const tone = ageHours > 30 ? 'warn' : 'ok'",
+                "const amber = (Date.now() - last.getTime()) > 30 * 3600 * 1000",
+                "const tone = snapshotAgeMs >= 108000000 ? 'bad' : 'ok'",
+                "const badge = minutesSince > 10 ? 'needs-me' : undefined",
+                "const tone = elapsed > 90 ? 'bad' : 'ok'",
+                "const tone = lastRun < 6 * 60 * 60 * 1000 ? 'ok' : 'warn'",
+                "const level = stale_days >= 2 ? 'warn' : 'ok'",
+            ]
+        ):
+            with self.subTest(line=line):
+                self.fails("RC023", {f"opscenter/app/src/Age{i}.tsx": line + "\n"})
+
+    def test_rc023_age_clean(self):
+        self.passes(
+            "RC023",
+            {
+                "opscenter/app/src/Age.tsx": "const tone = problems.tone\n"
+                "const text = ageHours > 30 ? 'old' : 'recent'\n"
+                "const wait = Date.now() - t > 5000\nsetTimeout(tick, 60 * 1000)\n"
+                "const none = minutes > 0 ? minutes + ' min' : ''\n"
+                "const tone = ageHours > 30 ? 'warn' : 'ok' // core-exception: EXC-003\n",
+                "web/app/src/Age.tsx": "const tone = ageHours > 30 ? 'warn' : 'ok'\n",
+            },
+        )
+
     def test_rc023_clean(self):
         self.passes(
             "RC023",
@@ -105,6 +133,124 @@ class TestChecks(Tree):
                 "opscenter/app/src/App.tsx": app,
                 "opscenter/app/routes.lock.json": json.dumps({"routes": ["/work", "/jira/"]}),
                 "web/app/src/App.tsx": '<Route path="/x" element={<A/>}/>\n',
+            },
+        )
+
+    def test_rc023_a_display_only_chip_is_not_a_problem_tone(self):
+        self.passes(
+            "RC023",
+            {
+                "opscenter/app/src/Meet.tsx": "return { label, tone: mins <= 30 ? 'next' : 'later' }\n"
+                "const phase = ageMinutes > 5 ? 'soon' : 'later'\n"
+                "const chip = hours > 2 ? 'dim' : 'plain' // display-only: a time chip, not a problem\n"
+                "// display-only: the next meeting chip\nconst x = minutes >= 10 ? 'amber' : 'plain'\n",
+            },
+        )
+
+    def test_rc023_problem_tones_still_fail(self):
+        for i, line in enumerate(
+            [
+                "const tone = ageHours > 30 ? 'warn' : 'ok'",
+                "const tone = ageHours > 30 ? 'danger' : 'ok'",
+                "const sev = failedCount > 3 ? 'alert' : 'ok'",
+                "const badge = elapsed > 90",
+                "const c = minutesSince > 10 ? 'amber' : 'ok'",
+            ]
+        ):
+            with self.subTest(line=line):
+                self.fails("RC023", {f"opscenter/app/src/Prob{i}.tsx": line + "\n"})
+
+    def test_rc025_help_text_is_not_a_scheduled_turn_off(self):
+        self.passes(
+            "RC025",
+            {
+                "opscenter/app/src/FreezeBypass.tsx": "export function Switch() {\n"
+                "  const note = 'Turns itself off at midnight. The bypass is cleared by its expiry.'\n"
+                "  return (\n    <label>\n      <span>Turns itself off at midnight</span>\n"
+                "      <small>The bypass expires and is cleared at midnight, no timer runs</small>\n"
+                "    </label>\n  )\n}\n",
+            },
+        )
+
+    def test_rc025_a_timer_in_code_still_fails(self):
+        self.fails(
+            "RC025",
+            {
+                "opscenter/app/src/Switch.tsx": "const note = 'help text'\n"
+                "setInterval(() => clearBypass('all'), 60000)\n",
+                "opscenter/server/tick.py": "import schedule\nschedule.every().day.at('00:00').do(revoke_override)\n",
+            },
+        )
+
+    def test_rc025_an_override_reader_that_fails_open(self):
+        py = (
+            "def freeze_bypass_active(pr):\n"
+            "    try:\n        return load(STORE)[pr]\n"
+            "    except OSError:\n        return True\n"
+        )
+        js = "function bypassOn(pr) {\n  try { return read(pr) }\n  catch (e) { return true }\n}\n"
+        self.fails("RC025", {"opscenter/server/bypass.py": py})
+        self.fails("RC025", {"opscenter/app/src/bypass.ts": js})
+
+    def test_rc025_a_scheduled_job_that_turns_an_override_off(self):
+        self.fails(
+            "RC025",
+            {"opscenter/server/jobs/nightly.py": "def run():\n    store.clear_overrides()\n"},
+        )
+        self.fails(
+            "RC025",
+            {
+                "opscenter/server/tick.py": "import cron\n\ndef at_midnight():\n    revoke_bypass('all')\n"
+            },
+        )
+
+    def test_rc025_clean(self):
+        self.passes(
+            "RC025",
+            {
+                "opscenter/server/bypass.py": "def freeze_bypass_active(pr):\n"
+                "    try:\n        return load(STORE)[pr]\n    except OSError:\n        return False\n"
+                "def other_read():\n    try:\n        return 1\n    except OSError:\n        return True\n",
+                "opscenter/server/routes.py": "def post_clear_override(req):\n    store.clear(req.key)\n",
+                "opscenter/server/jobs/nightly.py": "def run():\n    sweep_logs()  # core-exception: EXC-004\n",
+                "web/app/x.py": "def bypass_on():\n    try:\n        return 1\n    except OSError:\n        return True\n",
+            },
+        )
+
+    def test_rc026_a_script_written_in_place_by_an_installer(self):
+        self.fails(
+            "RC026", {"ops/install.sh": "#!/bin/sh\ncp ./worker.sh /usr/local/bin/worker.sh\n"}
+        )
+        self.fails("RC026", {"ops/deploy.sh": "cat > /opt/app/run.sh <<'EOF'\necho hi\nEOF\n"})
+        self.fails("RC026", {"scripts/update.sh": "install -m 755 new.py /opt/app/tool.py\n"})
+
+    def test_rc026_clean(self):
+        self.passes(
+            "RC026",
+            {
+                "ops/install.sh": "#!/bin/sh\ncp ./worker.sh /usr/local/bin/worker.sh.new\nmv -f /usr/local/bin/worker.sh.new /usr/local/bin/worker.sh\n",
+                "ops/setup.sh": 'cp ./worker.sh "$tmp/worker.sh"\nmv "$tmp/worker.sh" /opt/worker.sh\n',
+                "ops/run.sh": "cp ./worker.sh /usr/local/bin/worker.sh\n",
+                "ops/update.sh": "cp ./config.json /etc/app/config.json\n",
+                "ops/deploy.sh": "cp ./x.sh /opt/x.sh  # core-exception: EXC-005\n",
+            },
+        )
+
+    def test_rc027_a_codemod_that_rewrites_by_regular_expression(self):
+        self.fails(
+            "RC027", {"tools/codemod_imports.py": "import re\nnew = re.sub(r'foo', 'bar', src)\n"}
+        )
+        self.fails("RC027", {"tools/autofix.sh": "sed -i 's/a/b/' src/*.ts\n"})
+        self.fails("RC027", {"tools/codemod.mjs": "const out = src.replace(/foo/g, 'bar')\n"})
+
+    def test_rc027_clean(self):
+        self.passes(
+            "RC027",
+            {
+                "tools/codemod_imports.py": "import ast\ntree = ast.parse(src)\n",
+                "tools/format.py": "import re\nname = re.sub(r'x', 'y', name)\n",
+                "tools/autofix.py": "import re\nkey = re.sub(r'\\W+', ' ', line)\n",  # a text key, not a code rewrite
+                "tools/codemod_x.py": "import re\nx = re.sub(r'a', 'b', s)  # core-exception: EXC-006\n",
             },
         )
 
@@ -193,26 +339,6 @@ class TestChecks(Tree):
         )
         self.passes("RC004", {".github/workflows/a.yml": trusted, ".github/workflows/b.yml": pr})
 
-    def test_rc005_platform_cors(self):
-        self.fails(
-            "RC005",
-            {
-                "vercel.json": '{"headers":[{"headers":[{"key":"Access-Control-Allow-Origin","value":"*"}]}]}'
-            },
-        )
-        self.fails(
-            "RC005",
-            {
-                "infra/app.tf": 'site_config {\n  cors {\n    allowed_origins = ["https://x"]\n  }\n}\n'
-            },
-        )
-
-    def test_rc005_clean(self):
-        self.passes(
-            "RC005",
-            {"vercel.json": '{"headers":[{"headers":[{"key":"X-Frame-Options","value":"DENY"}]}]}'},
-        )
-
     def test_rc006_deploy_needs_queue_and_health(self):
         self.put({"app/db.py": "import sqlite3\n"})
         self.fails(
@@ -271,24 +397,6 @@ class TestChecks(Tree):
                 + ".test"
                 + '", "b": "b@corp.example.com", "pkg": "x@1.2.3"}',
                 "src/real.json": '{"mail": "a@' + REAL + '"}',
-            },
-        )
-
-    def test_rc009_two_files_handle_redirect(self):
-        self.fails(
-            "RC009",
-            {
-                "apps/a/boot.ts": "await msal.handleRedirectPromise();\n",
-                "apps/b/main.ts": "await app.handleRedirectPromise();\n",
-            },
-        )
-
-    def test_rc009_clean(self):
-        self.passes(
-            "RC009",
-            {
-                "packages/boot/boot.ts": "await msal.handleRedirectPromise();\n",
-                "apps/a/boot.test.ts": "handleRedirectPromise()\n",
             },
         )
 
@@ -538,59 +646,6 @@ class TestBatch2(Tree):
 class TestBatch3(Tree):
     UI = {"src/App.tsx": "export const A = () => <AppShell rail={<BuildCard />} />;\n"}
 
-    def test_rc014_needs_axe_and_both_themes(self):
-        self.put(self.UI)
-        self.assertTrue(self.run_check("RC014"))
-        self.fails("RC014", {"e2e/a.spec.ts": "test('x', () => { page.goto('/') })\n"})
-        self.put(
-            {"e2e/a.spec.ts": "import AxeBuilder from '@axe-core/playwright';\nconst t = 'dark';\n"}
-        )
-        self.assertIn("both", self.run_check("RC014")[0][2])
-
-    def test_rc014_clean_and_no_ui(self):
-        self.passes(
-            "RC014",
-            {
-                **self.UI,
-                "e2e/a.spec.ts": "import AxeBuilder from 'x/axe-core';\nfor (const t of ['light', 'dark']) {}\n",
-            },
-        )
-        shutil.rmtree(self.dir / "src")
-        shutil.rmtree(self.dir / "e2e")
-        self.assertEqual(self.run_check("RC014"), [])
-
-    def test_rc015_shell_without_build_card(self):
-        self.fails("RC015", {"src/App.tsx": "export const A = () => <AppShell />;\n"})
-
-    def test_rc015_clean(self):
-        self.passes("RC015", {**self.UI})
-
-    def test_rc016_verify_script(self):
-        self.fails("RC016", {"package.json": json.dumps({"scripts": {"build": "x"}})})
-        self.put(
-            {
-                "package.json": json.dumps(
-                    {"scripts": {"verify": "npm run build", "check:unicode": "x", "test": "y"}}
-                )
-            }
-        )
-        found = self.run_check("RC016")
-        self.assertEqual(
-            sorted(f[2] for f in found),
-            ["the verify script does not run check:unicode", "the verify script does not run test"],
-        )
-
-    def test_rc016_clean_with_script_file(self):
-        self.passes(
-            "RC016",
-            {
-                "package.json": json.dumps(
-                    {"scripts": {"verify": "node scripts/verify.mjs", "check:a": "x", "build": "y"}}
-                ),
-                "scripts/verify.mjs": "run('pnpm run check:a'); run('pnpm run build');\n",
-            },
-        )
-
     def test_rc017_secret_in_argv(self):
         self.fails(
             "RC017", {"t.py": "import subprocess\nsubprocess.run(['tool', '--password', pw])\n"}
@@ -677,53 +732,8 @@ class TestBatch3(Tree):
             },
         )
 
-    def test_rc018_vendor_chunks(self):
-        self.fails("RC018", {"vite.config.ts": "export default {};\n"})
-        self.passes(
-            "RC018",
-            {
-                "vite.config.ts": "export default { build: { rollupOptions: { output: { manualChunks: {} } } } };\n"
-            },
-        )
-
 
 class TestBatch4(Tree):
-    def test_rc019_budget(self):
-        self.fails("RC019", {"vite.config.ts": "export default {};\n"})
-        self.passes(
-            "RC019",
-            {
-                "vite.config.ts": "x\n",
-                "package.json": json.dumps({"scripts": {"check:size": "size-limit"}}),
-            },
-        )
-        shutil.rmtree(self.dir / "package.json", ignore_errors=True)
-
-    def test_rc019_no_bundler(self):
-        self.passes("RC019", {"package.json": "{}"})
-
-    def test_rc020_inline_limit(self):
-        self.fails("RC020", {"vite.config.ts": "export default {};\n"})
-        self.passes(
-            "RC020", {"vite.config.ts": "export default { build: { assetsInlineLimit: 0 } };\n"}
-        )
-
-    def test_rc021_bearer_in_many_client_files(self):
-        h = "fetch(u, { headers: { Authorization: `Bearer ${t}` } });\n"
-        self.fails("RC021", {"apps/a/src/api.ts": h, "apps/a/src/other.ts": h})
-
-    def test_rc021_clean(self):
-        h = "fetch(u, { headers: { Authorization: `Bearer ${t}` } });\n"
-        self.passes(
-            "RC021",
-            {
-                "apps/a/src/api.ts": h,
-                "apps/b/src/api.ts": h,
-                "apps/a/server/x.ts": h,
-                "apps/a/server/y.ts": h,
-            },
-        )
-
     def test_rc022_permissions_by_hand(self):
         h = "if (user.permissions.includes('x')) {}\n"
         self.fails("RC022", {"apps/a/src/a.ts": h, "apps/a/src/b.ts": h})
@@ -754,12 +764,16 @@ class TestWiring(Tree):
         self.assertIn("repo_checks.py", corehash.OVERLAY_SCRIPTS)
 
     def test_core_ci_command_with_a_missing_test_file_is_caught(self):
-        cmd = "npm --prefix kit test -- tests/does-not-exist.test.tsx"
+        cmd = "npm --prefix opscenter/kit test -- tests/does-not-exist.test.tsx"
         self.assertTrue(check_rules.core_ci_test_missing(cmd, ROOT))
         self.assertFalse(
-            check_rules.core_ci_test_missing("npm --prefix kit test -- tests/toast.test.tsx", ROOT)
+            check_rules.core_ci_test_missing(
+                "npm --prefix opscenter/kit test -- tests/toast.test.tsx", ROOT
+            )
         )
-        self.assertFalse(check_rules.core_ci_test_missing("python3 tokens/build.py --check", ROOT))
+        self.assertFalse(
+            check_rules.core_ci_test_missing("python3 opscenter/tokens/build.py --check", ROOT)
+        )
 
     def test_core_status_fails_then_passes_a_repo_check_rule(self):
         st = load("core_status_rc", "templates/overlay/scripts/core-status.py")
@@ -773,12 +787,6 @@ class TestWiring(Tree):
         self.assertEqual(st.repo_check_status(rule, {rule["ref"]: ["EXC-001"]})[0], "excepted")
         (root / "x.sh").write_text('kill "$PID"\n')
         self.assertEqual(st.repo_check_status(rule, {})[0], "pass")
-
-    def test_registry_marks_the_kit_proofs_as_needing_adoption(self):
-        reg = json.loads((ROOT / "standards/rules.json").read_text(encoding="utf8"))["rules"]
-        kit = [r for r in reg if r["check"].get("requires") == "ui-adoption"]
-        self.assertEqual(len(kit), 9)
-        self.assertTrue(all(r["check"]["kind"] == "core-ci" for r in kit))
 
     def test_enforced_tag_drops_an_untagged_test_proof(self):
         st = load("core_status_tag", "templates/overlay/scripts/core-status.py")

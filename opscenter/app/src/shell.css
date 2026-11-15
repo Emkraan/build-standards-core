@@ -216,7 +216,7 @@
   margin-bottom: var(--space-3);
 }
 
-/* ---- phones and small windows (web-ui.md section 11) ---- */
+/* ---- phones and small windows (the web-ui-standard doc) ---- */
 @media (max-width: 900px) {
   .sync-chip {
     display: none;
