@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-15 (v2.4.2, GitHub Actions pins refreshed in workflows and overlay templates)
+
+Renovate's grouped update of the GitHub Actions the core and its consumer templates use.
+
+- Changed: `actions/create-github-app-token` v3.3.0, `actions/setup-node` v7.1.0, `actions/setup-python` v7.1.0 and `actions/upload-artifact` v7.0.2 in this repository's workflows and in `templates/overlay/.github/workflows/` (`core-ci.yml`, `core-update.yml`, `lint-sweep.yml`), so a consumer gets the same pins on its next sync.
+- Migration: none by hand. Run `scripts/sync-core.py` to take the refreshed overlay workflows.
+
 ## 2026-11-15 (v2.4.1, dependency bumps need no changelog entry)
 
 `check-changelog.py` failed every Renovate pull request that touched a dependency manifest, so five dependency updates sat red and never merged.
