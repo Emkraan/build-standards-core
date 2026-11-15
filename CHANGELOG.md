@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-15 (v2.4.4, hold @axe-core/playwright below 4.14 until the kit has a label-in-name pass)
+
+Renovate's `@axe-core/playwright` 4.14 bump (#162) stayed red because 4.14 turns on the `label-content-name-mismatch` rule in the gallery axe check.
+
+- Changed: `renovate.json` holds `@axe-core/playwright` below 4.14.0. The rule flags the rail, prominent and compact buttons, the account trigger, the gallery build card, the list-controls direction button and every month grid day cell, so the kit needs one deliberate Label in Name (WCAG 2.5.3) pass before the bump can merge. Lift the hold in the change that does it.
+- Migration: none.
+
 ## 2026-11-15 (v2.4.3, the account trigger and month cell names include their visible text)
 
 Fix for the WCAG 2.5.3 Label in Name finding that the newer axe-core (4.14) raises in the gallery visual check (`label-content-name-mismatch`).
