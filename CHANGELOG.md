@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-15 (v2.4.3, the account trigger and month cell names include their visible text)
+
+Fix for the WCAG 2.5.3 Label in Name finding that the newer axe-core (4.14) raises in the gallery visual check (`label-content-name-mismatch`).
+
+- Fixed: the `AccountMenu` trigger's `aria-label` now ends with the visible sub line (role or email) after the display name, and each `MonthGrid` day cell's `aria-label` now lists the event names shown in the cell after the date and event count. The visible text is part of the accessible name, so speech-control users can say what they see.
+- Changed: the `AccountMenu` trigger name is `Account: <name>, <role or email>` instead of `Account: <name>`. A consumer test that finds the button by its exact old name must match the start of the name instead (`/^Account: <name>/`).
+- Migration: none beyond the test note above.
+- Tests: `tests/shell-switcher.test.tsx` finds the trigger by the start of its name; the kit's month grid, account and shell tests pass.
+
 ## 2026-11-15 (v2.4.2, GitHub Actions pins refreshed in workflows and overlay templates)
 
 Renovate's grouped update of the GitHub Actions the core and its consumer templates use.

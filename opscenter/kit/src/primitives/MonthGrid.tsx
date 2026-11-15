@@ -347,6 +347,8 @@ export function MonthGrid({
               fmtLong.format(parse(d.date)),
               d.today ? 'today' : '',
               list.length ? `${list.length} ${list.length === 1 ? 'event' : 'events'}` : '',
+              // Label in Name: the event names shown in the cell are part of its accessible name.
+              ...list.map((e) => e.label),
               hint ?? '',
             ].filter(Boolean).join(', ');
             return (

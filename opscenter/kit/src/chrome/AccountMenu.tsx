@@ -158,7 +158,7 @@ export function AccountMenu({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        aria-label={`${label}: ${displayName}`}
+        aria-label={`${label}: ${displayName}${sub ? `, ${sub}` : ''}`}
         onClick={() => setOpen((v) => !v)}
       >
         <Avatar name={displayName || identity.email || '?'} src={identity.photo || undefined} size="sm" />
