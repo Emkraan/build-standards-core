@@ -13,7 +13,7 @@ fails: a check that cannot see the change proves nothing, and a skipped check on
 request it should have stopped. Dependency bumps are the one other exemption: a pull request from
 a `renovate/` branch whose every changed file is a dependency manifest or lockfile changes no
 standard, so it needs no entry (2026-11-15: five Renovate pull requests sat red for weeks on this
-check). Run locally, the same case prints "skipped" and passes, so a clone
+check). A merge queue run skips it for the same PR-level reason. Run locally, the same case prints "skipped" and passes, so a clone
 without the base branch fetched stays usable.
 """
 
@@ -72,6 +72,12 @@ def main():
         print("usage: check-changelog.py <base-ref>", file=sys.stderr)
         return 2
     base = sys.argv[1]
+    if os.environ.get("GITHUB_EVENT_NAME") == "merge_group":
+        # The queue's synthetic branch has no PR head ref (so the dependency-bump rule above cannot
+        # see a renovate/ branch) and the PR already passed this check as a pull_request run: a
+        # queue entry that fails it again only ejects a PR that was ready (2026-11-15: #198 and #162).
+        print("check-changelog: skipped in a merge queue run (checked on the pull request)")
+        return 0
     verify = subprocess.run(
         ["git", "rev-parse", "--verify", "--quiet", base], capture_output=True, text=True
     )

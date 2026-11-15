@@ -392,7 +392,12 @@ class CoreChangelogFailsClosed(Work):
 
     def test_unknown_base(self):
         script = ROOT / "checks" / "check-changelog.py"
-        env = {k: v for k, v in os.environ.items() if k not in ("CI", "GITHUB_ACTIONS")}
+        env = {
+            k: v
+            for k, v in os.environ.items()
+            # a merge queue job also sets GITHUB_EVENT_NAME=merge_group, which the check skips on
+            if k not in ("CI", "GITHUB_ACTIONS", "GITHUB_EVENT_NAME")
+        }
         import subprocess
 
         local = subprocess.run(

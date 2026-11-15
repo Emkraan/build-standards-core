@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-15 (v2.5.1, the changelog check skips merge queue runs)
+
+Clean Renovate dependency pull requests were ejected from the merge queue because `check-changelog.py` ran again on the queue's synthetic branch and failed there.
+
+- Fixed: `check-changelog.py` returns success with a note when it runs for a `merge_group` event. The queue's branch has no pull request head ref, so the dependency-bump rule from v2.4.1 could not recognise a Renovate branch, and the pull request had already passed the check as a `pull_request` run. A pull request is checked exactly as before.
+- Migration: none.
+- Tests: 1 new in `tests/test_check_changelog.py` (a merge group run skips the check).
+
 ## 2026-11-15 (v2.5.0, tool launcher carousel gets depth, float and sheen, and image marks keep their shape)
 
 The tool launcher carousel read flat, and a finished-art mark was cropped to a circle inside a tinted disc.
