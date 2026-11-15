@@ -24,10 +24,12 @@ Steps, in order, all from this clone so every consumer runs the identical code:
        pin-file    the repo records the core as one KEY=<tag> line; open the bump pull request for the
                    repo's own merge path, and push optional pin metrics (hermes/pin_file.py)
        (the old mode name "local" is migrated to "ops-center")
-  5. Keep the account's upward report on the core current (hermes/report.py), when apply.report is on:
-     the candidates section and the changes-since-last-nightly section. A vendored repo is scanned at
-     its root against the core's kit, read-only; a vendored repo registered report only still gets
-     its machine record in step 4 (#117 G-031).
+  5. The optional report sections (hermes/report.py), only when report_repo names a private repository
+     and apply.report is on; with no report_repo (the default) it logs "no report_repo configured;
+     nothing filed". Upward improvements are plain issues on the core, opened by an agent, never by
+     this job. It keeps the candidates section and the changes-since-last-nightly section. A
+     vendored repo is scanned at its root against the core's kit, read-only; a vendored repo
+     registered report only still gets its machine record in step 4 (#117 G-031).
   6. Write the consumption feed ~/.config/build-standards-core/consumption.json (hermes/consumption.py),
      when apply.consumption is on: what every ops center's Core consumption panel shows. Read-only on
      every remote; written atomically.
@@ -454,7 +456,7 @@ class Run:
                 self.problems.append(f"ui {c.get('repo')}: {exc}")
 
     def upward(self) -> None:
-        """Step 5: the upward report, for every consumer that has a local clone."""
+        """Step 5: the optional report sections, only with a private report_repo (unset by default)."""
         if not (self.cfg["apply"].get("report", True) and self.cfg["apply"].get("ui", True)):
             return
         core_repo = os.environ.get("CORE_REPO", "")

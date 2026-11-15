@@ -372,30 +372,30 @@ class Feed(Work):
         self.assertTrue(any(n.startswith("peers:") for n in data["not_collected"]))
         self.assertEqual(len(data["consumers"]), 3)
 
-    def test_reports_are_read_from_the_intake_only(self):
-        # No private intake configured: no report issue is read from anywhere, the core included.
+    def test_reports_are_read_from_the_report_repo_only(self):
+        # No report_repo (the default): no report issue is read from anywhere, the core included.
         self.gh.calls.clear()
         data = consumption.build(
             self.cfg, self.core, "owner/core", "v0.60.0", self.gh, {}, lambda c: ""
         )
         self.assertIn(
-            "peers and account: no private intake configured (report_repo)", data["not_collected"]
+            "peers and account: no report_repo configured (optional)", data["not_collected"]
         )
         self.assertFalse([c for c in self.gh.calls if c[:3] == ["gh", "issue", "list"]])
-        # With an intake, issues come from it and pull requests still come from the core.
+        # With a report_repo, issues come from it and pull requests still come from the core.
         self.gh.calls.clear()
         consumption.build(
-            self.cfg, self.core, "org/core", "v0.60.0", self.gh, {}, lambda c: "", "owner/intake"
+            self.cfg, self.core, "org/core", "v0.60.0", self.gh, {}, lambda c: "", "owner/private"
         )
         issue_repos = {
             c[c.index("-R") + 1] for c in self.gh.calls if c[:3] == ["gh", "issue", "list"]
         }
         pr_repos = {c[c.index("-R") + 1] for c in self.gh.calls if c[:3] == ["gh", "pr", "list"]}
-        self.assertEqual(issue_repos, {"owner/intake"})
+        self.assertEqual(issue_repos, {"owner/private"})
         self.assertIn(
             "org/core", pr_repos
         )  # core pull requests (consumer repos list their sync PRs too)
-        self.assertNotIn("owner/intake", pr_repos)
+        self.assertNotIn("owner/private", pr_repos)
 
 
 class FeedWithCi(Feed):

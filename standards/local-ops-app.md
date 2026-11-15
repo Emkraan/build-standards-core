@@ -403,7 +403,8 @@ For every consumer registered on the machine (one row per `consumer.json` entry)
   same name as a kit export, or one that wraps it), each with its adoption-risk level when this
   account's consumer report gives one in its risk table.
 
-For the account:
+For the account, only when the optional `report_repo` is set (unset by default, the feed lists both
+as `not_collected`; the upward path itself is a plain issue on the core, CONTRIBUTING.md):
 
 - this account's consumer-report items waiting for an owner decision;
 - approved items this account owns with no core pull request open for them yet;

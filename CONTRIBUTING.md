@@ -40,17 +40,14 @@
 - Repository secrets: `DEPLOY_APP_PRIVATE_KEY` (with the variable `DEPLOY_APP_ID`) is the private key of the
   GitHub App the merge workflow `automerge.yml` signs in as. It is the only secret the workflows read; the
   built-in `GITHUB_TOKEN` is the rest. `repo_checks.py` (RC010) fails a workflow secret named nowhere in the docs.
-- Never put a GitHub closing keyword (`close`, `closes`, `closed`, `fix`, `fixes`, `fixed`,
-  `resolve`, `resolves`, `resolved`) in front of a reference to a `consumer-report` issue in a pull
-  request title, body or commit message: merging would close that account's report. Link it with
-  `Refs #N` or `for #N`. `check-closing-refs.py` fails the pull request otherwise, and fails in CI
-  when it cannot read a referenced issue's labels.
+- Declare the issue outcome in every pull request body: `Closes #N` when the change finishes the issue,
+  `Refs #N` when it only moves it, or `No issue: <reason>` when there is none.
 - Authority: the repo owner is the final say on every standard, and every consumer account is that
-  same person. Pull requests here come from the upward path below: a build reports, the owner
-  approves items, and the account that owns an approved item opens the pull request and merges it
-  once `ci` and `visual` pass; no second reviewer is required. The checks and the merge rule
-  below take the place of review. Do not wait for another account to act, and do not leave a
-  shareable improvement in a consumer: bring it up through its report.
+  same person. Pull requests here come from the upward path below: a consumer's agent opens a plain
+  issue, the owner approves the item, and the account that owns an approved item opens the pull
+  request and merges it once `ci` and `visual` pass; no second reviewer is required. The checks and
+  the merge rule below take the place of review. Do not wait for another account to act, and do not
+  leave a shareable improvement in a consumer: open an issue for it.
 - Never rebase. Work from a branch cut from the current `origin/main`, in your own worktree, and
   bring in what landed since with a merge: `git fetch origin main` then `git merge FETCH_HEAD`, before
   you push and again before you merge, then re-run the checks. Never resolve a conflict by taking your
@@ -69,64 +66,26 @@
 
 ## Reporting from a consumer
 
-A build's agent never opens a pull request on this repo, and this repo never reaches into a
-build. Work moves between them through one channel in each direction: down, the nightly's
-overlay pull request or direct apply; up, the account's single open `consumer-report` issue,
-created from
-the `consumer-report` issue template in the owner's private intake repository (reports are never filed in this public repository). The
-nightly keeps two sections current on its own, sanitised, each between its own pair of markers:
-`nightly:candidates` (kit-role candidates) and `nightly:changes` (what changed since the previous
-nightly). It creates the issue the first time it finds something. Everything else in the body
-belongs to the consumer's agent: update it in place, keep both marker sections intact, and never
-edit between the markers.
+A build's agent never opens a pull request on this repo before approval, and this repo never
+reaches into a build. Work moves between them through one channel in each direction: down, the
+nightly's overlay pull request or direct apply; up, a plain issue on this repository. The nightly
+files nothing upward by itself (its optional `report_repo` sections are off by default, CONSUMING.md
+section 7). When a consumer's agent finds a shareable improvement, it opens one
+sanitised issue here describing it by role, the owner approves the item in the issue, and the
+account that owns the approved item opens the pull request linking it with `Refs #N` or
+`Closes #N`. A pull request that arrives with no approved item behind it is closed unmerged.
 
-**Producing the report.** The shared Hermes skill `core-consumer-report`
-([hermes/skills/core-consumer-report/SKILL.md](hermes/skills/core-consumer-report/SKILL.md)) is the
-procedure; the one-line command is in [CONSUMING.md](CONSUMING.md) section 7. An agent without
-Hermes follows the same file by hand. No tool is a required contributor: any agent that follows
-the skill produces the same report.
+**Opening the issue.** The shared Hermes skill `core-improvement-issue`
+([hermes/skills/core-improvement-issue/SKILL.md](hermes/skills/core-improvement-issue/SKILL.md)) is
+the procedure; the one-line command is in [CONSUMING.md](CONSUMING.md) section 7. An agent without
+Hermes follows the same file by hand. One improvement per issue: search the open issues first and
+add evidence to one that already covers it.
 
-**Why the report is data, not prose.** The goal is one premium design from the core on every
-consumer (product repos, local ops centers, multi-module shells, hubs, future apps), with each
-account improving it over time. Where a consumer's design is ahead of the core, the report must
-describe it precisely enough for the core to be raised to it; and it must describe the consumer's
-functionality precisely enough that adopting a core part never breaks a feature.
-
-**The report outline** (the template's sections, in order):
-
-- **a. Machine and ways in.** `consumer.json` with names replaced by role labels; the nightly
-  jobs; per repo the way it takes the core, by neutral label (`workflow`, `apply-at-once` for the
-  ops-center mode, `vendored`, `agent-home`),
-  the pinned release and how far behind it is; `core-status --json` counts (pass, proved, fail,
-  unverified).
-- **b. Design inventory per app.** Tokens used and any local token or accent work; the shell
-  (layout, rail, header, strip, home or hub, module switching); every UI part with its source
-  (kit, adapter over kit, local); interaction patterns (palette, shortcuts, toasts, dialogs,
-  motion); typography and density; light and dark; layout-only screenshots of every main screen
-  in both themes.
-- **c. Design diff against the core kit** (only for a repo that still carries a `kit-core/` copy), at the pinned release, part by part: one row per kit
-  part and per local part, verdict same, local is better, core is better, missing in core or
-  missing locally. Each "local is better" or "missing in core" row is a proposal item `D-nnn`.
-- **d. Functionality inventory per app,** the parts each feature depends on, and the adoption
-  risk table: what breaks or changes if a local part is replaced by the current kit part.
-- **e. Practice and CI:** workflows, gates, scripts and conventions that beat the core (`P-nnn`),
-  and each difference from a core rule with a verdict on which side should change.
-- **f. Gaps in the core's instructions** (`G-nnn`): what it says in one place and does in
-  another, and what it asks for that a consumer cannot do.
-- **g. Changes since the last report:** the nightly's `nightly:changes` section.
-
-**Proposal items.** Every item has an id, a title, ready or settling (settling names the open
-question), its evidence, and what changes in the core if it is approved. Ids are scoped to the
-account (`D-001`, `P-001`, `G-001`), never reused and never renumbered, so the owner can approve or
-reject each one in a comment ("approve D-003"; "reject P-002: reason"). Anything the agent could
-not collect is written as "not collected" with the reason; a report never estimates a row.
-A report in the older v1 shape that numbered its gaps `D1`, `D2` carries them over as the `G` item with the same number (`D1` is `G-001`) and continues after the highest; the skill says how.
-
-**Labels and approval.** The issue carries `consumer-report`; a proposal not ready to adopt
-carries `settling` until its open questions close. The owner approves items in the issue. An
-approved item is moved by the account that owns the change: that account opens the core pull
-request linking the issue. Nothing lands from a report without that approval, and a pull
-request that arrives with no approved item behind it is closed unmerged.
+**What the issue holds.** What changes in the core, why (what went wrong or was slower without it
+on the consumer), the evidence (commands run, code read, before-and-after ratios), the proposed
+change with any machine-only value as a parameter, and the adoption risk for other consumers. A
+claim that could not be checked is written as "not checked" with the reason; an issue never
+estimates.
 
 **Does it belong in the core?** "Contribute back every shareable improvement" and
 "machine-specific things stay local" collide the moment a real improvement is half one and
@@ -134,7 +93,7 @@ half the other. The test:
 
 > Would this help another consumer's agent that knows nothing about your machine, carrying
 > no name, path or value that belongs to your estate? Both yes: propose it. Either no: keep
-> it local, and if it is the core's rule that is wrong, file the difference as a report item
+> it local, and if it is the core's rule that is wrong, open an issue for the difference
 > instead.
 
 Parameterise before proposing. A rule that names your tool, host, tenant or app is local by
@@ -144,26 +103,20 @@ business's values into generic rules). A value that is only ever yours belongs i
 `standards-local/parameters.md` or the machine-local `consumer.json`, never in a shipped
 file.
 
-**Sanitising evidence.** Screenshots carry layout only: replace every letter and digit, remove
-text a stylesheet draws, freeze the page as a static clone so it cannot re-render, blur what
-cannot be replaced (the skill's step 2.7 is the recipe), and keep out account names, plan tiers, fleet sizes and hostnames.
-Measured numbers go in as ratios, deltas or before-and-after pairs, not absolutes: a count
-that only your estate has is a name (the core-status rule counts are the core's own rules and
-go in as they are). Repos and apps are named by role only (product app, local ops center,
-multi-module shell, hub, agent home). Check the draft file before posting, from the core clone:
-`python3 checks/check-sanitised.py --file <draft>`, `python3 checks/check-consumer-neutral.py
---file <draft>`, and confirm it is plain ASCII; post only what passes. The checks see only the
-file given to them, so a comment is checked the same way before it is posted. Screenshots are
-hosted in a secret gist and linked by raw URL: the login in that URL is the one account name both
-checks accept in file mode, because it is the posting account, already public as the issue's
-author. The body has a hard limit of 65,536 characters; whole tables move to a markdown file in the
-gist when it does not fit, linked by the same raw URL form (`.../raw/<file>.md`, the login allowed
-there too), and the items and nightly markers stay in the body.
+**Sanitising.** This repository is public, so an issue carries no repo, app, host, address,
+employer, person, account, tenant, plan, path, token or key. Repos and apps are named by role only
+(product app, local ops center, multi-module shell, hub, agent home). Measured numbers go in as
+ratios, deltas or before-and-after pairs, not absolutes: a count that only your estate has is a
+name (the core-status rule counts are the core's own rules and go in as they are). A screenshot is
+rarely needed; when one is, it carries layout only, scrubbed with `checks/redact_page.js` and
+checked by eye. Check the draft file before posting, from the core clone: `python3
+checks/check-sanitised.py --file <draft>`, `python3 checks/check-consumer-neutral.py --file
+<draft>`, and confirm it is plain ASCII; post only what passes. The checks see only the file given
+to them, so the title and every comment are checked the same way before they are posted.
 
 **When the core took something from your repo.** The provenance stays with your account, and the pull
 request description records what was adopted, adapted or rejected. It is not a subscription. The core
 does not pull your repo's later changes, and your repo is not exempt from the core. Both directions run
-through this repo like any other consumer's: your repo's later changes arrive as report items the owner
+through this repo like any other consumer's: your repo's later changes arrive as issues the owner
 approves, then one pull request per change with its evidence; a wrong core copy of a contributed design
-is fixed by a report item, not a direct write.
-
+is fixed through an issue, not a direct write.

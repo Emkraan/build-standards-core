@@ -92,6 +92,7 @@ jobs:
           name: visual-baselines
           path: opscenter/kit/visual/baselines/linux
           if-no-files-found: error
+          retention-days: 7
       - name: Upload the report and diffs
         if: ${{ always() && steps.compare.outcome == 'failure' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -101,6 +102,7 @@ jobs:
             opscenter/kit/visual/report
             opscenter/kit/visual/results
           if-no-files-found: ignore
+          retention-days: 7
       # The built gallery, so a reviewer can open the reference without building it.
       - name: Upload the gallery
         if: ${{ github.event_name == 'pull_request' }}
@@ -109,3 +111,4 @@ jobs:
           name: kit-gallery
           path: opscenter/kit/dist-gallery
           if-no-files-found: error
+          retention-days: 7
