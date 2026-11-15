@@ -452,7 +452,7 @@ describe('AccountMenu', () => {
 
   it('shows the name and role in the trigger and the email when there is no role', () => {
     renderMenu();
-    const trigger = screen.getByRole('button', { name: 'Account: Ada Lovelace' });
+    const trigger = screen.getByRole('button', { name: /^Account: Ada Lovelace/ });
     expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
     expect(within(trigger).getByText('Engineer')).toBeTruthy();
@@ -460,26 +460,26 @@ describe('AccountMenu', () => {
 
   it('falls back to the email local part and shows the email as the second line', () => {
     renderMenu({ identity: { email: 'grace@example.com' } });
-    const trigger = screen.getByRole('button', { name: 'Account: grace' });
+    const trigger = screen.getByRole('button', { name: /^Account: grace/ });
     expect(within(trigger).getByText('grace@example.com')).toBeTruthy();
   });
 
   it('opens a panel with the identity facts, extra facts and the theme choice', async () => {
     const user = userEvent.setup();
     renderMenu({ facts: [{ label: 'Access', value: 'Via Support group', title: 'group-7' }, { label: 'Last seen', value: 'Oct 22, 9:00 AM' }] });
-    await user.click(screen.getByRole('button', { name: 'Account: Ada Lovelace' }));
+    await user.click(screen.getByRole('button', { name: /^Account: Ada Lovelace/ }));
     const panel = screen.getByRole('dialog', { name: 'Account' });
     expect(within(panel).getByText('ada@example.com')).toBeTruthy();
     expect(within(panel).getByText('Engineer')).toBeTruthy();
     expect(within(panel).getByText('Via Support group').getAttribute('title')).toBe('group-7');
     expect(within(panel).getByText('Last seen')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Account: Ada Lovelace' }).getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('button', { name: /^Account: Ada Lovelace/ }).getAttribute('aria-expanded')).toBe('true');
   });
 
   it('changes the theme through the segmented choice and marks the pressed one', async () => {
     const user = userEvent.setup();
     renderMenu();
-    await user.click(screen.getByRole('button', { name: 'Account: Ada Lovelace' }));
+    await user.click(screen.getByRole('button', { name: /^Account: Ada Lovelace/ }));
     const group = screen.getByRole('group', { name: 'Theme' });
     await user.click(within(group).getByRole('button', { name: 'Dark' }));
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
@@ -491,7 +491,7 @@ describe('AccountMenu', () => {
   it('works without a ThemeProvider when the theme choice is off', async () => {
     const user = userEvent.setup();
     render(<AccountMenu identity={IDENTITY} showTheme={false} />);
-    await user.click(screen.getByRole('button', { name: 'Account: Ada Lovelace' }));
+    await user.click(screen.getByRole('button', { name: /^Account: Ada Lovelace/ }));
     expect(screen.queryByRole('group', { name: 'Theme' })).toBeNull();
   });
 
@@ -499,7 +499,7 @@ describe('AccountMenu', () => {
     const user = userEvent.setup();
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     renderMenu({ links: [{ key: 'a', label: 'My profile', href: 'https://example.com/me' }, { key: 'b', label: 'Bad', href: 'javascript:alert(1)' }] });
-    await user.click(screen.getByRole('button', { name: 'Account: Ada Lovelace' }));
+    await user.click(screen.getByRole('button', { name: /^Account: Ada Lovelace/ }));
     const ok = screen.getByRole('link', { name: 'My profile' });
     expect(ok.getAttribute('href')).toBe('https://example.com/me');
     expect(ok.getAttribute('target')).toBe('_blank');
@@ -511,20 +511,20 @@ describe('AccountMenu', () => {
     const user = userEvent.setup();
     const onSignOut = vi.fn().mockResolvedValue(undefined);
     const { unmount } = renderMenu({ onSignOut });
-    await user.click(screen.getByRole('button', { name: 'Account: Ada Lovelace' }));
+    await user.click(screen.getByRole('button', { name: /^Account: Ada Lovelace/ }));
     await user.click(screen.getByRole('button', { name: 'Sign out' }));
     expect(onSignOut).toHaveBeenCalledTimes(1);
     await vi.waitFor(() => expect(screen.queryByRole('dialog', { name: 'Account' })).toBeNull());
     unmount();
     renderMenu();
-    await user.click(screen.getByRole('button', { name: 'Account: Ada Lovelace' }));
+    await user.click(screen.getByRole('button', { name: /^Account: Ada Lovelace/ }));
     expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
   });
 
   it('keeps the panel open and says so when sign out fails', async () => {
     const user = userEvent.setup();
     renderMenu({ onSignOut: () => Promise.reject(new Error('offline')) });
-    await user.click(screen.getByRole('button', { name: 'Account: Ada Lovelace' }));
+    await user.click(screen.getByRole('button', { name: /^Account: Ada Lovelace/ }));
     await user.click(screen.getByRole('button', { name: 'Sign out' }));
     expect((await screen.findByRole('alert')).textContent).toBe('Could not sign out. Try again.');
     expect(screen.getByRole('dialog', { name: 'Account' })).toBeTruthy();
@@ -539,7 +539,7 @@ describe('AccountMenu', () => {
         <button type="button">Elsewhere</button>
       </ThemeProvider>,
     );
-    const trigger = screen.getByRole('button', { name: 'Account: Ada Lovelace' });
+    const trigger = screen.getByRole('button', { name: /^Account: Ada Lovelace/ });
     await user.click(trigger);
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog', { name: 'Account' })).toBeNull();
@@ -553,7 +553,7 @@ describe('AccountMenu', () => {
     const user = userEvent.setup();
     const { container } = renderMenu({ facts: [{ label: 'Access', value: 'Via group' }], links: [{ key: 'a', label: 'Profile', href: '/me' }], onSignOut: () => undefined });
     await noAxe(container);
-    await user.click(screen.getByRole('button', { name: 'Account: Ada Lovelace' }));
+    await user.click(screen.getByRole('button', { name: /^Account: Ada Lovelace/ }));
     await noAxe(document.body);
   });
 });
