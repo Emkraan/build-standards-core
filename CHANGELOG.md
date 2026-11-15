@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-15 (v2.5.0, tool launcher carousel gets depth, float and sheen, and image marks keep their shape)
+
+The tool launcher carousel read flat, and a finished-art mark was cropped to a circle inside a tinted disc.
+
+- Changed: side tiles tilt in depth (a coverflow `rotateY` driven by `--tl-off`, with `perspective` on the track) so the ring reads as a ring. The centred tile floats, pops once as it arrives and carries a slow sheen sweep. All timing uses the `--dur-*` and `--ease-*` tokens and the sheen colour is a `color-mix` of `--text-primary`.
+- Changed: a tile face or rail switch tile whose mark is an image is a squircle with no tinted disc, so supplied art keeps its own plate. Initials and SVG icon marks keep the circle. The tile mark is 6rem and the face 5.25rem.
+- Reduced motion: the float, pop and sheen join the existing no-animation list; the static tilt stays so the layout is identical.
+- Migration: none. A mark that relied on the circular crop must carry its own shape.
+
 ## 2026-11-15 (v2.4.4, hold @axe-core/playwright below 4.14 until the kit has a label-in-name pass)
 
 Renovate's `@axe-core/playwright` 4.14 bump (#162) stayed red because 4.14 turns on the `label-content-name-mismatch` rule in the gallery axe check.
