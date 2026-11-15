@@ -25,5 +25,23 @@ class DependencyBump(unittest.TestCase):
         self.assertFalse(cc.is_dependency_bump([], "renovate/x"))
 
 
+class MergeQueue(unittest.TestCase):
+    def test_a_merge_group_run_skips_the_check(self):
+        import os
+        import subprocess
+        import sys
+
+        env = dict(os.environ, GITHUB_EVENT_NAME="merge_group")
+        out = subprocess.run(
+            [sys.executable, str(ROOT / "checks/check-changelog.py"), "origin/does-not-exist"],
+            capture_output=True,
+            text=True,
+            env=env,
+            cwd=ROOT,
+        )
+        self.assertEqual(out.returncode, 0)
+        self.assertIn("skipped in a merge queue run", out.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()
