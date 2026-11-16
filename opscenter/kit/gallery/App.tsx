@@ -11,6 +11,7 @@ import {
   AccentProvider,
   AccountMenu,
   AnnouncementStack,
+  NoticeTray,
   AppShell,
   Avatar,
   Badge,
@@ -1563,6 +1564,22 @@ function ChromeSpecimen({ releases, version }: { releases: readonly ReleaseNote[
             ),
           },
           { id: 'gallery-new', tone: 'info', title: 'New reports are live', body: 'Compliance trends now cover 90 days.' },
+        ]}
+      />
+      <NoticeTray
+        notices={[
+          { id: 'gallery-n1', tone: 'info', title: 'A restart is pending' },
+          {
+            id: 'gallery-n2',
+            tone: 'critical',
+            title: 'The nightly bundle missed its schedule',
+            detail: <p>It last ran 3 hours ago and runs every hour.</p>,
+            action: (
+              <Button size="sm" variant="secondary">
+                Run now
+              </Button>
+            ),
+          },
         ]}
       />
       <div className="gallery-row">

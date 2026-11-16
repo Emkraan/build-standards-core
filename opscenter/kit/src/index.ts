@@ -150,7 +150,7 @@ export type { TipAttributes, TipSide } from './primitives/Tooltip';
 export { GlossaryProvider, Term, glossaryEntry, useGlossary } from './primitives/Glossary';
 export type { Glossary, GlossaryEntry, GlossaryProviderProps, TermProps } from './primitives/Glossary';
 export { When, formatWhen, formatWhenAbsolute } from './primitives/When';
-export type { WhenProps } from './primitives/When';
+export type { WhenProps, WhenWording } from './primitives/When';
 export { HelpLink } from './primitives/HelpLink';
 export type { HelpLinkProps } from './primitives/HelpLink';
 export { STEP_STATE_LABELS, Stepper } from './primitives/Stepper';
@@ -213,6 +213,8 @@ export {
   visibleAnnouncements,
 } from './chrome/Announcement';
 export type { Announcement, AnnouncementBannerProps, AnnouncementStackProps, AnnouncementTone } from './chrome/Announcement';
+export { Notice, NoticeTray, sortNotices } from './chrome/NoticeTray';
+export type { NoticeItem, NoticeTone, NoticeTrayProps } from './chrome/NoticeTray';
 export { DEFAULT_MAX_PINS, PinButton, createMemoryPinsStore, isPinned, pageAt, sanitizePins, usePins } from './chrome/PinButton';
 export type { DeclaredPage, MemoryPinsStoreOptions, Pin, PinButtonProps, PinsSnapshot, PinsStore } from './chrome/PinButton';
 export { ActionsBlock, FeedBlock, HomeItemRow, HubLink, PinnedBlock, ToolChip, homeHref } from './chrome/HomeBlocks';

@@ -1,6 +1,6 @@
 # Ops Center Layout Standard
 
-Version: 1.3 | Last reviewed: 2026-11-10 | Status: current | Scope: local-ops (operator consoles)
+Version: 1.4 | Last reviewed: 2026-11-16 | Status: current | Scope: local-ops (operator consoles)
 
 How an ops center is organised and how it starts work: what a hub is, how its items are grouped, what
 the Overview shows, where every count comes from, and what a Run button promises. The ops center
@@ -65,6 +65,21 @@ Web Design System (the web-ui-standard doc) (tone, tabs, dialogs), [Automation S
 16. **A change that takes minutes to reach its destination shows its rollout where it is reviewed.** A change that applies at once but takes minutes to reach its destination (an edge, a cache, a fleet) shows its in-flight rollout where the pull request or the apply is reviewed: what is still rolling out, how long ago the change applied, and when it is expected to land, so a reader does not test the old behaviour and call the change broken.
    - Prevents: a verified change reported as not working because it had not reached the destination yet.
    - Acceptance (test): a test renders the in-flight state from a recent apply and shows nothing once the expected time has passed.
+17. **The header names the open page as one title and one trail.** The page header holds a single title and a breadcrumb trail of group, hub, section and item, built from the one navigation list that also feeds the rail and the command palette. There is no eyebrow line above the title and no second title inside the page.
+   - Prevents: a page whose location is spread over an eyebrow, a title and a tab row that name it three ways.
+   - Acceptance (test): a test builds the trail for every route from the navigation list and asserts that the header, the palette entry and the trail agree, and that no page renders a second page title.
+18. **System notices share one tray above every page.** A notice that rides above every page (a fallback in use, a stuck automation window, a pending restart, a collector that missed its schedule) renders in one tray. Each notice is one fixed-height row with a tone icon, a one-line title, at most one action button and a chevron that opens the detail. The order is fixed, a notice has no dismiss control because it clears when its condition ends, the server decides the condition, and an empty tray takes no space. A page alert that carries its own long copy is not a notice.
+   - Prevents: stacked banners that each push the page down by a different height, and a lapse that hides in one page's footer.
+   - Acceptance (test): a render test with zero, one and three notices asserts the row count, the order, the absence of a dismiss control and a zero-height empty tray.
+19. **The landing page opens on an attention row that reads the badge counts.** The top of the landing page is a row of tiles, one per hub that can hold work for the owner. Each tile reads the count function that feeds the rail badge (rule 4), so a tile and its badge cannot disagree.
+   - Prevents: a tile that says 3 beside a badge that says 5.
+   - Acceptance (test): a test feeds one problem list to the rail and the tiles and asserts every tile equals its badge.
+20. **Everything moving now has one Live view.** The landing hub has a Live tab that lists every running, waiting, stuck, just-finished and needs-the-owner item across the lanes the ops center watches, built by the server from each lane's own state with one fixed state vocabulary. A running item shows a spinner and never a failure tone (rule 5).
+   - Prevents: asking five pages what is in flight, and a lane that is only visible when it fails.
+   - Acceptance (test): a test feeds one item per state from two lanes and asserts the grouping, the state words and that a running item carries no failure tone.
+21. **Every time on screen is in the operator's zone, from one module.** A clock time is shown in the operator's configured time zone (a parameter) with its abbreviation, never in UTC and never with a trailing Z. A relative time is spelled out ("5 days ago", never "5 d ago") with the exact time in the tip. One module formats every time, so a log or API stamp is converted before it is quoted.
+   - Prevents: a UTC stamp beside a local one on the same page, and a reader doing the conversion in their head.
+   - Acceptance (test): a test asserts each formatter returns the zone abbreviation and never UTC wording, and a source scan fails on a sliced stamp with a trailing Z or visible UTC wording.
 
 ---
 
@@ -109,3 +124,4 @@ Decision of 2026-11-10 (ops center build for #255; the owner may overrule it). A
 | Version | Date | Change |
 |---|---|---|
 | 1.3 | 2026-11-10 | Section 6: live automation sits in Operations, Automation, as the item "Live automation" (not a new section); an enabled dark launch leaves the Action Center and gets a Disable switch; the item is hidden without a dark launch registry. No rule added. |
+| 1.4 | 2026-11-16 | Rules 17 to 21: one title and trail in the header, one notice tray, an attention row that reads the badge counts, one Live view, and the time rule. The push channel is in Local Ops App section 20. |

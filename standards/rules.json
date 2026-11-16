@@ -241,6 +241,76 @@
       "acceptance": "From a fixture consumption.json the panel renders every row and list; another format shows an error state; an approval calls only pr ready, pr merge or issue comment, never a push to a default branch; no approval control on an apply-at-once row or on a pull request whose checks fail."
     },
     {
+      "id": "local-ops-app.20.1",
+      "ref": "local-ops-app.md 20.1",
+      "title": "The push stream carries versions, never payloads",
+      "statement": "A server-sent-events stream keeps a version per topic and sends a hello with every topic and version on connect, a topic frame when a version moves and a heartbeat. It never calls an upstream system and carries no data, it caps the open streams, and it drops a stream whose queue fills.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a test connects 25 streams and the 25th is refused, a first-seen topic sends no frame, a changed topic sends one frame, and a full queue closes that stream only."
+    },
+    {
+      "id": "local-ops-app.20.2",
+      "ref": "local-ops-app.md 20.2",
+      "title": "A topic version is a hash of the content without its stamps",
+      "statement": "A topic version is a hash of the body without the keys that change on every read, and a topic that publishes more than 6 times in 60 seconds is held quiet until it settles.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a body that differs only by a stamp key never publishes, a changed body publishes once, and a topic that flaps is held quiet."
+    },
+    {
+      "id": "local-ops-app.20.3",
+      "ref": "local-ops-app.md 20.3",
+      "title": "Presence gates every upstream read",
+      "statement": "A warm loop reads a declared endpoint at its tab's interval only while at least one tab is visible, accepts only a bounded path under /api/ with no query, and only the server's own warm read decides that an endpoint changed.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "with a fake fetch, no call is made with no visible tab, a presence body with a query path is refused, and a tab's own read never publishes."
+    },
+    {
+      "id": "local-ops-app.20.4",
+      "ref": "local-ops-app.md 20.4",
+      "title": "A source change is bundled when it happens, not on a timer",
+      "statement": "A watcher runs the bundler once the source files have held still for a short quiet period, under the bundler's own lock, rate limited per interval and per window, and a run skipped because the lock is held is not an error.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "with a fake clock, a burst of changes runs the bundler once after the quiet period, never more than the rate limit allows, and a held lock is not an error."
+    },
+    {
+      "id": "local-ops-app.20.5",
+      "ref": "local-ops-app.md 20.5",
+      "title": "The client falls back to polling by itself",
+      "statement": "One event source serves the app, a store reloads once when its topic moves and only while its tab is visible, its timer stretches while the channel is connected, a dropped channel restores the store's own interval at once, and the header says live or polling.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a client test asserts a store reloads on its topic, stretches its timer while connected and restores its own interval when the channel drops."
+    },
+    {
       "id": "scripting-powershell.1.1",
       "ref": "scripting-powershell.md 1.1",
       "title": "Workload identity, never a stored secret",
@@ -3040,6 +3110,76 @@
         "kind": "test"
       },
       "acceptance": "a test renders the in-flight state from a recent apply and shows nothing once the expected time has passed."
+    },
+    {
+      "id": "ops-center-layout.1.17",
+      "ref": "ops-center-layout.md 1.17",
+      "title": "The header names the open page as one title and one trail",
+      "statement": "The header names the open page as one title and one trail. The page header holds a single title and a breadcrumb trail of group, hub, section and item, built from the one navigation list that also feeds the rail and the command palette, with no eyebrow line and no second title inside the page.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a test builds the trail for every route from the navigation list and asserts that the header, the palette entry and the trail agree, and that no page renders a second page title."
+    },
+    {
+      "id": "ops-center-layout.1.18",
+      "ref": "ops-center-layout.md 1.18",
+      "title": "System notices share one tray above every page",
+      "statement": "System notices share one tray above every page. Each notice is one fixed-height row with a tone icon, a one-line title, at most one action and a chevron that opens the detail, in a fixed order, with no dismiss control because it clears when its condition ends. The server decides the condition and an empty tray takes no space.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a render test with zero, one and three notices asserts the row count, the order, the absence of a dismiss control and a zero-height empty tray."
+    },
+    {
+      "id": "ops-center-layout.1.19",
+      "ref": "ops-center-layout.md 1.19",
+      "title": "The landing page opens on an attention row that reads the badge counts",
+      "statement": "The landing page opens on an attention row that reads the badge counts. Each tile reads the count function that feeds the rail badge, so a tile and its badge cannot disagree.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a test feeds one problem list to the rail and the tiles and asserts every tile equals its badge."
+    },
+    {
+      "id": "ops-center-layout.1.20",
+      "ref": "ops-center-layout.md 1.20",
+      "title": "Everything moving now has one Live view",
+      "statement": "Everything moving now has one Live view. The landing hub has a tab that lists every running, waiting, stuck, just-finished and needs-the-owner item across the watched lanes, built by the server with one fixed state vocabulary, and a running item never carries a failure tone.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a test feeds one item per state from two lanes and asserts the grouping, the state words and that a running item carries no failure tone."
+    },
+    {
+      "id": "ops-center-layout.1.21",
+      "ref": "ops-center-layout.md 1.21",
+      "title": "Every time on screen is in the operator's zone, from one module",
+      "statement": "Every time on screen is in the operator's zone, from one module. A clock time carries the operator's configured zone abbreviation and is never UTC or a trailing Z, a relative time is spelled out with the exact time in the tip, and one module formats every time.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a test asserts each formatter returns the zone abbreviation and never UTC wording, and a source scan fails on a sliced stamp with a trailing Z or visible UTC wording."
     },
     {
       "id": "cmtrace-logging.13.1",

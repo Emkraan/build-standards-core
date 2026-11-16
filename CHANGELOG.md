@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-16 (v2.7.0, ops center server: the push channel)
+## 2026-11-16 (v2.8.0, ops center server: the push channel)
 
 The server part of Local Ops App section 20 (issue 279). One event stream tells every open tab which topic moved, and the tab reads the endpoint it already knows.
 
@@ -8,6 +8,23 @@ The server part of Local Ops App section 20 (issue 279). One event stream tells 
 - Changed: the registry has a `stream` route kind (a GET whose handler returns an object with `serve` and `close`), `app.py` serves it with no Content-Length and runs the loop as a background job, and a registry `on_response` hook sees every 200 GET answer.
 - Migration: none for a consumer that does nothing. The stream and the loop are idle until a tab connects.
 - Tests: 37 new in `live_bus_test.py`, `live_watch_test.py` and `live_routes_test.py`.
+
+## 2026-11-16 (v2.7.0, ops center kit: notice tray and spelled-out time)
+
+Kit parts for Ops Center Layout rules 18 and 21 (issue 279).
+
+- Added: `NoticeTray`, `Notice` and `sortNotices` (`src/chrome/NoticeTray.tsx`). One 44 px row per system notice with a tone icon, a one-line title, at most one action and a chevron that opens the detail. Most severe first, no dismiss control, no element while the list is empty. Styles are in `kit.css`, a gallery specimen sits in the Chrome section.
+- Added: `wording` on `When` and a second argument on `formatWhen`. `'long'` writes "3 days ago" and "in 5 minutes" with the same thresholds. The default `'short'` is unchanged.
+- Tests: `tests/notice-tray.test.tsx` (order, empty, toggle, one action, no dismiss, roles, axe) and the long wording cases.
+
+## 2026-11-16 (v2.6.0, ops center standard: one title and trail, one notice tray, attention row, Live view, time rule, push channel)
+
+A consumer report (issue 279) described how one ops center was reorganised and measured. This entry carries its rules as standard text. The kit parts and the server module follow as separate pull requests.
+
+- Added: Ops Center Layout rules 17 to 21. The header names the open page as one title and one trail, system notices share one tray, the landing page opens on an attention row that reads the badge counts, everything moving now has one Live view, and every time is in the operator's zone from one module. Ops Center Layout is version 1.4.
+- Added: Local Ops App section 20, the push channel. A server-sent-events stream carries topic versions and never payloads, a version is a hash of the content without its stamps, presence gates every upstream read, a source change is bundled when it happens, and the client falls back to polling by itself. Local Ops App is version 1.4. Section 15 stays the polling budget the channel falls back to.
+- Added: 10 rules in `standards/rules.json` (`ops-center-layout.1.17` to `1.21`, `local-ops-app.20.1` to `20.5`), all level must and check kind test. They are not added to `opscenter/applicability.json`, which lists only rules the owner has decided apply.
+- Migration: none. A consumer's next core status run reports the new rules as unverified until it carries the tests the acceptance text names.
 
 ## 2026-11-15 (v2.5.1, the changelog check skips merge queue runs)
 
