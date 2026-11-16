@@ -110,6 +110,15 @@
       "plugin": "quota",
       "install_hint": "Bundled with Hermes; enable it with hermes plugins enable quota. Leave the optional providers off unless you use them.",
       "reason": "Shows per-provider quota and rate-limit status from a local cache, so a consumer sees spend pressure before a limit hits. It makes no model calls and each provider check is opt-in. Optional; recorded so the audit does not flag it as undecided."
+    },
+    {
+      "id": "phone-push",
+      "kind": "plugin",
+      "decision": "adapt",
+      "required": false,
+      "plugin": "redde-push",
+      "install_hint": "Install the plugin directory from a reviewed full commit (never a branch) into the agent home plugins folder, record the commit in a pin file, enable it with hermes plugins enable, and run the installer's check mode after every change. See configurations.md section 17 and standards/hermes-api-access.md section 6.",
+      "reason": "Pushes alerts to a phone app while it is closed through the API server, so no dashboard or chat-platform bot is needed. Adapted: installed pinned to a reviewed commit with a drift check, because the relay sees that a push happened and when. configurations.md section 17."
     }
   ],
   "settings": [

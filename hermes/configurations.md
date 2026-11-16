@@ -348,3 +348,15 @@ Keep the gates of every agent job in one library. A gate prints, as its last std
 exit 0. On an unexpected error it fails open. A failing input wakes the agent on the third failure
 in a row, then at most every 4 hours. A gated job can run more often, because most runs cost no
 tokens; cap the expensive step (for example one analysis per 30 minutes).
+
+## 17. API-only access from a phone app
+
+Reach the agent from a phone through the gateway's own API server and nothing else: no dashboard
+service, no second isolated copy of it, no chat-platform bot. The API server stays on loopback, a
+small TLS edge on a private certificate authority is the only LAN listener, the bearer key lives
+only in the agent home env file, and the pairing code is a QR the console shows for 60 seconds to a
+loopback client. Alerts reach a closed app through a push plugin pinned to a reviewed commit
+(`phone-push` in `hermes/tools.json`, with a check mode that fails on drift). Retire a dashboard
+service last and with the desktop app closed, and retire a chat bot by removing its config and keys,
+its job delivery targets and its token at the provider. The rules, the retirement order and the
+limit that was not checked are in [hermes-api-access.md](../standards/hermes-api-access.md).

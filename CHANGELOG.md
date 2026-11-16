@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-16 (v2.10.0, hermes-api-access: the agent reached from a phone over the API server only)
+
+A consumer ran the dashboard service for its phone app, then a second isolated copy with its own sign-in, plus a chat-platform bot for alerts. Three surfaces held the same session store and each needed its own credential. It moved to the gateway API server alone, and the owner approved the design in issue #284.
+
+- Added: `standards/hermes-api-access.md` with nine registered rules (`hermes-api-access.1` to `.9`): one loopback API behind a TLS edge on a private authority, the key kept only in the agent env file, the edge narrowing the plain session list and ignoring client exclusions, a pairing code served to loopback only and shown as a QR for 60 seconds, a push plugin pinned to a reviewed commit with a drift check, the order for retiring a dashboard service, retiring a chat bot, and an idempotent edge installer. Section 10 states what was not checked (alert delivery to a phone on a different network from the host).
+- Added: `hermes/configurations.md` section 17 and the `phone-push` decision in `hermes/tools.json` (adapt, not required).
+- Changed: the README standards table lists the new doc, and `core-practices` is regenerated with the new rules.
+- Migration: none. A consumer that still runs the dashboard keeps working until it chooses to retire it. One that adopts the standard loses the dashboard's per-turn idle proof for restarts, which the gateway-only safe restart issue (#276) covers.
+- Tests: `check-rules.py` (255 rules, 0 problems), `check-hermes-tools.py`, `check-hermes-skills.py`, `check-ascii.py`, `check-links.py`, `check-placeholders.py` and the diff-mode sanitising and neutrality checks all pass.
+
 ## 2026-11-16 (v2.9.1, ci-cd-release: runner pool wording and label drift)
 
 - Changed: `ci-cd-release.md` describes the self-hosted runners as an ephemeral x64 pool on a dedicated Linux container (no container runtime VM, no Rosetta note), and adds a runner label drift rule: a `runs-on` list or `CORE_CI_RUNNER` value naming a label the pool does not offer leaves runs queued while slots idle, so each repo guards it and the watchdog reports a label mismatch.

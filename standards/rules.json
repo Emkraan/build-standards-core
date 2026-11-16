@@ -3530,6 +3530,132 @@
         "kind": "review"
       },
       "acceptance": "Review finds no log call that writes a whole body, a token-bearing URL, a full listing or unbounded user text."
+    },
+    {
+      "id": "hermes-api-access.1",
+      "ref": "hermes-api-access.md 1",
+      "title": "One surface, loopback behind a TLS edge",
+      "statement": "The phone app reaches the agent only through the gateway API server. No dashboard service runs for it. The API server stays bound to loopback and a small TLS edge is the only LAN listener. The edge forwards and filters, holds no credential and makes no access decision.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review: no dashboard service is listening, the API server binds loopback only and the edge holds no key or password."
+    },
+    {
+      "id": "hermes-api-access.2",
+      "ref": "hermes-api-access.md 2",
+      "title": "The API key lives in one place and is never shown",
+      "statement": "Authentication is the API server bearer key, at least 16 characters, generated once into the agent home env file (mode 0600), which is its only copy. Status views, logs, tests and replies print the key name, length and a boolean, never the value. A rotation replaces it in place and invalidates earlier pairing codes.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review: grep of the edge, console and logs shows no key value, and the env file is mode 0600."
+    },
+    {
+      "id": "hermes-api-access.3",
+      "ref": "hermes-api-access.md 3",
+      "title": "The edge serves HTTPS on a private certificate authority",
+      "statement": "The edge serves HTTPS with a certificate from the consumer's private authority and never plain HTTP on the LAN. The certificate covers only the names and addresses the edge is reached by, and the pairing code offers only those hosts.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review: a request without the authority certificate fails closed and plain HTTP is refused."
+    },
+    {
+      "id": "hermes-api-access.4",
+      "ref": "hermes-api-access.md 4",
+      "title": "The edge narrows the plain session list and ignores client exclusions",
+      "statement": "The edge narrows the plain session list to the sources the desktop app shows plus the API source. A request that names a source or title passes through. A client-sent exclusion list is ignored so the filter cannot be bypassed by omission.",
+      "level": "should",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review: a plain list request returns only the allowed sources and a request carrying an exclusion list returns the same set."
+    },
+    {
+      "id": "hermes-api-access.5",
+      "ref": "hermes-api-access.md 5",
+      "title": "The pairing code stays on the host and shows for 60 seconds",
+      "statement": "The pairing code carries the API address, the key and the connection to use. It is served only to a loopback client by POST (a LAN client gets 403), shown as a QR for 60 seconds, and never rendered as text, logged, cached or placed in a URL query.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review: a LAN client gets 403, the code is not in any log or response cache and no text form is rendered."
+    },
+    {
+      "id": "hermes-api-access.6",
+      "ref": "hermes-api-access.md 6",
+      "title": "A push plugin is pinned to a reviewed commit with a drift check",
+      "statement": "The push plugin is installed from a reviewed full commit recorded in the registry, never a branch. The installer verifies it and a check mode exits non-zero on drift. Alert pairing wraps the plugin's commands on loopback only, shows its one-time link as a QR for 60 seconds and never logs it. Only the owner's chosen briefing is a push.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review: the check mode exits 0 on the pin and non-zero on a changed plugin, and no scheduled job other than the chosen briefing targets a push."
+    },
+    {
+      "id": "hermes-api-access.7",
+      "ref": "hermes-api-access.md 7",
+      "title": "A dashboard service is retired in a fixed order",
+      "statement": "Retire a dashboard service in order: inventory every script, card and doc that names it with a gateway-only replacement, deploy the replacements, stop the service last with the desktop app closed, keep its definition one quiet day, then confirm the port is closed. A restart tool treats the desktop backend as interactive work and says what its new idle check proves less.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review: the inventory table exists, the stop came after the replacements deployed and the plan states what the new idle check proves less than the old one."
+    },
+    {
+      "id": "hermes-api-access.8",
+      "ref": "hermes-api-access.md 8",
+      "title": "A chat-platform bot is retired completely",
+      "statement": "Retiring a chat-platform bot removes its config blocks and env keys (commented-out old values included), removes it from every scheduled job's delivery target, restarts the gateway and confirms the log shows only the API server connected. The token is revoked at the provider and any health check that read the bot's authorization is replaced with a check of the API server's exposure.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review: no bot key remains in the env file or config, no job targets it and the gateway log lists only the API server."
+    },
+    {
+      "id": "hermes-api-access.9",
+      "ref": "hermes-api-access.md 9",
+      "title": "The edge installer is idempotent",
+      "statement": "The edge installer stages the key only when missing, merges a local override file instead of replacing it, removes the older service definitions if present, waits for an unloading agent to be gone before it bootstraps the new one, and exits non-zero when the agent is not loaded at the end.",
+      "level": "should",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "review"
+      },
+      "acceptance": "Review: a second run changes nothing and a run over a still-unloading agent ends loaded or exits non-zero."
     }
   ]
 }
