@@ -31,9 +31,11 @@ class Fence(Work):
             p.start()
             self.addCleanup(p.stop)
         self.busy = []
-        p = mock.patch.object(ex, "idle_reasons", lambda: self.busy)
-        p.start()
-        self.addCleanup(p.stop)
+        for name in ("idle_reasons", "preflight_reasons"):
+            # the second read of the gateway-only path must never reach a real gateway
+            p = mock.patch.object(ex, name, lambda: self.busy)
+            p.start()
+            self.addCleanup(p.stop)
         os.environ.pop("SAFE_RESTART_FENCE", None)
         os.environ.pop("SAFE_RESTART_FREEZE_S", None)
 
