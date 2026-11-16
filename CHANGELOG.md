@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-16 (v2.6.0, ops center standard: one title and trail, one notice tray, attention row, Live view, time rule, push channel)
+
+A consumer report (issue 279) described how one ops center was reorganised and measured. This entry carries its rules as standard text. The kit parts and the server module follow as separate pull requests.
+
+- Added: Ops Center Layout rules 17 to 21. The header names the open page as one title and one trail, system notices share one tray, the landing page opens on an attention row that reads the badge counts, everything moving now has one Live view, and every time is in the operator's zone from one module. Ops Center Layout is version 1.4.
+- Added: Local Ops App section 20, the push channel. A server-sent-events stream carries topic versions and never payloads, a version is a hash of the content without its stamps, presence gates every upstream read, a source change is bundled when it happens, and the client falls back to polling by itself. Local Ops App is version 1.4. Section 15 stays the polling budget the channel falls back to.
+- Added: 10 rules in `standards/rules.json` (`ops-center-layout.1.17` to `1.21`, `local-ops-app.20.1` to `20.5`), all level must and check kind test. They are not added to `opscenter/applicability.json`, which lists only rules the owner has decided apply.
+- Migration: none. A consumer's next core status run reports the new rules as unverified until it carries the tests the acceptance text names.
+
 ## 2026-11-15 (v2.5.1, the changelog check skips merge queue runs)
 
 Clean Renovate dependency pull requests were ejected from the merge queue because `check-changelog.py` ran again on the queue's synthetic branch and failed there.
