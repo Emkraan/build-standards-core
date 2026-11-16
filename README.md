@@ -103,10 +103,10 @@ one consumer-owned directory inside the overlay: parameters, exceptions and the 
 standards live there. Anything else a consumer writes for itself lives in the repo's own
 tree, outside the synced directories, so no sync ever overwrites it.
 
-The upward path. The nightly files nothing upward by itself, and a build's agent does not open a
-pull request here before approval. When it finds a shareable improvement it opens one plain,
-sanitised issue on this repository, describing it by role; the owner approves the item there, and
-the account that owns the change opens the core pull request for it
+The upward path. The nightly files nothing upward by itself. When a consumer's agent finds a
+shareable improvement it branches on this repository (never a fork) and opens the pull request
+directly, sanitised and described by role, with no issue first and no approval step; the checks and
+the review take the place of one
 ([CONTRIBUTING.md](CONTRIBUTING.md#reporting-from-a-consumer)).
 
 The core names no build. Nothing shipped names a product, business, host or tenant; a build
@@ -204,8 +204,8 @@ rules for stacks it does not have. With the row empty every rule is reported.
                   A's apps and docs           B's apps and docs           C's apps and docs
 ```
 
-Changes flow down by pinned, reviewed pull requests. Improvements flow up through the report path
-(Direction, "The upward path") and land here by pull request. Nothing flows sideways, and no overlay can
+Changes flow down by pinned, reviewed pull requests. Improvements flow up as pull requests
+(Direction, "The upward path") and land here. Nothing flows sideways, and no overlay can
 change another overlay.
 
 ## Day one for a new account
@@ -447,7 +447,7 @@ destination.
 - **May set** every parameter the core exposes.
 - **May add** standards the core does not have.
 - **May not loosen** a core rule. If a rule is wrong for your business, raise it here through
-  the upward path ("Contributing back") and make the case. A deliberate, time-boxed exception
+  a pull request ("Contributing back") and make the case. A deliberate, time-boxed exception
   is recorded in the overlay (next section).
 - **May not edit** `standards-core/` by hand. The next sync would erase it and the pin would lie.
 
@@ -544,24 +544,23 @@ best-practice patterns.
 
 ## Contributing back
 
-Improvements reach this repo through the upward path, not through drive-by pull requests: a
-build's agent opens an issue, the owner approves, and the account that owns the change opens the
-pull request. Nobody pushes to `main`.
+Improvements reach this repo as pull requests from consumers: a build's agent pushes a branch on this
+repository (never a fork; every contributing account has write access) and opens the pull request.
+No issue first. Nobody pushes to `main`.
 
-1. The consumer's agent opens one plain, sanitised issue on this repository for the improvement,
-   following the `core-improvement-issue` skill: described by role, with no names, hosts,
+1. The consumer's agent branches from `main` on this repository, in its own worktree, following the
+   `core-improvement-pr` skill. Everything it writes is described by role, with no names, hosts,
    addresses, tokens or paths. The nightly files nothing upward by itself.
-2. The owner approves the item in the issue.
-3. The account that owns an approved item branches from `main` and opens the pull request
-   declaring the outcome with `Refs #N` or `Closes #N`. Use Conventional Commits for the commit
-   and the PR title. Make the change agnostic: name no employer, product, hostname, tenant or person; where a rule
-   needs a value, expose it as a parameter and document the default. Add a dated entry to
-   `CHANGELOG.md` in the same pull request.
+2. It makes the change agnostic: where a rule needs a value, it exposes it as a parameter and documents
+   the default. It adds a dated entry to `CHANGELOG.md` in the same pull request and uses Conventional
+   Commits for the commits and the PR title.
+3. It opens the pull request declaring the issue outcome (`Closes #N`, `Refs #N` plus `Remaining:`, or
+   `No issue: <reason>`). There is no approval step before it.
 4. Run the [checks](#checks) below (CONSUMING.md section 13 lists the pre-merge set). All must pass.
 5. If the change comes from a source repo, state in the pull request which parts were adopted, adapted
    or rejected, by role and never by name. The provenance record that would name the source stays with the
    contributing account, not in this public repo. A source repo feeds later changes the same way any
-   other consumer does: issue, approval, pull request.
+   other consumer does: a pull request from a branch.
 
 A rule is adopted when it is generic, adapted when it becomes generic once a name or platform is
 turned into a parameter, and rejected when it only makes sense inside one business. Record the

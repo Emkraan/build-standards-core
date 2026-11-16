@@ -43,19 +43,19 @@
 - Declare the issue outcome in every pull request body: `Closes #N` when the change finishes the issue,
   `Refs #N` when it only moves it, or `No issue: <reason>` when there is none.
 - Authority: the repo owner is the final say on every standard, and every consumer account is that
-  same person. Pull requests here come from the upward path below: a consumer's agent opens a plain
-  issue, the owner approves the item, and the account that owns an approved item opens the pull
-  request and merges it once `ci` and `visual` pass; no second reviewer is required. The checks and
+  same person. Pull requests here come from consumers (the upward path below): the consumer's agent
+  branches on this repo and opens the pull request directly, with no issue and no approval step first, and it
+  merges once `ci` and `visual` pass; no second reviewer is required. The checks and
   the merge rule below take the place of review. Do not wait for another account to act, and do not
-  leave a shareable improvement in a consumer: open an issue for it.
-- Where the pull request comes from: an account with write access pushes a branch on this repo, so
-  `checks`, `visual` and `automerge` start on their own. An account without write access opens the pull
-  request from a fork, and GitHub holds the first workflow runs on a fork until a maintainer approves
-  them: approve them only after reading the diff, and refuse a fork pull request that changes
-  `.github/workflows/`, `checks/` or `templates/overlay/scripts/` without the owner's say. A fork run
-  has no secrets, so its own `automerge` run fails and leaves the pull request `UNSTABLE`; the
-  `workflow_run` pass after `checks` completes still enqueues it, and the merge queue merges it. This
-  grant is per repository: contributor write access here is never a reason to widen anything on another repo.
+  leave a shareable improvement in a consumer: open a pull request for it.
+- Where the pull request comes from: always a branch on this repo, never a fork. Every contributing
+  account has write access, so `checks`, `visual` and `automerge` start on their own. An account without
+  write access asks the owner for it and does not open a fork pull request: GitHub holds a fork's first
+  workflow runs until a maintainer approves them, `merge-pr.py` cannot rewrite a fork's branch, and a fork
+  run has no secrets, so its own `automerge` run fails and leaves the pull request `UNSTABLE`. A fork pull
+  request that does arrive is read before its runs are approved, and one that changes `.github/workflows/`,
+  `checks/` or `templates/overlay/scripts/` needs the owner's say. Access is granted per repository: write
+  here is never a reason to widen anything on another repo.
 - Never rebase. Work from a branch cut from the current `origin/main`, in your own worktree, and
   bring in what landed since with a merge: `git fetch origin main` then `git merge FETCH_HEAD`, before
   you push and again before you merge, then re-run the checks. Never resolve a conflict by taking your
@@ -74,26 +74,26 @@
 
 ## Reporting from a consumer
 
-A build's agent never opens a pull request on this repo before approval, and this repo never
-reaches into a build. Work moves between them through one channel in each direction: down, the
-nightly's overlay pull request or direct apply; up, a plain issue on this repository. The nightly
-files nothing upward by itself (its optional `report_repo` sections are off by default, CONSUMING.md
-section 7). When a consumer's agent finds a shareable improvement, it opens one
-sanitised issue here describing it by role, the owner approves the item in the issue, and the
-account that owns the approved item opens the pull request linking it with `Refs #N` or
-`Closes #N`. A pull request that arrives with no approved item behind it is closed unmerged.
+A consumer improves the core by opening a pull request on it. Work moves between a build and this repo
+through one channel in each direction: down, the nightly's overlay pull request or direct apply; up, a
+pull request from a branch on this repository. There is no issue step: the owner no longer approves an
+item before the pull request exists, because the pull request, its evidence and its checks are the
+proposal. The nightly files nothing upward by itself (its optional `report_repo` sections are off by
+default and private, CONSUMING.md section 7). When a consumer's agent finds a shareable improvement, it
+branches from the current `origin/main`, makes the change agnostic, and opens the pull request describing it
+by role. A pull request the review rejects is closed with the reason; the owner can overrule.
 
-**Opening the issue.** The shared Hermes skill `core-improvement-issue`
-([hermes/skills/core-improvement-issue/SKILL.md](hermes/skills/core-improvement-issue/SKILL.md)) is
-the procedure; the one-line command is in [CONSUMING.md](CONSUMING.md) section 7. An agent without
-Hermes follows the same file by hand. One improvement per issue: search the open issues first and
-add evidence to one that already covers it.
+**Opening the pull request.** The shared Hermes skill `core-improvement-pr`
+([hermes/skills/core-improvement-pr/SKILL.md](hermes/skills/core-improvement-pr/SKILL.md)) is the
+procedure; the one-line command is in [CONSUMING.md](CONSUMING.md) section 7. An agent without Hermes follows
+the same file by hand. One improvement per pull request: search the open pull requests first and add
+evidence to one that already covers it.
 
-**What the issue holds.** What changes in the core, why (what went wrong or was slower without it
-on the consumer), the evidence (commands run, code read, before-and-after ratios), the proposed
-change with any machine-only value as a parameter, and the adoption risk for other consumers. A
-claim that could not be checked is written as "not checked" with the reason; an issue never
-estimates.
+**What the pull request holds.** Its description gives what changes in the core, why (what went wrong or
+was slower without it on the consumer), the evidence (commands run, code read, before-and-after ratios),
+the change with any machine-only value as a parameter, the adoption risk for other consumers, and which
+parts were adopted, adapted or rejected. A claim that could not be checked is written as "not checked"
+with the reason; a pull request never estimates.
 
 **Does it belong in the core?** "Contribute back every shareable improvement" and
 "machine-specific things stay local" collide the moment a real improvement is half one and
@@ -101,8 +101,8 @@ half the other. The test:
 
 > Would this help another consumer's agent that knows nothing about your machine, carrying
 > no name, path or value that belongs to your estate? Both yes: propose it. Either no: keep
-> it local, and if it is the core's rule that is wrong, open an issue for the difference
-> instead.
+> it local, and if it is the core's rule that is wrong, open a pull request for the
+> difference instead.
 
 Parameterise before proposing. A rule that names your tool, host, tenant or app is local by
 default; it becomes core material once the name is a parameter with your case as one value
@@ -111,20 +111,20 @@ business's values into generic rules). A value that is only ever yours belongs i
 `standards-local/parameters.md` or the machine-local `consumer.json`, never in a shipped
 file.
 
-**Sanitising.** This repository is public, so an issue carries no repo, app, host, address,
+**Sanitising.** This repository is public, so a pull request (branch name, commits, description and comments) carries no repo, app, host, address,
 employer, person, account, tenant, plan, path, token or key. Repos and apps are named by role only
 (product app, local ops center, multi-module shell, hub, agent home). Measured numbers go in as
 ratios, deltas or before-and-after pairs, not absolutes: a count that only your estate has is a
 name (the core-status rule counts are the core's own rules and go in as they are). A screenshot is
 rarely needed; when one is, it carries layout only, scrubbed with `checks/redact_page.js` and
-checked by eye. Check the draft file before posting, from the core clone: `python3
+checked by eye. Check the description file before opening the pull request, from the core clone: `python3
 checks/check-sanitised.py --file <draft>`, `python3 checks/check-consumer-neutral.py --file
 <draft>`, and confirm it is plain ASCII; post only what passes. The checks see only the file given
-to them, so the title and every comment are checked the same way before they are posted.
+to them, so the title and every comment are checked the same way before they are posted. CI also
+checks the pull request's added lines.
 
 **When the core took something from your repo.** The provenance stays with your account, and the pull
 request description records what was adopted, adapted or rejected. It is not a subscription. The core
 does not pull your repo's later changes, and your repo is not exempt from the core. Both directions run
-through this repo like any other consumer's: your repo's later changes arrive as issues the owner
-approves, then one pull request per change with its evidence; a wrong core copy of a contributed design
-is fixed through an issue, not a direct write.
+through this repo like any other consumer's: your repo's later changes arrive as one pull request per change with its evidence, from a branch
+on this repo; a wrong core copy of a contributed design is fixed through a pull request, not a direct write.
