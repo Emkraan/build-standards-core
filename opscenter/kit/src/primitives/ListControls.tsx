@@ -121,7 +121,7 @@ export function ListControls({
                   variant="secondary"
                   className="list-controls-dir"
                   data-dir={sortDir}
-                  aria-label={asc ? 'Ascending, switch to descending' : 'Descending, switch to ascending'}
+                  aria-label={asc ? 'Asc, switch to descending' : 'Desc, switch to ascending'}
                   title={asc ? 'Ascending (click to flip)' : 'Descending (click to flip)'}
                   icon={<IconArrowUp size={12} />}
                   onClick={() => onSortDirChange(asc ? 'desc' : 'asc')}

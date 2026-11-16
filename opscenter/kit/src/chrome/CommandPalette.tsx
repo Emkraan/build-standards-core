@@ -576,15 +576,17 @@ export function SearchTrigger({ label = 'Search', compact = false, className, on
       className={cx('search-btn', className)}
       onClick={onSearch ?? openCommandPalette}
       aria-keyshortcuts={isMacLike() ? 'Meta+K' : 'Control+K'}
-      aria-label={mode ? `${label} (${mod}+K)` : undefined}
+      aria-label={mode ? `${label} ${mod}+K` : undefined}
       data-compact={mode}
       data-tip={mode === 'on' ? label : undefined}
       data-tip-kbd={mode === 'on' ? `${mod}+K` : undefined}
     >
       <IconSearch size={14} />
       <span className="search-btn-label">{label}</span>
+      {' '}
       <span className="search-btn-keys" aria-hidden="true">
         <Kbd>{mod}</Kbd>
+        {' '}
         <Kbd>K</Kbd>
       </span>
     </button>

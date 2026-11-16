@@ -125,9 +125,9 @@ describe('ListControls', () => {
     await user.selectOptions(sort, 'Default order');
     expect(sort.value).toBe('');
 
-    const dir = within(bar).getByRole('button', { name: 'Ascending, switch to descending' });
+    const dir = within(bar).getByRole('button', { name: 'Asc, switch to descending' });
     await user.click(dir);
-    expect(within(bar).getByRole('button', { name: 'Descending, switch to ascending' }).getAttribute('data-dir')).toBe('desc');
+    expect(within(bar).getByRole('button', { name: 'Desc, switch to ascending' }).getAttribute('data-dir')).toBe('desc');
 
     const group = within(bar).getByRole('combobox', { name: 'Group by' }) as HTMLSelectElement;
     await user.selectOptions(group, 'site');

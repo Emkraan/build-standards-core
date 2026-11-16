@@ -361,11 +361,11 @@ describe('SearchTrigger compact', () => {
     );
     const plain = screen.getByRole('button', { name: 'Search' });
     expect(plain.hasAttribute('data-compact')).toBe(false);
-    const icon = screen.getByRole('button', { name: 'Find (Ctrl+K)' });
+    const icon = screen.getByRole('button', { name: 'Find Ctrl+K' });
     expect(icon.getAttribute('data-compact')).toBe('on');
     expect(icon.getAttribute('data-tip')).toBe('Find');
     expect(icon.getAttribute('aria-keyshortcuts')).toBe('Control+K');
-    const auto = screen.getByRole('button', { name: 'Look up (Ctrl+K)' });
+    const auto = screen.getByRole('button', { name: 'Look up Ctrl+K' });
     expect(auto.getAttribute('data-compact')).toBe('auto');
     const css = readFileSync(resolve(__dirname, '../src/styles/kit.css'), 'utf8');
     expect(css).toMatch(/@media \(max-width: 640px\) \{\s*\.search-btn\[data-compact="auto"\]/);

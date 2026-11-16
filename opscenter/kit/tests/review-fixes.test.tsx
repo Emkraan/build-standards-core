@@ -132,7 +132,7 @@ describe('per-app storage keys (H2)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss announcement: Scoped' }));
     expect(stored('shell.two.announce.dismissed')).toEqual(['n']);
     expect(window.localStorage.getItem(KEY)).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: /Version 1\.2\.0/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^v1\.2\.0/ }));
     expect(window.localStorage.getItem('shell.two.build.seen')).toBe('1.2.0');
     expect(window.localStorage.getItem(STORAGE_KEYS.buildSeen)).toBeNull();
   });

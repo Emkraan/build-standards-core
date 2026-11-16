@@ -92,7 +92,7 @@ describe('pure helpers', () => {
 describe('ToolSwitchButton and the opening shortcut', () => {
   it('is a named dialog button that opens the launcher and gets focus back on close', async () => {
     renderLauncher();
-    const button = screen.getByRole('button', { name: 'Switch tool' });
+    const button = screen.getByRole('button', { name: /Switch tool$/ });
     expect(button.getAttribute('aria-haspopup')).toBe('dialog');
     expect(button.getAttribute('aria-expanded')).toBe('false');
     expect(button.getAttribute('aria-keyshortcuts')).toBe('T');
@@ -128,7 +128,7 @@ describe('ToolSwitchButton and the opening shortcut', () => {
 describe('ToolLauncher carousel', () => {
   it('opens centred on the active tool, marks it current and lists every tool', () => {
     renderLauncher({ activeId: 'devices' });
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     expect(centreName()).toBe('Devices');
     const list = screen.getByRole('list', { name: 'Tools you can open' });
     expect(list.getAttribute('aria-roledescription')).toBe('carousel');
@@ -143,7 +143,7 @@ describe('ToolLauncher carousel', () => {
 
   it('moves with the arrow buttons, the dots, and Left, Right, Home and End, wrapping around', () => {
     renderLauncher();
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Next tool' }));
     expect(centreName()).toBe('Devices');
     fireEvent.click(screen.getByRole('button', { name: 'Previous tool' }));
@@ -165,7 +165,7 @@ describe('ToolLauncher carousel', () => {
 
   it('shows the focused tool details and swaps them as the carousel moves', () => {
     renderLauncher();
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     const details = () => screen.getByRole('region', { name: 'Reports' });
     expect(within(details()).getByText('Numbers on demand')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Next tool' }));
@@ -176,18 +176,18 @@ describe('ToolLauncher carousel', () => {
   it('opens a tool with the Open button, Enter and a click on the centre tile, closing first', () => {
     const onOpen = vi.fn();
     renderLauncher({ onOpen });
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Next tool' }));
     fireEvent.click(screen.getByRole('button', { name: 'Open Devices' }));
     expect(onOpen).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'devices' }));
     expect(screen.queryByRole('dialog')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     fireEvent.keyDown(document.querySelector('.tl-slide[data-slot="center"] .tl-tile') as HTMLElement, { key: 'ArrowRight' });
     fireEvent.keyDown(document.querySelector('.tl-slide[data-slot="center"] .tl-tile') as HTMLElement, { key: 'Enter' });
     expect(onOpen).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'devices' }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Show Access' }));
     fireEvent.click(document.querySelector('.tl-slide[data-slot="center"] .tl-tile') as HTMLElement);
     expect(onOpen).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'access' }));
@@ -197,7 +197,7 @@ describe('ToolLauncher carousel', () => {
   it('a click on a side tile moves it to the centre and the current tool never opens itself', () => {
     const onOpen = vi.fn();
     renderLauncher({ onOpen });
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Devices' }));
     expect(centreName()).toBe('Devices');
     expect(onOpen).not.toHaveBeenCalled();
@@ -209,7 +209,7 @@ describe('ToolLauncher carousel', () => {
 
   it('marks an external tool and says it opens in a new tab', () => {
     renderLauncher();
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Show Docs' }));
     expect(screen.getByText('External')).toBeTruthy();
     expect(screen.getByText('Opens in a new tab')).toBeTruthy();
@@ -218,17 +218,17 @@ describe('ToolLauncher carousel', () => {
 
   it('Back and Escape close it', () => {
     renderLauncher();
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(screen.queryByRole('dialog')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     fireEvent.keyDown(document.activeElement as Element, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('a swipe moves the carousel and a tap does not', () => {
     renderLauncher();
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     const track = screen.getByRole('list', { name: 'Tools you can open' });
     fireEvent.pointerDown(track, { button: 0, clientX: 300, pointerId: 1 });
     fireEvent.pointerMove(track, { clientX: 220, pointerId: 1 });
@@ -242,16 +242,16 @@ describe('ToolLauncher carousel', () => {
 
   it('one tool has no arrows and no dots, none shows the empty state, pending marks it busy', () => {
     const { unmount } = renderLauncher({ tools: [TOOLS[0] as LauncherTool] });
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     expect(screen.queryByRole('button', { name: 'Next tool' })).toBeNull();
     expect(screen.queryByRole('group', { name: 'Choose a tool' })).toBeNull();
     unmount();
     const none = renderLauncher({ tools: [] });
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     expect(screen.getByText('No other tools yet')).toBeTruthy();
     none.unmount();
     renderLauncher({ tools: [], pending: 2 });
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     expect(screen.queryByText('No other tools yet')).toBeNull();
     expect(screen.getByRole('list', { name: 'Tools you can open' }).getAttribute('aria-busy')).toBe('true');
   });
@@ -263,7 +263,7 @@ describe('ToolLauncher motion', () => {
   it('advances on its own, holds on hover, keyboard focus and interaction, and stops on request', () => {
     vi.useFakeTimers();
     renderLauncher({ autoAdvanceMs: 1000, idleMs: 5000 });
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     advance(1000);
     expect(centreName()).toBe('Devices');
 
@@ -293,7 +293,7 @@ describe('ToolLauncher motion', () => {
   it('holds while the keyboard is in the carousel', () => {
     vi.useFakeTimers();
     renderLauncher({ autoAdvanceMs: 1000 });
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     const tile = document.querySelector('.tl-slide[data-slot="center"] .tl-tile') as HTMLElement;
     tile.focus();
     fireEvent.keyDown(tile, { key: 'Shift' });
@@ -305,7 +305,7 @@ describe('ToolLauncher motion', () => {
     media.reducedMotion = true;
     vi.useFakeTimers();
     renderLauncher({ autoAdvanceMs: 1000 });
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     expect(screen.getByRole('dialog').getAttribute('data-motion')).toBe('reduced');
     advance(10000);
     expect(centreName()).toBe('Reports');
@@ -318,7 +318,7 @@ describe('ToolLauncher motion', () => {
   it('autoAdvanceMs 0 turns it off', () => {
     vi.useFakeTimers();
     renderLauncher({ autoAdvanceMs: 0 });
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     advance(20000);
     expect(centreName()).toBe('Reports');
   });
@@ -366,7 +366,7 @@ describe('collapsed rail switch control', () => {
     for (const variant of ['rail', 'mark'] as const) {
       const launcher = { open: false, origin: null, openFrom: vi.fn(), close: vi.fn(), buttonRef: { current: null } };
       const { unmount } = render(<ToolSwitchButton launcher={launcher} name="Reports" variant={variant} />);
-      const button = screen.getByRole('button', { name: 'Switch tool' });
+      const button = screen.getByRole('button', { name: /Switch tool$/ });
       expect(button.getAttribute('data-variant')).toBe(variant);
       expect(button.getAttribute('aria-haspopup')).toBe('dialog');
       expect(button.getAttribute('aria-keyshortcuts')).toBe('T');
@@ -397,7 +397,7 @@ describe('collapsed rail switch control', () => {
       );
     }
     render(<Page />);
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     expect(screen.getByRole('dialog', { name: 'Tools' })).toBeTruthy();
     fireEvent.keyDown(document.querySelector('.tl-slide[data-slot="center"] .tl-tile') as HTMLElement, { key: 'Enter' });
     expect(onOpen).not.toHaveBeenCalled();
@@ -425,7 +425,7 @@ describe('ToolLauncher accessibility', () => {
   it('has no axe violations closed or open', async () => {
     const { container } = renderLauncher();
     await noAxe(container);
-    fireEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
+    fireEvent.click(screen.getByRole('button', { name: /Switch tool$/ }));
     await noAxe(document.body);
   });
 });
@@ -452,7 +452,7 @@ describe('AccountMenu', () => {
 
   it('shows the name and role in the trigger and the email when there is no role', () => {
     renderMenu();
-    const trigger = screen.getByRole('button', { name: /^Account: Ada Lovelace/ });
+    const trigger = screen.getByRole('button', { name: /^AL Ada Lovelace/ });
     expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
     expect(within(trigger).getByText('Engineer')).toBeTruthy();
@@ -460,26 +460,26 @@ describe('AccountMenu', () => {
 
   it('falls back to the email local part and shows the email as the second line', () => {
     renderMenu({ identity: { email: 'grace@example.com' } });
-    const trigger = screen.getByRole('button', { name: /^Account: grace/ });
+    const trigger = screen.getByRole('button', { name: /^G grace/ });
     expect(within(trigger).getByText('grace@example.com')).toBeTruthy();
   });
 
   it('opens a panel with the identity facts, extra facts and the theme choice', async () => {
     const user = userEvent.setup();
     renderMenu({ facts: [{ label: 'Access', value: 'Via Support group', title: 'group-7' }, { label: 'Last seen', value: 'Oct 22, 9:00 AM' }] });
-    await user.click(screen.getByRole('button', { name: /^Account: Ada Lovelace/ }));
+    await user.click(screen.getByRole('button', { name: /^AL Ada Lovelace/ }));
     const panel = screen.getByRole('dialog', { name: 'Account' });
     expect(within(panel).getByText('ada@example.com')).toBeTruthy();
     expect(within(panel).getByText('Engineer')).toBeTruthy();
     expect(within(panel).getByText('Via Support group').getAttribute('title')).toBe('group-7');
     expect(within(panel).getByText('Last seen')).toBeTruthy();
-    expect(screen.getByRole('button', { name: /^Account: Ada Lovelace/ }).getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('button', { name: /^AL Ada Lovelace/ }).getAttribute('aria-expanded')).toBe('true');
   });
 
   it('changes the theme through the segmented choice and marks the pressed one', async () => {
     const user = userEvent.setup();
     renderMenu();
-    await user.click(screen.getByRole('button', { name: /^Account: Ada Lovelace/ }));
+    await user.click(screen.getByRole('button', { name: /^AL Ada Lovelace/ }));
     const group = screen.getByRole('group', { name: 'Theme' });
     await user.click(within(group).getByRole('button', { name: 'Dark' }));
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
@@ -491,7 +491,7 @@ describe('AccountMenu', () => {
   it('works without a ThemeProvider when the theme choice is off', async () => {
     const user = userEvent.setup();
     render(<AccountMenu identity={IDENTITY} showTheme={false} />);
-    await user.click(screen.getByRole('button', { name: /^Account: Ada Lovelace/ }));
+    await user.click(screen.getByRole('button', { name: /^AL Ada Lovelace/ }));
     expect(screen.queryByRole('group', { name: 'Theme' })).toBeNull();
   });
 
@@ -499,7 +499,7 @@ describe('AccountMenu', () => {
     const user = userEvent.setup();
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     renderMenu({ links: [{ key: 'a', label: 'My profile', href: 'https://example.com/me' }, { key: 'b', label: 'Bad', href: 'javascript:alert(1)' }] });
-    await user.click(screen.getByRole('button', { name: /^Account: Ada Lovelace/ }));
+    await user.click(screen.getByRole('button', { name: /^AL Ada Lovelace/ }));
     const ok = screen.getByRole('link', { name: 'My profile' });
     expect(ok.getAttribute('href')).toBe('https://example.com/me');
     expect(ok.getAttribute('target')).toBe('_blank');
@@ -511,20 +511,20 @@ describe('AccountMenu', () => {
     const user = userEvent.setup();
     const onSignOut = vi.fn().mockResolvedValue(undefined);
     const { unmount } = renderMenu({ onSignOut });
-    await user.click(screen.getByRole('button', { name: /^Account: Ada Lovelace/ }));
+    await user.click(screen.getByRole('button', { name: /^AL Ada Lovelace/ }));
     await user.click(screen.getByRole('button', { name: 'Sign out' }));
     expect(onSignOut).toHaveBeenCalledTimes(1);
     await vi.waitFor(() => expect(screen.queryByRole('dialog', { name: 'Account' })).toBeNull());
     unmount();
     renderMenu();
-    await user.click(screen.getByRole('button', { name: /^Account: Ada Lovelace/ }));
+    await user.click(screen.getByRole('button', { name: /^AL Ada Lovelace/ }));
     expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
   });
 
   it('keeps the panel open and says so when sign out fails', async () => {
     const user = userEvent.setup();
     renderMenu({ onSignOut: () => Promise.reject(new Error('offline')) });
-    await user.click(screen.getByRole('button', { name: /^Account: Ada Lovelace/ }));
+    await user.click(screen.getByRole('button', { name: /^AL Ada Lovelace/ }));
     await user.click(screen.getByRole('button', { name: 'Sign out' }));
     expect((await screen.findByRole('alert')).textContent).toBe('Could not sign out. Try again.');
     expect(screen.getByRole('dialog', { name: 'Account' })).toBeTruthy();
@@ -539,7 +539,7 @@ describe('AccountMenu', () => {
         <button type="button">Elsewhere</button>
       </ThemeProvider>,
     );
-    const trigger = screen.getByRole('button', { name: /^Account: Ada Lovelace/ });
+    const trigger = screen.getByRole('button', { name: /^AL Ada Lovelace/ });
     await user.click(trigger);
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog', { name: 'Account' })).toBeNull();
@@ -553,7 +553,7 @@ describe('AccountMenu', () => {
     const user = userEvent.setup();
     const { container } = renderMenu({ facts: [{ label: 'Access', value: 'Via group' }], links: [{ key: 'a', label: 'Profile', href: '/me' }], onSignOut: () => undefined });
     await noAxe(container);
-    await user.click(screen.getByRole('button', { name: /^Account: Ada Lovelace/ }));
+    await user.click(screen.getByRole('button', { name: /^AL Ada Lovelace/ }));
     await noAxe(document.body);
   });
 });
