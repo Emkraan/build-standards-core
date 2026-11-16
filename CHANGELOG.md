@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-16 (v2.12.1, release: a heading the release step cannot read fails the pull request check, and a missed version can be backfilled)
+
+The v2.11.1 heading held parentheses in its description, so `checks/auto-release.py` skipped it without a message and the entry never got a tag. v2.12.0 was tagged above it, and auto-release refuses a version at or below the newest tag, so v2.11.1 could never be released and `check-changelog-versions` failed on `main`.
+
+- Fixed: `checks/check-changelog-versions.py` fails a pull request whose release heading the release step cannot read (parentheses inside the description), with the line number. Every other heading in the file already reads fine.
+- Added: `checks/auto-release.py --backfill vX.Y.Z` and a `backfill` input on the release workflow tag a version the release step missed. It needs a readable entry, no existing tag and a commit that is part of the branch, and an existing tag is still never moved.
+- Fixed: the v2.11.1 heading now reads without parentheses, so it can be released.
+- Migration: none. A consumer that syncs the release check sees no change unless its own heading has parentheses.
+- Tests: `tests/test_auto_release.py` (backfill decisions) and `tests/test_changelog_versions.py` (the check matches what the release step reads), `ruff` and the `check-*` scripts pass.
+
 ## 2026-11-16 (v2.12.0, safe-restart: a gateway-only restart that waits for the gateway and any desktop backend)
 
 A consumer that moved to the API server alone (`hermes-api-access`) lost the dashboard's per-turn idle proof, so the safe restart had only the session store lease to go on and restarted through a hard launchd kickstart. This adds the missing half.
