@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-16 (v2.12.2, kit: the gallery axe check runs on @axe-core/playwright 4.14)
+
+The Label in Name pass (v2.11.1) made the kit pass the `label-content-name-mismatch` rule that 4.14 turns on, and the Renovate hold was lifted. This moves the pinned dev dependency.
+
+- Changed: `opscenter/kit/package.json` and its lockfile pin `@axe-core/playwright` 4.14.0 (was 4.13.0).
+- Migration: none. A dev dependency of the kit gallery check; consumers see no change.
+- Tests: the gallery axe check passes with 4.14.0 in both themes, and the kit unit tests pass.
+
 ## 2026-11-16 (v2.12.1, release: a heading the release step cannot read fails the pull request check, and a missed version can be backfilled)
 
 The v2.11.1 heading held parentheses in its description, so `checks/auto-release.py` skipped it without a message and the entry never got a tag. v2.12.0 was tagged above it, and auto-release refuses a version at or below the newest tag, so v2.11.1 could never be released and `check-changelog-versions` failed on `main`.
