@@ -1,9 +1,18 @@
 # Changelog
 
-## 2026-11-16 (v2.8.1, ci-cd-release: runner pool wording and label drift)
+## 2026-11-16 (v2.9.1, ci-cd-release: runner pool wording and label drift)
 
 - Changed: `ci-cd-release.md` describes the self-hosted runners as an ephemeral x64 pool on a dedicated Linux container (no container runtime VM, no Rosetta note), and adds a runner label drift rule: a `runs-on` list or `CORE_CI_RUNNER` value naming a label the pool does not offer leaves runs queued while slots idle, so each repo guards it and the watchdog reports a label mismatch.
 - Changed: the PowerShell runner note, `local-ops-app.md` section 10, `CONSUMING.md` and the `core-ci.yml` template comment say x64 instead of arm64.
+
+## 2026-11-16 (v2.9.0, ops center app: the push channel client and one time module)
+
+The app part of Local Ops App section 20 and Ops Center Layout rule 21 (issue 279). It needs the server part (the push channel pull request) to be live, and without it the stores keep their own timers.
+
+- Added: `src/lib/live.ts`, the client of the push channel. One EventSource, a hello catch-up, a backoff of 1, 2, 5, 10 and 30 seconds, tab presence sent debounced with visibility and the endpoints the tab shows, and `setAliases` for the short topic names.
+- Added: `src/lib/time.ts`, the one time formatter (clock time with the zone abbreviation, day, stamp, full time, day key, spelled-out relative times, span words). `setTimeZone` picks the zone.
+- Changed: `createLiveStore` takes `{ topics, path }`. A store with topics reloads once (coalesced 250 ms, only while the tab is visible, one queued read when a topic moves during a read) and stretches its timer while the channel is live. `useData` listens on `data:<file>`. A store without options behaves as before.
+- Tests: `tests/live.test.mjs` (8) and `tests/time.test.mjs` (7), both in `npm test`. The header chip and the notice tray wiring are not part of this change.
 
 ## 2026-11-16 (v2.8.0, ops center server: the push channel)
 

@@ -33,6 +33,9 @@ with no browser and never skip when `CI` is set); a consumer runs them in its ow
 
 ## Notes
 
+- `src/lib/live.ts` is the client of the push channel (Local Ops App section 20). `createLiveStore` takes `{ topics }` or `{ path }`: it reloads once when the server says that topic moved, stretches its own timer to a five minute safety net while the channel is live, and goes back to its own interval the moment the channel drops. A dataset store (`useData`) listens on `data:<file>`. `setAliases` carries the short topic names the server's `live_bus.ALIASES` defines.
+- `src/lib/time.ts` is the one time formatter (Ops Center Layout rule 21). `setTimeZone('<IANA zone>')` once at start-up picks the zone every clock time is written in (default: the viewer's own).
+
 - Names that were estate specific are neutral: the two review lanes are `platform` (primary) and `team` (secondary), and
   the endpoint paths follow them. A consumer maps its own repositories through the server's `cron_pulse.repos` parameter
   (section 12.8); the app does not carry repository names.

@@ -1,6 +1,7 @@
 // Central data access. The app is fully static; all data comes from JSON files
 // bundled under public/data by bundle_data.py. This hook fetches once and caches.
 import { useEffect, useRef, useState } from 'react'
+import { apiTopic, dataTopic, declare, onStatus, stretchedMs, subscribe } from './live'
 
 const BASE = import.meta.env.BASE_URL || './'
 
@@ -112,7 +113,18 @@ export interface LiveState<T> {
   refresh: () => void
   mutate: (fn: (d: T) => T) => void
 }
-export function createLiveStore<T>(fetcher: (fresh?: boolean) => Promise<T>, ms: number): () => LiveState<T> {
+// Push channel (live.ts): a store given topics or a path reloads once when the server says that topic moved (coalesced 250 ms,
+// only while the tab is visible, a hidden tab reloads on becoming visible). While the channel is connected its timer stretches
+// to the five minute safety net, and a dropped channel puts the store's own interval straight back. A path also tells the server
+// which endpoint this tab shows, so its warm loop reads it while the tab is visible.
+export interface LiveOpts {
+  /** Topics that trigger a reload, for a dataset: [dataTopic(name)]. */
+  topics?: string[]
+  /** The plain GET endpoint this store reads. Gives the topic (an alias or api:<path>) and the warm read. */
+  path?: string
+}
+export const TOPIC_COALESCE_MS = 250
+export function createLiveStore<T>(fetcher: (fresh?: boolean) => Promise<T>, ms: number, opts?: LiveOpts): () => LiveState<T> {
   let snap: { data: T | null; error: string | null; at: number } = { data: null, error: null, at: 0 }
   const subs = new Set<() => void>()
   let stop: (() => void) | null = null
@@ -121,8 +133,12 @@ export function createLiveStore<T>(fetcher: (fresh?: boolean) => Promise<T>, ms:
     subs.forEach((f) => {
       f()
     })
-  const load = (fresh: boolean) => {
-    if (inflight) return
+  let queued = false
+  const load = (fresh: boolean, fromTopic = false) => {
+    if (inflight) {
+      if (fromTopic) queued = true
+      return
+    }
     inflight = true
     emit()
     fetcher(fresh)
@@ -135,6 +151,10 @@ export function createLiveStore<T>(fetcher: (fresh?: boolean) => Promise<T>, ms:
       .finally(() => {
         inflight = false
         emit()
+        if (queued) {
+          queued = false
+          load(false, true)
+        }
       })
   }
   const mutate = (fn: (d: T) => T) => {
@@ -144,6 +164,7 @@ export function createLiveStore<T>(fetcher: (fresh?: boolean) => Promise<T>, ms:
   }
   const reload = () => load(false)
   const refresh = () => load(true)
+  const topics = opts?.topics ?? (opts?.path ? [apiTopic(opts.path)] : [])
   return function useLiveStore() {
     const [, force] = useState(0)
     useEffect(() => {
@@ -151,7 +172,33 @@ export function createLiveStore<T>(fetcher: (fresh?: boolean) => Promise<T>, ms:
       subs.add(f)
       if (!stop) {
         reload()
-        stop = onLiveTick(reload, ms)
+        if (topics.length === 0) {
+          stop = onLiveTick(reload, ms)
+        } else {
+          let stopTick: (() => void) | null = null
+          let pending: ReturnType<typeof setTimeout> | null = null
+          const arm = () => {
+            stopTick?.()
+            stopTick = onLiveTick(reload, stretchedMs(ms))
+          }
+          const onTopic = () => {
+            if (pending) return
+            pending = setTimeout(() => {
+              pending = null
+              if (document.visibilityState === 'visible') load(false, true)
+            }, TOPIC_COALESCE_MS)
+          }
+          arm()
+          const offStatus = onStatus(arm)
+          const offTopics = topics.map((tp) => subscribe(tp, onTopic))
+          const offDecl = opts?.path ? [declare(apiTopic(opts.path), opts.path, ms)] : []
+          stop = () => {
+            stopTick?.()
+            offStatus()
+            for (const off of [...offTopics, ...offDecl]) off()
+            if (pending) clearTimeout(pending)
+          }
+        }
       }
       return () => {
         subs.delete(f)
@@ -184,7 +231,7 @@ const dataStores: Record<string, () => LiveState<unknown>> = {}
 export function useData<T>(name: string, pollMs = POLL_MS): { data: T | null; error: string | null } {
   const key = `${name}@${pollMs}`
   if (!dataStores[key]) {
-    dataStores[key] = createLiveStore<unknown>(() => loadData<unknown>(name, true), pollMs)
+    dataStores[key] = createLiveStore<unknown>(() => loadData<unknown>(name, true), pollMs, { topics: [dataTopic(name)] })
   }
   const st = dataStores[key]()
   return { data: (st.data as T | null) ?? (cache[name] as T) ?? null, error: st.data ? null : st.error }
