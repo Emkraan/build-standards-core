@@ -6,7 +6,7 @@ import { AccountMenu, ThemeProvider } from '../src/index';
 const who = { name: 'Ada Example', email: 'ada@example.com', role: 'Operator' };
 
 function open() {
-  fireEvent.click(screen.getByRole('button', { name: /Account: Ada Example/ }));
+  fireEvent.click(screen.getByRole('button', { name: /^AE Ada Example/ }));
 }
 
 describe('AccountMenu actions and status (D-004)', () => {
