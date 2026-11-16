@@ -16,8 +16,8 @@ How to use it:
 2. Where the work breaks a rule, fix the work. Where the rule cannot hold for a good reason, record an
    explicit exception in the consumer overlay, never a silent deviation.
 3. When the work finds a pattern another consumer's agent would want, knowing nothing about this
-   machine, and it carries no name, path or value of this estate, open a plain, sanitised issue for
-   it on the core (the `core-improvement-issue` skill; CONTRIBUTING.md "Does it belong in the
+   machine, and it carries no name, path or value of this estate, open a sanitised pull request for
+   it on the core, from a branch, never a fork (the `core-improvement-pr` skill; CONTRIBUTING.md "Does it belong in the
    core?"). Anything that fails that test stays local.
 
 ## automation-safety.md

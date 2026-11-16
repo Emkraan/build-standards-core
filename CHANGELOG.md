@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-16 (v2.10.2, kit: Label in Name (WCAG 2.5.3) so the accessible name starts with the visible text)
+## 2026-11-16 (v2.11.1, kit: Label in Name (WCAG 2.5.3) so the accessible name starts with the visible text)
 
 @axe-core/playwright 4.14 turns on the `label-content-name-mismatch` rule, and the gallery axe check found controls whose `aria-label` did not contain the text drawn on them (issue #273).
 
@@ -9,6 +9,16 @@
 - Migration: a consumer test that finds one of these controls by its exact old name must match the start or the end of the name instead (`/Switch tool$/`, `/^AL Ada Lovelace/`, `/^v2\.1\.0/`, `Find Ctrl+K`). Text a `MonthGrid` `renderDay` draws is not part of the name the kit builds, so a consumer that draws text there must keep it out of the visible run or the rule flags the cell.
 - Changed: `renovate.json` no longer holds `@axe-core/playwright` below 4.14.0.
 - Tests: the kit unit tests (1269) pass, the gallery axe check passes with `@axe-core/playwright` 4.14.0 in both themes, and the specimen baselines are unchanged.
+
+## 2026-11-16 (v2.11.0, upward path: consumers open pull requests on a branch, not issues, never a fork)
+
+The upward path was an issue the owner approved before the owning account opened the pull request. It is now the pull request itself, from a branch on the core, opened by the consumer.
+
+- Changed: `CONSUMING.md` section 7 and section 11, `CONTRIBUTING.md` (authority, where the pull request comes from, "Reporting from a consumer"), the README (upward path, "Contributing back") and `hermes/README.md` state that a consumer's agent branches on the core and opens the pull request directly: no issue first, no approval step, never a fork. Every contributing account has write access; one without it asks the owner and does not fall back to a fork. A change under `.github/workflows/`, `checks/` or `templates/overlay/scripts/` is merged only by the owner.
+- Changed: the shared skill `core-improvement-issue` is now `core-improvement-pr` (`hermes/skills/core-improvement-pr/SKILL.md`): branch from `origin/main` in a worktree, make the change, describe it by role, run the sanitising checks on the description, open the pull request with `gh pr create`, verify the head repository is the core, then drive it to merge. `core-practices` is regenerated to point at it.
+- Changed: the optional private `report_repo` sections of the nightly are unchanged; they are a machine-made scan, not the upward channel.
+- Migration: a consumer that synced the old skill name picks up `core-improvement-pr` on its next `hermes/sync_skills.py` run; the old name stops being installed. A consumer that still files improvement issues should open pull requests instead; open issues stay valid for a defect in the core.
+- Tests: `check-ascii.py`, `check-links.py`, `check-placeholders.py`, `check-rules.py`, `check-hermes-skills.py`, `build_skills.py --check` and the diff-mode sanitising and neutrality checks pass.
 
 ## 2026-11-16 (v2.10.1, contributing: where a pull request comes from, branch or fork)
 
