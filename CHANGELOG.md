@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-16 (v2.10.2, kit: Label in Name (WCAG 2.5.3) so the accessible name starts with the visible text)
+
+@axe-core/playwright 4.14 turns on the `label-content-name-mismatch` rule, and the gallery axe check found controls whose `aria-label` did not contain the text drawn on them (issue #273).
+
+- Changed: the tool switch button (`rail` and `prominent`), the compact `SearchTrigger`, the `AccountMenu` trigger, the `BuildCard` button, the `ListControls` direction button and every `MonthGrid` day cell now start their accessible name with the visible text, then keep the spoken context after it. Whitespace text nodes separate the drawn pieces (tile, name, hint, keys, day number, event labels, "+N more") so the visible text reads as words; none of them paints anything.
+- Changed: the names are now `<tile> <name>, <label>` (tool switch, for example `R Reports, Switch tool`), `<initials> <name> <role or email>, <label>` (account trigger), `v<version> [New] Live|Offline [<subtitle>]. Show what's new` (build card), `<label> Ctrl+K` (compact search), `Asc, switch to descending` (direction) and `<day> <event labels drawn in the cell> [+N more], <full date>, ...` (day cell).
+- Migration: a consumer test that finds one of these controls by its exact old name must match the start or the end of the name instead (`/Switch tool$/`, `/^AL Ada Lovelace/`, `/^v2\.1\.0/`, `Find Ctrl+K`). Text a `MonthGrid` `renderDay` draws is not part of the name the kit builds, so a consumer that draws text there must keep it out of the visible run or the rule flags the cell.
+- Changed: `renovate.json` no longer holds `@axe-core/playwright` below 4.14.0.
+- Tests: the kit unit tests (1269) pass, the gallery axe check passes with `@axe-core/playwright` 4.14.0 in both themes, and the specimen baselines are unchanged.
+
 ## 2026-11-16 (v2.10.1, contributing: where a pull request comes from, branch or fork)
 
 A fork pull request sat BLOCKED because GitHub held its first workflow runs for approval, with nothing in the docs saying so.

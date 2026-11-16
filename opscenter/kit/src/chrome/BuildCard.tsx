@@ -119,7 +119,7 @@ export function BuildCard({ version, releases, live = true, subtitle, storageKey
         className="build-card"
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={`Version ${v}${live ? '' : ', offline'}${isNew ? ', new release notes' : ''}. Show what's new`}
+        aria-label={`v${v}${isNew ? ' New' : ''} ${live ? 'Live' : 'Offline'}${subtitle ? ` ${subtitle}` : ''}. Show what's new`}
         disabled={releases.length === 0}
         onClick={openNotes}
       >
@@ -128,6 +128,7 @@ export function BuildCard({ version, releases, live = true, subtitle, storageKey
             <span aria-hidden="true">v</span>
             <RollingText text={v} />
           </span>
+          {isNew ? ' ' : null}
           {isNew ? (
             <span className="build-new" aria-hidden="true">
               <IconSparkle size={10} className="build-spark" />
@@ -135,10 +136,12 @@ export function BuildCard({ version, releases, live = true, subtitle, storageKey
             </span>
           ) : null}
         </span>
+        {' '}
         <span className="build-row">
           <span className="build-line" aria-hidden="true">
             <span className="live-dot" data-off={live ? undefined : ''} /> <b>{live ? 'Live' : 'Offline'}</b>
           </span>
+          {subtitle ? ' ' : null}
           {subtitle ? (
             <span className="build-sub" aria-hidden="true">
               {subtitle}

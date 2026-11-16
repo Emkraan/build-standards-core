@@ -15,7 +15,7 @@
    a time) is left out. An `endDate` that is not a real ISO day, or is before `date`, makes it a one day
    event. The grid never throws on them. */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, HTMLAttributes, KeyboardEvent, ReactNode } from 'react';
 import { cx } from '../lib/env';
 
@@ -343,11 +343,15 @@ export function MonthGrid({
             const shown = laneBars ? [] : list.slice(0, maxEvents);
             const more = laneBars ? (plan?.hidden[col] ?? 0) : list.length - shown.length;
             const hint = dayHint?.(d, list);
+            // Label in Name (WCAG 2.5.3): the name starts with the cell's visible run, the day number, the event
+            // labels drawn in this cell (a bar is drawn only where it starts) and "+N more", then the spoken context.
+            const drawn = laneBars ? (plan?.bars ?? []).filter((b) => b.col === col).map((b) => b.event) : shown;
+            const visible = [String(d.day), ...drawn.map((e) => e.label), more > 0 ? `+${more} more` : ''].filter(Boolean).join(' ');
             const spoken = [
+              visible,
               fmtLong.format(parse(d.date)),
               d.today ? 'today' : '',
               list.length ? `${list.length} ${list.length === 1 ? 'event' : 'events'}` : '',
-              // Label in Name: the event names shown in the cell are part of its accessible name.
               ...list.map((e) => e.label),
               hint ?? '',
             ].filter(Boolean).join(', ');
@@ -370,6 +374,7 @@ export function MonthGrid({
                 }}
               >
                 <span className="month-grid-num">{d.day}</span>
+                {' '}
                 {renderDay?.(d, list)}
                 {laneBars && plan && plan.lanes > 0 && (() => {
                   const here = plan.bars.filter((b) => b.col === col);
@@ -378,8 +383,8 @@ export function MonthGrid({
                   return (
                     <ul className="month-grid-lanes" aria-label="Events">
                       {here.map((b) => (
+                        <Fragment key={b.event.id}>
                         <li
-                          key={b.event.id}
                           className="month-grid-event month-grid-bar"
                           data-tone={b.event.tone ?? 'neutral'}
                           data-left={b.continuesLeft ? '' : undefined}
@@ -392,6 +397,8 @@ export function MonthGrid({
                             <span className="month-grid-chip">{b.event.label}</span>
                           )}
                         </li>
+                        {' '}
+                        </Fragment>
                       ))}
                     </ul>
                   );
@@ -399,16 +406,20 @@ export function MonthGrid({
                 {shown.length > 0 && (
                   <ul className="month-grid-events" aria-label="Events">
                     {shown.map((ev) => (
-                      <li key={ev.id} className="month-grid-event" data-tone={ev.tone ?? 'neutral'}>
+                      <Fragment key={ev.id}>
+                      <li className="month-grid-event" data-tone={ev.tone ?? 'neutral'}>
                         {renderEvent ? renderEvent(ev) : onEventClick ? (
                           <button type="button" className="month-grid-chip" onClick={() => onEventClick(ev)}>{ev.label}</button>
                         ) : (
                           <span className="month-grid-chip">{ev.label}</span>
                         )}
                       </li>
+                      {' '}
+                      </Fragment>
                     ))}
                   </ul>
                 )}
+                {more > 0 && ' '}
                 {more > 0 && <span className="month-grid-more">+{more} more</span>}
               </div>
             );

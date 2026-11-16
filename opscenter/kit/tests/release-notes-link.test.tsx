@@ -30,7 +30,7 @@ describe('release notes link and optional date (web-ui 22)', () => {
 
   it('passes the link through from the build card', () => {
     render(<BuildCard version="2.1.0" releases={dateless} link={{ href: 'https://docs.example.com/c', label: 'Full changelog' }} />);
-    fireEvent.click(screen.getByRole('button', { name: /Version 2\.1\.0/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^v2\.1\.0/ }));
     expect(screen.getByRole('link', { name: 'Full changelog' })).toBeTruthy();
   });
 
@@ -48,13 +48,13 @@ describe('release notes link and optional date (web-ui 22)', () => {
   it('shows New again only when the seen key changes', () => {
     window.localStorage.clear();
     const first = render(<BuildCard version="2.1.0" releases={dateless} seenKey="a" />);
-    expect(screen.getByRole('button', { name: /new release notes/ })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: /Version 2\.1\.0/ }));
+    expect(screen.getByRole('button', { name: /^v2\.1\.0 New / })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /^v2\.1\.0/ }));
     first.unmount();
     const again = render(<BuildCard version="2.1.0" releases={dateless} seenKey="a" />);
-    expect(screen.queryByRole('button', { name: /new release notes/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^v2\.1\.0 New / })).toBeNull();
     again.unmount();
     render(<BuildCard version="2.1.0" releases={dateless} seenKey="b" />);
-    expect(screen.getByRole('button', { name: /new release notes/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^v2\.1\.0 New / })).toBeTruthy();
   });
 });

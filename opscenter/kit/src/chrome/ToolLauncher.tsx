@@ -175,6 +175,10 @@ export function ToolSwitchButton({ launcher, name, mark, hue, label = 'Switch to
   const nameId = useId();
   const prominent = variant === 'prominent';
   const keysLabel = LAUNCHER_KEYS.toUpperCase();
+  // Label in Name (WCAG 2.5.3): the name starts with the visible run (the tile text, the eyebrow, the tool
+  // name), then the action. A tile that holds an icon has no text to speak.
+  const tileText = typeof mark === 'string' || typeof mark === 'number' ? String(mark) : mark == null ? initialsOf(name) : '';
+  const spoken = [tileText, prominent ? eyebrow : '', name].filter(Boolean).join(' ') + `, ${label}`;
   return (
     <button
       ref={launcher.buttonRef}
@@ -182,7 +186,7 @@ export function ToolSwitchButton({ launcher, name, mark, hue, label = 'Switch to
       className={cx('tl-switch', hueClass(hue), className)}
       data-variant={variant}
       data-collapsible={collapsible && variant === 'rail' ? '' : undefined}
-      aria-label={label}
+      aria-label={spoken}
       aria-describedby={nameId}
       aria-haspopup="dialog"
       aria-expanded={launcher.open}
@@ -195,13 +199,16 @@ export function ToolSwitchButton({ launcher, name, mark, hue, label = 'Switch to
         <span className="tl-ring" />
         <span className="tl-switch-tile">{mark ?? initialsOf(name)}</span>
       </span>
+      {' '}
       <span className="tl-switch-text">
         {prominent ? <span className="tl-switch-eyebrow">{eyebrow}</span> : null}
+        {prominent ? ' ' : null}
         <span className="tl-switch-name" id={nameId}>
           {name}
         </span>
         {prominent ? null : (
           <span className="tl-switch-hint" aria-hidden="true">
+            {' '}
             {label}
           </span>
         )}

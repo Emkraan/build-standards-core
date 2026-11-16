@@ -7,6 +7,7 @@ import { useId, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { IconChevronDown, IconExternal, IconLogOut } from '../icons/icons';
 import { cx } from '../lib/env';
+import { initialsOf } from '../lib/hues';
 import { safeHref } from '../lib/url';
 import { Popover } from '../overlays/Popover';
 import type { Placement } from '../overlays/Popover';
@@ -158,12 +159,14 @@ export function AccountMenu({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        aria-label={`${label}: ${displayName}${sub ? `, ${sub}` : ''}`}
+        aria-label={`${initialsOf(displayName || identity.email || '?')} ${displayName}${sub ? ` ${sub}` : ''}, ${label}`}
         onClick={() => setOpen((v) => !v)}
       >
         <Avatar name={displayName || identity.email || '?'} src={identity.photo || undefined} size="sm" />
+        {' '}
         <span className="account-label">
           <span className="account-name">{displayName}</span>
+          {sub ? ' ' : null}
           {sub ? <span className="account-sub">{sub}</span> : null}
         </span>
         <IconChevronDown size={14} className="account-chevron" />
