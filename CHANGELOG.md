@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-16 (v2.10.1, contributing: where a pull request comes from, branch or fork)
+
+A fork pull request sat BLOCKED because GitHub held its first workflow runs for approval, with nothing in the docs saying so.
+
+- Changed: `CONTRIBUTING.md` states that a contributor with write access pushes a branch and one without opens a fork pull request, what the maintainer checks before approving a fork's first runs, and that a fork's own `automerge` run fails by design while the `workflow_run` pass still enqueues it.
+- Migration: none. Contributing accounts were given write access on this repo only, so their pull requests start CI without approval.
+- Tests: `check-ascii.py`, `check-links.py`, `check-placeholders.py` and `check-changelog.py` pass.
+
 ## 2026-11-16 (v2.10.0, hermes-api-access: the agent reached from a phone over the API server only)
 
 A consumer ran the dashboard service for its phone app, then a second isolated copy with its own sign-in, plus a chat-platform bot for alerts. Three surfaces held the same session store and each needed its own credential. It moved to the gateway API server alone, and the owner approved the design in issue #284.
