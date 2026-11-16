@@ -1,6 +1,6 @@
 # Local Ops App Standard
 
-Version: 1.3 | Last reviewed: 2026-10-21 | Status: current | Scope: web (local tools)
+Version: 1.4 | Last reviewed: 2026-11-16 | Status: current | Scope: web (local tools)
 
 How to build a local, single-operator first-party tool: a small server and scripted engine on the
 operator's own machine, with a web UI that follows the first-party design system. This doc is the source of truth. Where a reference implementation differs, the implementation
@@ -519,3 +519,51 @@ stale rows; an approval action calls only the pull request or issue-comment path
 for `gh` records `pr ready`, `pr merge` or `issue comment`, and never `git push` to a default
 branch); the approval control is absent on an apply-at-once row and disabled on a pull request
 whose checks fail.
+
+## 20. Push channel
+
+A page that polls pays for every open tab on every timer and still shows a change late. A push
+channel tells each open tab which topic changed, and the tab reads the endpoint it already knows.
+Section 15 still sets the polling budget the channel falls back to. The rules, each from a measured
+stall (one visible idle tab made about 27 requests a minute while nothing changed, and a change
+reached the screen at the next timer or the next scheduled bundle):
+
+1. **The stream carries versions, never payloads.** One server-sent-events endpoint
+   (`GET /api/live`) keeps a version per topic. A new connection gets a `hello` frame with every
+   topic and version, so a reconnect catches up, then a `topic` frame `{t, v, at}` when a version
+   moves, and a heartbeat comment about every 20 seconds so a dead peer fails its next write. A
+   topic seen for the first time is recorded quietly. The channel never calls an upstream system
+   and carries no data, so it makes no access decision: the tab reads the endpoint, which is gated
+   as before. The server holds at most a fixed number of open streams (24 by default, the next
+   one gets 503 and that tab polls), and a stream whose queue fills is closed so the tab
+   reconnects.
+2. **A version is a hash of the content without its stamps.** A JSON body is hashed without the
+   keys that change on every read (`generated_at`, `fetched_at`, `now` and similar), or an
+   endpoint that stamps its answer would publish on every read and loop the tabs. A topic that
+   publishes more than 6 times in 60 seconds is held quiet until it settles, and the safety
+   interval of rule 5 still reads it.
+3. **Presence gates every upstream read.** A tab posts `{id, visible, wants:[{topic, path?, ms}]}`
+   to say whether it is visible and which endpoints it shows. A warm loop on the server reads each
+   declared endpoint at that tab's interval, through the server's own caches, only while at least
+   one tab is visible. With no tab, or only hidden tabs, nothing runs and no upstream call is made.
+   Only a path under `/api/` with no query and not the channel itself is accepted, a path and an
+   interval are bounded, and a tab declares a bounded number of endpoints. Only the server's own
+   warm read decides that an endpoint changed, so a tab's reload never publishes and a topic event
+   cannot cause the read that causes the next event.
+4. **A source change is bundled when it happens, not on a timer.** When a dataset is built from
+   source files, a watcher looks at the sources and, once they have held still for a short
+   quiet period (1.5 seconds), runs the bundler under the bundler's own lock, at most once every 20
+   seconds and 6 times in 10 minutes. A skipped run because the lock is held is not an error. The
+   scheduled bundle stays as the safety net.
+5. **The client falls back to polling by itself.** One `EventSource` serves the app. A store
+   reloads once, coalesced for about 250 ms and only while its tab is visible, when its topic
+   moves. While the channel is connected a store's timer stretches to a safety interval (5
+   minutes). A dropped channel puts the store's own interval straight back, reconnect waits 1, 2,
+   5, 10 and then 30 seconds, and every store reads once on the `hello` that follows. A chip in the
+   header says whether the page is live or polling.
+
+**Acceptance (test):** with fake clocks and a fake fetch, an unchanged body never publishes, a body
+that differs only by a stamp key never publishes, a changed body publishes once, a topic that flaps
+is held quiet, the warm loop makes no call with no visible tab, the 25th stream is refused, and a
+presence body with a query path is refused. A client test asserts a store reloads on its topic,
+stretches its timer while connected and restores its own interval when the channel drops.
