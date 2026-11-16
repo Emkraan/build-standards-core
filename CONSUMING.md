@@ -480,9 +480,11 @@ shareable improvement, it works the change in the core as a pull request.
   `Remaining:` line, or `No issue: <reason>`; a pull request that fixes nothing already filed uses `No issue:`).
 - **No issue for an improvement.** Do not open an issue to propose a change. Issues stay for a defect in
   the core itself that you are not fixing in the same piece of work.
-- **Review and merge.** `checks` and `visual` must pass; the pull request is then reviewed and merged by
-  the merge queue. A pull request that touches `.github/workflows/`, `checks/` or
-  `templates/overlay/scripts/` is for the owner alone.
+- **Review and merge.** `checks` and `visual` must pass and Eir's check run `eir-review` must pass: a
+  local model reviews the pull request (any size, in chunks) and the merge queue merges it when every
+  required check is green. Read a failed `eir-review` in the check summary and the pull request comment, fix
+  it and push; the push starts a new review. A pull request that touches `.github/workflows/`, `checks/` or
+  `templates/overlay/scripts/` is for the owner alone: it fails `eir-review` until the owner approves it on GitHub.
 
 The scope test and the sanitising rules are in [CONTRIBUTING.md](CONTRIBUTING.md#reporting-from-a-consumer).
 

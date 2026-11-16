@@ -56,6 +56,15 @@
   request that does arrive is read before its runs are approved, and one that changes `.github/workflows/`,
   `checks/` or `templates/overlay/scripts/` needs the owner's say. Access is granted per repository: write
   here is never a reason to widen anything on another repo.
+- Review: Eir reviews every pull request from a contributing account and posts the check run `eir-review`
+  on the head commit. It is read by a local model only, in chunks of any size, with the pull request text
+  treated as data. A change under `.github/workflows/`, `checks/` or `templates/overlay/scripts/`, a
+  binary file, or a file list GitHub cannot return in full fails the check with "owner review needed"
+  without a model call. Any other failure carries its reasons in the check summary and in one pull
+  request comment; pushing a new commit starts a fresh review. An error or an unavailable model leaves
+  the check pending, never passed. The owner overrides any failure by approving the pull request on
+  GitHub at its current head commit. Pull requests from the owner, Renovate and the Claudius App pass
+  through without a model. Eir never pages anyone about a review.
 - Never rebase. Work from a branch cut from the current `origin/main`, in your own worktree, and
   bring in what landed since with a merge: `git fetch origin main` then `git merge FETCH_HEAD`, before
   you push and again before you merge, then re-run the checks. Never resolve a conflict by taking your
