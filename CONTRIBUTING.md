@@ -48,6 +48,14 @@
   request and merges it once `ci` and `visual` pass; no second reviewer is required. The checks and
   the merge rule below take the place of review. Do not wait for another account to act, and do not
   leave a shareable improvement in a consumer: open an issue for it.
+- Where the pull request comes from: an account with write access pushes a branch on this repo, so
+  `checks`, `visual` and `automerge` start on their own. An account without write access opens the pull
+  request from a fork, and GitHub holds the first workflow runs on a fork until a maintainer approves
+  them: approve them only after reading the diff, and refuse a fork pull request that changes
+  `.github/workflows/`, `checks/` or `templates/overlay/scripts/` without the owner's say. A fork run
+  has no secrets, so its own `automerge` run fails and leaves the pull request `UNSTABLE`; the
+  `workflow_run` pass after `checks` completes still enqueues it, and the merge queue merges it. This
+  grant is per repository: contributor write access here is never a reason to widen anything on another repo.
 - Never rebase. Work from a branch cut from the current `origin/main`, in your own worktree, and
   bring in what landed since with a merge: `git fetch origin main` then `git merge FETCH_HEAD`, before
   you push and again before you merge, then re-run the checks. Never resolve a conflict by taking your
