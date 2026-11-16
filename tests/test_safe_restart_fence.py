@@ -31,9 +31,11 @@ class Fence(Work):
             p.start()
             self.addCleanup(p.stop)
         self.busy = []
-        p = mock.patch.object(ex, "idle_reasons", lambda: self.busy)
-        p.start()
-        self.addCleanup(p.stop)
+        for name in ("idle_reasons", "preflight_reasons"):
+            # the second read of the gateway-only path must never reach a real gateway
+            p = mock.patch.object(ex, name, lambda: self.busy)
+            p.start()
+            self.addCleanup(p.stop)
         os.environ.pop("SAFE_RESTART_FENCE", None)
         os.environ.pop("SAFE_RESTART_FREEZE_S", None)
 
@@ -100,7 +102,8 @@ class Fence(Work):
         self.assertEqual(self.events, [])
         self.assertFalse(os.path.exists(self.freeze))
 
-    def test_flag_off_is_the_old_single_gateway_kickstart(self):
+    def test_flag_off_with_a_backend_is_the_old_single_gateway_kickstart(self):
+        (self.dir / "backend").write_text("ai.hermes.backend\n")
         trig = self.dir / "trigger"
         import time
 
@@ -110,11 +113,13 @@ class Fence(Work):
             mock.patch.object(ex, "TRIGGER", str(trig)),
             mock.patch.object(ex, "card"),
             mock.patch.object(ex, "run_fenced") as fenced,
+            mock.patch.object(ex, "run_gateway_only") as only,
             mock.patch.object(ex, "freeze_on") as fon,
             mock.patch("urllib.request.urlopen"),
         ):
             ex.main()
         fenced.assert_not_called()
+        only.assert_not_called()
         fon.assert_not_called()
         self.assertEqual(self.events, [("kickstart", ex.LABEL)])
         self.assertFalse(os.path.exists(self.freeze))

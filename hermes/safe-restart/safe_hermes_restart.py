@@ -8,10 +8,14 @@ see safe_hermes_restart_exec.py) bounces the service from outside it, verifies t
 Idle means: no live kanban worker, no other cron run in progress, no busy model slot, and no chat
 turn in flight (a live, unexpired turn lease in the session store, which the desktop backend and the
 gateway both take). A probe that cannot be read counts as busy, never as idle.
+Gateway-only mode (no backend service label in ~/.hermes/state/safe-restart.backend) adds two more
+sources: the gateway's own health counts, and any backend the desktop app spawned (found through its
+spawn ledger), which counts as interactive work and is never restarted or killed by this tool.
 Flags: --dry-run (report only), --status.
 """
 
 import contextlib
+import datetime as dt
 import glob
 import json
 import os
@@ -33,6 +37,14 @@ STALE_H = 3  # a cron run older than this with no end is treated as dead
 IDLE_TICKS = 2  # consecutive idle ticks required
 STALL_H = 12  # armed this long without going idle: open one card
 ENV = {"HOME": HOME, "PATH": os.environ.get("PATH", ""), "HERMES_HOME": HH}
+BACKEND_FILE = f"{HH}/state/safe-restart.backend"  # first word: launchd label of a backend service
+API_URL = os.environ.get("SAFE_RESTART_API", "http://127.0.0.1:8642")  # gateway API server
+KEY_FILE = os.environ.get("SAFE_RESTART_KEY_FILE", f"{HH}/.env")  # holds API_SERVER_KEY
+LEDGER = os.environ.get("SAFE_RESTART_LEDGER", f"{HH}/spawn-ledger.json")  # app-spawned backends
+APP_PURPOSES = ("dashboard", "serve")  # ledger purposes the desktop app itself attaches to
+LOOPBACK = ("127.0.0.1", "localhost", "::1")
+START_SLACK_S = 5  # a recorded create time matches a live process start within this many seconds
+TOKEN_RE = re.compile(r'__HERMES_SESSION_TOKEN__\s*=\s*"([^"\\]{16,})"')
 
 
 def _assignee():
@@ -92,8 +104,166 @@ def turn_reasons(db=STATE_DB, now=None):
     return out
 
 
+def gateway_only(path=None):
+    """Gateway-only mode: no backend service label is configured, so the gateway is the only service."""
+    try:
+        with open(path or BACKEND_FILE) as fh:
+            return not fh.read().split()
+    except OSError:
+        return True
+
+
+def api_key(path=None):
+    """API_SERVER_KEY from the agent env file, or None. Never printed or logged."""
+    try:
+        with open(path or KEY_FILE) as fh:
+            for line in fh:
+                if line.startswith("API_SERVER_KEY="):
+                    return line.split("=", 1)[1].strip().strip("\"'") or None
+    except OSError:
+        return None
+    return None
+
+
+def gateway_health(timeout=6):
+    """GET /health/detailed on the gateway API server. Raises when it cannot be read."""
+    key = api_key()
+    if not key:
+        raise RuntimeError("no API_SERVER_KEY in the Hermes environment")
+    req = urllib.request.Request(
+        API_URL + "/health/detailed", headers={"Authorization": "Bearer " + key}
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode() or "{}")
+
+
+def gateway_reasons(read=None, agents=True):
+    """Busy reasons from the gateway's own counts: it reports busy, cannot drain, or holds agent runs,
+    API runs, process completions or delegations. The counts carry no session ids and there is no
+    admission fence, so this is a smaller guarantee than the backend idle proof. An unreadable health
+    is busy, never idle. agents=False skips the busy flag and the agent count: a tick that runs as a
+    cron job inside the gateway may be counted by them, so only the restart helper (after the tick
+    exited) reads them."""
+    try:
+        h = (read or gateway_health)()
+    except (OSError, RuntimeError, ValueError) as e:  # URLError and JSON errors are subclasses
+        return [f"cannot read the gateway health: {str(e)[:120]}"]
+    if not isinstance(h, dict) or "gateway_busy" not in h:
+        return ["gateway health carries no busy flag"]
+    out = []
+    if h.get("gateway_drainable") is False:
+        out.append("gateway cannot drain right now")
+    queues = ((h.get("readiness") or {}).get("checks") or {}).get("background_queues") or {}
+    counts = [
+        ("active_api_runs", "API run"),
+        ("process_completions", "process completion"),
+        ("active_delegations", "delegation"),
+    ]
+    if agents:
+        counts.insert(0, ("active_agents", "agent run"))
+    for key, name in counts:
+        n = queues.get(key) if key in queues else h.get(key)
+        if isinstance(n, int) and n > 0:
+            out.append(f"gateway has {n} {name}{'' if n == 1 else 's'} in flight")
+    if agents and h.get("gateway_busy") and not out:
+        out.append("gateway reports it is busy")
+    return out
+
+
+def started_at(pid):
+    """Process start time as epoch seconds, or None."""
+    try:
+        r = subprocess.run(
+            ["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True, text=True, timeout=5
+        )
+        txt = " ".join(r.stdout.split())
+        return dt.datetime.strptime(txt, "%a %b %d %H:%M:%S %Y").timestamp() if txt else None
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+
+
+def app_backends(ledger=None):
+    """Live backends the desktop app spawned: [{pid, port}]. Only ledger entries the app itself attaches
+    to (purpose dashboard or serve, loopback, not isolated) whose process is alive and whose start time
+    matches the recorded create time, so a reused pid is never taken for a backend. A missing ledger
+    means none (the app is closed). Raises ValueError when the ledger exists and cannot be read."""
+    path = ledger or LEDGER
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path) as fh:
+            data = json.load(fh)
+    except (OSError, ValueError) as e:
+        raise ValueError(f"spawn ledger unreadable: {str(e)[:100]}") from e
+    entries = data if isinstance(data, list) else (data or {}).get("entries", [])
+    out, seen = [], set()
+    for e in entries if isinstance(entries, list) else []:
+        if (
+            not isinstance(e, dict)
+            or e.get("purpose") not in APP_PURPOSES
+            or e.get("isolated") is True
+        ):
+            continue
+        pid, port = e.get("pid"), e.get("port")
+        if (
+            not isinstance(pid, int)
+            or not isinstance(port, int)
+            or pid <= 0
+            or not 0 < port <= 65535
+        ):
+            continue
+        if str(e.get("host", "")).lower() not in LOOPBACK or pid in seen or not alive(pid):
+            continue
+        started, created = started_at(pid), e.get("create_time")
+        try:
+            if started is None or created is None or abs(started - float(created)) > START_SLACK_S:
+                continue
+        except (TypeError, ValueError):
+            continue
+        seen.add(pid)
+        out.append({"pid": pid, "port": port})
+    return out
+
+
+def backend_proof(backend, timeout=8):
+    """The backend's own idle proof (GET /api/health/idle with the session token its loopback page embeds).
+    Raises when it cannot be read."""
+    base = f"http://127.0.0.1:{backend['port']}"
+    with urllib.request.urlopen(base + "/", timeout=5) as r:
+        m = TOKEN_RE.search(r.read(400000).decode("utf-8", "replace"))
+    if not m:
+        raise RuntimeError("no session token on the backend page")
+    req = urllib.request.Request(
+        base + "/api/health/idle", headers={"X-Hermes-Session-Token": m.group(1)}
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode() or "{}")
+
+
+def backend_reasons(ledger=None, read=None):
+    """Interactive work in a desktop-app backend: busy when it says so or cannot be read. The helper
+    never restarts or kills such a backend, it only waits for it."""
+    try:
+        found = app_backends(ledger)
+    except ValueError as e:
+        return [str(e)]
+    out = []
+    for b in found:
+        try:
+            proof = (read or backend_proof)(b)
+        except (OSError, RuntimeError, ValueError) as e:
+            out.append(f"desktop backend pid {b['pid']} cannot prove it is idle: {str(e)[:100]}")
+            continue
+        if not isinstance(proof, dict) or proof.get("idle") is not True:
+            why = proof.get("reason") or proof.get("detail") if isinstance(proof, dict) else None
+            out.append(f"desktop backend pid {b['pid']} is busy ({why or 'not idle'})")
+    return out
+
+
 def busy_reasons(own_id):
     out = turn_reasons()
+    if gateway_only():
+        out += gateway_reasons(agents=False) + backend_reasons()
     import sqlite3
 
     for db in glob.glob(f"{HH}/kanban/boards/*/kanban.db") + glob.glob(f"{HH}/kanban/kanban.db"):

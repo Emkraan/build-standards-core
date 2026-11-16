@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-16 (v2.12.0, safe-restart: a gateway-only restart that waits for the gateway and any desktop backend)
+
+A consumer that moved to the API server alone (`hermes-api-access`) lost the dashboard's per-turn idle proof, so the safe restart had only the session store lease to go on and restarted through a hard launchd kickstart. This adds the missing half.
+
+- Added: gateway-only mode in `hermes/safe-restart/`, chosen when no backend label is configured. The idle check also reads the gateway health (busy flag, drainable flag, agent runs, API runs, process completions, delegations, any unreadable read is busy), and any backend the desktop app spawned (found through its spawn ledger, matched on process start time, loopback and not isolated) must prove itself idle. The helper never restarts or kills such a backend.
+- Added: the restart reads the gateway and backends a second time right before it acts, refuses and blocks the card when either is busy, and restarts through the gateway's draining command instead of a kickstart. With the fence on, the same second read follows the freeze.
+- Added: the `force` trigger token, the one opt-in path that skips the drain and kickstarts, and records on the card what the gateway was holding.
+- Changed: `hermes/safe-restart/README.md` documents the mode and states the smaller guarantee (no session ids, no admission fence).
+- Migration: none. A consumer with a backend label set keeps the single kickstart and the fenced mode as before. One without a label gets the new checks and the draining restart on its next sync.
+- Tests: `tests/test_safe_restart_gateway_only.py` (health reasons, mode detection, ledger matching, backend proof, refusal, drain, force, fenced second read, no process signalled), the changed flag-off test in `tests/test_safe_restart_fence.py`, `ruff`, and the `check-*` scripts pass.
+
 ## 2026-11-16 (v2.11.1, kit: Label in Name (WCAG 2.5.3) so the accessible name starts with the visible text)
 
 @axe-core/playwright 4.14 turns on the `label-content-name-mismatch` rule, and the gallery axe check found controls whose `aria-label` did not contain the text drawn on them (issue #273).
