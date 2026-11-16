@@ -60,3 +60,35 @@ When on, the helper does this, in this order:
    also expires on its own, so a crashed helper cannot hold the freeze past the window.
 
 A runtime that starts new work should refuse or defer it while the marker holds a future epoch.
+
+## Gateway-only mode (no dashboard service)
+
+A consumer that follows `standards/hermes-api-access.md` runs the gateway API server alone, so there
+is no backend service label and no per-turn idle proof from a dashboard. The helper detects that
+case from an empty or absent `~/.hermes/state/safe-restart.backend` and changes three things.
+
+- Idle also means the gateway's own health read is quiet: `GET /health/detailed` on the API server
+  (key from `API_SERVER_KEY` in the agent env file) reports it is not busy, can drain, and holds no
+  API run, process completion or delegation. The tick skips the busy flag and the agent count, since
+  a cron job inside the gateway may be counted by them, and the helper reads both after the tick has
+  exited. An unreadable health counts as busy, never idle.
+- A backend the desktop app spawned counts as interactive work. It is found through the app's spawn
+  ledger (`~/.hermes/spawn-ledger.json`): only `dashboard` and `serve` entries on loopback that are
+  not isolated, whose process is alive and whose start time matches the recorded create time (a
+  reused pid is never taken for a backend). Its own `GET /api/health/idle` proof, read with the
+  session token its loopback page embeds, must say idle. The helper never restarts, signals or kills
+  such a backend, it only waits for it.
+- The gateway has no admission fence, so the helper reads the gateway and the backends again right
+  before the restart and refuses when either is busy, cannot drain or cannot be read. The restart
+  goes through the gateway's draining command (running agents finish, then it restarts), never a
+  hard kill, and the result is verified like any other restart. A refusal restarts nothing and
+  blocks the card with the reasons. With the fence on, the same second read follows the freeze.
+
+The counts carry no session ids and no fence exists, so this is a smaller guarantee than the
+backend idle proof. It bounds the window to the time between the second read and the drain, and the
+drain waits for the agents that started inside it.
+
+One opt-in exception: the token `force` after the epoch in the trigger file
+(`echo "$(date +%s) force" > trigger`, one run only) skips the wait and the drain and kickstarts the
+gateway through launchd. The card records what the gateway was holding at that moment, so a forced
+restart is always visible. With a backend label configured the behaviour is unchanged.

@@ -4,7 +4,15 @@ the trigger file), so it lives outside the gateway it restarts. Does nothing unl
 
 Fenced mode (off by default, see fence_enabled): freeze new work for a bounded window, re-check idle
 inside it, restart the backend and then the gateway, verifying each, and always release the freeze.
-With the flag off the behaviour is the original single gateway kickstart, unchanged."""
+With the flag off and a backend service configured the behaviour is the original single gateway
+kickstart, unchanged.
+
+Gateway-only mode (no backend label in safe-restart.backend): the gateway has no admission fence, so the
+helper reads its health again right before the restart and refuses when it reports busy, cannot drain
+or cannot be read. It restarts through the gateway's draining restart command, never a hard kill. A
+trigger token `force` is the one opt-in exception: no wait and no drain, a launchd kickstart, and the
+card records what the gateway was holding. A backend the desktop app spawned is never restarted or
+killed here (it is interactive work that the idle half waits for)."""
 
 import json
 import os
@@ -17,6 +25,8 @@ import urllib.request
 HOME = os.path.expanduser("~")
 HH = f"{HOME}/.hermes"
 LABEL = f"gui/{os.getuid()}/ai.hermes.gateway"
+HERMES = os.environ.get("SAFE_RESTART_HERMES", f"{HOME}/.local/bin/hermes")
+DRAIN_TIMEOUT_S = 300  # the draining restart command waits for running agents, then restarts
 ENV = {
     "HOME": HOME,
     "PATH": os.environ.get("PATH", "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"),
@@ -91,6 +101,7 @@ TRIGGER = f"{HH}/state/safe-restart.trigger"
 
 
 FENCE_TOKEN = False
+FORCE_TOKEN = False
 
 
 def take_trigger():
@@ -100,9 +111,10 @@ def take_trigger():
             parts = fh.read().split()
         age = time.time() - int(parts[0])
         os.remove(TRIGGER)
-        global NOOP, FENCE_TOKEN
+        global NOOP, FENCE_TOKEN, FORCE_TOKEN
         NOOP = NOOP or "noop" in parts[1:]  # test hook: echo "$(date +%s) noop" > trigger
         FENCE_TOKEN = "fence" in parts[1:]  # per-run opt in to fenced mode
+        FORCE_TOKEN = "force" in parts[1:]  # per-run opt in to a forced gateway-only restart
     except Exception:
         return False
     return age < 600
@@ -150,11 +162,34 @@ def unit_pid(label):
     return int(m.group(1)) if m else None
 
 
-def restart_unit(label, name, pid_of):
-    """Kickstart one launchd unit and verify a new process that stays up for 30 s. Returns (ok, old, new)."""
-    old = pid_of()
+def kickstart(label):
+    """Hard restart through launchd: the service is killed and started, nothing drains."""
     r = subprocess.run(["launchctl", "kickstart", "-k", label], capture_output=True, text=True)
-    log(f"{name} kickstart rc={r.returncode} {r.stderr.strip()}")
+    return r.returncode, r.stderr.strip()
+
+
+def drain_restart(label=None):
+    """The gateway's own draining restart: running agents finish (up to its drain timeout) before it
+    restarts. Goes through the Hermes CLI, never through a process kill."""
+    try:
+        r = subprocess.run(
+            [HERMES, "gateway", "restart"],
+            env=ENV,
+            capture_output=True,
+            text=True,
+            timeout=DRAIN_TIMEOUT_S,
+        )
+    except (OSError, subprocess.SubprocessError) as e:
+        return -1, str(e)[:200]
+    return r.returncode, (r.stderr or r.stdout).strip()[-200:]
+
+
+def restart_unit(label, name, pid_of, kick=None):
+    """Restart one launchd unit (a hard kickstart unless kick says otherwise) and verify a new process that
+    stays up for 30 s. Returns (ok, old, new)."""
+    old = pid_of()
+    rc, err = (kick or kickstart)(label)
+    log(f"{name} restart rc={rc} {err}")
     new = None
     for _ in range(60):
         time.sleep(5)
@@ -187,16 +222,49 @@ def freeze_off():
     log("freeze released")
 
 
-def idle_reasons():
+def idle_module():
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import safe_hermes_restart as sr
 
-    return sr.busy_reasons(None)
+    return sr
+
+
+def idle_reasons():
+    return idle_module().busy_reasons(None)
+
+
+def preflight_reasons():
+    """The gateway-only read right before a restart: the gateway's full counts and any desktop-app
+    backend. The gateway has no admission fence, so this second read is what bounds the window."""
+    sr = idle_module()
+    return sr.gateway_reasons() + sr.backend_reasons()
+
+
+def run_gateway_only(force=False):
+    """Gateway-only restart. Reads the gateway health again and refuses on busy, undrainable or unreadable.
+    Restarts through the draining command. force skips the wait and the drain, kickstarts through launchd
+    and records what the gateway was holding. Returns (ok, detail, old, new)."""
+    old = gw_pid()
+    held = preflight_reasons()
+    if force:
+        detail = (
+            "forced restart, no drain. Held at the restart: " + " | ".join(held)
+            if held
+            else "forced restart, no drain. The gateway held nothing."
+        )
+        log(detail)
+        ok, old, new = restart_unit(LABEL, "gateway", gw_pid)
+        return ok, detail, old, new
+    if held:
+        return False, "refused, nothing restarted: " + " | ".join(held), old, None
+    ok, old, new = restart_unit(LABEL, "gateway", gw_pid, drain_restart)
+    return ok, "gateway only, draining restart", old, new
 
 
 def run_fenced(seconds):
     """Freeze, re-check idle, restart backend then gateway (verified each). Returns (ok, detail, old, new).
-    The freeze is released on every exit path."""
+    The freeze is released on every exit path. With no backend configured the gateway step is the
+    gateway-only restart: second health read, then the draining restart."""
     old = new = None
     freeze_on(seconds)
     try:
@@ -205,7 +273,7 @@ def run_fenced(seconds):
         if busy:
             return (
                 False,
-                "work started inside the freeze, nothing restarted: " + "; ".join(busy),
+                "refused, work started inside the freeze, nothing restarted: " + " | ".join(busy),
                 old,
                 new,
             )
@@ -220,7 +288,8 @@ def run_fenced(seconds):
                     new,
                 )
         else:
-            log("no backend configured (safe-restart.backend): backend step skipped")
+            log("no backend configured (safe-restart.backend): gateway-only restart")
+            return run_gateway_only(False)
         ok, old, new = restart_unit(LABEL, "gateway", gw_pid)
         return ok, "backend then gateway", old, new
     except Exception as e:
@@ -239,12 +308,17 @@ def main():
     if NOOP:
         log("NOOP: skipping kickstart")
         return
+    only = backend_label() is None
+    detail = ""
     if fence_enabled(token=FENCE_TOKEN):
         ok, detail, old, new = run_fenced(freeze_seconds())
         log(f"fenced restart ok={ok}: {detail}")
+    elif only:
+        ok, detail, old, new = run_gateway_only(FORCE_TOKEN)
+        log(f"gateway-only restart ok={ok}: {detail}")
     else:
-        r = subprocess.run(["launchctl", "kickstart", "-k", LABEL], capture_output=True, text=True)
-        log(f"kickstart rc={r.returncode} {r.stderr.strip()}")
+        rc, err = kickstart(LABEL)
+        log(f"kickstart rc={rc} {err}")
         new = None
         for _ in range(60):
             time.sleep(5)
@@ -256,7 +330,14 @@ def main():
             time.sleep(30)
             ok = gw_pid() == new  # still the same pid after 30s: it did not crash-loop
         log(f"new gateway pid {new} stable={ok}")
-        detail = ""
+    if detail.startswith("refused"):
+        card(
+            "Safe restart refused [safe-hermes-restart]",
+            f"Nothing was restarted. {detail}. The job is disabled, enable it to try again.",
+            done=False,
+            blocked=True,
+        )
+        return
     model = "not checked"
     try:
         with open(f"{HH}/runtimes/llamacpp/server.json") as fh:
@@ -274,9 +355,10 @@ def main():
         pass
     log(f"model server: {model}")
     if ok:
+        note = f" {detail}." if detail.startswith("forced") else ""
         card(
             "Hermes restarted safely [safe-hermes-restart]",
-            f"Gateway pid {old} -> {new}. Model server: {model}. Job disabled again; enable it to repeat.",
+            f"Gateway pid {old} -> {new}. Model server: {model}.{note} Job disabled again; enable it to repeat.",
             done=True,
             blocked=False,
         )

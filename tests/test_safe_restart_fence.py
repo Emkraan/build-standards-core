@@ -100,7 +100,8 @@ class Fence(Work):
         self.assertEqual(self.events, [])
         self.assertFalse(os.path.exists(self.freeze))
 
-    def test_flag_off_is_the_old_single_gateway_kickstart(self):
+    def test_flag_off_with_a_backend_is_the_old_single_gateway_kickstart(self):
+        (self.dir / "backend").write_text("ai.hermes.backend\n")
         trig = self.dir / "trigger"
         import time
 
@@ -110,11 +111,13 @@ class Fence(Work):
             mock.patch.object(ex, "TRIGGER", str(trig)),
             mock.patch.object(ex, "card"),
             mock.patch.object(ex, "run_fenced") as fenced,
+            mock.patch.object(ex, "run_gateway_only") as only,
             mock.patch.object(ex, "freeze_on") as fon,
             mock.patch("urllib.request.urlopen"),
         ):
             ex.main()
         fenced.assert_not_called()
+        only.assert_not_called()
         fon.assert_not_called()
         self.assertEqual(self.events, [("kickstart", ex.LABEL)])
         self.assertFalse(os.path.exists(self.freeze))
