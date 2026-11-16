@@ -4,7 +4,8 @@ mapping apply to all of them.
 A handler is called with a Request (method, path, query, body, headers, groups) and returns a JSON value (status 200), a (status, value)
 pair, or a (status, bytes, content type, headers) tuple for a file. An exception is mapped to a status: an int `status` or `code`
 attribute (the modules' own error classes), 400 for ValueError, 404 for KeyError, 502 for anything else the module raised as a read
-failure. `kind` is "read" or "write"; a write is POST only and goes through the Origin check.
+failure. `kind` is "read", "write" or "stream"; a write is POST only and goes through the Origin check. A stream is a GET whose handler returns an
+object with serve(write) and close(): the server holds the connection open and writes what serve gives it (server-sent events).
 """
 
 import re
@@ -39,11 +40,14 @@ class Registry:
     def __init__(self):
         self.routes = []
         self.background = []  # (function, interval seconds) run by the server on daemon threads
+        self.on_response = None  # called with (path, query string, body bytes) after every 200 GET answer, a failure is ignored
 
     def add(self, method, path, handler, kind=None, name=""):
         kind = kind or ("write" if method == "POST" else "read")
         if (method == "POST") != (kind == "write"):
             raise ValueError("a write is a POST and a POST is a write")
+        if kind == "stream" and method != "GET":
+            raise ValueError("a stream is a GET")
         self.routes.append(
             Route(method, path, handler, kind, name or getattr(handler, "__name__", ""))
         )
@@ -53,6 +57,9 @@ class Registry:
 
     def post(self, path, handler, name=""):
         self.add("POST", path, handler, "write", name)
+
+    def stream(self, path, handler, name=""):
+        self.add("GET", path, handler, "stream", name)
 
     def match(self, method, path):
         """(route, groups) for the first route that fits, else (None, path_known) where path_known tells 404 from 405."""
