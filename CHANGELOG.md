@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-16 (v2.8.0, ops center server: the push channel)
+
+The server part of Local Ops App section 20 (issue 279). One event stream tells every open tab which topic moved, and the tab reads the endpoint it already knows.
+
+- Added: `opscenter/server/live_bus.py` (topic versions hashed without stamp keys, the quiet first sight, the hello catch-up, a cap on open streams, tab presence, a flap guard), `live_watch.py` (data scan, source watch that runs a configured bundler once the files settle, a warm loop that reads declared endpoints only while a tab is visible) and `live_routes.py` (`GET /api/live`, `POST /api/live/presence`, the loop wiring). Stdlib only. The consumer fills `live_bus.ALIASES` for short topic names and sets `OPSCENTER_LIVE_SOURCES` and `OPSCENTER_LIVE_BUNDLE` for the source watch.
+- Changed: the registry has a `stream` route kind (a GET whose handler returns an object with `serve` and `close`), `app.py` serves it with no Content-Length and runs the loop as a background job, and a registry `on_response` hook sees every 200 GET answer.
+- Migration: none for a consumer that does nothing. The stream and the loop are idle until a tab connects.
+- Tests: 37 new in `live_bus_test.py`, `live_watch_test.py` and `live_routes_test.py`.
+
 ## 2026-11-16 (v2.7.0, ops center kit: notice tray and spelled-out time)
 
 Kit parts for Ops Center Layout rules 18 and 21 (issue 279).

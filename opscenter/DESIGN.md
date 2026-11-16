@@ -40,6 +40,9 @@ opscenter/
     app.py             entry: bind, gate, registry, static files
     gate.py            Host and Origin guard, body cap, security headers, preflight
     registry.py        route registry (method, path, auth class, schema, handler)
+    live_bus.py        push channel: topic versions, the event stream, tab presence (Local Ops App 20)
+    live_watch.py      push channel loops: data scan, source watch, warm loop
+    live_routes.py     GET /api/live, POST /api/live/presence and the loop wiring
     envelope.py        {success, data|error} helpers and the error taxonomy
     swr.py             stale-while-revalidate cache, single flight per key
     run.py             the one subprocess helper (timeout, missing binary, nonzero exit)

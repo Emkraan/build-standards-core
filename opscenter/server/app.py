@@ -79,6 +79,11 @@ def make_handler(registry, dist, port):
                 and ctype.startswith(GZIP_TYPES)
             ):
                 data, enc = gzip.compress(data, 5), "gzip"
+            if code == 200 and self.command == "GET" and registry.on_response is not None:
+                try:
+                    registry.on_response(path, urllib.parse.urlsplit(self.path).query, data)
+                except Exception as exc:  # noqa: BLE001 - a watcher must never fail the answer
+                    print(f"on_response {path}: {exc}", file=sys.stderr, flush=True)
             self.send_response(code)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(data)))
@@ -119,6 +124,30 @@ def make_handler(registry, dist, port):
                 or "application/octet-stream"
             )
             self._send(200, target.read_bytes(), ctype)
+
+        # ---- server-sent events
+        def _stream(self, stream):
+            """Hold the connection and write what stream.serve gives it. No Content-Length, so the connection closes when it ends."""
+            self.close_connection = True
+            try:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Connection", "close")
+                self.send_header("X-Accel-Buffering", "no")
+                for k, v in gate.SECURITY_HEADERS.items():
+                    self.send_header(k, v)
+                self.end_headers()
+
+                def write(chunk):
+                    self.wfile.write(chunk)
+                    self.wfile.flush()
+
+                stream.serve(write)
+            except OSError:
+                pass  # the tab went away
+            finally:
+                stream.close()
 
         # ---- dispatch
         def _dispatch(self, method):
@@ -170,6 +199,8 @@ def make_handler(registry, dist, port):
                     if code < 500 or hasattr(exc, "status") or hasattr(exc, "code")
                     else "read failed",
                 )
+            if route.kind == "stream":
+                return self._stream(out)
             if isinstance(out, tuple) and len(out) == 4:
                 return self._send(out[0], out[1], out[2], out[3])
             if isinstance(out, tuple) and len(out) == 2 and isinstance(out[0], int):
@@ -219,6 +250,11 @@ def main():
     dist = os.environ.get("OPSCENTER_DIST")
     registry = routes.build()
     srv = make_server(registry, dist, host, port)
+    import live_routes
+
+    registry.background.append(
+        (live_routes.make_loop(live_routes.live_bus.BUS, dist, srv.server_address[1]).tick, 1)
+    )
     print(
         f"ops center on http://{host}:{srv.server_address[1]}/ ({len(registry.routes)} routes)",
         flush=True,
