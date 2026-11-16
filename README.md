@@ -153,6 +153,7 @@ value of the doc's registered rules (see the rules registry below).
 | Patterns | `standards/ops-center-layout.md` | Ops center layout: hubs by what is run, sections, one card per item, one server problem list, current state vs history, run buttons with safe defaults, old links never break | local-ops |
 | Patterns | `standards/identity-and-people-data.md` | Directory as source of truth and the single roster | all (no rules yet) |
 | Patterns | `standards/notifications.md` | Message format and channel rules | all (no rules yet) |
+| App types | `standards/hermes-api-access.md` | Agent reached from a phone over the API server only: TLS edge, key, session narrowing, pairing code, pinned push plugin, retiring a dashboard and a chat bot | local-ops |
 | App types | `standards/local-ops-app.md` | Locally hosted operations apps: contract, cost-gated analyzer, loopback server | local-ops |
 | Engineering | `standards/ci-cd-release.md` | Required checks, auto-merge, dependency updates, deploy, rollback, releases, secrets | all |
 | Engineering | `standards/data-safety-sqlite.md` | Database safety rules and the recovery runbook | web |
