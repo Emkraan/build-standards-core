@@ -737,6 +737,9 @@ def build(registry=None):
     acc = load("model_accounts")
     if acc is not None and hasattr(acc, "sample"):
         r.background.append((acc.sample, 600))
+    import live_routes
+
+    live_routes.install(r)  # the push channel: GET /api/live and POST /api/live/presence
     import optional
 
     optional.register(r)  # the optional modules, only the ones a consumer turned on
