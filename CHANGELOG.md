@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-16 (v2.12.1, release: a heading the release step cannot read fails the pull request check, and a missed version can be backfilled)
+
+The v2.11.1 heading held parentheses in its description, so `checks/auto-release.py` skipped it without a message and the entry never got a tag. v2.12.0 was tagged above it, and auto-release refuses a version at or below the newest tag, so v2.11.1 could never be released and `check-changelog-versions` failed on `main`.
+
+- Fixed: `checks/check-changelog-versions.py` fails a pull request whose release heading the release step cannot read (parentheses inside the description), with the line number. Every other heading in the file already reads fine.
+- Added: `checks/auto-release.py --backfill vX.Y.Z` and a `backfill` input on the release workflow tag a version the release step missed. It needs a readable entry, no existing tag and a commit that is part of the branch, and an existing tag is still never moved.
+- Fixed: the v2.11.1 heading now reads without parentheses, so it can be released.
+- Migration: none. A consumer that syncs the release check sees no change unless its own heading has parentheses.
+- Tests: `tests/test_auto_release.py` (backfill decisions) and `tests/test_changelog_versions.py` (the check matches what the release step reads), `ruff` and the `check-*` scripts pass.
+
 ## 2026-11-16 (v2.12.0, safe-restart: a gateway-only restart that waits for the gateway and any desktop backend)
 
 A consumer that moved to the API server alone (`hermes-api-access`) lost the dashboard's per-turn idle proof, so the safe restart had only the session store lease to go on and restarted through a hard launchd kickstart. This adds the missing half.
@@ -11,7 +21,7 @@ A consumer that moved to the API server alone (`hermes-api-access`) lost the das
 - Migration: none. A consumer with a backend label set keeps the single kickstart and the fenced mode as before. One without a label gets the new checks and the draining restart on its next sync.
 - Tests: `tests/test_safe_restart_gateway_only.py` (health reasons, mode detection, ledger matching, backend proof, refusal, drain, force, fenced second read, no process signalled), the changed flag-off test in `tests/test_safe_restart_fence.py`, `ruff`, and the `check-*` scripts pass.
 
-## 2026-11-16 (v2.11.1, kit: Label in Name (WCAG 2.5.3) so the accessible name starts with the visible text)
+## 2026-11-16 (v2.11.1, kit: Label in Name, WCAG 2.5.3, so the accessible name starts with the visible text)
 
 @axe-core/playwright 4.14 turns on the `label-content-name-mismatch` rule, and the gallery axe check found controls whose `aria-label` did not contain the text drawn on them (issue #273).
 

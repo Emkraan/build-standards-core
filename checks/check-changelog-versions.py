@@ -10,7 +10,9 @@ from 1.0.0 (the 0.x headings predate tagging and are left alone):
   2. a heading has a tag, except an unreleased one: a version above every existing tag (the entry a pull
      request adds, which auto-release tags when it lands);
   3. a tag has a heading;
-  4. no line is a merge conflict marker (<<<<<<<, =======, >>>>>>>).
+  4. no line is a merge conflict marker (<<<<<<<, =======, >>>>>>>);
+  5. every heading is one the release step can read: checks/auto-release.py skips a heading whose
+     description holds parentheses, and the entry then never gets a tag (v2.11.1 once merged that way).
 
 Usage: python3 checks/check-changelog-versions.py
 In CI (CI or GITHUB_ACTIONS set) a clone with no release tags fails: a check that cannot see the tags
@@ -34,6 +36,20 @@ def headings(text):
         if m and int(m.group(1)) >= 1:
             out.append(tuple(int(g) for g in m.groups()))
     return out
+
+
+# The shape checks/auto-release.py reads. A heading that starts like a release heading but does not
+# match is skipped by the release step with no message, so the entry never gets a tag.
+RELEASE_HEADING = re.compile(r"^## \d{4}-\d{2}-\d{2} \(v\d+\.\d+\.\d+(?:, [^)]*)?\)\s*$")
+
+
+def malformed(text):
+    """Problems for each heading the release step cannot read (parentheses inside the description)."""
+    return [
+        f"line {n} is a release heading the release step cannot read, no parentheses inside the description"
+        for n, line in enumerate(text.splitlines(), 1)
+        if HEADING.match(line) and not RELEASE_HEADING.match(line)
+    ]
 
 
 MARKER = re.compile(r"^(<{7}|={7}|>{7})( |$)")
@@ -99,7 +115,7 @@ def main():
             return 1
         print(f"check-changelog-versions: {msg}; skipped (local run)")
         return 0
-    bad = markers + problems(versions, tags)
+    bad = markers + malformed(text) + problems(versions, tags)
     for p in bad:
         print("::error file=CHANGELOG.md::" + p)
     print(
