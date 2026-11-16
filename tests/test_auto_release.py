@@ -82,5 +82,33 @@ class Decide(unittest.TestCase):
         self.assertEqual(ar.decide((0, 1, 0), None, {}, SHA)[0], "tag")
 
 
+class Backfill(unittest.TestCase):
+    ENTRIES = ar.parse_entries(TEXT)
+    TAGS = {(1, 12, 0): OTHER}
+
+    def test_missed_version_below_the_newest_tag_is_tagged(self):
+        a, _, entry = ar.decide_backfill((1, 11, 1), self.ENTRIES, self.TAGS, True)
+        self.assertEqual(a, "tag")
+        self.assertEqual(entry[0], (1, 11, 1))
+
+    def test_an_existing_tag_is_never_replaced(self):
+        a, _, entry = ar.decide_backfill((1, 12, 0), self.ENTRIES, self.TAGS, True)
+        self.assertEqual((a, entry), ("noop", None))
+
+    def test_no_readable_entry_fails(self):
+        a, m, _ = ar.decide_backfill((1, 10, 0), self.ENTRIES, self.TAGS, True)
+        self.assertEqual(a, "fail")
+        self.assertIn("no readable CHANGELOG entry", m)
+
+    def test_an_unreadable_heading_does_not_count_as_an_entry(self):
+        entries = ar.parse_entries("## 2026-01-02 (v1.13.0, a (b), c)\n\nx\n")
+        self.assertEqual(ar.decide_backfill((1, 13, 0), entries, {}, True)[0], "fail")
+
+    def test_a_commit_outside_the_branch_fails(self):
+        a, m, _ = ar.decide_backfill((1, 11, 1), self.ENTRIES, self.TAGS, False)
+        self.assertEqual(a, "fail")
+        self.assertIn("not part of", m)
+
+
 if __name__ == "__main__":
     unittest.main()

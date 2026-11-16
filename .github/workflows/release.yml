@@ -11,6 +11,10 @@ on:
         description: 'Commit to release (default: the head of the selected ref)'
         required: false
         default: ''
+      backfill:
+        description: 'Version a past release run missed, for example v2.11.1 (tags it on the commit above)'
+        required: false
+        default: ''
 concurrency:
   group: release
   cancel-in-progress: false
@@ -33,8 +37,10 @@ jobs:
           python-version: '3.15'
       - id: decide
         env:
+          # inputs reach the shell only through env, and auto-release.py accepts only a vX.Y.Z tag
           SHA: ${{ inputs.sha || github.sha }}
-        run: python3 checks/auto-release.py --sha "$SHA"
+          BACKFILL: ${{ inputs.backfill }}
+        run: python3 checks/auto-release.py --sha "$SHA" ${BACKFILL:+--backfill "$BACKFILL"}
       - name: Tag and publish the release
         if: steps.decide.outputs.action == 'tag'
         env:

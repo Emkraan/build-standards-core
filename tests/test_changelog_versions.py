@@ -39,6 +39,31 @@ class Headings(unittest.TestCase):
         self.assertEqual(cv.headings("## not a version\n## 2026-01-01 (vx)\n"), [])
 
 
+class Malformed(unittest.TestCase):
+    def test_readable_headings_pass(self):
+        self.assertEqual(cv.malformed(TEXT), [])
+        self.assertEqual(
+            cv.malformed("## 2026-01-02 (v2.0.0)\n## 2026-01-02 (v2.0.0, a: b - c)\n"), []
+        )
+
+    def test_parentheses_inside_the_description_are_reported_with_the_line(self):
+        out = cv.malformed("x\n## 2026-01-02 (v2.0.0, label (WCAG 2.5.3) text)\n")
+        self.assertEqual(len(out), 1)
+        self.assertIn("line 2", out[0])
+
+    def test_matches_the_shape_the_release_step_reads(self):
+        ar = load("auto_release", "checks/auto-release.py")
+        for line in (
+            "## 2026-01-02 (v2.0.0, a (b), c)",
+            "## 2026-01-02 (v2.0.0, plain)",
+            "## 2026-01-02 (v2.0.0)",
+            "## 2026-01-02 (v2.0.0 no comma)",
+        ):
+            with self.subTest(line=line):
+                readable = bool(ar.parse_entries(line + "\n"))
+                self.assertEqual(not cv.malformed(line + "\n"), readable)
+
+
 class Problems(unittest.TestCase):
     TAGS = {(1, 1, 0), (1, 2, 0)}
 

@@ -11,7 +11,7 @@ A consumer that moved to the API server alone (`hermes-api-access`) lost the das
 - Migration: none. A consumer with a backend label set keeps the single kickstart and the fenced mode as before. One without a label gets the new checks and the draining restart on its next sync.
 - Tests: `tests/test_safe_restart_gateway_only.py` (health reasons, mode detection, ledger matching, backend proof, refusal, drain, force, fenced second read, no process signalled), the changed flag-off test in `tests/test_safe_restart_fence.py`, `ruff`, and the `check-*` scripts pass.
 
-## 2026-11-16 (v2.11.1, kit: Label in Name (WCAG 2.5.3) so the accessible name starts with the visible text)
+## 2026-11-16 (v2.11.1, kit: Label in Name, WCAG 2.5.3, so the accessible name starts with the visible text)
 
 @axe-core/playwright 4.14 turns on the `label-content-name-mismatch` rule, and the gallery axe check found controls whose `aria-label` did not contain the text drawn on them (issue #273).
 
