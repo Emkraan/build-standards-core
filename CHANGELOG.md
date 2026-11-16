@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-16 (v2.9.1, ci-cd-release: runner pool wording and label drift)
+
+- Changed: `ci-cd-release.md` describes the self-hosted runners as an ephemeral x64 pool on a dedicated Linux container (no container runtime VM, no Rosetta note), and adds a runner label drift rule: a `runs-on` list or `CORE_CI_RUNNER` value naming a label the pool does not offer leaves runs queued while slots idle, so each repo guards it and the watchdog reports a label mismatch.
+- Changed: the PowerShell runner note, `local-ops-app.md` section 10, `CONSUMING.md` and the `core-ci.yml` template comment say x64 instead of arm64.
+
 ## 2026-11-16 (v2.9.0, ops center app: the push channel client and one time module)
 
 The app part of Local Ops App section 20 and Ops Center Layout rule 21 (issue 279). It needs the server part (the push channel pull request) to be live, and without it the stores keep their own timers.

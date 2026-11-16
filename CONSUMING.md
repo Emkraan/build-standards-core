@@ -136,7 +136,7 @@ jobs:
   core-checks:
     uses: OWNER/build-standards-core/.github/workflows/core-ci-reusable.yml@<40 hex release sha> # vX.Y.Z
     with:
-      runs-on: '["self-hosted", "linux", "arm64"]'   # optional
+      runs-on: '["self-hosted", "linux", "x64"]'   # optional
       overlay: "."                                    # optional
 ```
 

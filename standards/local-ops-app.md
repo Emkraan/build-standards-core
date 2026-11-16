@@ -219,7 +219,7 @@ lives there, so the service runs a **copied runtime** in an unprotected location
 
 The repo runs the standard [CI/CD and Release Standard](ci-cd-release.md) minimum:
 
-- Every job runs on the self-hosted pool: `runs-on: [self-hosted, linux, arm64]`.
+- Every job runs on the self-hosted pool: `runs-on: [self-hosted, linux, x64]`.
 - Required checks (`REQUIRED_CHECKS` in `automerge.yml`): `ascii actionlint gitleaks python app
   pr-title`.
 - **gitleaks on the self-hosted runner** needs `GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'` in the

@@ -15,23 +15,29 @@ Related: First-Party Build Standard (the web-build-standard doc) (stack and comm
 
 ## 1. Principles
 
-- Every check is free. This rule assumes the free personal plan described above (no branch protection, no paid minutes). A repo on a paid plan or an organisation may use hosted runners and required-check rulesets instead, and records that choice as an explicit exception. Jobs run on the **self-hosted runner**: `runs-on: [self-hosted, linux, arm64]`,
-  never `ubuntu-latest` (GitHub-hosted minutes are not paid for on this account). The runner is a
-  native linux/arm64 container (GitHub's `actions-runner` image, plus `gh`, PowerShell 7 and Playwright deps)
-  under the container runtime on the owner's Mac. The hub has a pool of three (`runner-pool-1`, `-2`, `-3`) because its checks run in parallel; every other repo has one runner (`runner-core`, `runner-tool`, `runner-opscenter`, `runner-a sibling app-store repo`), the second runners were removed 2026-10-09 to save memory; build files and the registration script
-  are kept in the runner scripts directory of the ops workspace. The container runtime VM is
-  8 CPU / 8 GiB (raised from 6 on 2026-10-09 after OOM kills, and kept modest on purpose: guest page cache is
-  not returned to macOS on a 16 GB host that already swaps). CI and deploys run only while that Mac and the container runtime are up; the Mac has system sleep
-  disabled.
-- Runner health: a runner watchdog script (cron, every 2 min) restarts a runner
-  container only when it has no `Runner.Worker`, no job activity for 30 min, and its repo has
-  queued runs; it also starts the container runtime and stopped containers. `ERR BrokerServer ... Operation
+- Every check is free. This rule assumes the free personal plan described above (no branch protection, no paid minutes). A repo on a paid plan or an organisation may use hosted runners and required-check rulesets instead, and records that choice as an explicit exception. Jobs run on the **self-hosted runner pool**: `runs-on: [self-hosted, linux, x64]`,
+  never `ubuntu-latest` (GitHub-hosted minutes are not paid for on this account). The pool is a set of
+  **ephemeral** runners on one dedicated, unprivileged Linux container: each runner registers just in time, runs
+  exactly one job as a non-root user with its own home and private `/tmp`, is removed, and is replaced by a fresh one.
+  The hub has a pool of three because its checks run in parallel; every other repo has one slot. The container
+  runs Docker for the jobs that start containers (actionlint, semgrep) and carries `gh`, PowerShell 7 and the
+  Playwright browser libraries; jobs have no sudo. The provisioning, supervisor and health scripts are kept in the
+  runner scripts directory of the ops workspace. CI and deploys run only while the pool container is up.
+- **Runner label drift.** The pool offers a fixed label set (`self-hosted`, `linux`, `x64` plus the pool's own site
+  label). A `runs-on` list or a `CORE_CI_RUNNER` repo variable that asks for any other self-hosted label (a retired
+  `arm64`, for example) matches no runner, so runs sit queued for hours while every slot is online and idle. Detect it
+  by comparing the labels on a queued job (`gh api repos/<repo>/actions/runs/<id>/jobs`) with the pool's labels.
+  Each repo carries a string-only guard in its existing guard job that fails on a workflow label outside the set and,
+  when a token can read repo variables, on the variable; without a token it skips that part. The pool watchdog logs
+  `LABEL MISMATCH` and writes a marker file instead of restarting a runner for a job it can never take.
+- Runner health: a systemd timer on the pool container (every 2 min) restarts a runner slot only when it has no
+  `Runner.Worker`, its repo has a queued run older than 8 minutes whose labels the pool offers, and the slot was not
+  restarted in the last 20 minutes; it deletes offline runner records after a restart. `ERR BrokerServer ... Operation
   canceled` log lines are normal (the listener cancels its own long-poll at every job start and
   finish) and are not a health signal. GitHub's runner `busy` flag and run `in_progress` counts
-  lag; check for a `Runner.Worker` process instead. Live status is on the CCC Runners tab.
-- Do not emulate amd64 on that runner: under Rosetta the runner (.NET), Go tools (`gh`) and pnpm 12
-  (Rust) crash. Anything that must be x64 is produced explicitly and verified on amd64. The hub
-  deploy package fetches the official linux-x64 `better-sqlite3` prebuilt, checks the ELF machine
+  lag; check for a `Runner.Worker` process instead. Live status is on the ops center Runners tab.
+- The runners are native x64, so the deploy target architecture is the runner architecture and nothing is emulated.
+  The hub deploy package fetches the official linux-x64 `better-sqlite3` prebuilt, checks the ELF machine
   and load-tests it (and the extracted package's server smoke test) in a linux/amd64 `node:22`
   container.
 - A persistent runner does not start each job on a clean VM: its job-started hook clears
@@ -195,7 +201,7 @@ When a job is added, renamed or removed, update `REQUIRED_CHECKS` in `automerge.
   attribution guard (a `git filter-repo` mailmap, tree hashes compared before and after).
 - **Runner image and PowerShell.** The image bakes in PowerShell 7 so the sibling tool and a sibling app-store repo
   PowerShell CI set (parse, XAML well-formedness, PSScriptAnalyzer, standards lint, Pester) runs on
-  linux/arm64. Those checks are static, so nothing needs Windows. A check that loads WPF would; none does.
+  linux/x64. Those checks are static, so nothing needs Windows. A check that loads WPF would; none does.
 - **Deploy-package smoke.** `scripts/build-deploy-package.sh` builds `app.zip` exactly as the
   deploy does (`pnpm deploy --prod`, hoisted linker, better-sqlite3 compiled for linux-x64 Node 22).
   `scripts/oryx-extract-smoke.sh` extracts it the way App Service Oryx does and starts the server
@@ -213,7 +219,7 @@ When a job is added, renamed or removed, update `REQUIRED_CHECKS` in `automerge.
 - **Semgrep suppressions are justified inline:** `// nosemgrep: <rule-id> -- <reason>`. A bare
   `nosemgrep` is not accepted in review. Exclusions live in `.semgrepignore`.
 - **Coverage ratchet.** Thresholds live in `server/vitest.config.ts` and are only ever raised.
-- **Build once.** A client build peaks near 1.7 GB, and the shared container runtime VM is 6 GiB, so concurrent builds
+- **Build once.** A client build peaks near 1.7 GB, and the shared pool host has limited memory, so concurrent builds
   were OOM-killed (exit 137, `Killed`). In `quality.yml` the `quality-build` job builds once and `bundle-size`
   and `e2e` download the artifact (`server/public`, `server/dist`) instead of rebuilding. Do not add a job that
   runs its own client build; depend on `quality-build`. Size runner pools by memory (about 1.7 GB per concurrent
