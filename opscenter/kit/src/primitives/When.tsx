@@ -9,25 +9,33 @@ import { cx, devWarn } from '../lib/env';
 import { joinIds, useTip } from './Tooltip';
 import type { TipSide } from './Tooltip';
 
+export type WhenWording = 'short' | 'long';
+
+const LONG_UNIT: Record<string, string> = { s: 'second', min: 'minute', h: 'hour', d: 'day', mo: 'month', y: 'year' };
+
 /**
  * The age of a moment: "just now", "12s ago", "4 min ago", "2 h ago", "3 d ago", "2 mo ago", "1 y ago",
  * and "in 5 min" for a moment ahead. `elapsedMs` is now minus the moment, so a negative number is the
  * future. It follows the wording of the kit's "Updated ..." label and goes on to days, months and years.
+ * `wording: 'long'` spells the unit out ("3 days ago", "in 5 minutes") with the same thresholds, for a
+ * console that never abbreviates a time (Ops Center Layout rule 21). The default is unchanged.
  */
-export function formatWhen(elapsedMs: number): string {
+export function formatWhen(elapsedMs: number, wording: WhenWording = 'short'): string {
   const seconds = Math.floor(Math.abs(elapsedMs) / 1000);
   if (seconds < 2) return 'just now';
-  let span: string;
+  let count: number;
+  let unit: string;
   const minutes = Math.round(seconds / 60);
   const hours = Math.round(minutes / 60);
   const days = Math.round(hours / 24);
   const months = Math.round(days / 30);
-  if (seconds < 90) span = `${seconds}s`;
-  else if (minutes < 90) span = `${minutes} min`;
-  else if (hours < 36) span = `${hours} h`;
-  else if (days < 45) span = `${days} d`;
-  else if (months < 18) span = `${months} mo`;
-  else span = `${Math.round(months / 12)} y`;
+  if (seconds < 90) [count, unit] = [seconds, 's'];
+  else if (minutes < 90) [count, unit] = [minutes, 'min'];
+  else if (hours < 36) [count, unit] = [hours, 'h'];
+  else if (days < 45) [count, unit] = [days, 'd'];
+  else if (months < 18) [count, unit] = [months, 'mo'];
+  else [count, unit] = [Math.round(months / 12), 'y'];
+  const span = wording === 'long' ? `${count} ${LONG_UNIT[unit]}${count === 1 ? '' : 's'}` : unit === 's' ? `${count}s` : `${count} ${unit}`;
   return elapsedMs < 0 ? `in ${span}` : `${span} ago`;
 }
 
@@ -68,12 +76,14 @@ export interface WhenProps extends Omit<HTMLAttributes<HTMLElement>, 'children'>
   timeZone?: string | undefined;
   /** BCP 47 locale of the absolute time. Default: the viewer's locale. */
   locale?: string | undefined;
+  /** 'long' spells the unit out ("3 days ago"). Default 'short' ("3 d ago"). */
+  wording?: WhenWording | undefined;
   tipSide?: TipSide | undefined;
 }
 
-export function When({ value, timeZone, locale, tipSide, className, ...rest }: WhenProps) {
+export function When({ value, timeZone, locale, wording, tipSide, className, ...rest }: WhenProps) {
   const at = toMillis(value);
-  const label = useClockValue(() => (at === null ? 'undated' : formatWhen(Date.now() - at)));
+  const label = useClockValue(() => (at === null ? 'undated' : formatWhen(Date.now() - at, wording)));
   const absolute = useMemo(() => (at === null ? '' : formatWhenAbsolute(new Date(at), timeZone, locale)), [at, timeZone, locale]);
   const { props: tip, description } = useTip(absolute, tipSide);
   if (at === null) {

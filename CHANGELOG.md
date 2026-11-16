@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-16 (v2.7.0, ops center kit: notice tray and spelled-out time)
+
+Kit parts for Ops Center Layout rules 18 and 21 (issue 279).
+
+- Added: `NoticeTray`, `Notice` and `sortNotices` (`src/chrome/NoticeTray.tsx`). One 44 px row per system notice with a tone icon, a one-line title, at most one action and a chevron that opens the detail. Most severe first, no dismiss control, no element while the list is empty. Styles are in `kit.css`, a gallery specimen sits in the Chrome section.
+- Added: `wording` on `When` and a second argument on `formatWhen`. `'long'` writes "3 days ago" and "in 5 minutes" with the same thresholds. The default `'short'` is unchanged.
+- Tests: `tests/notice-tray.test.tsx` (order, empty, toggle, one action, no dismiss, roles, axe) and the long wording cases.
+
 ## 2026-11-16 (v2.6.0, ops center standard: one title and trail, one notice tray, attention row, Live view, time rule, push channel)
 
 A consumer report (issue 279) described how one ops center was reorganised and measured. This entry carries its rules as standard text. The kit parts and the server module follow as separate pull requests.
