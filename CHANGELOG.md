@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-16 (v2.8.0, ops center kit: notice tray and spelled-out time)
+
+Kit parts for Ops Center Layout rules 18 and 21 (issue 279).
+
+- Added: `NoticeTray`, `Notice` and `sortNotices` (`src/chrome/NoticeTray.tsx`). One 44 px row per system notice with a tone icon, a one-line title, at most one action and a chevron that opens the detail. Most severe first, no dismiss control, no element while the list is empty. Styles are in `kit.css`, a gallery specimen sits in the Chrome section.
+- Added: `wording` on `When` and a second argument on `formatWhen`. `'long'` writes "3 days ago" and "in 5 minutes" with the same thresholds. The default `'short'` is unchanged.
+- Tests: `tests/notice-tray.test.tsx` (order, empty, toggle, one action, no dismiss, roles, axe) and the long wording cases.
+
 ## 2026-11-15 (v2.5.1, the changelog check skips merge queue runs)
 
 Clean Renovate dependency pull requests were ejected from the merge queue because `check-changelog.py` ran again on the queue's synthetic branch and failed there.
