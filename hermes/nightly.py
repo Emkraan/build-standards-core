@@ -26,7 +26,7 @@ Steps, in order, all from this clone so every consumer runs the identical code:
        (the old mode name "local" is migrated to "ops-center")
   5. The optional report sections (hermes/report.py), only when report_repo names a private repository
      and apply.report is on; with no report_repo (the default) it logs "no report_repo configured;
-     nothing filed". Upward improvements are plain issues on the core, opened by an agent, never by
+     nothing filed". Upward improvements are pull requests on the core, opened by an agent, never by
      this job. It keeps the candidates section and the changes-since-last-nightly section. A
      vendored repo is scanned at its root against the core's kit, read-only; a vendored repo
      registered report only still gets its machine record in step 4 (#117 G-031).

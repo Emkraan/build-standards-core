@@ -234,7 +234,7 @@ class ReportTarget(unittest.TestCase):
         return run, calls
 
     def test_no_report_repo_files_nothing(self):
-        # The default: the upward path is a plain issue on the core, so nothing is filed or read.
+        # The default: the upward path is a pull request on the core, so nothing is filed or read.
         run, calls = self.sh("PRIVATE")
         self.assertEqual(
             report.report_target("", "o/core", run),

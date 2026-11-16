@@ -464,24 +464,38 @@ longer exists.
 
 ## 7. The upward path
 
-The nightly files nothing upward by itself, and no build opens a pull request on this repo before
-the owner approves the change. When a consumer's agent finds a shareable improvement, it opens one
-plain, sanitised issue on the core repository: described by role, with no names, hosts, addresses,
-tokens or paths, since the core is public. The owner approves the item in the issue; the account
-that owns the approved item opens the core pull request, declares the outcome with `Refs #N` or
-`Closes #N`, and merges it once `ci` and `visual` pass. The scope test and the sanitising rules are
-in [CONTRIBUTING.md](CONTRIBUTING.md#reporting-from-a-consumer).
+A consumer opens a pull request on this repository. It does not file an issue first and it does not
+wait for an approval: the pull request is the proposal, and the checks and the review take the place
+of an approval step. The nightly still files nothing upward by itself; when a consumer's agent finds a
+shareable improvement, it works the change in the core as a pull request.
+
+- **Branch, never fork.** Every contributing account has write access on this repository, so it pushes
+  a branch on the core itself (`git push origin <branch>`) and opens the pull request from that branch.
+  A fork is refused: GitHub holds a fork's workflow runs for a maintainer's approval, `merge-pr.py`
+  cannot rewrite a fork's branch, and the review lane skips it. An account without write access asks the
+  owner for it; it does not fall back to a fork.
+- **Sanitised.** The core is public. The branch, commits and pull request carry no names, hosts,
+  addresses, tokens or paths: describe everything by role. The pull request body states which parts were
+  adopted, adapted or rejected, by role, and declares the issue outcome (`Closes #N`, `Refs #N` with a
+  `Remaining:` line, or `No issue: <reason>`; a pull request that fixes nothing already filed uses `No issue:`).
+- **No issue for an improvement.** Do not open an issue to propose a change. Issues stay for a defect in
+  the core itself that you are not fixing in the same piece of work.
+- **Review and merge.** `checks` and `visual` must pass; the pull request is then reviewed and merged by
+  the merge queue. A pull request that touches `.github/workflows/`, `checks/` or
+  `templates/overlay/scripts/` is for the owner alone.
+
+The scope test and the sanitising rules are in [CONTRIBUTING.md](CONTRIBUTING.md#reporting-from-a-consumer).
 
 On a consumer machine with Hermes, run:
 
 ```bash
-hermes chat -Q -s core-improvement-issue -q "Open a core issue for this improvement, following the core-improvement-issue skill: <one line, by role>"
+hermes chat -Q -s core-improvement-pr -q "Open a core pull request for this improvement, following the core-improvement-pr skill: <one line, by role>"
 ```
 
 `-s` preloads the shared skill the nightly installs, `-q` with `-Q` answers and exits. Run it where
-`gh` is signed in as the account and `CORE_REPO` is set as for the nightly. An agent without Hermes
-gets the same result by reading `hermes/skills/core-improvement-issue/SKILL.md` in the core clone and
-following it step by step.
+`gh` is signed in as an account with write access on the core and `CORE_REPO` is set as for the nightly.
+An agent without Hermes gets the same result by reading `hermes/skills/core-improvement-pr/SKILL.md` in
+the core clone and following it step by step.
 
 Optional report sections. With no `report_repo` in `consumer.json` (the default) the nightly's
 report step logs "no report_repo configured; nothing filed" and makes no call. An owner who wants
@@ -705,13 +719,12 @@ web and WPF standards, their UI lint and the scrolling rules live in the owner's
 
 - The core is public. Reading it, syncing it and calling its reusable workflow need no account, invitation
   or token.
-- A build's agent never opens a pull request on this repo before approval. A shareable finding goes up as
-  one plain, sanitised issue on this repository (section 7). The owner approves items there; the account
-  that owns an approved item opens the core pull request, declares the outcome with `Refs #N` or
-  `Closes #N`, and merges it once `ci` and `visual` pass.
-- A pull request from a fork of the public core runs the same checks. `merge-pr.py` refuses a branch on a
-  fork (it cannot rewrite it), so such a pull request is merged by an owner account, and one with no
-  approved item behind it is closed unmerged (CONTRIBUTING.md).
+- A shareable improvement goes up as a pull request from a branch on this repository (section 7), never
+  as an issue and never from a fork. Every contributing account has write access; an account without it
+  asks the owner. The pull request is sanitised, declares its issue outcome (`Closes #N`, `Refs #N` plus
+  `Remaining:`, or `No issue: <reason>`) and merges once `ci` and `visual` pass.
+- A pull request from a fork is not part of the flow. `merge-pr.py` refuses a branch on a fork (it cannot
+  rewrite it), and the fork's first workflow runs wait for a maintainer's approval (CONTRIBUTING.md).
 - A vulnerability is reported privately through the repository's Security tab (`SECURITY.md`), never as an
   issue.
 - Every change needs a dated `CHANGELOG.md` entry, plain ASCII, no business names and no real email
@@ -894,10 +907,10 @@ job names change.
 
 ## Contributing
 
-- Changes to the standard arrive through the upward path: report items on the account's issue, the
-  owner's approval, then the owning account branches from the current `origin/main` in its own
-  worktree, runs the checks (README "Checks"), opens a pull request, and merges it once `ci` and
-  `visual` pass. Rules: [CONTRIBUTING.md](CONTRIBUTING.md).
+- Changes to the standard arrive as pull requests from consumers: branch from the current `origin/main`
+  on the core itself (never a fork), in your own worktree, run the checks (README "Checks"), open the
+  pull request, and it merges once `ci` and `visual` pass. No issue first. Rules:
+  [CONTRIBUTING.md](CONTRIBUTING.md).
 - Every account that commits or opens pull requests keeps its email private (section 1 and
   `pr-review-and-merge.md 1.18`); merge with `merge-pr.py`, which refuses a pull request whose commits
   carry an email that is not noreply and prints the recovery if the merge commit still leaks one.
@@ -921,7 +934,7 @@ job names change.
 | Token efficiency policy for an agent home | `hermes/token-efficiency.md` |
 | Per-tool decisions the nightly job installs | `hermes/tools.json` |
 | How a repo consumes the core | README "Consuming the core", `templates/overlay/` |
-| How a build reports to the core | a plain issue on the core, the `core-improvement-issue` skill, `CONTRIBUTING.md` |
+| How a build reports to the core | a pull request from a branch on the core, the `core-improvement-pr` skill, `CONTRIBUTING.md` |
 | How to contribute | `CONTRIBUTING.md`, `hermes/README.md` section 4, sections 10, 11 and 13 above |
 | Rule statuses, proof records, the `RC001` to `RC027` checks | section 8, `standards/rules.json` |
 | Script lint config | section 9, `lint/README.md` |

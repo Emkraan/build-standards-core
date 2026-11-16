@@ -1,8 +1,8 @@
 # Changelog
 
-## 2026-11-16 (v2.11.0, safe-restart: a gateway-only restart that waits for the gateway and any desktop backend)
+## 2026-11-16 (v2.12.0, safe-restart: a gateway-only restart that waits for the gateway and any desktop backend)
 
-A consumer that moved to the API server alone (`hermes-api-access`) lost the dashboard's per-turn idle proof, so the safe restart had only the session store lease to go on and restarted through a hard launchd kickstart. Issue #276 asked for the missing half.
+A consumer that moved to the API server alone (`hermes-api-access`) lost the dashboard's per-turn idle proof, so the safe restart had only the session store lease to go on and restarted through a hard launchd kickstart. This adds the missing half.
 
 - Added: gateway-only mode in `hermes/safe-restart/`, chosen when no backend label is configured. The idle check also reads the gateway health (busy flag, drainable flag, agent runs, API runs, process completions, delegations, any unreadable read is busy), and any backend the desktop app spawned (found through its spawn ledger, matched on process start time, loopback and not isolated) must prove itself idle. The helper never restarts or kills such a backend.
 - Added: the restart reads the gateway and backends a second time right before it acts, refuses and blocks the card when either is busy, and restarts through the gateway's draining command instead of a kickstart. With the fence on, the same second read follows the freeze.
@@ -10,6 +10,16 @@ A consumer that moved to the API server alone (`hermes-api-access`) lost the das
 - Changed: `hermes/safe-restart/README.md` documents the mode and states the smaller guarantee (no session ids, no admission fence).
 - Migration: none. A consumer with a backend label set keeps the single kickstart and the fenced mode as before. One without a label gets the new checks and the draining restart on its next sync.
 - Tests: `tests/test_safe_restart_gateway_only.py` (health reasons, mode detection, ledger matching, backend proof, refusal, drain, force, fenced second read, no process signalled), the changed flag-off test in `tests/test_safe_restart_fence.py`, `ruff`, and the `check-*` scripts pass.
+
+## 2026-11-16 (v2.11.0, upward path: consumers open pull requests on a branch, not issues, never a fork)
+
+The upward path was an issue the owner approved before the owning account opened the pull request. It is now the pull request itself, from a branch on the core, opened by the consumer.
+
+- Changed: `CONSUMING.md` section 7 and section 11, `CONTRIBUTING.md` (authority, where the pull request comes from, "Reporting from a consumer"), the README (upward path, "Contributing back") and `hermes/README.md` state that a consumer's agent branches on the core and opens the pull request directly: no issue first, no approval step, never a fork. Every contributing account has write access; one without it asks the owner and does not fall back to a fork. A change under `.github/workflows/`, `checks/` or `templates/overlay/scripts/` is merged only by the owner.
+- Changed: the shared skill `core-improvement-issue` is now `core-improvement-pr` (`hermes/skills/core-improvement-pr/SKILL.md`): branch from `origin/main` in a worktree, make the change, describe it by role, run the sanitising checks on the description, open the pull request with `gh pr create`, verify the head repository is the core, then drive it to merge. `core-practices` is regenerated to point at it.
+- Changed: the optional private `report_repo` sections of the nightly are unchanged; they are a machine-made scan, not the upward channel.
+- Migration: a consumer that synced the old skill name picks up `core-improvement-pr` on its next `hermes/sync_skills.py` run; the old name stops being installed. A consumer that still files improvement issues should open pull requests instead; open issues stay valid for a defect in the core.
+- Tests: `check-ascii.py`, `check-links.py`, `check-placeholders.py`, `check-rules.py`, `check-hermes-skills.py`, `build_skills.py --check` and the diff-mode sanitising and neutrality checks pass.
 
 ## 2026-11-16 (v2.10.1, contributing: where a pull request comes from, branch or fork)
 
