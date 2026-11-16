@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-16 (v2.12.3, contributing: how the Eir review of a contributor pull request works)
+
+Contributor pull requests now get the check run `eir-review`; this documents what it does and how a contributor or the owner reads and overrides it.
+
+- Changed: `CONTRIBUTING.md` (new "Review" rule) and `CONSUMING.md` section 7 ("Review and merge") describe the local-model review, the owner-only paths, the passthrough for the owner, Renovate and Claudius, and the owner's approval override.
+- Migration: none until `eir-review` is made a required check; a consumer's agent should read a failed review in the check summary and comment, fix it and push.
+- Tests: `check-ascii.py`, `check-links.py`, `check-placeholders.py`, `check-changelog.py` and `check-changelog-versions.py` pass.
+
 ## 2026-11-16 (v2.12.2, kit: the gallery axe check runs on @axe-core/playwright 4.14)
 
 The Label in Name pass (v2.11.1) made the kit pass the `label-content-name-mismatch` rule that 4.14 turns on, and the Renovate hold was lifted. This moves the pinned dev dependency.
