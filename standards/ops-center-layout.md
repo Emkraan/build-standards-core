@@ -1,6 +1,6 @@
 # Ops Center Layout Standard
 
-Version: 1.5 | Last reviewed: 2026-11-16 | Status: current | Scope: local-ops (operator consoles)
+Version: 1.6 | Last reviewed: 2026-11-17 | Status: current | Scope: local-ops (operator consoles)
 
 How an ops center is organised and how it starts work: what a hub is, how its items are grouped, what
 the Overview shows, where every count comes from, and what a Run button promises. The ops center
@@ -84,6 +84,14 @@ Web Design System (the web-ui-standard doc) (tone, tabs, dialogs), [Automation S
    - Prevents: a page whose title differs from its rail entry, a third nested tab row, a heading style per page, a colour that means identity on one page and state on another.
    - Acceptance (test): a render test asserts the title equals the rail label, one h1, one tab row and at most one switch in the header, no upper-case section title, a muted zero tile, one tone per status word and an unknown word that is neutral, and the hub accent map refuses a key that is not a plain token.
 
+23. **Uniformity is proven by one probe over every route, never by impression.** One probe module holds the route list (one entry per tab, covering every route in the route lock file of rule 9) and an in-page function that reads the computed styles and the DOM of the rendered page for each part of rule 22: one header whose title equals the rail label, the tab elements and their level, the heading sizes and weights, the card surface and the tile type. A CI test runs the module at desktop width in both themes, and a live audit runs the same module against the running app at desktop and phone width in both themes. A sweep reports the deviation count across the routes (for example "0 across 46 routes"), and any deviation fails the CI test.
+   - Prevents: per-page reviews that miss drift between pages, a page that passes its own render test while it uses a stray tab or heading style, and a sweep called done on screenshots alone.
+   - Acceptance (test): the probe flags a seeded page with a second title, a third tab row and an upper-case section title, passes a conforming page, and the CI test fails when the route list misses a route the route lock file lists.
+
+24. **The build card version is computed at build time and moves with every merge.** The version on the build card is computed when the app is built, from the record every merge already writes (the changelog entries, or the commit subjects since the last tag), never from a manifest number someone bumps by hand. A feature bumps the minor, a breaking change the major and anything else the patch, and only changes to the app itself count. The tip names the commit, the build time in the operator's zone and the latest change, and the card opens the last few entries of what changed.
+   - Prevents: a version that reads 1.0.0 for months, a merge conflict on a version field, and a card that cannot say which build is running.
+   - Acceptance (test): a unit test computes the version from a fixture changelog (a feature, a fix, a breaking change and an entry that touched no app file), the build defines the same value the script prints, and after a deploy the card equals the script output on the live checkout.
+
 ---
 
 ## 2. The sectioned hub
@@ -129,3 +137,4 @@ Decision of 2026-11-10 (ops center build for #255; the owner may overrule it). A
 | 1.3 | 2026-11-10 | Section 6: live automation sits in Operations, Automation, as the item "Live automation" (not a new section); an enabled dark launch leaves the Action Center and gets a Disable switch; the item is hidden without a dark launch registry. No rule added. |
 | 1.4 | 2026-11-16 | Rules 17 to 21: one title and trail in the header, one notice tray, an attention row that reads the badge counts, one Live view, and the time rule. The push channel is in Local Ops App section 20. |
 | 1.5 | 2026-11-16 | Rule 22: one hub page header, at most two tab levels, and one set of page parts (section, panel, row, stat tile, status pill, compact empty note) under a consumer-owned hub accent map. The parts ship in the kit as the hub page parts. |
+| 1.6 | 2026-11-17 | Rules 23 and 24: uniformity is proven by one probe module shared by a CI test and a live audit and reported as a deviation count, and the build card version is computed at build time from what every merge already records |

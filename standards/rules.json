@@ -311,6 +311,62 @@
       "acceptance": "a client test asserts a store reloads on its topic, stretches its timer while connected and restores its own interval when the channel drops."
     },
     {
+      "id": "local-ops-app.21.1",
+      "ref": "local-ops-app.md 21.1",
+      "title": "A paid fallback is used only while an owner switch allows it",
+      "statement": "A paid fallback model account is used only while an owner switch at the top of the ops center allows it. The switch starts off, turning it on takes a duration, the server turns it off when the duration ends whether or not a page is open, and every change is logged.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "with a fake clock the switch turns itself off at the end of its duration, and every change writes one log line with the old and new state."
+    },
+    {
+      "id": "local-ops-app.21.2",
+      "ref": "local-ops-app.md 21.2",
+      "title": "The paid fallback gate sits where a credential is chosen and fails closed",
+      "statement": "While the switch is off the credential pool skips a paid row on every selection, rotation and fallback, covering interactive, auxiliary, sub-agent and scheduled calls. A missing or unreadable switch state means off, and processes that loaded the gate before it changed are named for a restart.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "with a fake pool, off skips the paid row in selection and after every included row is exhausted, on keeps today's order, and an unreadable state is off."
+    },
+    {
+      "id": "local-ops-app.21.3",
+      "ref": "local-ops-app.md 21.3",
+      "title": "A blocked paid account stays signed in",
+      "statement": "Token refresh keeps a gated paid row signed in, and a recovery job never re-enables a gated row, so allowing it later works at once.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "token refresh still renews a gated row, and the recovery job leaves a gated row gated."
+    },
+    {
+      "id": "local-ops-app.21.4",
+      "ref": "local-ops-app.md 21.4",
+      "title": "A blocked paid call is said once, with a way forward",
+      "statement": "A call the switch blocks fails with an error naming the switch, the notice tray shows one row with a one-click allow for a short duration, one alert goes out per blocked episode, and a paid call made while the switch was off is reported as a defect.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a blocked call raises one notice row and one alert per episode, and a ledger entry for a paid row while the switch was off is reported as a defect."
+    },
+    {
       "id": "scripting-powershell.1.1",
       "ref": "scripting-powershell.md 1.1",
       "title": "Workload identity, never a stored secret",
@@ -3194,6 +3250,34 @@
         "kind": "test"
       },
       "acceptance": "a render test asserts the title equals the rail label, one h1, one tab row and at most one switch in the header, no upper-case section title, a muted zero tile, one tone per status word and a neutral unknown word, and that the hub accent map refuses a key that is not a plain token."
+    },
+    {
+      "id": "ops-center-layout.1.23",
+      "ref": "ops-center-layout.md 1.23",
+      "title": "Uniformity is proven by one probe over every route",
+      "statement": "One probe module holds the route list, one entry per tab and every route in the route lock file, and an in-page function that reads computed styles and the DOM for each part of rule 22. A CI test runs it at desktop width in both themes, a live audit runs the same module at desktop and phone width in both themes, and a sweep reports the deviation count across the routes.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "the probe flags a seeded page with a second title, a third tab row and an upper-case section title, passes a conforming page, and the CI test fails when the route list misses a route the route lock file lists."
+    },
+    {
+      "id": "ops-center-layout.1.24",
+      "ref": "ops-center-layout.md 1.24",
+      "title": "The build card version is computed at build time and moves with every merge",
+      "statement": "The build card version is computed when the app is built from the changelog entries or the commit subjects since the last tag, never from a hand-bumped manifest number. A feature bumps the minor, a breaking change the major and anything else the patch, only changes to the app count, and the tip names the commit, the build time and the latest change.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a unit test computes the version from a fixture changelog with a feature, a fix, a breaking change and an entry that touched no app file, the build defines the same value the script prints, and after a deploy the card equals the script output on the live checkout."
     },
     {
       "id": "cmtrace-logging.13.1",
