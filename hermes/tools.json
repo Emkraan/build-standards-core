@@ -119,6 +119,26 @@
       "plugin": "redde-push",
       "install_hint": "Install the plugin directory from a reviewed full commit (never a branch) into the agent home plugins folder, record the commit in a pin file, enable it with hermes plugins enable, and run the installer's check mode after every change. See configurations.md section 17 and standards/hermes-api-access.md section 6.",
       "reason": "Pushes alerts to a phone app while it is closed through the API server, so no dashboard or chat-platform bot is needed. Adapted: installed pinned to a reviewed commit with a drift check, because the relay sees that a push happened and when. configurations.md section 17."
+    },
+    {
+      "id": "session-status",
+      "kind": "plugin",
+      "decision": "adopt",
+      "required": true,
+      "plugin": "session-status",
+      "source": "core",
+      "install_hint": "Shipped in the core as hermes/desktop-plugins/session-status. Run python3 hermes/apply_setup.py, then reload the desktop plugins or restart the desktop app. To not run it, list it in core-opt-out.json with a reason (configurations.md section 18).",
+      "reason": "Puts a text badge on every desktop sidebar row (working, quiet, background, done, failed, stopped, needs input) read from the app's own status dot, so a session that looks dormant says what it is doing, and raises a desktop notification for needs-input, failed, stopped and long turns. No model call, no data written. configurations.md section 18."
+    },
+    {
+      "id": "session-children",
+      "kind": "plugin",
+      "decision": "adopt",
+      "required": true,
+      "plugin": "session-children",
+      "source": "core",
+      "install_hint": "Shipped in the core as hermes/plugins/session-children and hermes/desktop-plugins/session-children. Run python3 hermes/apply_setup.py, then restart the desktop app so the backend route mounts. To not run it, list it in core-opt-out.json with a reason (configurations.md section 18).",
+      "reason": "Links a session started from another session's terminal to its launcher, hides it from the flat sidebar while it runs, archives it when it finishes cleanly, and shows it live under the launcher (badge, pane, status bar chip). Reads the session store and writes only its own link file and the hidden and archived flags. configurations.md section 18."
     }
   ],
   "settings": [

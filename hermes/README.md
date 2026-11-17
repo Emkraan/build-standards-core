@@ -1,6 +1,6 @@
 # Hermes: shared configuration and core skills
 
-Version: 1.2 | Last reviewed: 2026-10-20 | Status: current | Scope: every consumer that runs the
+Version: 1.4 | Last reviewed: 2026-11-17 | Status: current | Scope: every consumer that runs the
 Hermes agent
 
 Consumers that work through the [Hermes agent](https://hermes-agent.nousresearch.com/docs) share
@@ -30,8 +30,9 @@ consumer's agent knows stays with that consumer.
 | `core-local-model` | The short form of `configurations.md` section 13: the real per-slot window, concurrency caps for cron, kanban and sessions, and reading a failure on a local model. Only for consumers running a model on their own hardware. | `configurations.md` section 13 |
 | `core-improvement-pr` | The upward path: check an improvement passes the scope test, make the change by role with no names on a branch of the core, run the sanitising checks, and open one pull request on the core from a branch (CONTRIBUTING.md "Reporting from a consumer"). Run on demand with the one-line command in CONSUMING.md section 7. | Hand written in `hermes/skills/core-improvement-pr/` |
 
-Plugins and third-party skills are not copied by the sync. `hermes/tools.json` holds one decision
-per tool (adopt, adapt or reject, with the reason and the install command) and
+Plugins and third-party skills are not copied by the skill sync. Two plugins ship in this repo
+instead and are installed by the nightly job (`hermes/plugins/` and `hermes/desktop-plugins/`,
+section 7). `hermes/tools.json` holds one decision per tool (adopt, adapt or reject, with the reason and the install command) and
 `hermes/nightly.py` installs from it every night (section 5).
 
 `core-practices` is generated. Edit `standards/rules.json` or the docs, then run
@@ -93,7 +94,8 @@ stand in for review.
   issue first (the `core-improvement-pr` skill). Do not wait for another account.
 - Only add a tool to `tools.json` when the standard should govern it for every consumer. A plugin
   that one machine happens to run is not a contribution: the nightly job ignores plugins it has no
-  decision on.
+  decision on. A plugin that passes the scope test ships here as source (section 7) and no
+  consumer edits its installed copy.
 - A new `core-` skill needs a `SKILL.md` with `name` equal to its folder and a description
   that starts `Use when` (`checks/check-hermes-skills.py`).
 - Configuration entries name the setting, the value, why, and the failure it prevents.
@@ -115,7 +117,7 @@ core clone:
    core-update workflow when it is behind; report a sync pull request still open after a day.
 
 Output lines: `CHANGED`, `RESTART` (restart the desktop app and gateway to load a plugin),
-`MISSING` (could not fix, with the manual command), (nothing is reported for plugins the standard has no decision on). A
+`SKIPPED` (a shipped plugin the consumer opted out of, with its reason), `MISSING` (could not fix, with the manual command), (nothing is reported for plugins the standard has no decision on). A
 healthy night prints nothing. Problems exit non-zero, so Hermes sends the failure notice.
 `python3 hermes/apply_setup.py --check` shows the Hermes part without changing anything.
 Consumers set up before `setup.py` existed call `nightly_sync.sh`, which now hands over to
@@ -168,3 +170,27 @@ that duplicate or extend a kit role, local tokens or classes the UI lint flags, 
 The issue is edited only when that section changed. The body passes `check-sanitised.py --file` and
 `check-consumer-neutral.py --file` first; a hit holds the update and is reported locally. It never opens a
 pull request itself: that is the agent's job through the skill, from a branch on the core.
+
+## 7. Plugins shipped in the core
+
+A plugin whose entry in `tools.json` has `"source": "core"` is installed from this repo, not from a
+package or a download. The agent half lives in `hermes/plugins/<id>/` (a plugin directory with a
+`plugin.yaml`) and is copied to `<agent home>/plugins/<id>` and enabled. The desktop half lives in
+`hermes/desktop-plugins/<id>/` (a `plugin.js`) and is copied to `<agent home>/desktop-plugins/<id>`.
+Either half may be absent. `apply_setup.py` compares each copy by content hash, replaces a copy that
+differs by writing a new directory beside it and renaming it into place, and reports `RESTART`.
+`apply_setup.py --check` reports a copy that differs and changes nothing.
+
+| Plugin | Halves | Holds |
+|---|---|---|
+| `session-status` | desktop | A text badge on every sidebar row, read from the app's own status dot, and notifications for needs-input, failed, stopped and long turns |
+| `session-children` | agent and desktop | Spawned sessions linked to their launcher, hidden while they run, archived when they finish cleanly, and shown live under the launcher |
+
+A new shipped plugin carries no name, path or value of any estate, passes `ruff` and
+`check-hermes-tools.py`, and is described in `configurations.md`. Behaviour and limits of the two above are
+in `configurations.md` section 18.
+
+A consumer opts out of a shipped plugin in `<agent home>/core-opt-out.json`, a reason on every entry
+(`{"plugins": {"<id>": "<reason>"}}`). The job leaves an opted-out plugin as it is and prints
+`SKIPPED`. A missing reason, an unknown id or an unreadable file is `MISSING` and installs no core
+plugin on that run. `configurations.md` section 18 has the detail.

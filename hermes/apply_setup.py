@@ -6,7 +6,18 @@
 For every required tool it checks the consumer and, unless --check is given, installs what is
 missing with the registry's own commands:
   binary   installed with the first package manager present (brew, then cargo), then verified
-  plugin   the registry install command (for rtk: rtk init -g --agent hermes), then enabled
+  plugin   the registry install command (for rtk: rtk init -g --agent hermes), then enabled.
+           An entry with "source": "core" is shipped in this repo instead: hermes/plugins/<id>
+           (the agent half) is copied to <home>/plugins/<id> and enabled, and
+           hermes/desktop-plugins/<id> (the desktop half) is copied to <home>/desktop-plugins/<id>.
+           Either half may be absent. The installed copy is owned by the core and is replaced
+           whenever it differs, so a change goes in by pull request here, never in the copy.
+           A consumer opts out per plugin in <home>/core-opt-out.json, a reason on every entry:
+           {"plugins": {"session-children": "why this estate does not run it"}}. An opted-out
+           plugin is left exactly as it is (not installed, not updated, not enabled) and the run
+           prints a SKIPPED line with the reason. An entry with no reason, an id the core does not
+           ship, or a file that cannot be read is reported as MISSING, and no core plugin is
+           installed on that run.
   skill    hermes skills install <source> --yes (Hermes scans it before install)
   setting  hermes config set <key> <value> when the current value differs
 The safe restart job (hermes/safe-restart/) is installed only with --safe-restart: it adds a launchd
@@ -23,6 +34,7 @@ Honours HERMES_HOME, so it can be exercised against a scratch Hermes home. Pytho
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -33,8 +45,36 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 REGISTRY = ROOT / "hermes" / "tools.json"
+PLUGIN_SRC = ROOT / "hermes" / "plugins"
+DESKTOP_SRC = ROOT / "hermes" / "desktop-plugins"
+OPT_OUT_FILE = "core-opt-out.json"
 SKIP_SKILL_DIRS = {"core"}
 TIMEOUT = 900
+
+
+def tree_hash(root: Path) -> str:
+    """Hash of every file under root (relative path and bytes), ignoring bytecode caches."""
+    digest = hashlib.sha256()
+    for f in sorted(root.rglob("*")):
+        rel = f.relative_to(root)
+        if "__pycache__" in rel.parts or f.suffix == ".pyc" or not f.is_file():
+            continue
+        digest.update(rel.as_posix().encode("utf8") + b"\0")
+        digest.update(f.read_bytes() + b"\0")
+    return digest.hexdigest()
+
+
+def install_tree(src: Path, dest: Path) -> None:
+    """Copy src to dest by writing a new directory beside it and renaming it into place."""
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    fresh = dest.parent / f".{dest.name}.new-{os.getpid()}"
+    old = dest.parent / f".{dest.name}.old-{os.getpid()}"
+    shutil.rmtree(fresh, ignore_errors=True)
+    shutil.copytree(src, fresh, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    if dest.exists():
+        os.rename(dest, old)
+    os.rename(fresh, dest)
+    shutil.rmtree(old, ignore_errors=True)
 
 
 class Setup:
@@ -45,7 +85,10 @@ class Setup:
         self.safe_restart = safe_restart
         self.changed: list[str] = []
         self.missing: list[str] = []
+        self.skipped: list[str] = []
         self.restart = False
+        self.opt_out: dict[str, str] = {}
+        self.opt_out_ok = True
 
     # environment ---------------------------------------------------------------------------
     def env(self) -> dict:
@@ -147,6 +190,74 @@ class Setup:
                 )
                 return
         self.changed.append(f"{t['id']}: plugin {t['plugin']} installed and enabled")
+        self.restart = True
+
+    def load_opt_out(self, shipped: set[str]) -> None:
+        """Read the consumer's opt-out list. Anything unclear is reported and installs nothing."""
+        path = self.home / OPT_OUT_FILE
+        if not path.is_file():
+            return
+        try:
+            data = json.loads(path.read_text(encoding="utf8"))
+            entries = data["plugins"]
+            if not isinstance(entries, dict):
+                raise TypeError("plugins must be an object of id to reason")
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            self.opt_out_ok = False
+            self.missing.append(f"{OPT_OUT_FILE} cannot be read ({exc}), no core plugin installed")
+            return
+        for name, reason in entries.items():
+            if name not in shipped:
+                self.opt_out_ok = False
+                self.missing.append(f"{OPT_OUT_FILE}: {name} is not a plugin the core ships")
+            elif not isinstance(reason, str) or not reason.strip():
+                self.opt_out_ok = False
+                self.missing.append(f"{OPT_OUT_FILE}: {name} needs a reason")
+            else:
+                self.opt_out[name] = reason.strip()
+
+    def ensure_core_plugin(self, t: dict) -> None:
+        """Install a plugin whose source ships in this repo (see the module docstring)."""
+        name = t["plugin"]
+        if not self.opt_out_ok:
+            return
+        if name in self.opt_out:
+            self.skipped.append(f"{t['id']}: opted out in {OPT_OUT_FILE} ({self.opt_out[name]})")
+            return
+        halves = [
+            (src_root / name, self.home / dest_dir / name)
+            for src_root, dest_dir in ((PLUGIN_SRC, "plugins"), (DESKTOP_SRC, "desktop-plugins"))
+            if (src_root / name).is_dir()
+        ]
+        if not halves:
+            self.missing.append(f"{t['id']}: no source for plugin {name} in the core")
+            return
+        stale = [
+            (src, dest)
+            for src, dest in halves
+            if not dest.is_dir() or tree_hash(src) != tree_hash(dest)
+        ]
+        agent_half = (PLUGIN_SRC / name).is_dir()
+        needs_enable = agent_half and name not in self.enabled_plugins()
+        if not stale and not needs_enable:
+            return
+        if not self.apply:
+            self.missing.append(
+                f"{t['id']}: plugin {name} differs from the core copy. {t['install_hint']}"
+            )
+            return
+        for src, dest in stale:
+            try:
+                install_tree(src, dest)
+            except OSError as exc:
+                self.missing.append(f"{t['id']}: copying {src.name} to {dest} failed: {exc}")
+                return
+        if needs_enable:
+            rc, out = self.run(["hermes", "plugins", "enable", name])
+            if rc != 0 and name not in self.enabled_plugins():
+                self.missing.append(f"{t['id']}: hermes plugins enable {name} failed: {out[-300:]}")
+                return
+        self.changed.append(f"{t['id']}: plugin {name} installed from the core")
         self.restart = True
 
     def ensure_skill(self, t: dict) -> None:
@@ -262,10 +373,21 @@ class Setup:
 
     def run_all(self) -> Setup:
         reg = json.loads(REGISTRY.read_text(encoding="utf8"))
+        self.load_opt_out(
+            {
+                t["plugin"]
+                for t in reg["tools"]
+                if t["kind"] == "plugin"
+                and t.get("source") == "core"
+                and t.get("decision") != "reject"
+            }
+        )
         for t in reg["tools"]:
             if not t.get("required") or t.get("decision") == "reject":
                 continue
-            if t["kind"] == "plugin":
+            if t["kind"] == "plugin" and t.get("source") == "core":
+                self.ensure_core_plugin(t)
+            elif t["kind"] == "plugin":
                 self.ensure_plugin(t)
             else:
                 self.ensure_skill(t)
@@ -281,6 +403,7 @@ class Setup:
             out.append(
                 "RESTART Hermes (desktop app and gateway) to load the plugin or setting changes above"
             )
+        out += [f"SKIPPED {k}" for k in self.skipped]
         out += [f"MISSING {m}" for m in self.missing]
         return out
 
