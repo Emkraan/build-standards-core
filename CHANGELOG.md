@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-17 (v2.13.1, contributing: eir-review is now a required check on the core)
+
+The check run `eir-review` from the Eir review of contributor pull requests is now required on the core's default branch, pinned to the review App so a workflow cannot forge it. A repository-admin bypass for pull requests only is the owner's break glass if the review is down.
+
+- Changed: nothing in the shipped standards; `CONTRIBUTING.md` and `CONSUMING.md` already describe the review. A contributor pull request now waits for `eir-review` as well as `ci` and `visual`.
+- Migration: none.
+- Tests: `check-ascii.py`, `check-changelog.py` and `check-changelog-versions.py` pass.
+
 ## 2026-11-16 (v2.13.0, kit and ops-center-layout: the hub page parts and rule 22)
 
 The ops center rebuilt its pages on one design system: one hub header, two tab levels, one section, panel, row, stat tile, status pill and compact empty note, under an identity accent that is never a state. They are generic, so they ship in the kit and the layout standard gains the rule that holds them.
