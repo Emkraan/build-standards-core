@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-17 (v2.14.0, ops-center-layout and local-ops-app: uniformity probe, computed build version, paid fallback switch)
+
+The local ops center finished its second sweep on the hub page parts of v2.13.0 and found three practices worth a rule: a sweep is proven by one probe module over every route, not by page-by-page review, the build card version is computed at build time instead of a manifest number nobody bumps, and a paid fallback model account is used only while an owner switch allows it.
+
+- Added: `standards/ops-center-layout.md` rules 23 and 24 (version 1.6) and `ops-center-layout.1.23`, `ops-center-layout.1.24` in `standards/rules.json`.
+- Added: `standards/local-ops-app.md` section 21, Paid fallback model account (version 1.5), and `local-ops-app.21.1` to `local-ops-app.21.4` in `standards/rules.json`.
+- Changed: `hermes/skills/core-practices/SKILL.md` regenerated from the registry.
+- Migration: a local ops center adds a probe module and its CI test (rule 23), computes its build card version at build time (rule 24), and, when it holds a paid fallback model account, gates it in the credential pool behind a switch that starts off (section 21).
+- Tests: `check-ascii.py`, `check-links.py`, `check-placeholders.py`, `check-rules.py`, `check-hermes-skills.py`, `check-changelog.py`, `check-changelog-versions.py`, `check-sanitised.py` and `check-consumer-neutral.py` pass.
+
 ## 2026-11-17 (v2.13.2, contributing: the eir-review check also reports on merge queue commits)
 
 The required check `eir-review` first stalled the merge queue, because the queue tests a temporary merge commit and the review only reported on pull request heads. The review now also reports on a queue commit whose pull request already passed it on its current head commit, so the queue merges as before.

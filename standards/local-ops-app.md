@@ -1,6 +1,6 @@
 # Local Ops App Standard
 
-Version: 1.4 | Last reviewed: 2026-11-16 | Status: current | Scope: web (local tools)
+Version: 1.5 | Last reviewed: 2026-11-17 | Status: current | Scope: web (local tools)
 
 How to build a local, single-operator first-party tool: a small server and scripted engine on the
 operator's own machine, with a web UI that follows the first-party design system. This doc is the source of truth. Where a reference implementation differs, the implementation
@@ -567,3 +567,34 @@ that differs only by a stamp key never publishes, a changed body publishes once,
 is held quiet, the warm loop makes no call with no visible tab, the 25th stream is refused, and a
 presence body with a query path is refused. A client test asserts a store reloads on its topic,
 stretches its timer while connected and restores its own interval when the channel drops.
+
+## 21. Paid fallback model account
+
+An agent that holds several model accounts falls back in order when one runs out. When the last
+fallback is billed per use, a fallback nobody approved costs money and is found only on the invoice.
+The rules, from a fallback that served calls while the included accounts still had headroom and was
+caught only after the fact by a watch:
+
+1. **A paid fallback is used only while an owner switch allows it.** The switch starts off and sits
+   at the top of every ops center page. Turning it on takes a duration (an hour, a few hours, until
+   the included accounts have headroom again, or until turned off), and the server turns it off when
+   the duration ends, whether or not a page is open. Every change is logged with the time, the old
+   and new state, the duration and the client, and every open tab shows the new state.
+2. **The gate sits where a credential is chosen and fails closed.** While the switch is off the
+   credential pool skips a paid row on every selection, rotation and fallback, so every call path is
+   covered: interactive turns, auxiliary calls (compression, titles, summaries, vision), sub-agents
+   and scheduled jobs. A missing or unreadable switch state means off. When the gate is code that
+   loads at process start, the ops center names the running processes that still need a restart to
+   be covered.
+3. **A blocked account stays signed in.** Token refresh keeps the paid row's sign-in alive while it
+   is gated, and a recovery job that clears false benches never re-enables a gated row, so allowing it
+   later works at once.
+4. **A block is said once, with a way forward.** A call the switch blocks fails with an error that
+   names the switch. The notice tray shows one row with a one-click allow for a short duration, and
+   one alert goes out per blocked episode. A paid call made while the switch was off is reported as a
+   defect, separately from a paid call made while the included accounts had headroom.
+
+**Acceptance (test):** with a fake pool, off skips the paid row in selection and after every included
+row is exhausted, on keeps today's order, an unreadable state is off, the switch turns itself off at
+the end of its duration with a fake clock, token refresh still renews a gated row, and the recovery
+job leaves a gated row gated.
