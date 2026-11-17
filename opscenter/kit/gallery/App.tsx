@@ -2793,9 +2793,6 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         <Specimen id="hub-home" title="Hub home and pinned pages">
           <HubHomeSpecimen />
         </Specimen>
-        <Specimen id="hub-page" title="Hub page parts">
-          <HubPageSpecimen />
-        </Specimen>
         <Specimen id="facts" title="Facts and disclosure">
           <FactsSpecimen />
         </Specimen>
@@ -2947,6 +2944,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="header-long-title" title="Header with a long title, and the card surface">
           <HeaderLongTitleSpecimen />
+        </Specimen>
+        <Specimen id="hub-page" title="Hub page parts">
+          <HubPageSpecimen />
         </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">
