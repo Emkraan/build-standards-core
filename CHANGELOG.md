@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-17 (v2.13.2, contributing: the eir-review check also reports on merge queue commits)
+
+The required check `eir-review` first stalled the merge queue, because the queue tests a temporary merge commit and the review only reported on pull request heads. The review now also reports on a queue commit whose pull request already passed it on its current head commit, so the queue merges as before.
+
+- Changed: nothing in the shipped standards; behaviour of the review service only. A pull request that has not passed `eir-review` still never gets a pass on its queue commit.
+- Migration: none.
+- Tests: `check-ascii.py`, `check-changelog.py` and `check-changelog-versions.py` pass.
+
 ## 2026-11-17 (v2.13.1, contributing: eir-review is now a required check on the core)
 
 The check run `eir-review` from the Eir review of contributor pull requests is now required on the core's default branch, pinned to the review App so a workflow cannot forge it. A repository-admin bypass for pull requests only is the owner's break glass if the review is down.
