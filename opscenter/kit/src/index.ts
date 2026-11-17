@@ -338,3 +338,25 @@ export { BusyIndicator } from './shell/BusyIndicator';
 export type { BusyIndicatorProps } from './shell/BusyIndicator';
 export { CANCELLED_MESSAGE, LEFT_PAGE_MESSAGE, NAV_GRACE_MS, abortStaleReads, cancelBusyReads, getBusyState, installBusyTracking, quietly, trackBusy, useBusy } from './lib/busy';
 export type { BusyState, BusyTrackingOptions, TrackOptions } from './lib/busy';
+
+// Hub page parts: the header, two tab levels, Section, Panel, Row, stat tile, compact empty note, status pill, filter menu
+export { HubPageHeader, HubTabIntro } from './hubpage/HubPageHeader';
+export type { HubPageHeaderProps } from './hubpage/HubPageHeader';
+export { HubSegmented, HubTabs } from './hubpage/HubTabs';
+export type { HubSegOption, HubSegmentedProps, HubTabItem, HubTabsProps } from './hubpage/HubTabs';
+export { Section } from './hubpage/Section';
+export type { SectionProps } from './hubpage/Section';
+export { Panel, Row } from './hubpage/Panel';
+export type { PanelProps, RowProps } from './hubpage/Panel';
+export { HubStatRow, HubStatTile } from './hubpage/HubStatTile';
+export type { HubStatTileProps } from './hubpage/HubStatTile';
+export { EmptyNote } from './hubpage/EmptyNote';
+export type { EmptyNoteProps } from './hubpage/EmptyNote';
+export { STATUS_WORDS, StatusPill, statusTone } from './hubpage/StatusPill';
+export type { StatusPillProps } from './hubpage/StatusPill';
+export { FilterMenu } from './hubpage/FilterMenu';
+export type { FilterMenuOption, FilterMenuProps } from './hubpage/FilterMenu';
+export { HubAccentStyle, hubAccentRules } from './hubpage/hubAccent';
+export type { HubAccentMap, HubAccentSpec, HubAccentStop } from './hubpage/hubAccent';
+export { hubPageViolations } from './hubpage/conformance';
+export type { HubPageExpectation } from './hubpage/conformance';
