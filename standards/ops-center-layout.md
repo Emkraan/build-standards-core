@@ -1,6 +1,6 @@
 # Ops Center Layout Standard
 
-Version: 1.4 | Last reviewed: 2026-11-16 | Status: current | Scope: local-ops (operator consoles)
+Version: 1.5 | Last reviewed: 2026-11-16 | Status: current | Scope: local-ops (operator consoles)
 
 How an ops center is organised and how it starts work: what a hub is, how its items are grouped, what
 the Overview shows, where every count comes from, and what a Run button promises. The ops center
@@ -80,6 +80,9 @@ Web Design System (the web-ui-standard doc) (tone, tabs, dialogs), [Automation S
 21. **Every time on screen is in the operator's zone, from one module.** A clock time is shown in the operator's configured time zone (a parameter) with its abbreviation, never in UTC and never with a trailing Z. A relative time is spelled out ("5 days ago", never "5 d ago") with the exact time in the tip. One module formats every time, so a log or API stamp is converted before it is quoted.
    - Prevents: a UTC stamp beside a local one on the same page, and a reader doing the conversion in their head.
    - Acceptance (test): a test asserts each formatter returns the zone abbreviation and never UTC wording, and a source scan fails on a sliced stamp with a trailing Z or visible UTC wording.
+22. **Every hub page has one header, at most two tab levels, and one design system.** Every hub page opens with one header: an accent icon chip (the rail icon), a title exactly equal to the rail label, a one-line subtitle and a right slot for page meta. Under it sit at most two tab levels: the hub tabs, then one segmented switch for the open tab's items. A deeper choice is a filter menu, never a third tab row, and a count on any tab is always a badge. Every block with a heading is a section (one title-case heading style, no upper-case eyebrow on a page), every card is one panel surface, every list line is one row, every KPI is one stat tile (a zero is muted, a number takes a state colour only when it carries state), and every status word maps to a tone in one place. A hub wears an identity accent from a consumer-owned map. The accent is never a state: red, amber and green stay the state tones.
+   - Prevents: a page whose title differs from its rail entry, a third nested tab row, a heading style per page, a colour that means identity on one page and state on another.
+   - Acceptance (test): a render test asserts the title equals the rail label, one h1, one tab row and at most one switch in the header, no upper-case section title, a muted zero tile, one tone per status word and an unknown word that is neutral, and the hub accent map refuses a key that is not a plain token.
 
 ---
 
@@ -125,3 +128,4 @@ Decision of 2026-11-10 (ops center build for #255; the owner may overrule it). A
 |---|---|---|
 | 1.3 | 2026-11-10 | Section 6: live automation sits in Operations, Automation, as the item "Live automation" (not a new section); an enabled dark launch leaves the Action Center and gets a Disable switch; the item is hidden without a dark launch registry. No rule added. |
 | 1.4 | 2026-11-16 | Rules 17 to 21: one title and trail in the header, one notice tray, an attention row that reads the badge counts, one Live view, and the time rule. The push channel is in Local Ops App section 20. |
+| 1.5 | 2026-11-16 | Rule 22: one hub page header, at most two tab levels, and one set of page parts (section, panel, row, stat tile, status pill, compact empty note) under a consumer-owned hub accent map. The parts ship in the kit as the hub page parts. |

@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-16 (v2.13.0, kit and ops-center-layout: the hub page parts and rule 22)
+
+The ops center rebuilt its pages on one design system: one hub header, two tab levels, one section, panel, row, stat tile, status pill and compact empty note, under an identity accent that is never a state. They are generic, so they ship in the kit and the layout standard gains the rule that holds them.
+
+- Added: `HubPageHeader`, `HubTabIntro`, `HubTabs`, `HubSegmented`, `Section`, `Panel`, `Row`, `HubStatTile`, `HubStatRow`, `EmptyNote`, `StatusPill` (with `statusTone` and `STATUS_WORDS`), `FilterMenu`, `HubAccentStyle` and `hubAccentRules` in `opscenter/kit/src/hubpage/`, exported from the kit index, with their `hp-` styles in `kit.css`. `hubPageViolations` is the conformance function an app's own test calls.
+- Added: `standards/ops-center-layout.md` rule 22 (version 1.5) and `ops-center-layout.1.22` in `standards/rules.json`.
+- Added: a "Hub page parts" gallery specimen, `opscenter/kit/tests/hubpage.test.tsx` (19 cases) and the new specimen baselines.
+- Changed: nothing existing. Every export is new and opt-in, no current component, class or token changes.
+- Migration: none. A consumer that wants the parts maps its hub keys to hue tokens with `hubAccentRules` and sets `data-hub` on the page root.
+- Tests: the kit unit tests, `tsc` for the kit, the gallery and the tests, and the `check-*` scripts pass.
+
 ## 2026-11-16 (v2.12.3, contributing: how the Eir review of a contributor pull request works)
 
 Contributor pull requests now get the check run `eir-review`; this documents what it does and how a contributor or the owner reads and overrides it.

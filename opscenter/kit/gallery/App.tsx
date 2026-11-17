@@ -160,6 +160,7 @@ import {
   useRunForm,
 } from '../src/index';
 import type { HubSection } from '../src/index';
+import { HubPageSpecimen } from './HubPageSpecimen';
 import type { AreaCardData } from '../src/index';
 import type { RunRefusal, RunSpec } from '../src/index';
 import type { AppAccent, ArtAnchors, BulkRunState, ComboboxFreeEntry, FilterClause, FilterField, HomeTool, LauncherTool, PaletteItem, Recent, ReleaseNote, SortDirection, SortState, TableColumn, ThemeChoice } from '../src/index';
@@ -2943,6 +2944,9 @@ function GalleryShell({ releases, version }: { releases: readonly ReleaseNote[];
         </Specimen>
         <Specimen id="header-long-title" title="Header with a long title, and the card surface">
           <HeaderLongTitleSpecimen />
+        </Specimen>
+        <Specimen id="hub-page" title="Hub page parts">
+          <HubPageSpecimen />
         </Specimen>
         {paletteResult ? (
           <p className="gallery-note" role="status">

@@ -3182,6 +3182,20 @@
       "acceptance": "a test asserts each formatter returns the zone abbreviation and never UTC wording, and a source scan fails on a sliced stamp with a trailing Z or visible UTC wording."
     },
     {
+      "id": "ops-center-layout.1.22",
+      "ref": "ops-center-layout.md 1.22",
+      "title": "Every hub page has one header, at most two tab levels, and one design system",
+      "statement": "Every hub page opens with one header (icon chip, rail label as title, one-line subtitle) and has at most two tab levels, with a deeper choice in a filter menu. Headings are sections, cards are panels, list lines are rows, KPIs are stat tiles and each status word maps to one tone. A hub wears an identity accent from a consumer-owned map and the accent is never a state.",
+      "level": "must",
+      "applies_to": [
+        "local-ops"
+      ],
+      "check": {
+        "kind": "test"
+      },
+      "acceptance": "a render test asserts the title equals the rail label, one h1, one tab row and at most one switch in the header, no upper-case section title, a muted zero tile, one tone per status word and a neutral unknown word, and that the hub accent map refuses a key that is not a plain token."
+    },
+    {
       "id": "cmtrace-logging.13.1",
       "ref": "cmtrace-logging.md 13.1",
       "title": "One CMTrace line per event",
