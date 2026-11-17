@@ -1,0 +1,10 @@
+name: session-children
+label: Session children
+kind: standalone
+version: 1.0.0
+author: build-standards-core
+description: Links every session spawned from another session (hermes chat run from a parent's terminal) to its launcher, archives it the moment it completes cleanly, and shows live child status on the parent (sidebar badge, Spawned sessions pane, status bar chip).
+provides_hooks:
+  - on_session_start
+  - on_session_end
+  - on_session_finalize

@@ -1,6 +1,6 @@
 # Hermes configurations and plugins that proved themselves
 
-Version: 1.5 | Last reviewed: 2026-10-17 | Status: current | Scope: every consumer that runs the
+Version: 1.7 | Last reviewed: 2026-11-17 | Status: current | Scope: every consumer that runs the
 Hermes agent
 
 Each entry names the setting, the value, why, and the failure it prevents. Values that differ per
@@ -360,3 +360,55 @@ loopback client. Alerts reach a closed app through a push plugin pinned to a rev
 service last and with the desktop app closed, and retire a chat bot by removing its config and keys,
 its job delivery targets and its token at the provider. The rules, the retirement order and the
 limit that was not checked are in [hermes-api-access.md](../standards/hermes-api-access.md).
+
+## 18. Session status and spawned sessions (desktop app)
+
+Two plugins ship in this repo and the nightly job installs them (`session-status` and
+`session-children` in `hermes/tools.json`, `"source": "core"`). The sources are
+`hermes/plugins/` (the agent half, enabled with `hermes plugins enable`) and
+`hermes/desktop-plugins/` (the desktop half, copied beside the agent home). The installed copy is
+owned by the core: the nightly job replaces it whenever it differs, so a change goes in by pull
+request here and never in the installed copy. Both load at the next desktop restart.
+
+- **`session-status`: a text badge on every sidebar row, and desktop notifications.** The badge reads
+  the state of the app's own status dot, so it can never disagree with it: `Quiet` (with the elapsed
+  time of the turn) is the app's own stalled state, `Background`, `Done` and a working state come
+  from the same dot, and `Failed` and `Stopped` are added from turn events because the app does not
+  track them. Opening a session clears a `Failed` or `Stopped` marker. The plugin also raises an
+  operating system notification when a session needs an answer, fails, is stopped, or finishes a
+  turn that took 45 seconds or more. Prevents: a running session that looks dormant, and a finished
+  one nobody notices.
+- **`session-children`: spawned sessions nest under their launcher.** A session started with
+  `hermes chat` from another session's terminal inherits the launcher's session id in
+  `HERMES_SESSION_ID`, but rewrites it to its own id when it starts. The plugin reads the
+  inherited value once, at import time, and stores the link (spawned id to launcher id, by process
+  id) in its own sqlite file under the agent home. The agent half then:
+  1. hides the child from the sidebar while it runs, so the flat list holds only real chats,
+  2. archives the child and its whole compression chain the moment it finishes cleanly, and
+  3. unhides a child that failed, was interrupted or whose process died, so it shows up for review.
+
+  The desktop half polls a read-only backend route every 3 seconds, with no model call, and shows
+  a running count on the launcher's sidebar row, a pane under the chat listing its spawned
+  sessions with the current activity line and tool-call count, and a status bar chip for all
+  chats. A finished child stays in the pane for 30 minutes. A child that reappears in the sidebar
+  carries a pill naming its launcher.
+- **Limits.** Only sessions launched from a parent session's terminal are linked: a session started
+  by a scheduler has no launcher. The sidebar is one flat, virtualised list with no nesting slot
+  for plugins, so the pane under the launcher is the nest. The route mounts only at a desktop
+  restart, while the desktop half reloads without one. The plugin writes the archived and hidden
+  flags through the agent's own session API and never deletes a session.
+- **Prove it** by starting a short child from a session terminal (`hermes chat --query-file F
+  --oneshot -Q`), watching it appear in the pane and leave the sidebar, and checking that it is
+  archived after a clean finish. Kill a second child with `kill -9` and check that it returns to
+  the sidebar within a few seconds.
+- **Opting out.** A consumer that does not want a shipped plugin lists it in `core-opt-out.json` in
+  the agent home, with a reason on every entry:
+  `{"plugins": {"session-children": "why this estate does not run it"}}`. The nightly job then
+  leaves that plugin exactly as it is: it does not install, update or enable it, and it prints
+  `SKIPPED` with the reason (not `MISSING`, so the run stays green). It does not remove an installed
+  copy, so remove the files and run `hermes plugins disable <id>` by hand when you want it gone.
+  An entry with no reason, an id the core does not ship, or a file that cannot be read is reported
+  as `MISSING` and installs no core plugin on that run, because an unclear opt-out must not
+  install something the consumer meant to refuse. The reason is the point: an opt-out nobody can
+  explain is drift. Prevents: a nightly job that quietly undoes a deliberate local choice, or a
+  consumer that forks the plugin in place and loses the edit.
