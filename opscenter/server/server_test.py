@@ -325,7 +325,9 @@ class Routes(unittest.TestCase):
         self.assertEqual(s, 200)
         self.assertIsInstance(body["pipelines"], list)
         s, body = self.js("GET", "/api/one-on-ones")
-        self.assertEqual(s, 404)  # the people slot is off by default: no route, the people pages hide
+        self.assertEqual(
+            s, 404
+        )  # the people slot is off by default: no route, the people pages hide
         s, body = self.js("GET", "/api/ac-routing")
         self.assertEqual(s, 200)
         self.assertIn("rules", body)
@@ -515,7 +517,9 @@ class Routes(unittest.TestCase):
             "POST", "/api/jira/needs-me/decide", {"key": "not a key", "decision": "close"}
         )
         self.assertEqual(s, 400)
-        self.assertEqual(self.js("POST", "/api/one-on-ones/topic", {"person": "nobody", "title": "x"})[0], 404)
+        self.assertEqual(
+            self.js("POST", "/api/one-on-ones/topic", {"person": "nobody", "title": "x"})[0], 404
+        )
 
 
 class RoutesWithPeople(unittest.TestCase):
@@ -537,7 +541,9 @@ class RoutesWithPeople(unittest.TestCase):
         names = {r.name for r in self.inner.registry.routes}
         self.assertIn("one_on_ones.board", names)
         self.assertEqual(js("GET", "/api/action-center/replied")[0], 200)
-        self.assertEqual(js("POST", "/api/one-on-ones/topic", {"person": "nobody", "title": "x"})[0], 400)
+        self.assertEqual(
+            js("POST", "/api/one-on-ones/topic", {"person": "nobody", "title": "x"})[0], 400
+        )
 
 
 if __name__ == "__main__":
