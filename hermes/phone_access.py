@@ -438,7 +438,7 @@ def cmd_pair(args: argparse.Namespace) -> int:
 
 # ---- gateway-check: the retired bot is gone (rule hermes-api-access.8) ---------------------------
 
-CONNECTED = re.compile(r"(\S+) connected\s*$")
+CONNECTED = re.compile(r"[^\x00-\x7f] (\S+) connected\s*$")
 RUNNING = re.compile(r"Gateway running with (\d+) platform")
 STOPPED = re.compile(r"all adapters disconnected")
 
@@ -452,7 +452,7 @@ def connected_platforms(lines) -> tuple[set, int]:
             now = set()
             continue
         m = CONNECTED.search(line)
-        if m and "\u2713" in line:
+        if m:
             now.add(m.group(1))
         m = RUNNING.search(line)
         if m:
