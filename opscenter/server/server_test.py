@@ -200,6 +200,8 @@ class Static(Served):
 class Routes(unittest.TestCase):
     """The route table against the real modules on a scratch state tree."""
 
+    PEOPLE = False  # True turns the people slot on (OPSCENTER_PEOPLE), as a consumer that supplies it does
+
     def setUp(self):
         self.d = Path(tempfile.mkdtemp(prefix="routes-test-"))
         self._env = dict(os.environ)
@@ -215,6 +217,9 @@ class Routes(unittest.TestCase):
             "OPSCENTER_SERVED_BOARD",
         ):
             os.environ.pop(k, None)
+        os.environ.pop("OPSCENTER_PEOPLE", None)
+        if self.PEOPLE:
+            os.environ["OPSCENTER_PEOPLE"] = str(HERE.parent / "people" / "one_on_ones.py")
         for m in ("stores", "routes"):
             sys.modules.pop(m, None)
         import routes
@@ -248,7 +253,8 @@ class Routes(unittest.TestCase):
     def test_every_registered_route_names_a_function_that_exists(self):
         names = {r.name for r in self.registry.routes}
         self.assertIn("builds.get", names)
-        self.assertIn("one_on_ones.board", names)
+        self.assertNotIn("one_on_ones.board", names)  # the people slot is off here
+        self.assertNotIn("yearly_reviews.get_all", names)
         for r in self.registry.routes:
             if "." in r.name:
                 mod, fn = r.name.split(".", 1)
@@ -319,7 +325,7 @@ class Routes(unittest.TestCase):
         self.assertEqual(s, 200)
         self.assertIsInstance(body["pipelines"], list)
         s, body = self.js("GET", "/api/one-on-ones")
-        self.assertEqual((s, body["people"]), (200, []))
+        self.assertEqual(s, 404)  # the people slot is off by default: no route, the people pages hide
         s, body = self.js("GET", "/api/ac-routing")
         self.assertEqual(s, 200)
         self.assertIn("rules", body)
@@ -400,10 +406,10 @@ class Routes(unittest.TestCase):
             os.environ["OPSCENTER_STATE_DIR"], "none.json"
         )
         try:
-            s, body = self.js("GET", "/api/team_prefix-reviews")
+            s, body = self.js("GET", "/api/team-reviews")
             self.assertEqual((s, body["needs_me"]), (200, []))
             payload = {"pr": 1, "head_sha": "a" * 40}
-            self.assertEqual(self.js("POST", "/api/team_prefix-reviews/merge", payload)[0], 501)
+            self.assertEqual(self.js("POST", "/api/team-reviews/merge", payload)[0], 501)
         finally:
             os.environ.pop("OPSCENTER_REVIEWS_CONFIG", None)
 
@@ -509,8 +515,29 @@ class Routes(unittest.TestCase):
             "POST", "/api/jira/needs-me/decide", {"key": "not a key", "decision": "close"}
         )
         self.assertEqual(s, 400)
-        s, body = self.js("POST", "/api/one-on-ones/topic", {"person": "nobody", "title": "x"})
-        self.assertEqual(s, 400)
+        self.assertEqual(self.js("POST", "/api/one-on-ones/topic", {"person": "nobody", "title": "x"})[0], 404)
+
+
+class RoutesWithPeople(unittest.TestCase):
+    """The people slot turned on (OPSCENTER_PEOPLE): the 1:1 board, its writes and the yearly store answer."""
+
+    def setUp(self):
+        self.inner = Routes("test_modules_that_are_present_answer_with_an_empty_state")
+        self.inner.PEOPLE = True
+        self.inner.setUp()
+
+    def tearDown(self):
+        self.inner.tearDown()
+
+    def test_the_people_routes_answer_with_an_empty_state(self):
+        js = self.inner.js
+        s, body = js("GET", "/api/one-on-ones")
+        self.assertEqual((s, body["people"]), (200, []))
+        self.assertEqual(js("GET", "/api/yearly-reviews")[0], 200)
+        names = {r.name for r in self.inner.registry.routes}
+        self.assertIn("one_on_ones.board", names)
+        self.assertEqual(js("GET", "/api/action-center/replied")[0], 200)
+        self.assertEqual(js("POST", "/api/one-on-ones/topic", {"person": "nobody", "title": "x"})[0], 400)
 
 
 if __name__ == "__main__":

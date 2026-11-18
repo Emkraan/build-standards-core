@@ -900,7 +900,7 @@ def run(dry=False, as_json=False):
     state = load_state()
     try:
         primary = fetch(os.environ.get("RV_PRIMARY_PATH", "/api/platform-reviews"))
-        secondary = fetch(os.environ.get("RV_SECONDARY_PATH", "/api/team_prefix-reviews"))
+        secondary = fetch(os.environ.get("RV_SECONDARY_PATH", "/api/team-reviews"))
     except ReadError as e:
         state["fails"] = int(state.get("fails", 0)) + 1
         state["last_error"] = str(e)

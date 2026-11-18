@@ -6,7 +6,7 @@ import type { TableColumn } from '@kit'
 import { Button, Card, CardHead, EmptyState, Field, IconCheck, IconWarning, Input, Modal, ModalSection, Table } from '@kit'
 import { useState } from 'react'
 import type { PendingSecret, PrivItem } from '../lib/data'
-import { postPrivDecision, relTime, useplatformReviews } from '../lib/data'
+import { postPrivDecision, relTime, usePlatformReviews } from '../lib/data'
 import { depConfirm, unblocks } from '../lib/deps'
 import type { Tone } from '../pages/reviews/parts'
 import {
@@ -286,7 +286,7 @@ function Assessment({ it }: { it: PrivItem }) {
 }
 
 export function PrivNeedItem({ it, now }: { it: PrivItem; now: number }) {
-  const { reload, mutate } = useplatformReviews()
+  const { reload, mutate } = usePlatformReviews()
   const [ask, setAsk] = useState<'approve' | 'reject' | 'retry' | null>(null)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -296,7 +296,7 @@ export function PrivNeedItem({ it, now }: { it: PrivItem; now: number }) {
   const locked = it.phase === 'in_flight'
   const failed = it.status === 'blocked_failed_apply' ? it.failed_apply : null
   const dep = it.phase === 'waiting_dep' ? it.deps : undefined
-  const { data } = useplatformReviews()
+  const { data } = usePlatformReviews()
   const firstFor = dep ? [] : unblocks(data?.deps, it.pr?.number ?? null)
   // The raw run data. Under a brief it sits in the collapsed Details, the brief explains it.
   const raw = (
@@ -556,7 +556,7 @@ const SECRET_COLS: TableColumn<PendingSecret>[] = [
 ]
 
 export function PendingSecrets() {
-  const { data } = useplatformReviews()
+  const { data } = usePlatformReviews()
   const [q, setQ] = useState('')
   const s = data?.waiting_on_others?.secrets
   if (!s) return null

@@ -3711,7 +3711,7 @@
       "check": {
         "kind": "review"
       },
-      "acceptance": "Review: the check mode exits 0 on the pin and non-zero on a changed plugin, and no scheduled job other than the chosen briefing targets a push."
+      "acceptance": "Review: `hermes/phone_access.py plugin --check` exits 0 on the pin and non-zero on a changed plugin, the pin (repository, path and full commit) is data a consumer can override, and no scheduled job other than the chosen briefing targets a push."
     },
     {
       "id": "hermes-api-access.7",
@@ -3739,7 +3739,7 @@
       "check": {
         "kind": "review"
       },
-      "acceptance": "Review: no bot key remains in the env file or config, no job targets it and the gateway log lists only the API server."
+      "acceptance": "Review: no bot key remains in the env file or config, no job targets it and `hermes/phone_access.py gateway-check` exits 0 on the gateway log (only the API server connected)."
     },
     {
       "id": "hermes-api-access.9",

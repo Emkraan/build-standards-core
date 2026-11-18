@@ -251,6 +251,74 @@ the repo's agent to run; the core never changes a ruleset or a required check it
   branch that requires reviews or checks also refuses the merge-at-once pull request, so it needs
   `workflow`.
 
+### Moving an existing ops center onto the core app: run beside, diff, cut over
+
+For a machine that already serves an ops center of its own and wants the core's app and server in
+its place. The new server runs next to the old one on another port against the same state, and the
+old one is not touched until the cut over. Run from `opscenter/` in the core clone. The values in
+angle brackets are yours. Nothing here names a host or an account.
+
+**1. Build the app once.**
+
+```sh
+cd opscenter/app && npm ci && npm run build && cd ..
+```
+
+**2. Run the new server on another port with the state read-only.** A read-only directory
+proves the read pages need no write, and an action that does write fails loudly instead of changing
+state the old server owns. Use a snapshot when the live directory must stay writable for the old server, or the
+live directory itself where your host can mount it read-only (the second form is host specific and
+not covered here).
+
+```sh
+cp -R <state dir> <snapshot dir> && chmod -R a-w <snapshot dir>
+cd server && OPSCENTER_STATE_DIR=<snapshot dir> OPSCENTER_PORT=<free port> \
+  OPSCENTER_DIST=$PWD/../app/dist python3 app.py
+```
+
+Pass every other `OPSCENTER_*` variable the old server runs with, so both read the same inputs. A
+people, plans or other optional page appears only when its variable is set (section 12.14 of
+`opscenter/DESIGN.md`). The old and the new server must see the same variables, or the diff below
+reports a missing page that is only a missing variable.
+
+**3. Diff the two servers.** The conformance checker specified in `opscenter/DESIGN.md` section 3.3
+(`engine/conformance.py`) is not built yet, so there is no one command for this step. The closest
+existing checks are these two, and they are not a conformance check:
+
+```sh
+# a. The Action Center file against its schema (exit 0 accepted, 1 rejected). Covers only that file.
+python3 engine/contract.py <state dir>/dashboard/action-center.json
+
+# b. The same API read from both servers, compared field by field. Covers only the paths you list.
+for p in /api/badges /api/platform-reviews /api/team-reviews <more read-only paths>; do
+  curl -s http://127.0.0.1:<old port>$p | python3 -m json.tool --sort-keys > old.json
+  curl -s http://127.0.0.1:<new port>$p | python3 -m json.tool --sort-keys > new.json
+  diff -q old.json new.json > /dev/null && echo "same  $p" || echo "DIFF  $p"
+done
+```
+
+What this does not cover: any state file other than the Action Center file, the shape of a POST
+body or its reply, a path you did not list, a field that changes between two reads (timestamps and
+counters differ by design, so read a DIFF before acting on it), the app itself (open
+`http://127.0.0.1:<new port>/` and click through the routes in `opscenter/app/routes.lock.json`),
+and any page behind a slot you did not turn on. A DIFF on a path you did not expect is the work
+of this step: fix the cause or write down why it is intended.
+
+**4. Cut over.** Only when step 3 shows nothing unexplained.
+
+```sh
+# stop the old server by its service manager, then start the new one on the old port,
+# against the live state directory and with the old server's environment
+cd server && OPSCENTER_STATE_DIR=<state dir> OPSCENTER_PORT=<old port> \
+  OPSCENTER_DIST=$PWD/../app/dist python3 app.py
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:<old port>/api/badges   # expect 200
+```
+
+Then move the service definition to the new command so a restart keeps it. Keep the old install and the snapshot until the new server
+has run a full day. To roll back, stop the new server and start the old one on the same port. The
+state directory is the same, so nothing needs to be restored unless the new server wrote a state
+file the old one cannot read (compare the directory with the snapshot first).
+
 ### `vendored`: a repo that must carry no record of the core
 
 - The core's shipped content is copied into the repo's own shared UI package with names scrubbed,

@@ -5,7 +5,7 @@
 import { Button, useConfirm } from '@kit'
 import { useState } from 'react'
 import type { OwnDecision } from '../lib/data'
-import { postAresDecideFix, postplatformDecideFix } from '../lib/data'
+import { postTeamDecideFix, postPlatformDecideFix } from '../lib/data'
 import { ErrorLine, Tag } from '../pages/reviews/parts'
 import { confirmText } from './confirmText'
 
@@ -42,7 +42,7 @@ export function DecisionCard({
     setBusy(id)
     setErr(null)
     try {
-      const r = await (repo === 'team' ? postAresDecideFix : postplatformDecideFix)(p.pr, p.head_sha, id)
+      const r = await (repo === 'team' ? postTeamDecideFix : postPlatformDecideFix)(p.pr, p.head_sha, id)
       onDone(r.done.join(', '))
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e))

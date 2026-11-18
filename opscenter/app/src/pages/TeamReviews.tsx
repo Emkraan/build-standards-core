@@ -11,9 +11,9 @@ import { confirmText } from '../components/confirmText'
 import { DecisionCard } from '../components/DecisionCard'
 import { DiscussPr } from '../components/DiscussPr'
 import { Tabs } from '../components/Tabs'
-import { aresPrWorking, useActionCounts } from '../lib/counts'
-import type { AresPr, AresShipped } from '../lib/data'
-import { postAresReview, relTime, useAresReviews } from '../lib/data'
+import { teamPrWorking, useActionCounts } from '../lib/counts'
+import type { TeamPr, TeamShipped } from '../lib/data'
+import { postTeamReview, relTime, useTeamReviews } from '../lib/data'
 import type { Tone } from './reviews/parts'
 import {
   actedNow,
@@ -30,7 +30,7 @@ import {
   Tag,
 } from './reviews/parts'
 
-function ChecksPill({ p }: { p: AresPr }) {
+function ChecksPill({ p }: { p: TeamPr }) {
   const c = p.checks
   if (c.red.length) return <Tag tone="alert">{c.red.length} red</Tag>
   if (c.pending.length)
@@ -45,7 +45,7 @@ function ChecksPill({ p }: { p: AresPr }) {
 
 // Auto-fix is the one working state ChecksPill cannot show, so it gets its own spinner pill
 // (same words as the platform tab).
-function AutofixPill({ p }: { p: AresPr }) {
+function AutofixPill({ p }: { p: TeamPr }) {
   const s = p.autofix?.state
   if (s !== 'running' && s !== 'deferred') return null
   return (
@@ -62,8 +62,8 @@ const KIND: Record<string, [Tone, string]> = {
   ready_to_merge: ['info', 'my PR, ready to merge'],
 }
 
-function NeedRow({ p }: { p: AresPr }) {
-  const { reload, mutate } = useAresReviews()
+function NeedRow({ p }: { p: TeamPr }) {
+  const { reload, mutate } = useTeamReviews()
   const { toast } = useToast()
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -72,7 +72,7 @@ function NeedRow({ p }: { p: AresPr }) {
     p.kind === 'signoff' || p.kind === 'ready_to_merge' ? 'merge' : p.kind === 'escalated' ? 'approve' : null
   const label = p.kind === 'signoff' ? 'Approve and merge' : act === 'merge' ? 'Merge' : 'Approve as me'
   const [tone, text] = KIND[p.kind || 'escalated'] || KIND.escalated
-  const working = aresPrWorking(p)
+  const working = teamPrWorking(p)
   const { confirm: ask, dialog } = useConfirm()
   const run = async () => {
     if (!act) return
@@ -88,7 +88,7 @@ function NeedRow({ p }: { p: AresPr }) {
     setBusy(true)
     setMsg(null)
     try {
-      const r = await postAresReview(act, p.pr, p.head_sha, p.unknown)
+      const r = await postTeamReview(act, p.pr, p.head_sha, p.unknown)
       // Gone at once. The server keeps it hidden until GitHub and the review lane catch up.
       mutate((d) => ({
         ...d,
@@ -183,7 +183,7 @@ function NeedRow({ p }: { p: AresPr }) {
 }
 
 function NeedsMe() {
-  const { data, error } = useAresReviews()
+  const { data, error } = useTeamReviews()
   if (error && !data) return <ErrorCard title="Could not load team reviews" error={error} />
   if (!data) return <LoadingCard label="Loading team reviews" />
   const n = data.needs_me.length
@@ -213,7 +213,7 @@ function NeedsMe() {
 }
 
 function InProgress() {
-  const { data } = useAresReviews()
+  const { data } = useTeamReviews()
   if (!data) return <LoadingCard label="Loading team PRs in progress" />
   return (
     <Card as="section">
@@ -226,7 +226,7 @@ function InProgress() {
       ) : (
         <div className="rh-list">
           {data.in_progress.map((p) => {
-            const working = p.mine && aresPrWorking(p)
+            const working = p.mine && teamPrWorking(p)
             return (
               <ReviewItem
                 pulse={p}
@@ -250,7 +250,7 @@ function InProgress() {
                   </>
                 }
                 actions={
-                  p.mine && !aresPrWorking(p) && (p.checks.red.length > 0 || p.mergeable === 'CONFLICTING') ? (
+                  p.mine && !teamPrWorking(p) && (p.checks.red.length > 0 || p.mergeable === 'CONFLICTING') ? (
                     <DiscussPr repo="team" pr={p.pr} />
                   ) : undefined
                 }
@@ -263,7 +263,7 @@ function InProgress() {
   )
 }
 
-const SHIPPED_COLS: TableColumn<AresShipped>[] = [
+const SHIPPED_COLS: TableColumn<TeamShipped>[] = [
   { key: 'pr', header: 'PR', value: (p) => p.pr, render: (p) => <PrRef href={p.url}>#{p.pr}</PrRef>, width: '84px' },
   { key: 'title', header: 'Title', value: (p) => p.title, render: (p) => <span className="rh-cell-title">{p.title}</span> },
   { key: 'status', header: 'Status', sortable: false, render: () => <Tag tone="good">merged</Tag>, width: '100px' },
@@ -279,7 +279,7 @@ const SHIPPED_COLS: TableColumn<AresShipped>[] = [
 ]
 
 function Shipped() {
-  const { data } = useAresReviews()
+  const { data } = useTeamReviews()
   const [q, setQ] = useState('')
   if (!data) return <LoadingCard label="Loading recently shipped" />
   return (
@@ -314,10 +314,10 @@ function Shipped() {
   )
 }
 
-export default function AresSection({ tab }: { tab?: string }) {
-  const { data } = useAresReviews()
+export default function TeamSection({ tab }: { tab?: string }) {
+  const { data } = useTeamReviews()
   const c = data?.counts
-  const { aresWorking } = useActionCounts()
+  const { teamWorking } = useActionCounts()
   const alerts = data && (data.error || data.lane_error || data.own_lane_error)
   return (
     <>
@@ -326,7 +326,7 @@ export default function AresSection({ tab }: { tab?: string }) {
         label="team reviews"
         tabs={[
           { to: '/reviews/team', label: 'Needs me', n: c?.needs_me, end: true },
-          { to: '/reviews/team/progress', label: 'In progress', n: c?.in_progress, live: aresWorking > 0 },
+          { to: '/reviews/team/progress', label: 'In progress', n: c?.in_progress, live: teamWorking > 0 },
           { to: '/reviews/team/shipped', label: 'Recently shipped' },
         ]}
       />

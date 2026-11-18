@@ -32,7 +32,8 @@ import ActionHub from './pages/ActionHub'
 import { redirectOld } from './pages/operations/routes'
 import { NextOneOnOne, SyncChip, useFeed } from './shell/HeaderBits'
 import type { BadgeKey, NavDef } from './shell/nav'
-import { GROUPS, NAV, navFor } from './shell/nav'
+import { peopleRoute, peopleSlot } from './lib/peopleSlot'
+import { groupsFor, navFor } from './shell/nav'
 import SearchPalette from './shell/SearchPalette'
 
 // Every page but the landing hub loads on demand (the charts library alone is about a third of the
@@ -114,6 +115,16 @@ function OldRoute() {
   return <Navigate to={redirectOld(pathname, search, hash) ?? '/operations'} replace />
 }
 
+// The people pages sit behind the people slot (opscenter/DESIGN.md 12.14): while it is off an old link leaves for the home
+// route (the route stays in routes.lock.json), before the first answer the page waits, and an unreachable server still shows it.
+function PeopleGate({ children }: { children: ReactNode }) {
+  const { data, error } = useOneOnOnes()
+  const act = peopleRoute(peopleSlot(data), !!error)
+  if (act === 'leave') return <Navigate to="/action" replace />
+  if (act === 'wait') return <Skeleton variant="lines" count={6} label="Loading page" />
+  return <>{children}</>
+}
+
 function GoShortcut({ id, keys, label, to }: { id: string; keys: string; label: string; to: string }) {
   const nav = useNavigate()
   useShortcut({ id, keys, description: `Go to ${label}`, group: 'Navigation', handler: () => nav(to) })
@@ -121,10 +132,10 @@ function GoShortcut({ id, keys, label, to }: { id: string; keys: string; label: 
 }
 
 // G then a letter jumps to a page (the ? sheet lists them).
-function Shortcuts() {
+function Shortcuts({ people }: { people: boolean }) {
   return (
     <>
-      {NAV.map((n) => (
+      {groupsFor(people).flatMap((g) => g.items).map((n) => (
         <GoShortcut key={n.key} id={`oc.go.${n.key}`} keys={`g ${n.key}`} label={n.label} to={n.to} />
       ))}
       <GoShortcut id="oc.go.search" keys="g s" label="the Search page" to="/search" />
@@ -138,6 +149,7 @@ export default function App() {
   const counts = useActionCounts()
   usePrefetchPages()
   const { data: oo, error: ooErr } = useOneOnOnes()
+  const people = peopleSlot(oo) === 'on'
   const { data: approvals } = useApprovals()
   const { data: needsMe } = useJiraNeedsMe()
   const now = useNow(30_000)
@@ -196,7 +208,7 @@ export default function App() {
         </div>
       }
     >
-      {GROUPS.map((g) => (
+      {groupsFor(people).map((g) => (
         <NavGroup key={g.label} label={g.label}>
           {g.items.map((n) => {
             const badge = badgeFor(n)
@@ -268,9 +280,9 @@ export default function App() {
               <Route path="/action/drafts" element={<Navigate to="/action" replace />} />
               <Route path="/action/plans" element={<Navigate to="/action" replace />} />
               <Route path="/action/:tab" element={<ActionHub />} />
-              <Route path="/people" element={<OneOnOnes />} />
-              <Route path="/team" element={<TeamHub />} />
-              <Route path="/team/:tab" element={<TeamHub />} />
+              <Route path="/people" element={<PeopleGate><OneOnOnes /></PeopleGate>} />
+              <Route path="/team" element={<PeopleGate><TeamHub /></PeopleGate>} />
+              <Route path="/team/:tab" element={<PeopleGate><TeamHub /></PeopleGate>} />
               <Route path="/reviews" element={<Reviews />} />
               <Route path="/reviews/:repo" element={<Reviews />} />
               <Route path="/reviews/:repo/:tab" element={<Reviews />} />
@@ -304,7 +316,7 @@ export default function App() {
           </Suspense>
         </div>
         <SearchPalette />
-        <Shortcuts />
+        <Shortcuts people={people} />
       </AppShell>
       <TooltipLayer />
     </>

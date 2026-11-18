@@ -2,11 +2,11 @@
 // node test in tests/ownPrs.test.mjs can load this file without React or the data layer.
 // The server applies the same rule when it counts (platform_reviews._mine_needs_me).
 
-import type { AresPr, OlyMyPr } from './data'
+import type { TeamPr, PlatformMyPr } from './data'
 
 // A PR of mine is "working" when something is moving on it without me: checks or the PR
 // review running, the auto-merge lane waiting on its next pass, or auto-fix on a problem.
-export function olyPrWorking(p: OlyMyPr): boolean {
+export function platformPrWorking(p: PlatformMyPr): boolean {
   const h = p.hold
   // Running checks always lock the row: the hold (even a policy or direction one) can change when they finish.
   if (p.pending.length > 0) return true
@@ -21,7 +21,7 @@ export function olyPrWorking(p: OlyMyPr): boolean {
   if (h?.kind === 'waiting') return !((p.waiting?.length ?? 0) > 0)
   return h?.kind === 'problem' && (h.autofix?.state === 'running' || h.autofix?.state === 'deferred')
 }
-export function aresPrWorking(p: AresPr): boolean {
+export function teamPrWorking(p: TeamPr): boolean {
   if (p.working || p.checks.pending.length > 0) return true
   if (p.autofix?.session) return true
   if (p.kind === 'signoff' || p.kind === 'direction') return false
@@ -33,9 +33,9 @@ export function aresPrWorking(p: AresPr): boolean {
 // or decision card, a blocked review my triage already covers (Accept the risk), and a do-not-merge
 // hold with nothing else behind it (Remove hold label). Locked rows stay out: checks running, a live
 // session on the PR, auto-fix running, waiting on another PR (those list apart, not counted).
-export function olyMineNeedsMe(p: OlyMyPr): boolean {
+export function platformMineNeedsMe(p: PlatformMyPr): boolean {
   const h = p.hold
-  if (!h || p.deps || olyPrWorking(p)) return false
+  if (!h || p.deps || platformPrWorking(p)) return false
   if (h.kind === 'policy' || h.kind === 'direction') return true
   return h.kind === 'problem' && (!!p.can_accept_risk || !!h.label_hold?.clear)
 }
@@ -60,7 +60,7 @@ export const PR_STATE_LABEL: Record<PrState, string> = {
 }
 const LANE_PASS = 'the own-PR lane (every 3 minutes)'
 
-export function olyPrState(p: OlyMyPr): PrStateView {
+export function platformPrState(p: PlatformMyPr): PrStateView {
   const h = p.hold
   const af = h?.autofix ?? p.autofix ?? undefined
   const unmet = (h?.gate || []).find((g) => !g.ok)
@@ -97,7 +97,7 @@ export function olyPrState(p: OlyMyPr): PrStateView {
       next: 'The lane rebases it and carries on once that lands.',
     }
   if (af?.state === 'waiting_on') return { state: 'waiting', why: af.text, next: 'The lane rebases it by itself once those merge.' }
-  if (olyMineNeedsMe(p))
+  if (platformMineNeedsMe(p))
     return {
       state: 'needs_you',
       why: h?.summary || 'A policy rule reserves this one for me.',

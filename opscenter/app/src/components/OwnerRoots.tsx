@@ -10,7 +10,7 @@
 import { Button, Field, Input } from '@kit'
 import { useState } from 'react'
 import type { OwnerRoot, OwnerSignin } from '../lib/data'
-import { postOwnerRoot, relTime, useplatformReviews, useVisibleInterval } from '../lib/data'
+import { postOwnerRoot, relTime, usePlatformReviews, useVisibleInterval } from '../lib/data'
 import { ErrorLine, Line, Locked, ResultNote, ReviewItem, Tag } from '../pages/reviews/parts'
 import { ApprovalBriefView } from './ApprovalBrief'
 
@@ -24,7 +24,7 @@ const ACT_CLASS: Record<string, string> = {
 
 // While a root re-plans or applies, poll every 10 s so the card returns the moment it is actionable.
 export function OwnerFlightPoll() {
-  const { reload } = useplatformReviews()
+  const { reload } = usePlatformReviews()
   useVisibleInterval(reload, 10_000)
   return null
 }
@@ -44,7 +44,7 @@ export function OwnerRootItem({
   signin?: OwnerSignin | null
   now: number
 }) {
-  const { reload } = useplatformReviews()
+  const { reload } = usePlatformReviews()
   // Server truth: only a needs_me card can act. Main moved or a plan running = locked, no buttons.
   const locked = running || it.phase === 'in_flight'
   const moved = !!it.main_moved

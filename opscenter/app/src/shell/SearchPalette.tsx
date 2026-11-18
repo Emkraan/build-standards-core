@@ -10,7 +10,8 @@ import { IconFile, IconLink, IconPalette, IconUser, IconZap } from '../component
 import type { SearchHit } from '../lib/data'
 import { fetchSearch, hermesSessionUrl, useData, useOneOnOnes } from '../lib/data'
 import { hostOf, LINK_GROUPS } from '../pages/links/catalog'
-import { NAV } from './nav'
+import { peopleSlot } from '../lib/peopleSlot'
+import { groupsFor } from './nav'
 
 const KIND_LABEL: Record<SearchHit['kind'], string> = {
   action: 'Action item',
@@ -42,6 +43,7 @@ export default function SearchPalette() {
   const { setChoice } = useTheme()
   const { data: ac } = useData<{ items?: { fp: string; title: string; priority?: string }[] }>('action-center.json')
   const { data: oo } = useOneOnOnes()
+  const peopleOn = peopleSlot(oo) === 'on'
   const [open, setOpen] = useState(false)
   const [typed, setTyped] = usePaletteQuery()
   const q = open ? typed.trim() : ''
@@ -97,7 +99,7 @@ export default function SearchPalette() {
         })
       }
     }
-    for (const n of NAV) {
+    for (const n of groupsFor(peopleOn).flatMap((g) => g.items)) {
       out.push({ id: `nav-${n.to}`, label: n.label, kind: 'Page', icon: n.icon, keywords: [n.to], onSelect: () => nav(n.to) })
       for (const p of n.pages || []) {
         out.push({ id: `nav-${p.to}`, label: p.label, kind: 'Page', icon: n.icon, keywords: [p.to], onSelect: () => nav(p.to) })
@@ -158,7 +160,7 @@ export default function SearchPalette() {
       })
     }
     return out
-  }, [q, hits, ac, oo, nav, setChoice, shell])
+  }, [q, hits, ac, oo, peopleOn, nav, setChoice, shell])
 
   return (
     <CommandPalette

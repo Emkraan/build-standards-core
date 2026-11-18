@@ -16,7 +16,7 @@ os.environ["RV_STATE"] = str(TMP / "rv/state.json")
 os.environ["RV_LOCK"] = str(TMP / "rv/check.lock")
 os.environ["RV_LANES"] = json.dumps(
     {
-        "primary": {"repo": "owner/primary", "own_state": str(TMP / "oly/own-pr-merge.json")},
+        "primary": {"repo": "owner/primary", "own_state": str(TMP / "platform/own-pr-merge.json")},
         "secondary": {"repo": "owner/secondary", "own_state": str(TMP / "team/own-pr-merge.json")},
     }
 )
@@ -43,7 +43,7 @@ def write(p, data):
     p.write_text(json.dumps(data))
 
 
-def empty_oly():
+def empty_platform():
     return {
         "my_prs": [],
         "my_prs_error": None,
@@ -60,17 +60,17 @@ def empty_oly():
     }
 
 
-def empty_ares():
+def empty_team():
     return {"needs_me": [], "in_progress": [], "shipped": [], "acted": [], "lane_error": None}
 
 
 W = {
-    "oly": empty_oly(),
-    "team": empty_ares(),
+    "platform": empty_platform(),
+    "team": empty_team(),
     "fail_fetch": False,
     "fail_gh": False,
-    "oly_prs": [],
-    "ares_prs": [],
+    "platform_prs": [],
+    "team_prs": [],
     "runs": [],
     "live": {},
 }
@@ -79,14 +79,14 @@ W = {
 def fake_fetch(path, timeout=120):
     if W["fail_fetch"]:
         raise cv.ReadError("synthetic outage")
-    return copy.deepcopy(W["oly"] if "platform" in path else W["team"])
+    return copy.deepcopy(W["platform"] if "platform" in path else W["team"])
 
 
 def fake_gh_json(args, timeout=120):
     if W["fail_gh"]:
         raise cv.ReadError("synthetic gh outage")
     if args[:2] == ["pr", "list"]:
-        return copy.deepcopy(W["oly_prs"] if args[3] == cv.REPOS["primary"] else W["ares_prs"])
+        return copy.deepcopy(W["platform_prs"] if args[3] == cv.REPOS["primary"] else W["team_prs"])
     if args[0] == "api" and "status=waiting" in args[1]:
         return {"workflow_runs": [r for r, _ in W["runs"]]}
     if args[0] == "api" and args[1].endswith("/pending_deployments"):
@@ -129,16 +129,16 @@ def go(dt_s=0, dry=False):
 
 def reset():
     W.update(
-        oly=empty_oly(),
-        secondary=empty_ares(),
+        platform=empty_platform(),
+        secondary=empty_team(),
         fail_fetch=False,
         fail_gh=False,
-        oly_prs=[],
-        ares_prs=[],
+        platform_prs=[],
+        team_prs=[],
         runs=[],
         live={},
     )
-    for p in (TMP / "state", TMP / "rv", TMP / "oly", TMP / "team", TMP / "owner"):
+    for p in (TMP / "state", TMP / "rv", TMP / "platform", TMP / "team", TMP / "owner"):
         if p.exists():
             for f in sorted(p.rglob("*"), reverse=True):
                 f.unlink() if f.is_file() else f.rmdir()
@@ -157,8 +157,8 @@ def pr(n, login, created, draft=False, bot=False, head=HA):
 
 # 1. Incident #336: lane holds for github-dir and tfplan-matcher, card says waiting after an override choice.
 reset()
-W["oly_prs"] = [pr(336, "owner-login", T0 - 7200, head=H336)]
-W["oly"]["my_prs"] = [
+W["platform_prs"] = [pr(336, "owner-login", T0 - 7200, head=H336)]
+W["platform"]["my_prs"] = [
     {
         "pr": 336,
         "head_sha": H336,
@@ -184,7 +184,7 @@ write(
     },
 )
 write(
-    TMP / "oly/own-pr-signoffs.json",
+    TMP / "platform/own-pr-signoffs.json",
     {"prs": {"336": {"head": H336, "at": iso(T0 - 3600), "rules": ["ai-review-override"]}}},
 )
 rc = go()
@@ -203,7 +203,7 @@ check("rerun with the same finding changes nothing", json.dumps(items()) == befo
 
 # 2. Every rule signed off for this head: the lane merges it next pass, no contradiction.
 write(
-    TMP / "oly/own-pr-signoffs.json",
+    TMP / "platform/own-pr-signoffs.json",
     {
         "prs": {
             "336": {
@@ -219,13 +219,13 @@ check("signed-off hold is legit waiting and the item closes", not by_title("PR #
 check("closed item records a reason", any(v.get("closed") for v in items().values()))
 
 # 3. Live lane check says the head is no longer held: no contradiction.
-write(TMP / "oly/own-pr-signoffs.json", {"prs": {}})
+write(TMP / "platform/own-pr-signoffs.json", {"prs": {}})
 W["live"][("primary", 336)] = {"pr": 336, "head": H336, "status": "ready", "reason": "all green"}
 go(180)
 check("live check overrides a stale lane record", not by_title("PR #336 waits on me"))
 W["live"] = {}
 # Lane held needs me and card is policy: consistent.
-W["oly"]["my_prs"][0]["hold"] = {"kind": "policy", "summary": "Everything passes."}
+W["platform"]["my_prs"][0]["hold"] = {"kind": "policy", "summary": "Everything passes."}
 go(240)
 check("policy card for a needs-me hold is fine", not open_items())
 # Card says waiting while the lane holds it on a problem.
@@ -233,7 +233,7 @@ write(
     str(cv.OWN["primary"]),
     {"prs": {"336": {"head": H336, "status": "held", "reason": "checks red: deploy"}}},
 )
-W["oly"]["my_prs"][0]["hold"] = {"kind": "waiting", "summary": "Re-run pending."}
+W["platform"]["my_prs"][0]["hold"] = {"kind": "waiting", "summary": "Re-run pending."}
 go(300)
 check(
     "waiting card over a problem hold is a contradiction", len(by_title("PR #336 waits on me")) == 1
@@ -246,7 +246,7 @@ write(
         "fix": {"336": {"gave_up": {"head": H336, "why": "cannot fix", "at": iso(T0)}}},
     },
 )
-W["oly"]["my_prs"][0]["hold"] = {"kind": "problem", "summary": "Checks red."}
+W["platform"]["my_prs"][0]["hold"] = {"kind": "problem", "summary": "Checks red."}
 go(310)
 hits = by_title("PR #336 waits on me")
 check(
@@ -256,7 +256,7 @@ check(
 
 # 4. Incident governance run 38799492695: assessment not written and no plan source for 30 minutes.
 reset()
-W["oly"]["privileged"] = [
+W["platform"]["privileged"] = [
     {
         "key": "governance:38799492695",
         "environment": "governance",
@@ -276,33 +276,33 @@ check(
     "privileged incident raises two medium stuck items",
     len(stuck) == 2 and all(v["priority"] == "medium" for v in stuck),
 )
-W["oly"]["privileged"][0].update(since=iso(T0 - 5 * 60))
+W["platform"]["privileged"][0].update(since=iso(T0 - 5 * 60))
 go(10)
 check("a fresh privileged item is not stuck yet", not open_items())
 
 # 5. Invisible open PR of mine, and a brand new one the list has not picked up.
 reset()
-W["oly_prs"] = [pr(400, "owner-login", T0 - 3600), pr(401, "owner-login", T0 - 60)]
-W["oly"]["my_prs_refreshed"] = T0 - 120
+W["platform_prs"] = [pr(400, "owner-login", T0 - 3600), pr(401, "owner-login", T0 - 60)]
+W["platform"]["my_prs_refreshed"] = T0 - 120
 go()
 check(
     "old PR of mine missing from The owner's PRs is invisible high",
     len(by_title("PR #400 of mine")) == 1 and by_title("PR #400 of mine")[0]["priority"] == "high",
 )
 check("PR created after the list was built is not flagged", not by_title("#401"))
-W["oly"]["acted"] = [{"pr": 400, "outcome": "merged"}]
+W["platform"]["acted"] = [{"pr": 400, "outcome": "merged"}]
 go(30)
 check("a tombstoned PR counts as visible and the item closes", not by_title("PR #400 of mine"))
 
 # 6. Engineer PRs: invisible medium, bots and drafts skipped, queued ones fine.
 reset()
-W["oly_prs"] = [
+W["platform_prs"] = [
     pr(500, "alice", T0 - 3600),
     pr(501, "dependabot[bot]", T0 - 3600, bot=True),
     pr(502, "bob", T0 - 3600, draft=True),
     pr(503, "carol", T0 - 3600),
 ]
-W["oly"]["in_progress"] = [{"pr": 503}]
+W["platform"]["in_progress"] = [{"pr": 503}]
 go()
 check(
     "engineer PR on no tab is invisible medium",
@@ -316,8 +316,8 @@ check(
 # 6b. engineer PRs held for the maintenance window are visible, and a hold that outlived a
 # full window raises one medium stuck item.
 reset()
-W["oly_prs"] = [pr(520, "alice", T0 - 7200), pr(521, "bob", T0 - 7200)]
-W["oly"]["held_for_window"] = [
+W["platform_prs"] = [pr(520, "alice", T0 - 7200), pr(521, "bob", T0 - 7200)]
+W["platform"]["held_for_window"] = [
     {
         "pr": 520,
         "head_sha": HA,
@@ -350,8 +350,8 @@ check(
     and not by_title("#520 is still held"),
 )
 check("stuck hold text has no semicolon", chr(59) not in by_title("#521 is still held")[0]["why"])
-W["oly"]["held_for_window"] = W["oly"]["held_for_window"][:1]
-W["oly"]["in_progress"] = [{"pr": 521}]
+W["platform"]["held_for_window"] = W["platform"]["held_for_window"][:1]
+W["platform"]["in_progress"] = [{"pr": 521}]
 go(60)
 check("the stuck hold closes once it merges or leaves the list", not by_title("#521 is still held"))
 
@@ -374,7 +374,7 @@ W["runs"] = [
         [{"environment": {"name": "terraform-plan"}, "current_user_can_approve": True}],
     ),
 ]
-W["oly"]["needs_me"] = [{"key": "tfplan-x", "tfplan": {"run_ids": [779]}}]
+W["platform"]["needs_me"] = [{"key": "tfplan-x", "tfplan": {"run_ids": [779]}}]
 go()
 check(
     "unplaced waiting deployment is invisible high",
@@ -384,7 +384,7 @@ check(
     "deployments the owner cannot approve or already placed are fine",
     not by_title("run 778") and not by_title("run 779"),
 )
-W["oly"]["privileged"] = [
+W["platform"]["privileged"] = [
     {
         "key": "governance:777",
         "run_id": 777,
@@ -411,7 +411,7 @@ W["runs"] = [
         [{"environment": {"name": "terraform-plan"}, "current_user_can_approve": True}],
     ),
 ]
-W["oly"]["my_prs"] = [
+W["platform"]["my_prs"] = [
     {
         "pr": 900,
         "draft": True,
@@ -429,11 +429,11 @@ go()
 check("parked draft plan wait is not flagged", not by_title("run 880"))
 check("privileged env on a draft head still flagged", len(by_title("run 881")) == 1)
 check("plan wait on another head still flagged", len(by_title("run 882")) == 1)
-W["oly"]["my_prs"][0]["hold"].pop("plan_line")
+W["platform"]["my_prs"][0]["hold"].pop("plan_line")
 go(30)
 check("draft row without the plan line is flagged", len(by_title("run 880")) == 1)
-W["oly"]["my_prs"][0]["hold"]["plan_line"] = "x"
-W["oly"]["my_prs"][0]["draft"] = False
+W["platform"]["my_prs"][0]["hold"]["plan_line"] = "x"
+W["platform"]["my_prs"][0]["draft"] = False
 go(60)
 check("plan wait on a ready PR off Needs me is flagged", len(by_title("run 880")) == 1)
 
@@ -449,7 +449,7 @@ write(
         }
     },
 )
-W["oly"]["owner_roots"] = {
+W["platform"]["owner_roots"] = {
     "items": [
         {"key": "state-backend:platform", "state": "pending", "phase": "idle"},
         {"key": "pipeline-identities:platform", "state": "clean", "phase": "idle"},
@@ -460,21 +460,21 @@ check(
     "pending Owner root not on Needs me is invisible high",
     len(by_title("Owner root state-backend:platform")) == 1,
 )
-W["oly"]["owner_roots"]["items"][0].update(phase="needs_me")
+W["platform"]["owner_roots"]["items"][0].update(phase="needs_me")
 go(30)
 check("Owner root on Needs me clears", not open_items())
 write(
     os.environ["RV_OWNER_STATUS"],
     {"items": {"state-backend:platform": {"state": "planning", "started": iso(T0 - 45 * 60)}}},
 )
-W["oly"]["owner_roots"]["items"][0].update(phase="in_flight", state="planning")
+W["platform"]["owner_roots"]["items"][0].update(phase="in_flight", state="planning")
 go(60)
 check("Owner root planning for 45 minutes is stuck", len(by_title("has been planning")) == 1)
 
 # 9. The owner's PR waiting with nothing running: stuck only after 30 minutes, then clears.
 reset()
-W["oly_prs"] = [pr(600, "owner-login", T0 - 7200)]
-W["oly"]["my_prs"] = [
+W["platform_prs"] = [pr(600, "owner-login", T0 - 7200)]
+W["platform"]["my_prs"] = [
     {
         "pr": 600,
         "head_sha": HA,
@@ -494,8 +494,8 @@ check(
     "waiting with nothing running for 31 minutes is stuck medium",
     len(by_title("#600 has been")) == 1,
 )
-W["oly"]["my_prs"] = []
-W["oly_prs"] = []
+W["platform"]["my_prs"] = []
+W["platform_prs"] = []
 go(32 * 60)
 check("the PR merging closes the stuck item", not open_items())
 st = json.loads(Path(os.environ["RV_STATE"]).read_text())
@@ -503,7 +503,7 @@ check("first-seen times of cleared conditions are dropped", not st["seen"])
 
 # 10. secondary: contradiction, invisible, ok.
 reset()
-W["ares_prs"] = [
+W["team_prs"] = [
     pr(80, "owner-login", T0 - 3600),
     pr(81, "dave", T0 - 3600),
     pr(82, "owner-login", T0 - 3600),
@@ -566,7 +566,7 @@ check(
 
 # 13. Dry run writes nothing.
 reset()
-W["oly_prs"] = [pr(400, "owner-login", T0 - 3600)]
+W["platform_prs"] = [pr(400, "owner-login", T0 - 3600)]
 go(dry=True)
 check(
     "dry run writes no item and no state", not items() and not Path(os.environ["RV_STATE"]).exists()
@@ -580,12 +580,12 @@ with open(os.environ["RV_LOCK"], "w") as lk:
 
 # 15. Every text written is ASCII with no em dash and no semicolon.
 reset()
-W["oly_prs"] = [
+W["platform_prs"] = [
     pr(336, "owner-login", T0 - 7200, head=H336),
     pr(400, "owner-login", T0 - 3600),
     pr(500, "alice", T0 - 3600),
 ]
-W["oly"]["my_prs"] = [
+W["platform"]["my_prs"] = [
     {
         "pr": 336,
         "head_sha": H336,
@@ -598,7 +598,7 @@ write(
     str(cv.OWN["primary"]),
     {"prs": {"336": {"head": H336, "status": "held", "reason": "needs me: github-dir"}}},
 )
-W["oly"]["privileged"] = [
+W["platform"]["privileged"] = [
     {
         "key": "g:1",
         "run_id": 1,
@@ -608,7 +608,7 @@ W["oly"]["privileged"] = [
         "since": iso(T0 - 3600),
     }
 ]
-W["oly"]["runbook_releases_error"] = "boom"
+W["platform"]["runbook_releases_error"] = "boom"
 go()
 txt = json.dumps(items())
 check(

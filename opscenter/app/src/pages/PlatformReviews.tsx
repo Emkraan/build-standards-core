@@ -17,20 +17,20 @@ import { needsRelease, RunbookReleaseItem } from '../components/RunbookReleases'
 import { Tabs } from '../components/Tabs'
 import TfReviews from '../components/TfReviews'
 import { TriagePr } from '../components/TriagePr'
-import { olyMineNeedsMe, olyPrWorking, useActionCounts } from '../lib/counts'
-import type { OlyBreakdown, OlyMyPr, OlyNeed, OlyPlan, OlyShipped, OlyThreadWait, TfHeldDelta } from '../lib/data'
+import { platformMineNeedsMe, platformPrWorking, useActionCounts } from '../lib/counts'
+import type { PlatformBreakdown, PlatformMyPr, PlatformNeed, PlatformPlan, PlatformShipped, PlatformThreadWait, TfHeldDelta } from '../lib/data'
 import {
-  postplatformAcceptRisk,
-  postplatformApproveMerge,
-  postplatformDecision,
-  postplatformRemoveHoldLabel,
-  postplatformResolveThread,
+  postPlatformAcceptRisk,
+  postPlatformApproveMerge,
+  postPlatformDecision,
+  postPlatformRemoveHoldLabel,
+  postPlatformResolveThread,
   relTime,
   useNow,
-  useplatformReviews,
+  usePlatformReviews,
 } from '../lib/data'
 import { depConfirm, unblocks } from '../lib/deps'
-import { olyPrState, PR_STATE_LABEL, type PrState, type PrStateView } from '../lib/ownPrs'
+import { platformPrState, PR_STATE_LABEL, type PrState, type PrStateView } from '../lib/ownPrs'
 import type { Tone } from './reviews/parts'
 import {
   actedNow,
@@ -52,7 +52,7 @@ import {
   TextToggle,
 } from './reviews/parts'
 
-function PlanLine({ plan }: { plan: OlyPlan | string | null | undefined }) {
+function PlanLine({ plan }: { plan: PlatformPlan | string | null | undefined }) {
   if (!plan) return null
   if (typeof plan === 'string') return <span>{plan}</span>
   if (plan.ran === false) return <span className="rh-muted">{plan.note || 'terraform-ci did not run'}</span>
@@ -121,7 +121,7 @@ function HeldDeltaLine({ d }: { d: TfHeldDelta }) {
   )
 }
 
-function Breakdown({ b, plan }: { b: OlyBreakdown; plan: OlyPlan | null }) {
+function Breakdown({ b, plan }: { b: PlatformBreakdown; plan: PlatformPlan | null }) {
   return (
     <div className="rh-inset">
       <p>{b.summary}</p>
@@ -148,13 +148,13 @@ function Breakdown({ b, plan }: { b: OlyBreakdown; plan: OlyPlan | null }) {
   )
 }
 
-function NeedItem({ it, now }: { it: OlyNeed; now: number }) {
+function NeedItem({ it, now }: { it: PlatformNeed; now: number }) {
   const locked = it.phase === 'in_flight'
   // I approved, it waits on other people's open conversations. Resolve per thread is the action.
   const tw = it.phase === 'waiting_threads' ? it.threads_wait : undefined
   // the PR waits on another PR. Not counted, and the only action is Approve anyway.
   const dep = it.phase === 'waiting_dep' ? it.deps : undefined
-  const { data, reload, mutate } = useplatformReviews()
+  const { data, reload, mutate } = usePlatformReviews()
   const firstFor = dep ? [] : unblocks(data?.deps, it.pr)
   const { toast } = useToast()
   const [busy, setBusy] = useState(false)
@@ -204,7 +204,7 @@ function NeedItem({ it, now }: { it: OlyNeed; now: number }) {
     setMsg(null)
     try {
       const confirmName = kind === 'approve' && it.confirm_needed && typed.trim() === it.confirm_needed ? typed.trim() : undefined
-      const r = await postplatformDecision(kind, it.pr, it.head_sha, text.trim() || undefined, ecrReason, undefined, confirmName)
+      const r = await postPlatformDecision(kind, it.pr, it.head_sha, text.trim() || undefined, ecrReason, undefined, confirmName)
       setMsg({ ok: true, text: r.done.join('; ') || 'done' })
       const notShipped = (r as { waiting_threads?: boolean }).waiting_threads || r.done.some((d) => d.startsWith('merge not queued'))
       if (kind === 'approve' && notShipped) {
@@ -236,7 +236,7 @@ function NeedItem({ it, now }: { it: OlyNeed; now: number }) {
     setBusy(true)
     setMsg(null)
     try {
-      const r = await postplatformDecision('approve', pr, it.head_sha, undefined, undefined, true)
+      const r = await postPlatformDecision('approve', pr, it.head_sha, undefined, undefined, true)
       setMsg({ ok: true, text: r.done.join(', ') || 'done' })
       // Not counted on Needs me, so only the waiting list changes.
       mutate((d) => ({
@@ -417,13 +417,13 @@ function NeedItem({ it, now }: { it: OlyNeed; now: number }) {
 
 // the open conversations my held approval waits on. The person who raised each one resolves
 // it on GitHub (they were tagged once in a PR comment). Resolve here closes it as me.
-function ThreadWait({ w, pr }: { w: OlyThreadWait; pr: number }) {
-  const { reload } = useplatformReviews()
+function ThreadWait({ w, pr }: { w: PlatformThreadWait; pr: number }) {
+  const { reload } = usePlatformReviews()
   const { toast } = useToast()
   const { confirm: ask, dialog } = useConfirm()
   const [busy, setBusy] = useState<string | null>(null)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
-  const resolve = async (t: OlyThreadWait['threads'][number]) => {
+  const resolve = async (t: PlatformThreadWait['threads'][number]) => {
     const where = t.path ? `${t.path}${t.line ? ` line ${t.line}` : ''}` : 'the PR'
     const last = w.threads.length === 1
     const ok = await ask({
@@ -437,7 +437,7 @@ function ThreadWait({ w, pr }: { w: OlyThreadWait; pr: number }) {
     setBusy(t.id)
     setMsg(null)
     try {
-      const r = await postplatformResolveThread(pr, t.id)
+      const r = await postPlatformResolveThread(pr, t.id)
       setMsg({ ok: true, text: r.done.join('; ') })
       toast('success', `PR #${pr}: ${r.done.join('; ')}`)
       setTimeout(reload, 1000)
@@ -477,13 +477,13 @@ function ThreadWait({ w, pr }: { w: OlyThreadWait; pr: number }) {
 const BEHIND_LABEL = { problem: 'Open', signoff: 'Sign-off', unknown: 'Unchecked', covered: 'Covered' }
 
 function NeedsMe() {
-  const { data, error } = useplatformReviews()
+  const { data, error } = usePlatformReviews()
   const now = useNow(60_000)
   if (error && !data) return <ErrorCard title="Could not load platform reviews" error={error} />
   if (!data) return <LoadingCard label="Loading platform reviews" />
   // My PRs the own-PR lane holds for me by policy ("needs me: <rule>").
-  // same rule the server counts with (olyMineNeedsMe), so the list and the badge agree.
-  const mineNeed = (data.my_prs || []).filter(olyMineNeedsMe)
+  // same rule the server counts with (platformMineNeedsMe), so the list and the badge agree.
+  const mineNeed = (data.my_prs || []).filter(platformMineNeedsMe)
   // cards whose PR waits on another PR. Not counted, listed in chain order with Approve anyway.
   const chainKey = (v?: { first: number[]; chain: number[] }) => (v ? v.first[0] * 1000 + v.chain.length : 0)
   const mineWait = (data.my_prs || []).filter((p) => (p.hold?.kind === 'policy' || p.hold?.kind === 'direction') && !!p.deps)
@@ -624,14 +624,14 @@ function StateLine({ s }: { s: PrStateView }) {
   )
 }
 
-const PARKED: Record<string, { tone: Tone; label: (h: OlyMyPr['hold']) => string }> = {
+const PARKED: Record<string, { tone: Tone; label: (h: PlatformMyPr['hold']) => string }> = {
   gate: { tone: 'neutral', label: (h) => `parked: gate ${h?.gate_met ?? 0} of ${h?.gate?.length ?? 0}` },
   main: { tone: 'neutral', label: () => 'waits on main apply' },
   nogate: { tone: 'warn', label: () => 'draft, no gate' },
 }
 
-function MyPrRow({ p }: { p: OlyMyPr }) {
-  const { data, reload, mutate } = useplatformReviews()
+function MyPrRow({ p }: { p: PlatformMyPr }) {
+  const { data, reload, mutate } = usePlatformReviews()
   const dep = p.deps
   const firstFor = dep ? [] : unblocks(data?.deps, p.pr)
   const { toast } = useToast()
@@ -667,7 +667,7 @@ function MyPrRow({ p }: { p: OlyMyPr }) {
     setBusy(true)
     setMsg(null)
     try {
-      const r = await postplatformApproveMerge(p.pr, p.head_sha, !!dep, confirmName ? typed.trim() : undefined)
+      const r = await postPlatformApproveMerge(p.pr, p.head_sha, !!dep, confirmName ? typed.trim() : undefined)
       // Gone from Needs me and My PRs at once. The server keeps it hidden until GitHub agrees.
       // A row that waited on another PR was never counted, so the count stays.
       mutate((d) => ({
@@ -700,7 +700,7 @@ function MyPrRow({ p }: { p: OlyMyPr }) {
     setBusy(true)
     setMsg(null)
     try {
-      const r = await postplatformRemoveHoldLabel(p.pr, p.head_sha, lh.label)
+      const r = await postPlatformRemoveHoldLabel(p.pr, p.head_sha, lh.label)
       toast('success', `PR #${p.pr}: ${r.done.join(', ')}`)
       setTimeout(reload, 1500)
     } catch (e) {
@@ -727,7 +727,7 @@ function MyPrRow({ p }: { p: OlyMyPr }) {
     setBusy(true)
     setMsg(null)
     try {
-      const r = await postplatformAcceptRisk(p.pr, p.head_sha)
+      const r = await postPlatformAcceptRisk(p.pr, p.head_sha)
       toast('success', `PR #${p.pr}: ${r.done.join(', ')}`)
       setTimeout(reload, 1500)
     } catch (e) {
@@ -738,7 +738,7 @@ function MyPrRow({ p }: { p: OlyMyPr }) {
   }
   const fixing = hold?.autofix?.state === 'running'
   const deferred = hold?.autofix?.state === 'deferred'
-  const working = olyPrWorking(p)
+  const working = platformPrWorking(p)
   const [triaging, setTriaging] = useState(false)
   // A held PR with blocking or high findings on this head can be triaged from here.
   const decision = !working && hold?.kind === 'direction' ? hold.decision : undefined
@@ -789,7 +789,7 @@ function MyPrRow({ p }: { p: OlyMyPr }) {
                 : 'lane working'
   // One state for the whole card (Needs you, In progress, Waiting, Stuck, Ready) with the cause and what
   // moves it next. The pill carries the state, the hold label says which kind.
-  const st = olyPrState(p)
+  const st = platformPrState(p)
   const stLabel = PR_STATE_LABEL[st.state] + (hold && holdLabel !== 'lane working' ? `: ${holdLabel}` : '')
   // The raw rule list, plan counts and findings. Under a brief they sit in the collapsed Details.
   const details =
@@ -990,7 +990,7 @@ function MyPrRow({ p }: { p: OlyMyPr }) {
 }
 
 function MyPrs() {
-  const { data, error } = useplatformReviews()
+  const { data, error } = usePlatformReviews()
   if (error && !data) return <ErrorCard title="Could not load platform reviews" error={error} />
   if (!data) return <LoadingCard label="Loading my PRs" />
   const mine = data.my_prs || []
@@ -1015,7 +1015,7 @@ function MyPrs() {
 }
 
 function InProgress() {
-  const { data } = useplatformReviews()
+  const { data } = usePlatformReviews()
   const now = useNow(60_000)
   if (!data) return <LoadingCard label="Loading the review loop" />
   const held = data.held_for_window || []
@@ -1043,7 +1043,7 @@ function InProgress() {
 }
 
 function InProgressLoop() {
-  const { data } = useplatformReviews()
+  const { data } = usePlatformReviews()
   if (!data) return null
   return (
     <Card as="section">
@@ -1080,10 +1080,10 @@ function InProgressLoop() {
   )
 }
 
-const approvedLabel = (p: OlyShipped) =>
+const approvedLabel = (p: PlatformShipped) =>
   p.approved_by === 'github_user' ? 'approved by me' : p.approved_by === 'auto-merge' ? 'my PR, auto-merged' : 'auto-approved'
 
-const SHIPPED_COLS: TableColumn<OlyShipped>[] = [
+const SHIPPED_COLS: TableColumn<PlatformShipped>[] = [
   { key: 'pr', header: 'PR', value: (p) => p.pr, render: (p) => <PrRef href={p.url}>#{p.pr}</PrRef>, width: '84px' },
   { key: 'title', header: 'Title', value: (p) => p.title, render: (p) => <span className="rh-cell-title">{p.title}</span> },
   {
@@ -1099,7 +1099,7 @@ const SHIPPED_COLS: TableColumn<OlyShipped>[] = [
 ]
 
 function Shipped() {
-  const { data } = useplatformReviews()
+  const { data } = usePlatformReviews()
   const [q, setQ] = useState('')
   if (!data) return <LoadingCard label="Loading recently shipped" />
   return (
@@ -1135,9 +1135,9 @@ function Shipped() {
 }
 
 export function PlatformSection({ tab }: { tab?: string }) {
-  const { data } = useplatformReviews()
+  const { data } = usePlatformReviews()
   const c = data?.counts
-  const { olyWorking } = useActionCounts()
+  const { platformWorking } = useActionCounts()
   const gateBad = (data?.gate.failures || 0) >= 3
   const privBad = (data?.privileged_health?.failures || 0) >= 3
   return (
@@ -1161,7 +1161,7 @@ export function PlatformSection({ tab }: { tab?: string }) {
             to: '/reviews/platform/mine',
             label: 'My PRs',
             n: c?.my_prs,
-            live: olyWorking > 0,
+            live: platformWorking > 0,
           },
           { to: '/reviews/platform/shipped', label: 'Recently shipped' },
         ]}

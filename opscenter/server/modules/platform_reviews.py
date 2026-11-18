@@ -1427,7 +1427,7 @@ def _accept_risk_flag(it):
 
 def _mine_needs_me(m):
     """One of the owner's own PRs that has an action for me right now, so it is on Needs me and in its
-    counts. Mirrors olyMineNeedsMe in src/lib/ownPrs.ts: a policy hold (Approve and merge), a direction or
+    counts. Mirrors platformMineNeedsMe in src/lib/ownPrs.ts: a policy hold (Approve and merge), a direction or
     decision card, a blocked review the owner's triage covers (Accept the risk), or a hold label with nothing else
     behind it (Remove hold label). Checks running, a live session on the PR, auto-fix running and a wait
     on another PR keep it off (the waiting ones are listed apart and not counted)."""

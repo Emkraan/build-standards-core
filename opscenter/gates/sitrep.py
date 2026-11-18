@@ -33,7 +33,7 @@ ORDER = {"critical": 0, "highest": 0, "high": 1, "medium": 2, "low": 3}
 MAX_ITEMS = 10
 DEFAULT_REVIEWS = [
     {"label": "Primary", "path": "/api/platform-reviews"},
-    {"label": "Secondary", "path": "/api/team_prefix-reviews"},
+    {"label": "Secondary", "path": "/api/team-reviews"},
     {"label": "other repos", "path": "/api/repo-reviews"},
 ]
 

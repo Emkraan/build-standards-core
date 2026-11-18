@@ -7,8 +7,8 @@ import { Navigate, useParams } from 'react-router-dom'
 import { HubHeader } from '../components/HubHeader'
 import { PulseStrip } from '../components/Watcher'
 import { useActionCounts } from '../lib/counts'
-import { useAresReviews, useplatformReviews, useRepoReviews } from '../lib/data'
-import AresSection from './AresReviews'
+import { useTeamReviews, usePlatformReviews, useRepoReviews } from '../lib/data'
+import TeamSection from './TeamReviews'
 import { PlatformSection } from './PlatformReviews'
 import RepoSection from './RepoReviews'
 import { StateLegend } from './reviews/parts'
@@ -23,8 +23,8 @@ const REPOS = ['platform', 'team', ...OTHER.map((o) => o.slug)] as string[]
 
 export default function Reviews() {
   const { repo, tab } = useParams()
-  const { data: oly, error: olyErr } = useplatformReviews()
-  const { data: team, error: aresErr } = useAresReviews()
+  const { data: platformLane, error: platformErr } = usePlatformReviews()
+  const { data: team, error: teamErr } = useTeamReviews()
   const { data: other } = useRepoReviews()
   const counts = useActionCounts()
   const otherRepo = (slug: string) => other?.repos.find((r) => r.slug === slug)
@@ -36,17 +36,17 @@ export default function Reviews() {
   }
   if (!repo || !REPOS.includes(repo)) {
     // Wait for both counts (or an error) before choosing, or it always lands on platform.
-    if ((!oly && !olyErr) || (!team && !aresErr))
+    if ((!platformLane && !platformErr) || (!team && !teamErr))
       return (
         <div className="hub">
           <Skeleton variant="card" label="Loading reviews" />
         </div>
       )
     // Land on the repo that needs me (platform first), so the sidebar badge leads somewhere real.
-    const olyN = oly?.counts.needs_me || 0
-    const aresN = team?.counts.needs_me || 0
+    const platformN = platformLane?.counts.needs_me || 0
+    const teamN = team?.counts.needs_me || 0
     const firstOther = OTHER.find((o) => (otherNeed(o.slug) || 0) > 0)
-    const first = olyN > 0 ? 'platform' : aresN > 0 ? 'team' : firstOther ? firstOther.slug : 'platform'
+    const first = platformN > 0 ? 'platform' : teamN > 0 ? 'team' : firstOther ? firstOther.slug : 'platform'
     return <Navigate to={`/reviews/${first}`} replace />
   }
   return (
@@ -56,8 +56,8 @@ export default function Reviews() {
         title="Reviews"
         subtitle="Everything waiting on my review or merge, one tab per repo"
         tabs={[
-          { to: '/reviews/platform', label: 'platform', n: oly?.counts.needs_me, live: counts.olyWorking > 0 },
-          { to: '/reviews/team', label: 'team', n: team?.counts.needs_me, live: counts.aresWorking > 0 },
+          { to: '/reviews/platform', label: 'platform', n: platformLane?.counts.needs_me, live: counts.platformWorking > 0 },
+          { to: '/reviews/team', label: 'team', n: team?.counts.needs_me, live: counts.teamWorking > 0 },
           ...OTHER.map((o) => ({
             to: `/reviews/${o.slug}`,
             label: o.label,
@@ -66,10 +66,10 @@ export default function Reviews() {
           })),
         ]}
       />
-      <PulseStrip jobs={(repo === 'team' ? team : repo === 'platform' ? oly : otherRepo(repo))?.cron_pulse?.jobs} />
+      <PulseStrip jobs={(repo === 'team' ? team : repo === 'platform' ? platformLane : otherRepo(repo))?.cron_pulse?.jobs} />
       <StateLegend />
       {repo === 'team' ? (
-        <AresSection tab={tab} />
+        <TeamSection tab={tab} />
       ) : repo === 'platform' ? (
         <PlatformSection tab={tab} />
       ) : (

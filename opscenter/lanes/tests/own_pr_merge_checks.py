@@ -2193,7 +2193,7 @@ os.environ.update(
 )
 saved_argv = sys.argv
 sys.argv = ["own_pr_merge.py", "tick", "--target", "secondary"]
-spec_a = importlib.util.spec_from_file_location("own_ares", str(LANE_PY))
+spec_a = importlib.util.spec_from_file_location("own_team", str(LANE_PY))
 own_a = importlib.util.module_from_spec(spec_a)
 spec_a.loader.exec_module(own_a)
 sys.argv = saved_argv
@@ -2214,7 +2214,7 @@ fails += not ok
 print(
     f"{'OK  ' if ok else 'FAIL'} team target: tag, repo, {len(POL_A['line_rules'])} inherited line rules, own sha"
 )
-ARES_GREEN = [
+TEAM_GREEN = [
     {
         "name": "python",
         "workflowName": "ci",
@@ -2230,7 +2230,7 @@ ARES_GREEN = [
         "startedAt": "2026-10-09T10:00:00Z",
     },
 ]
-SKIPPED = ARES_GREEN + [
+SKIPPED = TEAM_GREEN + [
     {
         "name": "review",
         "workflowName": "team PR Review",
@@ -2239,7 +2239,7 @@ SKIPPED = ARES_GREEN + [
         "startedAt": "2026-10-09T10:00:00Z",
     }
 ]
-VERCEL_RED = ARES_GREEN + [
+VERCEL_RED = TEAM_GREEN + [
     {
         "name": "Vercel",
         "workflowName": "",
@@ -2263,19 +2263,19 @@ def expect_a(name, p, status, contains="", comments=None):
     print(f"{'OK  ' if good else 'FAIL'} team {name}: {got} ({reason})")
 
 
-expect_a("clean merges", pr(statusCheckRollup=ARES_GREEN), "ready")
+expect_a("clean merges", pr(statusCheckRollup=TEAM_GREEN), "ready")
 expect_a(
     "docs-only review skipped counts as clean", pr(statusCheckRollup=SKIPPED), "ready", comments=[]
 )
 expect_a(
     "no review and not skipped waits for the verdict",
-    pr(statusCheckRollup=ARES_GREEN),
+    pr(statusCheckRollup=TEAM_GREEN),
     "held",
     "no PR review verdict",
     comments=[],
 )
 expect_a("Vercel red is ignored", pr(statusCheckRollup=VERCEL_RED), "ready")
-ci_red = ARES_GREEN + [
+ci_red = TEAM_GREEN + [
     {
         "name": "powershell",
         "workflowName": "ci",

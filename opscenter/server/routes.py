@@ -21,8 +21,12 @@ for sub in ("server/modules", "engine", "people", "tracker", "lanes", "server"):
     if p not in sys.path:
         sys.path.insert(0, p)
 
+import optional  # noqa: E402
 import registry as reg  # noqa: E402
 import stores  # noqa: E402
+
+# The people slot (one_on_ones.py, yearly_reviews.py): routes exist only when OPSCENTER_PEOPLE names the slot.
+PEOPLE_MODULES = frozenset({"one_on_ones", "yearly_reviews"})
 
 
 def _fresh(req):
@@ -342,6 +346,17 @@ def _table():
         (G, "/api/hermes-restart", "runtime_restart", "get", None),
         (P, "/api/hermes-restart", "runtime_restart", "post", None),
         # the other repo's reviews (server/modules/other_reviews.py; the path is the one the app calls)
+        (
+            G,
+            "/api/team-reviews",
+            "other_reviews",
+            "get",
+            lambda m: lambda r: _decorate_other(m.get(force=_fresh(r))),
+        ),
+        (P, "/api/team-reviews/merge", "other_reviews", "merge", None),
+        (P, "/api/team-reviews/approve", "other_reviews", "approve", None),
+        (P, "/api/team-reviews/decide-fix", "other_reviews", "decide_fix", None),
+        # the pre-rename path of the same lane, kept so an older app build keeps working until it is replaced
         (
             G,
             "/api/team_prefix-reviews",
@@ -702,7 +717,10 @@ def build(registry=None):
         return {"queued": stores.queue_decisions(decisions)}
 
     r.post("/api/approve", approve, "approve")
+    people_on = optional.enabled("OPSCENTER_PEOPLE")
     for method, path, mod, fn, adapter in _table():
+        if mod in PEOPLE_MODULES and not people_on:
+            continue  # the people slot is off: no route, and the people pages hide themselves (DESIGN.md 12.14)
         m = load(mod)
         if m is None or not hasattr(m, fn):
             continue
@@ -740,7 +758,6 @@ def build(registry=None):
     import live_routes
 
     live_routes.install(r)  # the push channel: GET /api/live and POST /api/live/presence
-    import optional
 
     optional.register(r)  # the optional modules, only the ones a consumer turned on
     return r

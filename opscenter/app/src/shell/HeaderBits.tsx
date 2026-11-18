@@ -81,7 +81,7 @@ export function SyncChip() {
   const { data: oo, error } = useOneOnOnes()
   useNow(30_000)
   if (error) return <span className="sync-chip stale">sync failed</span>
-  if (!oo) return null
+  if (!oo || oo.slot === 'off') return null
   return (
     <span className="sync-chip" data-tip="When the 1:1 board and its feeds last synced">
       synced {relTime(oo.generated_utc)}
