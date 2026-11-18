@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-11-18 (v2.16.0, hermes: the Spawned sessions pane shows all background agent work, and which kind to use)
+
+A consumer kept wondering whether background work was still running, because the pane only knew sessions started by `hermes chat` from a session terminal. Workstreams, delegated subagents and background terminal processes left no row anywhere a person looks. Each of them does leave a readable trace in the agent's own records, so the plugin now reads all four and shows them in one pane.
+
+- Added: `hermes/plugins/session-children/collect.py`, one read-only collector per kind (workstreams, headless runners, subagents, background processes) that returns items with one shape: title, state (running, finished, failed, stuck), start, last activity and outcome. A failed source is reported as unavailable and never hides the others.
+- Added: the `subagent_start` and `subagent_stop` hooks in the plugin and a `subagents` journal table in its link file, for subagents the agent does not record as background delegations. Only a one line goal of at most 120 characters is kept, and rows older than 7 days are dropped.
+- Changed: the `/summary` route returns `all`, `sections`, `running` and `attention` next to the existing `by_parent` and `by_child`, so an older desktop half keeps working. `hermes/desktop-plugins/session-children/plugin.js` shows four sections with Eastern times, a coloured edge on a failed or stuck row, running work in the accent colour only, a fade for finished rows after 10 minutes, and a status bar chip for running and needs-a-look counts.
+- Changed: a running item with no activity for 20 minutes is stuck (set `SESSION_CHILDREN_STUCK_SECONDS` to change it). A finished row leaves after 30 minutes, a failed or stuck row after 6 hours.
+- Added: `hermes/configurations.md` section 19 (version 1.8), the recommended standard for background work: workstreams for long agent work the owner would wonder about, subagents only for quick internal look-ups, background terminal only for plain scripts, headless runners for supervised multi-hour builds. `hermes/README.md` version 1.5.
+- Limits, stated plainly: a background process records no output time so it is never shown as stuck, a synchronous subagent is seen only through the hooks while its owner process lives, and a workstream registry the plugin does not recognise shows as unavailable.
+- Migration: the nightly job copies both halves into the agent home and prints `RESTART`. Restart the desktop app once so the route and the two new hooks load. The link file gains a table on first use and needs no manual step. Adoption risk is low: the route is read-only against the agent's records, and the plugin still writes only its own file and the existing hidden and archived flags of its own runners.
+- Tests: `tests/test_session_children.py` (41 cases, synthetic sessions and a scratch agent home only, including the real session store schema, the agent's own hook names and the pane helpers run under node), plus `check-ascii.py`, `check-links.py`, `check-placeholders.py`, `check-hermes-tools.py`, `check-changelog.py`, `check-changelog-versions.py`, `check-sanitised.py` and `check-consumer-neutral.py`.
+
 ## 2026-11-17 (v2.15.0, hermes: session-status and session-children ship as core plugins)
 
 A consumer ran two desktop plugins that made its agent sessions legible: a badge on every sidebar row, and a link from each session spawned out of another session's terminal to its launcher. Both pass the scope test, so the core now ships them as source and the nightly job installs them, instead of each consumer rebuilding them. Until now the core only recorded a decision per plugin and could install a plugin that something else provided.

@@ -3,6 +3,8 @@
 Purpose: A session started by `hermes chat` from a parent's terminal inherits the parent's
          HERMES_SESSION_ID. This plugin records that link, archives the child as soon as it
          finishes cleanly, and feeds the desktop half (live badge and pane on the parent).
+         It also journals subagents through the subagent hooks, so the pane can show every kind
+         of background work (collect.py reads the rest from the agent's own records).
 """
 
 from __future__ import annotations
@@ -80,7 +82,31 @@ def _on_finalize(session_id=None, **_kw):
         logger.exception("session-children: archive on finalize failed")
 
 
+def _on_subagent_start(
+    parent_session_id=None, child_session_id=None, child_role=None, child_goal=None, **_kw
+):
+    if not parent_session_id:
+        return
+    try:
+        _store().record_subagent_start(
+            _PID, parent_session_id, child_session_id, child_role, child_goal
+        )
+    except Exception:
+        logger.exception("session-children: record_subagent_start failed")
+
+
+def _on_subagent_stop(parent_session_id=None, child_session_id=None, child_status=None, **_kw):
+    if not parent_session_id:
+        return
+    try:
+        _store().record_subagent_stop(_PID, parent_session_id, child_session_id, child_status)
+    except Exception:
+        logger.exception("session-children: record_subagent_stop failed")
+
+
 def register(ctx):
     ctx.register_hook("on_session_start", _on_start)
     ctx.register_hook("on_session_end", _on_turn_end)
     ctx.register_hook("on_session_finalize", _on_finalize)
+    ctx.register_hook("subagent_start", _on_subagent_start)
+    ctx.register_hook("subagent_stop", _on_subagent_stop)
