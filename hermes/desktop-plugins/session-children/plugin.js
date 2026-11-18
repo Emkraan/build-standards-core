@@ -1,7 +1,7 @@
 /**
  * Session children (desktop half).
  * One pane for all background agent work: workstreams, headless runners, subagents and
- * background processes. Data comes from the Python half (~/.hermes/plugins/session-children,
+ * background processes. Data comes from the Python half (the plugin of the same name in the agent home,
  * GET /api/plugins/session-children/summary).
  * Surfaces: sidebar row badge on the owning chat, "Spawned sessions" pane, status bar chip.
  */

@@ -19,6 +19,13 @@ collect = load("session_children_collect_t", PLUGIN + "/collect.py")
 store = load("session_children_store_t", PLUGIN + "/children_store.py")
 hooks = load("session_children_init_t", PLUGIN + "/__init__.py")
 
+# Where the agent's own source lives, read once before any test changes the agent home. Set
+# HERMES_AGENT_SRC to point elsewhere. Tests that need it skip when it is absent.
+AGENT_SRC = Path(
+    os.environ.get("HERMES_AGENT_SRC")
+    or (Path(os.environ.get("HERMES_HOME") or (Path.home() / ".hermes")) / "hermes-agent")
+)
+
 NOW = 1795050000.0  # a fixed instant, so no test depends on the clock
 SESSION_DDL = (
     "CREATE TABLE sessions (id TEXT PRIMARY KEY, source TEXT, parent_session_id TEXT, "
@@ -90,7 +97,7 @@ class Base(Work):
         conn.execute(WORK_DDL)
         for r in rows:
             base = {
-                "brief": "SECRET-BRIEF",
+                "brief": "PLANTED-BRIEF",
                 "last": "",
                 "asked": None,
                 "ended": None,
@@ -179,7 +186,7 @@ class Workstreams(Base):
             ]
         )
         text = json.dumps(collect.collect_workstreams(self.db, self.home, NOW))
-        self.assertNotIn("SECRET-BRIEF", text)
+        self.assertNotIn("PLANTED-BRIEF", text)
 
     def test_the_owning_chat_matches_any_segment_of_its_compression_lineage(self):
         self.session("c-old", end_reason="compression", ended_at=NOW - 500)
@@ -355,7 +362,7 @@ class Subagents(Base):
     def test_delegation_states_and_the_result_text_is_never_read(self):
         self.delegation("a", "running")
         self.delegation("b", "stalling")
-        big = json.dumps({"results": [{"status": "completed", "summary": "SECRET-SUMMARY" * 50}]})
+        big = json.dumps({"results": [{"status": "completed", "summary": "PLANTED-SUMMARY" * 50}]})
         self.delegation("c", "completed", completed_at=NOW - 20, result_json=big)
         self.delegation(
             "d",
@@ -382,7 +389,7 @@ class Subagents(Base):
         self.assertEqual(got["a"]["title"], "look up the thing")
         self.assertEqual(got["e"]["outcome"], "boom")
         self.assertIn("Owner process ended", got["f"]["outcome"])
-        self.assertNotIn("SECRET-SUMMARY", json.dumps(list(got.values())))
+        self.assertNotIn("PLANTED-SUMMARY", json.dumps(list(got.values())))
 
     def test_an_old_finished_delegation_is_not_selected(self):
         self.delegation("old", "completed", completed_at=NOW - 8 * 3600, updated_at=NOW - 8 * 3600)
@@ -509,7 +516,7 @@ class Journal(Base):
                 "subagent_stop",
             ],
         )
-        agent_plugins = Path.home() / ".hermes" / "hermes-agent"
+        agent_plugins = AGENT_SRC
         probe = (
             "import sys\n"
             f"sys.path.insert(0, {str(agent_plugins)!r})\n"
@@ -539,7 +546,7 @@ class Processes(Base):
             [
                 {
                     "session_id": "proc_run",
-                    "command": "cd /w && npm test --token SECRET-ARG",
+                    "command": "cd /w && npm test --token PLANTED-ARG",
                     "pid": 11,
                     "started_at": NOW - 100,
                     "parent_session_id": "chat1",
@@ -556,7 +563,7 @@ class Processes(Base):
         done = {
             "started_at": NOW - 500,
             "parent_session_id": "chat1",
-            "output": "SECRET-OUTPUT",
+            "output": "PLANTED-OUTPUT",
             "completion_reason": "exited",
         }
         self.write(
@@ -590,8 +597,8 @@ class Processes(Base):
         self.assertEqual(items["proc_kill"]["outcome"], "Exit -15 (killed)")
         self.assertIn("exit status not recorded", items["proc_dead"]["outcome"])
         text = json.dumps(got)
-        self.assertNotIn("SECRET-OUTPUT", text)
-        self.assertNotIn("SECRET-ARG", text)
+        self.assertNotIn("PLANTED-OUTPUT", text)
+        self.assertNotIn("PLANTED-ARG", text)
 
     def test_a_process_with_a_retained_result_is_not_listed_twice(self):
         self.write(
@@ -767,8 +774,8 @@ class AgentSchema(Base):
     """Prove the queries against the agent's own schema when the agent is installed here."""
 
     def test_every_column_and_query_exists_in_the_real_session_store(self):
-        py = Path.home() / ".hermes" / "hermes-agent" / "venv" / "bin" / "python"
-        src = Path.home() / ".hermes" / "hermes-agent"
+        py = AGENT_SRC / "venv" / "bin" / "python"
+        src = AGENT_SRC
         if not py.exists():
             self.skipTest("not checked: the agent is not installed here")
         scratch = self.dir / "agent-home"
