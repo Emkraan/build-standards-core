@@ -71,8 +71,8 @@ test('a 401 on a poll throws to the poller and starts no navigation', async () =
   }
   // The three fetchers the live stores and useData poll with.
   await assert.rejects(() => data.loadData('action-center.json', true), /401/)
-  await assert.rejects(() => data.fetchAresReviews(true), /unauthorized/)
-  await assert.rejects(() => data.fetchplatformReviews(true), /unauthorized/)
+  await assert.rejects(() => data.fetchTeamReviews(true), /unauthorized/)
+  await assert.rejects(() => data.fetchPlatformReviews(true), /unauthorized/)
   assert.equal(seen.length, 3, 'every poll reached the fake fetch')
   assert.deepEqual(loc.moves, [], 'no navigation was started by a 401')
 })

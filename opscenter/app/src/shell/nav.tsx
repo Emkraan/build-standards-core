@@ -32,7 +32,14 @@ export interface NavDef {
 // Completed lives inside Action Center, Review History inside Team Performance. Jira holds
 // Sprint / Backlog / Changes (JSM approvals), and its badge counts only what waits on me
 // (changes pending my approval).
-export const GROUPS: { label: string; items: NavDef[] }[] = [
+export interface NavGroupDef {
+  label: string
+  items: NavDef[]
+  /** An optional slot: the group exists only while that slot is on (opscenter/DESIGN.md 12.14). */
+  slot?: 'people'
+}
+
+export const GROUPS: NavGroupDef[] = [
   {
     label: 'Operate',
     items: [
@@ -78,6 +85,7 @@ export const GROUPS: { label: string; items: NavDef[] }[] = [
   },
   {
     label: 'People',
+    slot: 'people',
     items: [
       { to: '/people', label: '1:1 Board', icon: <IconMessage />, hue: 'green', badge: 'oneonone', key: 'o' },
       {
@@ -138,6 +146,11 @@ export const GROUPS: { label: string; items: NavDef[] }[] = [
 ]
 
 export const NAV: NavDef[] = GROUPS.flatMap((g) => g.items)
+
+/** The groups a viewer sees: a group behind a slot is dropped while the slot is not on. */
+export function groupsFor(people: boolean): NavGroupDef[] {
+  return GROUPS.filter((g) => g.slot !== 'people' || people)
+}
 
 /** The rail entry that owns a path (for the active marker and the header title). */
 export function navFor(pathname: string): NavDef | undefined {

@@ -1,12 +1,13 @@
 # Hermes API-Only Access and Phone Pairing Standard
 
-Version: 1.0 | Last reviewed: 2026-11-16 | Status: current | Scope: local-ops
+Version: 1.1 | Last reviewed: 2026-11-18 | Status: current | Scope: local-ops
 
 This standard covers how a phone app reaches the agent on a host over the gateway's own API server
 and nothing else, how that app is paired, how alerts reach the phone while the app is closed, and
 how the older surfaces (the dashboard service and a chat-platform bot) are retired. It carries no
-host, address, account or product-owner value. Every machine-only value is a parameter in the
-consumer's own parameters file.
+host, address, account value of a consumer. Every machine-only value is a parameter in the
+consumer's own parameters file. The runnable procedure for the key, the TLS edge, the push plugin,
+pairing and the retired bot check is [api-access-setup.md](../hermes/api-access-setup.md).
 
 ## 1. One surface, loopback behind a TLS edge
 
@@ -53,9 +54,12 @@ placed in a URL query. The hosts it offers are limited to those the edge certifi
 ## 6. Alerts while the app is closed use a pinned push plugin
 
 Alerts reach a closed app through a push plugin on the agent. The plugin is installed from a
-reviewed commit, never from a branch: the registry records the repository, the path and the full
-commit, the installer verifies the commit it installed, and a `--check` mode exits non-zero when the
-installed plugin differs from the pin. The plugin's native handlers ride the API server, so alert
+reviewed commit, never from a branch: the registry (`pin` in the `phone-push` entry of
+`hermes/tools.json`) records the repository, the path and the full commit as data a consumer can
+override, the installer (`python3 hermes/phone_access.py plugin`) verifies the commit it installed,
+and its `--check` mode exits non-zero when the installed plugin differs from the pin. A consumer
+whose plugin source is private supplies its own repository, path, commit and version with a pin file
+or parameters, and the core never names it. The plugin's native handlers ride the API server, so alert
 pairing needs no dashboard. Alert pairing from the console wraps the plugin's own pair, list, test
 and remove commands, runs on the loopback interface only, shows the one-time link as a QR for 60
 seconds and never logs it. Only the scheduled briefing the owner chose is a push. Every other
@@ -81,7 +85,9 @@ The push relay can see that a push happened and when. State that in the page tha
 
 Remove its blocks from the agent config and its keys from the env file (including commented-out
 old values), take it out of every scheduled job's delivery target, restart the gateway, and check
-the gateway log shows only the API server as a connected platform. Keep a backup of the removed
+the gateway log shows only the API server as a connected platform. The check is
+`python3 hermes/phone_access.py gateway-check`: it reads the latest gateway start in the log and
+exits non-zero when any other platform connected or the gateway announced more than one. Keep a backup of the removed
 config in a scratch folder and delete it once the rollback window passes. Revoke the bot token at
 the provider, because removing it from the host does not invalidate it. Replace any health check
 that read the bot's authorization with a check of the API server's exposure: key length, loopback
@@ -95,8 +101,9 @@ service definitions if they exist, waits until an unloading agent has gone befor
 new one, and exits non-zero when the agent is not loaded at the end. A test of the installer covers
 a second run.
 
-## 10. What is not checked
+## 10. Design assumption: the phone can reach the host
 
-Delivery of an alert to a phone on a different network from the host is not checked. The pairing
-code is only issued for hosts the edge certificate covers, so a phone off the LAN needs its own
-route to the edge, and that route is outside this standard.
+The phone is always on a network that can reach the host. This standard is designed for that case
+and verifies nothing about a phone that is not. The pairing code is only issued for hosts the edge
+certificate covers (section 3), so a phone away from the host's network needs its own route to the
+edge. Providing that route is the consumer's choice, and nothing here builds or plans for it.

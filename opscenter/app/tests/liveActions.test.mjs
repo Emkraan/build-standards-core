@@ -56,8 +56,8 @@ function fakeBackend(state) {
   return (req, res, path) => {
     if (!path.startsWith('/api/')) return false
     state.calls.push(`${req.method} ${path}`)
-    if (path === '/api/team_prefix-reviews' && req.method === 'GET') return json(res, 200, reviews(state.needs)), true
-    if (/^\/api\/team_prefix-reviews\/(approve|merge)$/.test(path) && req.method === 'POST') {
+    if (path === '/api/team-reviews' && req.method === 'GET') return json(res, 200, reviews(state.needs)), true
+    if (/^\/api\/team-reviews\/(approve|merge)$/.test(path) && req.method === 'POST') {
       let body = ''
       req.on('data', (c) => {
         body += c
@@ -210,14 +210,14 @@ test('a successful action drops the row and its badge count before any refetch',
   const state = { calls: [], acted: [], stale: true, needs: [pr(301), pr(302)] }
   await withApp(state, async (s) => {
     assert.deepEqual(await s.evaluate(`${PAGE}.badges()`), { sidebar: 2, team: 2, needs: 2 }, 'every badge starts at 2')
-    const getsBefore = state.calls.filter((c) => c === 'GET /api/team_prefix-reviews').length
+    const getsBefore = state.calls.filter((c) => c === 'GET /api/team-reviews').length
     await s.evaluate(`(() => { const p = ${PAGE}; p.actions(p.row(301)).find((b) => p.label(b) === 'Approve as me').click(); return true })()`)
     // The confirm dialog: press its confirm button, labelled the same as the action.
     await s.waitFor(`!!document.querySelector('dialog[open], [role="dialog"], [role="alertdialog"]')`, 'the confirm dialog')
     await s.evaluate(`(() => { const d = document.querySelector('dialog[open], [role="dialog"], [role="alertdialog"]'); [...d.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Approve as me').click(); return true })()`)
     await s.waitFor(`!${PAGE}.row(301)`, 'the row to disappear')
     assert.deepEqual(state.acted, [301])
-    const getsAfter = state.calls.filter((c) => c === 'GET /api/team_prefix-reviews').length
+    const getsAfter = state.calls.filter((c) => c === 'GET /api/team-reviews').length
     assert.equal(getsAfter, getsBefore, 'the row went away with no refetch of the list')
     assert.ok(await s.evaluate(`!!${PAGE}.row(302)`), 'the other row stays')
     assert.deepEqual(await s.evaluate(`${PAGE}.badges()`), { sidebar: 1, team: 1, needs: 1 }, 'every badge dropped with the row')

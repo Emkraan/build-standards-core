@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-11-18 (v2.17.0, ops-center: neutral lane names, people pages off by default, phone access installer, plan page and adoption path)
+
+A consumer reviewed the shipped ops center against the design rule that the core names no tool, app, host or person. Five gaps came out: the phone push plugin had no pin the nightly could read and no runnable setup, the app still carried one consumer's lane names, the people pages were shipped on and not behind an empty slot, the plan page had no documented contract, and nothing described how an existing ops center moves onto the core app. This release closes them. Ideas intake and team awareness stay out of the core by decision.
+
+- Added: `hermes/phone_access.py` with the commands `plugin` (install from the pin, `--check` exits 1 on drift), `key`, `tls`, `edge`, `pair` and `gateway-check`, and `hermes/api-access-setup.md`, the runnable procedure for the API key, the private authority and edge certificate, the TLS edge on the API port, pairing and the check that the retired chat bot is gone (rules `hermes-api-access.6` and `hermes-api-access.8`). It prints no key and no pairing link.
+- Added: a `pin` object (repository, path, full commit, version) on the `phone-push` entry of `hermes/tools.json`. It is data a consumer overrides with `--pin-file` or `--repository`, `--path`, `--commit` and `--version`. A consumer whose plugin source is private supplies its own source that way and the core never names it.
+- Changed: `standards/hermes-api-access.md` (version 1.1) names the installer and the check in sections 6 and 8, and section 10 states a design assumption in place of a note on what was not checked: the phone is always on a network that can reach the host. `standards/rules.json` acceptance lines for `hermes-api-access.6` and `hermes-api-access.8` name the commands, and `hermes/skills/core-practices/SKILL.md` is regenerated.
+- Changed: the ops center app, server, lanes, engine and tests use the neutral lane names `platform` and `team` (`TeamReviews`, `useTeamReviews`, `fetchTeamReviews`, `postTeamReview`, `postTeamDecideFix`, `/api/team-reviews`) in place of a consumer's own lane names, and the secondary repo tests say `secondary`.
+- Changed: the earlier review API paths stay served as aliases of the same handlers so an older app build keeps working, and `routes.lock.json` keeps every route (`ops-center-layout.1.9`).
+- Changed: the people pages (1:1 board, yearly reviews, member reviews, team performance and history) are behind a null slot. With `OPSCENTER_PEOPLE` unset the server adds no people route, the app reads the 404 as off, hides the People group from the rail, shortcuts and palette, and sends an old people link to the home route. Tests: `server/server_test.py` (slot off and on) and `app/tests/peopleSlot.test.mjs`.
+- Added: `opscenter/plans/plan-page.md`, documentation only: the plan and briefing archive page is a downstream page with a neutral contract, one named writer, a schema, a fixture and a test. The core builds no screen for it.
+- Added: CONSUMING.md section 3, "Moving an existing ops center onto the core app": run the new server beside the old one on another port with the state read-only, diff the two, cut over. The conformance checker in `opscenter/DESIGN.md` section 3.3 is not built, so the section documents the closest existing checks and says what they do not cover.
+- Migration: none required. A consumer that ran its own people pages sets `OPSCENTER_PEOPLE` to keep them. A consumer that pins the phone plugin elsewhere runs `python3 hermes/phone_access.py plugin --check --pin-file <file>` and the registry pin never applies to it. Adoption risk is low.
+- Tests: `tests/test_phone_access.py` (15 cases, covering the pin precedence, drift, a rejected branch or short commit, the key mode and the TLS edge including a refused client and an upgrade tunnel), the app suite (56 tests and 12 browser tests), the ops center server, engine, lanes, gates, people and tracker suites, and the section 13 checks.
+
 ## 2026-11-18 (v2.16.0, hermes: the Spawned sessions pane shows all background agent work, and which kind to use)
 
 A consumer kept wondering whether background work was still running, because the pane only knew sessions started by `hermes chat` from a session terminal. Workstreams, delegated subagents and background terminal processes left no row anywhere a person looks. Each of them does leave a readable trace in the agent's own records, so the plugin now reads all four and shows them in one pane.
@@ -487,7 +502,6 @@ Template change, takes effect in a consumer on its next sync.
 
 Closes #229
 
-
 ## 2026-11-08 (v1.183.0, core-ci no longer runs on a push to the default branch)
 
 Template change, takes effect in a consumer on its next sync. Standard text amended to match.
@@ -623,7 +637,6 @@ Opt in, two new packages from the Olympus shell source (SH-4 and SH-5, K-source-
 
 No issue: requested by the core consolidation session (build-standards-core-intake#117).
 
-
 Also in this release: shell gaps from the console redesign against Olympus. This entry was first headed v1.168.0 by mistake (v1.168.0 is the dark launches release, tagged earlier); the change ships in v1.169.0.
 
 Three default compatible kit changes from the redesign's measurements (the screenshots and `measurements.json` in the private handoff repo). Nothing changes for a consumer that does not use them, except the floors, which only act where the control was too small.
@@ -661,7 +674,6 @@ Opt in, each off until configured: with none of them set the audit writes the sa
 Also in this release: script rule U6: the cause is Windows PowerShell 5.1. This entry was first headed v1.162.0 by mistake (v1.162.0 is the processing indicator release, tagged earlier); the change ships in v1.166.0.
 
 `scripting-powershell.md`: the `ConvertFrom-Json` array rule now names the right cause, from the hub consumer's check against its scripts repo. Windows PowerShell 5.1 returns a JSON array from `ConvertFrom-Json` as a single object, so a pipeline wrapped in `@(...)` yields an array inside an array; assign the result, then enumerate `@($rows)`. It no longer reads as a variant of the PowerShell 7 `Invoke-RestMethod` note, which is a separate problem. The acceptance fixture (empty array, one object, several, counts 0, 1 and N) now runs on Windows PowerShell 5.1 specifically (`tests/fixtures/powershell-51/ConvertFromJsonShape.ps1`) and says so and skips on any other host, never passing in silence. Core CI has no 5.1 host, so it checks the fixture's shape and the skip; the 5.1 run is the consumer's.
-
 
 ## 2026-11-07 (v1.165.0, the run watches read a failed run once and pick the real error line)
 
@@ -874,8 +886,6 @@ Text only, `standards/web-shell-gateway.md`, from a consumer's shell move.
 - `parseArgs` and `dockerArgs` are exported with typings; the Docker command for the kit itself is asserted identical to the old one. Tests: 9. Not run: a real CI or Docker baseline refresh on a consumer.
 
 Also in this release: the manifest client folder may be spa. This entry was first headed v1.134.0 by mistake (v1.134.0 is the hub routing release, tagged earlier); the change ships in v1.138.0.
-
-
 
 ## 2026-11-06 (v1.137.0, the manifest client folder may be spa)
 
@@ -2078,7 +2088,6 @@ renders exactly as before.
   record older than `analyzer.spool_days` and never one still `new`. The R3 row is repaired as a
   single line. Every other kind keeps exactly one writer. The section gives the acceptance test and
   the conformance rule.
-
 
 ## 2026-10-27 (v1.27.7, checker precision: secret names in argv, merge prose)
 
@@ -3437,7 +3446,6 @@ kit lacked.
   `counter()`, checked by eye). The `core-consumer-report` skill's screenshot step now loads it and
   refuses a capture while `count` is above 0. Covered by `kit/tests/redact-page.test.ts` and a page
   fixture, including a timer that re-renders text after the redaction.
-
 
 ## 2026-10-21 (v0.60.0, gauge and ring charts)
 

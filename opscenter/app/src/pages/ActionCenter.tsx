@@ -17,7 +17,7 @@ import {
   useApprovals,
   useData,
   useLocalStore,
-  useplatformReviews,
+  usePlatformReviews,
   useReplied,
   useTackleSessions,
 } from '../lib/data'
@@ -51,28 +51,28 @@ const NOW = () => new Date().toISOString()
 // linking to Reviews. A row leaves when its card leaves Needs me.
 function ReviewsBanner() {
   const { platform, team, reviews } = useActionCounts()
-  const { data: oly } = useplatformReviews()
+  const { data: platformLane } = usePlatformReviews()
   if (!reviews) return null
   const parts = [platform ? `platform ${platform}` : '', team ? `team ${team}` : ''].filter(Boolean).join(', ')
-  const rows = oly?.needs_me_rows || []
+  const rows = platformLane?.needs_me_rows || []
   return (
     <>
-      <Link className="oly-banner" to={platform ? '/reviews/platform' : '/reviews/team'}>
-        <span className="oly-dot" />
+      <Link className="lane-banner" to={platform ? '/reviews/platform' : '/reviews/team'}>
+        <span className="lane-dot" />
         <b>
           Reviews: {reviews} item{reviews === 1 ? '' : 's'} need{reviews === 1 ? 's' : ''} you ({parts})
         </b>
-        <span className="oly-go">Review &rarr;</span>
+        <span className="lane-go">Review &rarr;</span>
       </Link>
       {rows.length > 0 && (
-        <ul className="oly-now" aria-label="platform items that need me now">
+        <ul className="lane-now" aria-label="platform items that need me now">
           {rows.map((r) => (
             <li key={`${r.kind}-${r.pr ?? r.title}`}>
               <Link to="/reviews/platform">
-                <span className="oly-dot" />
-                <span className="oly-now-tag">Now</span>
-                <span className="oly-now-what">{r.what}</span>
-                <span className="oly-now-title">
+                <span className="lane-dot" />
+                <span className="lane-now-tag">Now</span>
+                <span className="lane-now-what">{r.what}</span>
+                <span className="lane-now-title">
                   {r.pr ? `#${r.pr} ` : ''}
                   {r.title}
                 </span>
@@ -97,15 +97,15 @@ function ChangesBanner() {
     .sort((a, b) => a - b)[0]
   const n = pending.length
   return (
-    <Link className="oly-banner" to="/jira/changes">
-      <span className="oly-dot" />
+    <Link className="lane-banner" to="/jira/changes">
+      <span className="lane-dot" />
       <b>
         JSM: {n} change{n === 1 ? '' : 's'} waiting on my approval
       </b>
       {soonest !== undefined && (
         <span className="muted">{soonest < 0 ? 'a window has already passed' : `next window in ${Math.max(1, Math.round(soonest))}h`}</span>
       )}
-      <span className="oly-go">Review &rarr;</span>
+      <span className="lane-go">Review &rarr;</span>
     </Link>
   )
 }

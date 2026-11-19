@@ -275,7 +275,7 @@ class ApplyTest(Base):
         ref = self.run_item(other)["refs"]["primary PR #437"]
         self.assertNotIn("apply", ref)
 
-    def test_ares_prs_are_not_apply_checked(self):
+    def test_secondary_prs_are_not_apply_checked(self):
         self.set_cfg({"prs": {"secondary#9": "MERGED"}})
         item = {
             "title": "t",
@@ -361,7 +361,7 @@ class AutoCloseTest(Base):
         ]
         self.assertEqual(R.finished(items), {})
 
-    def test_ares_prefixed_ref_checks_the_ares_repo(self):
+    def test_secondary_prefixed_ref_checks_the_secondary_repo(self):
         # primary#9 is merged but unrelated, secondary #9 is open: the card must stay.
         self.set_cfg({"prs": {"primary#9": "MERGED", "secondary#9": "OPEN"}})
         self.assertEqual(R.finished([self.auto("auto-u1", why="Sign off on alt-one PR #9")]), {})

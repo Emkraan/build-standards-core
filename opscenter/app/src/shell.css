@@ -10,7 +10,7 @@
      src/components/ActionTable.css  ActionTable (Action Center)
      src/pages/Action.css        ActionHub, ActionCenter, Completed
      src/pages/Jira.css          JiraHub, Sprint, Backlog, Approvals, TackleJira
-     src/pages/ReviewsHub.css    Reviews, platformReviews, AresReviews, TfReviews, PrivilegedReviews,
+     src/pages/ReviewsHub.css    Reviews, platformReviews, TeamReviews, TfReviews, PrivilegedReviews,
                                  OwnerRoots, DiscussPr, TriagePr
      src/pages/EngBacklog.css    EngBacklog
      src/pages/OneOnOnes.css     OneOnOnes

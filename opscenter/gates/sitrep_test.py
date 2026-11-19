@@ -84,7 +84,7 @@ ROUTES = {
         "alerts": [{"name": "nightly", "open": True}, {"name": "ok", "open": False}],
     },
     "/api/platform-reviews": {"counts": {"needs_me": 3}},
-    "/api/team_prefix-reviews": {"counts": {"needs_me": 0}},
+    "/api/team-reviews": {"counts": {"needs_me": 0}},
     "/api/repo-reviews": {"counts": {"needs_me": 1}},
 }
 
@@ -140,7 +140,7 @@ class Sitrep(Base):
                 "/api/badges": {},
                 "/api/alerts": {"counts": {}, "alerts": []},
                 "/api/platform-reviews": {"counts": {}},
-                "/api/team_prefix-reviews": {"counts": {}},
+                "/api/team-reviews": {"counts": {}},
                 "/api/repo-reviews": {"counts": {}},
             }
         )

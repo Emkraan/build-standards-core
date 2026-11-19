@@ -6,8 +6,8 @@
 // and the server records who, when and why.
 import { Button, Field, Textarea, useConfirm, useToast } from '@kit'
 import { useState } from 'react'
-import type { OlyHeld, OlyWindow } from '../lib/data'
-import { postplatformWindowOverride, relTime, useplatformReviews } from '../lib/data'
+import type { PlatformHeld, PlatformWindow } from '../lib/data'
+import { postPlatformWindowOverride, relTime, usePlatformReviews } from '../lib/data'
 import { age, Line, LinkButton, Locked, PrRef, Reasons, ResultNote, ReviewItem, Tag } from '../pages/reviews/parts'
 import { confirmText } from './confirmText'
 
@@ -17,7 +17,7 @@ const LABELS: { key: 'down' | 'when' | 'override'; label: string }[] = [
   { key: 'override', label: 'What the override does' },
 ]
 
-export function WindowBrief({ w, pr }: { w: OlyWindow; pr: number }) {
+export function WindowBrief({ w, pr }: { w: PlatformWindow; pr: number }) {
   if (!w.brief) {
     return <Line>I could not work out what this change takes down. Approve treats it as downtime and holds it for a window.</Line>
   }
@@ -64,8 +64,8 @@ export function EcrForm({ busy, onSubmit, onCancel }: { busy: boolean; onSubmit:
   )
 }
 
-export function HeldItem({ it, now }: { it: OlyHeld; now: number }) {
-  const { reload, mutate } = useplatformReviews()
+export function HeldItem({ it, now }: { it: PlatformHeld; now: number }) {
+  const { reload, mutate } = usePlatformReviews()
   const { toast } = useToast()
   const { confirm: ask, dialog } = useConfirm()
   const [busy, setBusy] = useState(false)
@@ -86,7 +86,7 @@ export function HeldItem({ it, now }: { it: OlyHeld; now: number }) {
     setBusy(true)
     setMsg(null)
     try {
-      const r = await postplatformWindowOverride(it.pr, it.head_sha, reason)
+      const r = await postPlatformWindowOverride(it.pr, it.head_sha, reason)
       mutate((d) => ({
         ...d,
         held_for_window: (d.held_for_window || []).filter((x) => x.pr !== it.pr),

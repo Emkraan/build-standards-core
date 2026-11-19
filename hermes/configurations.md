@@ -359,7 +359,9 @@ loopback client. Alerts reach a closed app through a push plugin pinned to a rev
 (`phone-push` in `hermes/tools.json`, with a check mode that fails on drift). Retire a dashboard
 service last and with the desktop app closed, and retire a chat bot by removing its config and keys,
 its job delivery targets and its token at the provider. The rules, the retirement order and the
-limit that was not checked are in [hermes-api-access.md](../standards/hermes-api-access.md).
+design assumption (the phone can reach the host) are in
+[hermes-api-access.md](../standards/hermes-api-access.md), and the runnable setup is in
+[api-access-setup.md](api-access-setup.md).
 
 ## 18. Session status and spawned sessions (desktop app)
 

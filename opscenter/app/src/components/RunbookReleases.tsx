@@ -5,7 +5,7 @@
 import { Button, useConfirm } from '@kit'
 import { useState } from 'react'
 import type { RunbookRelease } from '../lib/data'
-import { postRunbookRelease, relTime, useplatformReviews } from '../lib/data'
+import { postRunbookRelease, relTime, usePlatformReviews } from '../lib/data'
 import type { Tone } from '../pages/reviews/parts'
 import { ErrorLine, LinkButton, Locked, PrRef, ResultNote, ReviewItem, Tag } from '../pages/reviews/parts'
 import { ApprovalBriefView } from './ApprovalBrief'
@@ -32,7 +32,7 @@ export function needsRelease(r: RunbookRelease): boolean {
 }
 
 export function RunbookReleaseItem({ it }: { it: RunbookRelease }) {
-  const { reload } = useplatformReviews()
+  const { reload } = usePlatformReviews()
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const { confirm: ask, dialog } = useConfirm()

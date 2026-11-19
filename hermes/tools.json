@@ -117,7 +117,13 @@
       "decision": "adapt",
       "required": false,
       "plugin": "redde-push",
-      "install_hint": "Install the plugin directory from a reviewed full commit (never a branch) into the agent home plugins folder, record the commit in a pin file, enable it with hermes plugins enable, and run the installer's check mode after every change. See configurations.md section 17 and standards/hermes-api-access.md section 6.",
+      "pin": {
+        "repository": "https://github.com/goosehouse-llc/redde.git",
+        "path": "companion/hermes-plugin/redde-push",
+        "commit": "c34e8710208d60354980e8983f5ebbdd1dec3ba0",
+        "version": "1.25.0"
+      },
+      "install_hint": "Run python3 hermes/phone_access.py plugin: it installs the plugin from the pin in this entry (repository, path and full reviewed commit, never a branch), verifies the commit, and enables it. Run it with --check after every change and in the nightly: it exits 1 when the installed plugin differs from the pin. The pin is data: a consumer overrides it with --pin-file or --repository, --path, --commit and --version, and a consumer whose plugin source is private supplies its own that way. Then follow hermes/api-access-setup.md for the key, the TLS edge, pairing and the retired chat bot check. See configurations.md section 17 and standards/hermes-api-access.md sections 6 and 8.",
       "reason": "Pushes alerts to a phone app while it is closed through the API server, so no dashboard or chat-platform bot is needed. Adapted: installed pinned to a reviewed commit with a drift check, because the relay sees that a push happened and when. configurations.md section 17."
     },
     {

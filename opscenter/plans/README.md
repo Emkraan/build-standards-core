@@ -7,6 +7,7 @@ left here records the ops center and shell items the core did not lift and what 
 | Note | Group | Entries |
 |---|---|---|
 | [inventory-items-not-lifted.md](inventory-items-not-lifted.md) | Ops center and shell items the core did not lift, and why | OC-7, OC-10, OC-18, OC-20, OC-22, SH-24, SH-25, SH-26, SH-31 |
+| [plan-page.md](plan-page.md) | The plan and briefing archive page: a downstream page with a neutral contract, one writer, a schema, a fixture and a test | none (a documented decision, no screen) |
 
 ## The opt-in contract (both built modules)
 

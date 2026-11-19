@@ -218,7 +218,7 @@
 }
 
 /* platform reviews page + Action Center pointer (private) */
-.oly-banner {
+.lane-banner {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -231,23 +231,23 @@
   text-decoration: none;
   font-size: 13.5px;
 }
-.oly-banner:hover {
+.lane-banner:hover {
   filter: brightness(1.08);
 }
-.oly-dot {
+.lane-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--alert);
   flex-shrink: 0;
 }
-.oly-go {
+.lane-go {
   margin-left: auto;
   color: var(--alert);
   font-weight: 650;
 }
 /* one Now row per platform Needs me item, right under the Reviews banner */
-.oly-now {
+.lane-now {
   list-style: none;
   margin: -10px 0 18px;
   padding: 0;
@@ -255,7 +255,7 @@
   flex-direction: column;
   gap: 4px;
 }
-.oly-now a {
+.lane-now a {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -265,19 +265,19 @@
   text-decoration: none;
   font-size: 13px;
 }
-.oly-now a:hover {
+.lane-now a:hover {
   background: var(--danger-dim);
 }
-.oly-now-tag {
+.lane-now-tag {
   color: var(--alert);
   font-weight: 650;
   font-size: var(--fs-label);
   text-transform: uppercase;
 }
-.oly-now-what {
+.lane-now-what {
   font-weight: 600;
 }
-.oly-now-title {
+.lane-now-title {
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;

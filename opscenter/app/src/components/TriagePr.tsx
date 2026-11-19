@@ -3,8 +3,8 @@
 // reads, so a PR held on "no triage reply" (or one auto-fix gave up on) moves without GitHub.
 import { Button, cx, Field, Textarea } from '@kit'
 import { useState } from 'react'
-import type { OlyMyPr, TriageVerdict } from '../lib/data'
-import { postplatformTriage } from '../lib/data'
+import type { PlatformMyPr, TriageVerdict } from '../lib/data'
+import { postPlatformTriage } from '../lib/data'
 import { ErrorLine } from '../pages/reviews/parts'
 
 const VERDICTS: { v: TriageVerdict; label: string }[] = [
@@ -14,7 +14,7 @@ const VERDICTS: { v: TriageVerdict; label: string }[] = [
   { v: 'deferred', label: 'Accept for now, follow-up' },
 ]
 
-export function TriagePr({ p, onDone, onCancel }: { p: OlyMyPr; onDone: (text: string) => void; onCancel: () => void }) {
+export function TriagePr({ p, onDone, onCancel }: { p: PlatformMyPr; onDone: (text: string) => void; onCancel: () => void }) {
   const findings = p.findings || []
   const [rows, setRows] = useState<Record<string, { verdict: TriageVerdict | ''; reason: string }>>(() =>
     Object.fromEntries(findings.map((f) => [f.id, { verdict: '', reason: '' }])),
@@ -33,7 +33,7 @@ export function TriagePr({ p, onDone, onCancel }: { p: OlyMyPr; onDone: (text: s
         verdict: rows[f.id].verdict as TriageVerdict,
         reason: rows[f.id].reason,
       }))
-      const r = await postplatformTriage(p.pr, p.head_sha, items)
+      const r = await postPlatformTriage(p.pr, p.head_sha, items)
       onDone(r.done.join(', '))
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e))

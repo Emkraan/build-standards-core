@@ -5,7 +5,7 @@
 import { Button, Textarea, useToast } from '@kit'
 import { useEffect, useState } from 'react'
 import type { CardWatch, CronWatcher } from '../lib/data'
-import { fetchCronPulse, postCronRun, useAresReviews, useCronPulse, useplatformReviews } from '../lib/data'
+import { fetchCronPulse, postCronRun, useTeamReviews, useCronPulse, usePlatformReviews } from '../lib/data'
 import { JobModalById } from '../pages/infra/JobModal'
 import { Tag } from '../pages/reviews/parts'
 
@@ -55,8 +55,8 @@ export function useJob(w?: CronWatcher | null): { w: CronWatcher | null; working
 /** Start a run and follow it to the end. One poller per job, however many cards share it. */
 export function useRunNow() {
   const { refresh } = useCronPulse()
-  const { reload: reloadOly } = useplatformReviews()
-  const { reload: reloadAres } = useAresReviews()
+  const { reload: reloadPlatform } = usePlatformReviews()
+  const { reload: reloadTeam } = useTeamReviews()
   const { toast } = useToast()
   return async (w: CronWatcher, note?: string) => {
     if (!w.id || optimistic.has(w.id)) return
@@ -85,12 +85,12 @@ export function useRunNow() {
         optimistic.delete(id)
         emit()
         refresh()
-        reloadOly()
-        reloadAres()
+        reloadPlatform()
+        reloadTeam()
         // The agent can take a minute to land a verdict, so a second look catches late changes.
         window.setTimeout(() => {
-          reloadOly()
-          reloadAres()
+          reloadPlatform()
+          reloadTeam()
         }, 20_000)
       }
     }, 4000)

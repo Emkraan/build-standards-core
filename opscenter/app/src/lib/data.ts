@@ -2,6 +2,7 @@
 // bundled under public/data by bundle_data.py. This hook fetches once and caches.
 import { useEffect, useRef, useState } from 'react'
 import { apiTopic, dataTopic, declare, onStatus, stretchedMs, subscribe } from './live'
+import { PEOPLE_OFF_BOARD } from './peopleSlot'
 
 const BASE = import.meta.env.BASE_URL || './'
 
@@ -1189,6 +1190,8 @@ export interface Report {
   topics: Topic[]
 }
 export interface OneOnOnes {
+  /** 'off' when the server has no people routes (the people slot is off, opscenter/DESIGN.md 12.14). */
+  slot?: 'off'
   generated_utc: string
   people: Report[]
   roster?: { stale: boolean; as_of: string | null; names: string[]; missing: string[]; pull_ok: boolean }
@@ -1255,7 +1258,16 @@ async function apiJson<T>(path: string, body?: unknown): Promise<T> {
   }
   return (await res.json()) as T
 }
-export const fetchOneOnOnes = () => apiJson<OneOnOnes>('api/one-on-ones')
+export const fetchOneOnOnes = async (): Promise<OneOnOnes> => {
+  const res = await fetch(`${BASE}api/one-on-ones`, { cache: 'no-cache' })
+  // No people routes: the slot is off. Every other failure stays an error (the shell health line reads it).
+  if (res.status === 404) return PEOPLE_OFF_BOARD
+  if (!res.ok) {
+    const j = await res.json().catch(() => ({}))
+    throw new Error((j as { error?: string }).error || `api/one-on-ones -> ${res.status}`)
+  }
+  return (await res.json()) as OneOnOnes
+}
 export const postTopicState = (fp: string, state: TopicState, note?: string) =>
   apiJson<{ fp: string }>('api/one-on-ones/status', { fp, state, note })
 export const postTopicAdd = (person: string, title: string, detail = '') =>
@@ -1569,7 +1581,7 @@ export const postTfDecision = (pr: number, act: 'approve' | 'reject') =>
 export const useTfReviews = createLiveStore(fetchTfReviews, 60_000)
 
 // ---- platform reviews (private; platform-pr-review queue + tfplan holds) ----
-export interface OlyPlan {
+export interface PlatformPlan {
   ran?: boolean
   run_url?: string
   conclusion?: string | null
@@ -1583,10 +1595,10 @@ export interface OlyPlan {
   note?: string
   summary?: string
 }
-export interface OlyBreakdown {
+export interface PlatformBreakdown {
   summary: string
   changes: (string | { file: string; behaviour: string })[]
-  plan: OlyPlan | string | null
+  plan: PlatformPlan | string | null
   risk: { level: 'low' | 'medium' | 'high'; why: string }
   rules: (string | { rule: string; reason?: string; where?: string })[]
   recommendation: { action: 'approve' | 'request changes' | 'reject'; why: string }
@@ -1618,14 +1630,14 @@ export interface DepView {
   // What a merged PR in the chain still owes, keyed by PR number ("347": "Owner apply").
   steps?: Record<string, string>
 }
-export interface OlyNeed extends CardWatch {
+export interface PlatformNeed extends CardWatch {
   key: string
   // Server truth (10/13): needs_me = the action would go through now, in_flight = locked with a reason.
   // waiting_dep = the PR waits on another PR, not counted, only Approve anyway.
   // waiting_threads = I approved, it waits on other people's open review conversations.
   phase?: 'needs_me' | 'in_flight' | 'waiting_dep' | 'waiting_threads'
   deps?: DepView
-  threads_wait?: OlyThreadWait | null
+  threads_wait?: PlatformThreadWait | null
   // the approval posted but the merge did not queue. The card stays here with the reason.
   merge_error?: string[] | null
   // live-actions 1.9: the merge was accepted for later (merge queue or auto-merge). pending = in flight
@@ -1639,8 +1651,8 @@ export interface OlyNeed extends CardWatch {
   head_sha: string
   sources: ('review' | 'tfplan')[]
   since: string
-  breakdown: OlyBreakdown | null
-  plan: OlyPlan | null
+  breakdown: PlatformBreakdown | null
+  plan: PlatformPlan | null
   tfplan: {
     key: string
     held_reasons: string[]
@@ -1655,10 +1667,10 @@ export interface OlyNeed extends CardWatch {
   // the name to type on this card so the post-merge privileged apply of the same plan is covered.
   confirm_needed?: string | null
   // what Approve does on this engineer PR right now. Absent = it merges as usual.
-  window?: OlyWindow | null
+  window?: PlatformWindow | null
 }
 // an open review conversation someone else started (review_threads.read).
-export interface OlyThread {
+export interface PlatformThread {
   id: string
   starter: string
   automated: boolean
@@ -1670,16 +1682,16 @@ export interface OlyThread {
   last_text: string
   replies: number
 }
-export interface OlyThreadWait {
+export interface PlatformThreadWait {
   pr: number
   head_sha: string
   at: string
   checked_at?: string
-  threads: OlyThread[]
+  threads: PlatformThread[]
   last_error?: string
 }
 // maintenance window view (maintenance_hold.window_view): plain prose plus the facts it is built from.
-export interface OlyWindow {
+export interface PlatformWindow {
   class?: 'not_ccc' | 'ccc' | 'both'
   class_label?: string
   in_window?: boolean
@@ -1692,7 +1704,7 @@ export interface OlyWindow {
   reasons?: string[]
   brief: { down: string; when: string; override: string } | null
 }
-export interface OlyHeld {
+export interface PlatformHeld {
   pr: number
   title: string
   author: string
@@ -1707,9 +1719,9 @@ export interface OlyHeld {
   // held = waiting for its window, in_flight = a new push drops the hold, gone = closed or merged.
   phase: 'held' | 'in_flight' | 'gone'
   note?: string | null
-  window: OlyWindow
+  window: PlatformWindow
 }
-export interface OlyProgress extends CardWatch {
+export interface PlatformProgress extends CardWatch {
   pr: number
   title: string
   author: string
@@ -1721,7 +1733,7 @@ export interface OlyProgress extends CardWatch {
   last_action_at?: string
   rounds?: number
 }
-export interface OlyShipped {
+export interface PlatformShipped {
   pr: number
   title: string
   author: string
@@ -1905,7 +1917,7 @@ export interface PendingSecret {
   age_days?: number | null
   portal_url: string
 }
-export interface OlyMyPr extends CardWatch {
+export interface PlatformMyPr extends CardWatch {
   pr: number
   title: string
   url: string
@@ -2015,25 +2027,25 @@ export interface PlatformReviews {
   needs_me_rows?: NeedsMeRow[]
   cron_pulse?: { jobs: CronWatcher[] }
   acted?: ReviewActed[]
-  my_prs?: OlyMyPr[]
+  my_prs?: PlatformMyPr[]
   my_prs_error?: string | null
   // Epoch seconds of the last My PRs rebuild (the server refreshes it in the background).
   my_prs_refreshed?: number | null
   generated_utc: string
   queue_updated: string | null
-  needs_me: OlyNeed[]
-  needs_in_flight?: OlyNeed[]
+  needs_me: PlatformNeed[]
+  needs_in_flight?: PlatformNeed[]
   // plan and review cards whose PR waits on another PR, the hidden runs of superseded
   // heads, and the dependency view of every open PR that waits on something.
-  needs_waiting?: OlyNeed[]
+  needs_waiting?: PlatformNeed[]
   // approved by me, waiting on other people's open review conversations. Not counted.
-  needs_threads?: OlyNeed[]
+  needs_threads?: PlatformNeed[]
   superseded_runs?: number[]
   deps?: Record<string, DepView>
-  in_progress: OlyProgress[]
-  held_for_window?: OlyHeld[]
+  in_progress: PlatformProgress[]
+  held_for_window?: PlatformHeld[]
   held_for_window_error?: string | null
-  shipped: OlyShipped[]
+  shipped: PlatformShipped[]
   privileged: PrivItem[]
   privileged_recent: PrivItem[]
   privileged_health?: { failures?: number; last_error?: string; updated?: string }
@@ -2067,8 +2079,8 @@ export interface PlatformReviews {
   gate: { failures: number; updated?: string; last_error?: string; last_audit_date?: string }
   policy: { path: string; version?: number }
 }
-export const fetchplatformReviews = () => apiJson<PlatformReviews>('api/platform-reviews')
-export const postplatformDecision = (
+export const fetchPlatformReviews = () => apiJson<PlatformReviews>('api/platform-reviews')
+export const postPlatformDecision = (
   act: 'approve' | 'request-changes',
   pr: number,
   head_sha: string,
@@ -2086,15 +2098,15 @@ export const postplatformDecision = (
     confirm_name,
   })
 // resolve one open review conversation on an engineer PR as me.
-export const postplatformResolveThread = (pr: number, thread_id: string) =>
+export const postPlatformResolveThread = (pr: number, thread_id: string) =>
   apiJson<{ pr: number; done: string[] }>('api/platform-reviews/resolve-thread', { pr, thread_id })
 // Merge now (ECR override) on a PR held for the maintenance window, pinned to the held head.
-export const postplatformWindowOverride = (pr: number, head_sha: string, reason: string) =>
+export const postPlatformWindowOverride = (pr: number, head_sha: string, reason: string) =>
   apiJson<{ pr: number; done: string[] }>('api/platform-reviews/window-override', { pr, head_sha, reason })
 export type TriageVerdict = 'accepted' | 'refuted' | 'fixed' | 'deferred'
-export const postplatformTriage = (pr: number, head_sha: string, items: { id: string; verdict: TriageVerdict; reason: string }[]) =>
+export const postPlatformTriage = (pr: number, head_sha: string, items: { id: string; verdict: TriageVerdict; reason: string }[]) =>
   apiJson<{ pr: number; done: string[] }>('api/platform-reviews/triage', { pr, head_sha, items })
-export const postplatformDecideFix = (pr: number, head_sha: string, option: string) =>
+export const postPlatformDecideFix = (pr: number, head_sha: string, option: string) =>
   apiJson<{ pr: number; done: string[]; pending?: boolean; already?: boolean }>('api/platform-reviews/decide-fix', { pr, head_sha, option })
 // The approval brief on a card that asks me to decide (approval_brief.py). source model = written
 // from the PR, its plan and the review for this head, draft = built from the hold data while the
@@ -2210,13 +2222,13 @@ export const postReviewBrief = (repo: 'platform' | 'team', target: number | stri
   )
 // anyway: the PR waits on another PR and I chose Approve anyway. The server refuses without it.
 // confirm_name: the typed root name that also covers the post-merge apply.
-export const postplatformApproveMerge = (pr: number, head_sha: string, anyway?: boolean, confirm_name?: string) =>
+export const postPlatformApproveMerge = (pr: number, head_sha: string, anyway?: boolean, confirm_name?: string) =>
   apiJson<{ pr: number; done: string[] }>('api/platform-reviews/approve-merge', { pr, head_sha, anyway, confirm_name })
 // removes the hold label from one of my own PRs, pinned to the head on screen.
-export const postplatformRemoveHoldLabel = (pr: number, head_sha: string, label: string) =>
+export const postPlatformRemoveHoldLabel = (pr: number, head_sha: string, label: string) =>
   apiJson<{ pr: number; done: string[]; already?: boolean }>('api/platform-reviews/remove-hold-label', { pr, head_sha, label })
 // applies ai-review-override to one of my own PRs for the blocking findings my triage covers. Does not merge.
-export const postplatformAcceptRisk = (pr: number, head_sha: string) =>
+export const postPlatformAcceptRisk = (pr: number, head_sha: string) =>
   apiJson<{ pr: number; done: string[]; already?: boolean }>('api/platform-reviews/accept-risk', { pr, head_sha })
 export const postPrivDecision = (act: 'approve' | 'reject' | 'retry', key: string, head_sha: string, confirm?: string, anyway?: boolean) =>
   apiJson<{ key: string; status: string; run: number; environment: string }>(`api/platform-reviews/deployment/${act}`, {
@@ -2225,7 +2237,7 @@ export const postPrivDecision = (act: 'approve' | 'reject' | 'retry', key: strin
     confirm,
     anyway,
   })
-export const useplatformReviews = createLiveStore(fetchplatformReviews, 60_000)
+export const usePlatformReviews = createLiveStore(fetchPlatformReviews, 60_000)
 
 // ---- Cron pulse: which Hermes cron job owns a card, next run, Run now ----
 export interface CronTick {
@@ -2268,12 +2280,12 @@ export const postCronRun = (id: string, note?: string) =>
 export const useCronPulse = createLiveStore(fetchCronPulse, 20_000)
 
 // ---- team reviews (private; live GitHub + the team PR review lane's escalations) ----
-export interface AresChecks {
+export interface TeamChecks {
   total: number
   red: string[]
   pending: string[]
 }
-export interface AresPr extends CardWatch {
+export interface TeamPr extends CardWatch {
   // Server truth: the lane re-checks this PR (for example new commits after an escalation).
   working?: boolean
   pr: number
@@ -2287,7 +2299,7 @@ export interface AresPr extends CardWatch {
   merge_state?: string
   mergeable?: string
   review?: string | null
-  checks: AresChecks
+  checks: TeamChecks
   created?: string
   updated?: string
   // escalated = engineer PR the review lane escalated (Approve as me)
@@ -2307,7 +2319,7 @@ export interface AresPr extends CardWatch {
   decision?: OwnDecision
   brief?: ApprovalBrief
 }
-export interface AresShipped {
+export interface TeamShipped {
   pr: number
   title: string
   url: string
@@ -2315,25 +2327,25 @@ export interface AresShipped {
   merged?: string
   sha?: string
 }
-export interface AresReviews {
+export interface TeamReviews {
   cron_pulse?: { jobs: CronWatcher[] }
   acted?: ReviewActed[]
   generated_utc: string | null
   repo: string
-  needs_me: AresPr[]
-  in_progress: AresPr[]
-  shipped: AresShipped[]
+  needs_me: TeamPr[]
+  in_progress: TeamPr[]
+  shipped: TeamShipped[]
   counts: { needs_me: number; in_progress: number; shipped: number }
   error?: string
   lane_error?: string | null
   own_lane_error?: string | null
 }
-export const fetchAresReviews = (fresh?: boolean) => apiJson<AresReviews>(fresh ? 'api/team_prefix-reviews?fresh=1' : 'api/team_prefix-reviews')
-export const postAresReview = (act: 'merge' | 'approve', pr: number, head_sha: string, unverified?: boolean) =>
-  apiJson<{ pr: number; done: string[] }>(`api/team_prefix-reviews/${act}`, unverified ? { pr, head_sha, unverified: true } : { pr, head_sha })
-export const postAresDecideFix = (pr: number, head_sha: string, option: string) =>
-  apiJson<{ pr: number; done: string[]; pending?: boolean; already?: boolean }>('api/team_prefix-reviews/decide-fix', { pr, head_sha, option })
-export const useAresReviews = createLiveStore(fetchAresReviews, 60_000)
+export const fetchTeamReviews = (fresh?: boolean) => apiJson<TeamReviews>(fresh ? 'api/team-reviews?fresh=1' : 'api/team-reviews')
+export const postTeamReview = (act: 'merge' | 'approve', pr: number, head_sha: string, unverified?: boolean) =>
+  apiJson<{ pr: number; done: string[] }>(`api/team-reviews/${act}`, unverified ? { pr, head_sha, unverified: true } : { pr, head_sha })
+export const postTeamDecideFix = (pr: number, head_sha: string, option: string) =>
+  apiJson<{ pr: number; done: string[]; pending?: boolean; already?: boolean }>('api/team-reviews/decide-fix', { pr, head_sha, option })
+export const useTeamReviews = createLiveStore(fetchTeamReviews, 60_000)
 
 // Open PRs in my other repos (outside the platform and team lanes) that need me. Server: repo_reviews.py.
 export interface RepoPr extends CardWatch {

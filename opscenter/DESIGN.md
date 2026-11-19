@@ -1365,6 +1365,14 @@ in core); the drafter that reads the full year evidence and calls a model is the
 topic source names (`teams`, `mail`) and the `teams_updated` field keep the names the app already reads. The yearly export
 could not be run here without python-docx (pinned in `people/requirements.txt` for the pinned requirements rule): its test is skipped when the package is missing.
 
+While the slot is off (`OPSCENTER_PEOPLE` unset, the default) the people pages render nothing and cost nothing. The server
+adds no people route (`one_on_ones` and `yearly_reviews` are skipped when the route table is built), so `GET /api/one-on-ones`
+answers 404. The app reads that 404 as the off state, not as a failure: the People group leaves the rail, the shortcuts and
+the palette, the sync chip is not drawn, and `/people`, `/team` and `/team/:tab` (all still in `routes.lock.json`) leave for
+the home route. Before the first answer a people route waits, and an unreachable server still shows the page so its own
+error is read. Tests: `app/tests/peopleSlot.test.mjs` for the decision, `server/server_test.py` for the route table with the
+slot off and on.
+
 ### 12.15 The work tracker adapter (item 18)
 
 `tracker/work.py` is the one place the ops center talks to the issue tracker; the sprint close gate's scanner, the Needs me tab,
@@ -1608,7 +1616,7 @@ each page answers its empty state, and a write raises `NotConfigured` (status 50
 after an earlier approval) re-verifies under a lock: the queued commit equals the one clicked, the typed confirm name for an environment in
 `typed_confirm`, the run is still waiting on that environment at the same attempt, approvals only on `main`, and the pending deployment ids
 exist. Only then does it decide the pending deployment through the code host and log the decision. An approve is refused while the run's plan
-is identical to one whose apply failed (retry is the path), and an optional guard (the other-PR dependency check when the Olympus page is
+is identical to one whose apply failed (retry is the path), and an optional guard (the other-PR dependency check when the platform page is
 present) can refuse it. Routes: `GET /api/privileged-reviews`, `POST /api/platform-reviews/deployment/approve`, `/reject`, `/retry` (the path
 the app already calls). Nothing is decided automatically.
 
@@ -1658,7 +1666,7 @@ the app already calls). Nothing is decided automatically.
 
 ### 12.31 Other repo reviews
 
-`server/modules/other_reviews.py` serves the review page of `other_repo` (review_config 12.28), shaped like the plan page. Needs the owner: an engineer PR the consumer's review lane escalated (at the head it escalated on; newer commits are in progress until the lane re-checks), the owner's own PR the own-PR lane holds only for the owner's sign-off on a policy rule (the rules are named from the policy file, `OPSCENTER_OTHER_POLICY`), the owner's own PR auto-fix gave up on (direction, no merge button), and, while the own-PR lane is not running, the owner's green PR (ready to merge). In progress: every other open PR, with what the lane is doing. Shipped: merged in 14 days. Three things only the consumer knows are slots, all optional: `OPSCENTER_ESCALATIONS_CMD` prints a JSON list of `{pr, card, reason, recommendation, status, head}` (null default: no escalations; a command that cannot be read marks Needs me rows unknown and an unverified approve re-reads it), `OPSCENTER_OWN_LANE_CMD` is the lane's `check <pr> --target <lane>` command (default `lanes/own_pr_merge.py`), and the lane target is `other_lane` (default `other`). Writes are pinned to the head the owner saw: `merge` rebase-merges the owner's own PR with the maintainer bypass (re-checked live with the lane, only a pure sign-off hold or a passing PR merges, red checks and conflicts refuse), `approve` approves an escalated engineer PR (never the owner's own), `decide_fix` records the owner's choice on a decision card. With no `other_repo` the page is empty and a write is 501. Routes: `GET /api/team_prefix-reviews` (decorated with the cron pulse), `POST /api/team_prefix-reviews/merge`, `/approve`, `/decide-fix`; the path name is the one the lifted app calls. The triage context the approval brief reads (`label_hold`) is optional: without that module the row carries none.
+`server/modules/other_reviews.py` serves the review page of `other_repo` (review_config 12.28), shaped like the plan page. Needs the owner: an engineer PR the consumer's review lane escalated (at the head it escalated on; newer commits are in progress until the lane re-checks), the owner's own PR the own-PR lane holds only for the owner's sign-off on a policy rule (the rules are named from the policy file, `OPSCENTER_OTHER_POLICY`), the owner's own PR auto-fix gave up on (direction, no merge button), and, while the own-PR lane is not running, the owner's green PR (ready to merge). In progress: every other open PR, with what the lane is doing. Shipped: merged in 14 days. Three things only the consumer knows are slots, all optional: `OPSCENTER_ESCALATIONS_CMD` prints a JSON list of `{pr, card, reason, recommendation, status, head}` (null default: no escalations; a command that cannot be read marks Needs me rows unknown and an unverified approve re-reads it), `OPSCENTER_OWN_LANE_CMD` is the lane's `check <pr> --target <lane>` command (default `lanes/own_pr_merge.py`), and the lane target is `other_lane` (default `other`). Writes are pinned to the head the owner saw: `merge` rebase-merges the owner's own PR with the maintainer bypass (re-checked live with the lane, only a pure sign-off hold or a passing PR merges, red checks and conflicts refuse), `approve` approves an escalated engineer PR (never the owner's own), `decide_fix` records the owner's choice on a decision card. With no `other_repo` the page is empty and a write is 501. Routes: `GET /api/team-reviews` (decorated with the cron pulse), `POST /api/team-reviews/merge`, `/approve`, `/decide-fix`; the app, its hooks and its page use the neutral lane name `team` (`TeamReviews`, `useTeamReviews`, `postTeamReview`). The earlier paths with the `team_prefix` name stay served as aliases of the same handlers so an older app build keeps working. The triage context the approval brief reads (`label_hold`) is optional: without that module the row carries none.
 
 ### 12.32 Plans
 
