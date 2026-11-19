@@ -27,6 +27,9 @@ import stores  # noqa: E402
 
 # The people slot (one_on_ones.py, yearly_reviews.py): routes exist only when OPSCENTER_PEOPLE names the slot.
 PEOPLE_MODULES = frozenset({"one_on_ones", "yearly_reviews"})
+# The tracker slot (work.py, needs_me.py): routes exist only when OPSCENTER_TRACKER names the slot (DESIGN.md 12.67). Off,
+# a consumer without the reference tracker gets a 404 on every tracker route, never a 502 from a driver that is not there.
+TRACKER_MODULES = frozenset({"work", "needs_me"})
 
 
 def _fresh(req):
@@ -718,9 +721,12 @@ def build(registry=None):
 
     r.post("/api/approve", approve, "approve")
     people_on = optional.enabled("OPSCENTER_PEOPLE")
+    tracker_on = optional.enabled("OPSCENTER_TRACKER")
     for method, path, mod, fn, adapter in _table():
         if mod in PEOPLE_MODULES and not people_on:
             continue  # the people slot is off: no route, and the people pages hide themselves (DESIGN.md 12.14)
+        if mod in TRACKER_MODULES and not tracker_on:
+            continue  # the tracker slot is off: no route, and the work pages hide themselves (DESIGN.md 12.67)
         m = load(mod)
         if m is None or not hasattr(m, fn):
             continue

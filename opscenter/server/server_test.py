@@ -201,6 +201,7 @@ class Routes(unittest.TestCase):
     """The route table against the real modules on a scratch state tree."""
 
     PEOPLE = False  # True turns the people slot on (OPSCENTER_PEOPLE), as a consumer that supplies it does
+    TRACKER = False  # True turns the tracker slot on (OPSCENTER_TRACKER), as a consumer on the reference tracker does
 
     def setUp(self):
         self.d = Path(tempfile.mkdtemp(prefix="routes-test-"))
@@ -218,6 +219,9 @@ class Routes(unittest.TestCase):
         ):
             os.environ.pop(k, None)
         os.environ.pop("OPSCENTER_PEOPLE", None)
+        os.environ.pop("OPSCENTER_TRACKER", None)
+        if self.TRACKER:
+            os.environ["OPSCENTER_TRACKER"] = "1"
         if self.PEOPLE:
             os.environ["OPSCENTER_PEOPLE"] = str(HERE.parent / "people" / "one_on_ones.py")
         for m in ("stores", "routes"):
@@ -513,13 +517,29 @@ class Routes(unittest.TestCase):
         self.assertIn("provider must be", body["error"])
 
     def test_a_module_error_keeps_its_own_status(self):
-        s, body = self.js(
-            "POST", "/api/jira/needs-me/decide", {"key": "not a key", "decision": "close"}
-        )
-        self.assertEqual(s, 400)
         self.assertEqual(
             self.js("POST", "/api/one-on-ones/topic", {"person": "nobody", "title": "x"})[0], 404
         )
+
+    def test_the_tracker_routes_are_a_404_with_the_slot_off_never_a_502(self):
+        names = {r.name for r in self.registry.routes}
+        self.assertFalse({n for n in names if n.startswith(("work.", "needs_me."))})
+        for method, path in (
+            ("GET", "/api/jira/sprint"),
+            ("GET", "/api/jira/sprints"),
+            ("GET", "/api/jira/sprint-trend"),
+            ("GET", "/api/jira/backlog"),
+            ("GET", "/api/jira/approvals"),
+            ("GET", "/api/jira/transitions?key=A-1"),
+            ("GET", "/api/jira/needs-me"),
+            ("POST", "/api/sprint-move"),
+            ("POST", "/api/jira/sprint-remove"),
+            ("POST", "/api/jira/transition"),
+            ("POST", "/api/jira/needs-me/decide"),
+        ):
+            body = {} if method == "POST" else None
+            self.assertEqual(self.js(method, path, body)[0], 404, path)
+        self.assertEqual(self.js("GET", "/api/health")[0], 200)
 
 
 class RoutesWithPeople(unittest.TestCase):
@@ -544,6 +564,27 @@ class RoutesWithPeople(unittest.TestCase):
         self.assertEqual(
             js("POST", "/api/one-on-ones/topic", {"person": "nobody", "title": "x"})[0], 400
         )
+
+
+class RoutesWithTracker(unittest.TestCase):
+    """The tracker slot turned on (OPSCENTER_TRACKER): the work routes exist and keep their own statuses."""
+
+    def setUp(self):
+        self.inner = Routes("test_modules_that_are_present_answer_with_an_empty_state")
+        self.inner.TRACKER = True
+        self.inner.setUp()
+
+    def tearDown(self):
+        self.inner.tearDown()
+
+    def test_the_tracker_routes_are_registered_and_a_module_error_keeps_its_own_status(self):
+        names = {r.name for r in self.inner.registry.routes}
+        self.assertIn("work.sprint", names)
+        self.assertIn("needs_me.items", names)
+        s, body = self.inner.js(
+            "POST", "/api/jira/needs-me/decide", {"key": "not a key", "decision": "close"}
+        )
+        self.assertEqual(s, 400)
 
 
 if __name__ == "__main__":

@@ -8,9 +8,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { IconFile, IconLink, IconPalette, IconUser, IconZap } from '../components/icons'
 import type { SearchHit } from '../lib/data'
-import { fetchSearch, hermesSessionUrl, useData, useOneOnOnes } from '../lib/data'
+import { fetchSearch, hermesSessionUrl, useData, useJiraNeedsMe, useOneOnOnes } from '../lib/data'
 import { hostOf, LINK_GROUPS } from '../pages/links/catalog'
 import { peopleSlot } from '../lib/peopleSlot'
+import { trackerSlot } from '../lib/trackerSlot'
 import { groupsFor } from './nav'
 
 const KIND_LABEL: Record<SearchHit['kind'], string> = {
@@ -44,6 +45,8 @@ export default function SearchPalette() {
   const { data: ac } = useData<{ items?: { fp: string; title: string; priority?: string }[] }>('action-center.json')
   const { data: oo } = useOneOnOnes()
   const peopleOn = peopleSlot(oo) === 'on'
+  const { data: nm } = useJiraNeedsMe()
+  const trackerOn = trackerSlot(nm) !== 'off'
   const [open, setOpen] = useState(false)
   const [typed, setTyped] = usePaletteQuery()
   const q = open ? typed.trim() : ''
@@ -99,7 +102,7 @@ export default function SearchPalette() {
         })
       }
     }
-    for (const n of groupsFor(peopleOn).flatMap((g) => g.items)) {
+    for (const n of groupsFor(peopleOn, trackerOn).flatMap((g) => g.items)) {
       out.push({ id: `nav-${n.to}`, label: n.label, kind: 'Page', icon: n.icon, keywords: [n.to], onSelect: () => nav(n.to) })
       for (const p of n.pages || []) {
         out.push({ id: `nav-${p.to}`, label: p.label, kind: 'Page', icon: n.icon, keywords: [p.to], onSelect: () => nav(p.to) })
@@ -160,7 +163,7 @@ export default function SearchPalette() {
       })
     }
     return out
-  }, [q, hits, ac, oo, peopleOn, nav, setChoice, shell])
+  }, [q, hits, ac, oo, peopleOn, trackerOn, nav, setChoice, shell])
 
   return (
     <CommandPalette

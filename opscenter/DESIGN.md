@@ -1,8 +1,10 @@
 # Core ops center: design
 
-Status: draft for owner review. Design only; no code exists yet. Section 12 records what the shell
-consumer's running ops center does today, row by row against sections 2 to 9, and the owner's
-decision (section 11, item 7) that every module it runs belongs in the standard.
+Status: the design is a target and the code is the lifted reference. Read section 12.67 first: it says which
+files of the layout in 1.1 exist in the current release, which were built under another name and which are not built,
+and where each consumer extension point lives. Section 12 records what the shell consumer's running ops center does,
+row by row against sections 2 to 9, and the owner's decision (section 11, item 7) that every module it runs belongs
+in the standard.
 
 Inputs: `standards/local-ops-app.md` (the ops center rules today), the web-ui-standard doc,
 the web-shell-standard doc, the web-api-runtime-standard doc, `standards/rules.json`, `opscenter/kit/README.md`,
@@ -30,6 +32,8 @@ owner decisions as `D7-n` (section 7 of the assessment summary).
 ## 1. Scope and layout
 
 ### 1.1 Where it lives in the core
+
+The layout below is the target. 12.67 lists which of these files exist today and which are not built.
 
 ```text
 opscenter/
@@ -1762,6 +1766,67 @@ All of it sits under `server/modules/reports/`, is imported only when `OPSCENTER
 ### 12.65 The documentation drift feed (provider slot)
 
 `server/modules/docs_drift.py` is report only: it never writes to the docs home or the code host. The contract (provider methods, the drift report and facts shapes, the status vocabulary, the summary shape and the cache rules) is in the module header and is the document the consumer builds against. The provider is the opt in (`OPSCENTER_DOCS_DRIFT_PROVIDER`); with none, no route exists. The tab (the page that draws the summary) is the app's and is hidden while the slot is null; this section does not add it.
+### 12.67 What a consumer can rely on in this release (layout, tracker slot, extension points, jobs, Platform areas)
+
+A consumer adopting the ops center asked five things that this design left open. Each answer is checked against the
+tree of the release, not against the layout in 1.1.
+
+**The layout in 1.1 against the tree.** Present as named: `server/app.py`, `gate.py`, `registry.py`, `live_bus.py`,
+`live_watch.py`, `live_routes.py`, `modules/`, `engine/collect.py`, `engine/routing.py`, `app/`, `kit/`, `tokens/`.
+Built under another name: the state and approvals stores are `server/stores.py`, the optional module switch is
+`server/optional.py` with `server/modules/optional_provider.py`, the agent runtime seam is `server/runtime_slot.py`,
+the tracker parameters are `tracker/params.py`, and the people parameters are `people/`. Not built, and marked so in
+12.2: `server/state.py`, `envelope.py`, `swr.py` (the cache is inside each module), `writer.py`, `approvals.py`,
+`heartbeats.py`, `engine/migrate.py`, `conformance.py`, `analyze.py`, `refresh.py`, `deploy/deploy.py`,
+`deploy/automerge.yml`, `adopt/adopt.py`, `testing/fixtures.py`, `schemas/`, `slots/interfaces`, `slots/reference`,
+`slots/null` and `local/modules.json`. A consumer follows sections 6 and 10 by the table in 12.2, not by the layout.
+There is no `local/params.json` and no slot loader in this release. A parameter is an environment variable or a file
+the module names, and a slot is an environment variable that holds `path/to/file.py:ClassName` (a provider) or a
+command.
+
+**The tracker slot (null by default).** The tracker routes (`/api/jira/*`, `/api/sprint-move`) are registered only
+when `OPSCENTER_TRACKER` is on, the same switch as the people slot (12.14). Off, every one of them answers 404 and the
+app hides the Jira rail item, its badge, its shortcut and its pages, and an old link leaves for the home route. A
+consumer on another tracker never sees a 502 from a driver that is not there. On, the reference tracker (`tracker/`)
+runs through its driver command and parameters (12.15), and a missing token or site is a real error the page shows. A
+consumer on another tracker keeps the slot off and supplies its own pages through the extension point below. The
+reference tracker is the only driver in this release. A second driver is a `driver_cmd` that speaks the same call
+contract (12.15), not a code change in the core.
+
+**Extension points for pages a consumer adds.** Server: a module that registers its own routes with the route registry
+through the optional module switch (`server/optional.py`), each behind its own environment variable and with its own
+provider (`path/to/file.py:ClassName`, every method optional, a missing one is the null default). A consumer never
+edits a core file for this. App: the route list and the rail are core files in this release, so a consumer page that
+needs a rail item is filed upward as a pull request to the core, as rule 1 of section 0 says. A slot UI mount (section
+5.1) is not built. This is the honest gap: a consumer can add server routes and data today and cannot add a rail item
+or a page without a core change.
+
+**What the scheduled jobs card includes.** `server/modules/cron_pulse.py` reads the agent runtime's job file and shows
+a job on a Reviews page card only when it maps to that card. A job maps in three ways: its monitor script or prompt
+names a repository listed in `CRONPULSE_REPOS`, its monitor script names pull request numbers or `<ticket>-<slug>`
+branches (`CRONPULSE_BRANCH_KEY` sets the ticket key pattern), or the card map file names it
+(`CRONPULSE_CARD_MAP`, default `state/dashboard/cron-card-map.json`). A job with no monitor script and no listed
+repository in its text is not a pull request watcher and is left out on purpose. `CRONPULSE_REPOS` defaults to the
+two placeholder names `owner/primary` and `owner/secondary`, so a consumer that does not set it matches no real
+repository and a job file of eleven jobs shows none. Set it to a JSON map of key to `owner/name` for every repository
+whose Reviews page carries a jobs strip. A job that names nothing parseable goes in the card map with its repository
+and lane. The card is a Reviews page strip and not a list of every job: the Operations scheduled jobs page lists every
+job in the file.
+
+**The Platform areas contract.** The Operations page groups what the consumer runs into areas, each with a count of
+needs me, worth a look and healthy. The data is the problem list in `server/modules/problems.py`, one list that the
+rail badge, the tab counts and the Overview cards all read, so they cannot disagree. An item is `{id, hub, section,
+item, label, tone, headline, details, count, running, url}`. `tone` is `needs_me`, `worth_a_look` or `healthy`.
+`details` has at most four lines. `count` is the number of problem lines and is 0 for a healthy item. `running` is a
+run in flight and is drawn as a spinner, never red. The list also carries `counts` (needs me, worth a look, healthy,
+running, total, lines, by section and by item). The core builds items for the areas it owns (pipelines, scheduled
+jobs, CI and backup, spend, core approvals). A consumer adds areas or live facts without a fork through
+`OPSCENTER_PROBLEMS_PROVIDER` (`path/to/file.py:ClassName`, every method optional: `headlines`, `healthy`, `running`,
+`needs_me`, `worth_a_look`) and places an item by `OPSCENTER_PROBLEM_MAP` (a JSON file, default
+`<state>/problem-map.json`, which sets the hub, section, item and label of each source key). The contract holds no
+owner field today. An owner per area is a provider detail line until the item shape gains one. A page that groups the
+list by area with those counts is the next change in this program.
+
 ### 12.66 The sprint trend and the closed sprint view
 
 `tracker/sprint_trend.py` holds the rules, `tracker/work.py` the reads, caches (closed sprints one hour, trend thirty minutes, one past sprint ten minutes) and the routes. Honest limits: the figures are "items in the sprint now" and "done today", not a count at sprint start; the closed list shows only sprints that held the team's issues; a tracker without a Jira style sprint field supplies `tracker_closed_sprints` and `tracker_sprint_items` (rows `{key, status_category, points, later_sprint}`, where `later_sprint` is the source's own answer to "also in a sprint that started later"). The trend card (tiles with the 85 and 70 percent tones) is the app's and is not in this section.

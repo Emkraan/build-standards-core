@@ -27,6 +27,8 @@ export interface NavDef {
   key: string
   /** Sub-pages (tabs) listed in the command palette. */
   pages?: { to: string; label: string }[]
+  /** An optional slot: the item exists only while that slot is on (opscenter/DESIGN.md 12.67). */
+  slot?: 'tracker'
 }
 
 // Completed lives inside Action Center, Review History inside Team Performance. Jira holds
@@ -59,6 +61,7 @@ export const GROUPS: NavGroupDef[] = [
         hue: 'blue',
         badge: 'jira',
         key: 'j',
+        slot: 'tracker',
         pages: [
           { to: '/jira/needs-me', label: 'Jira: Tickets that need my call' },
           { to: '/jira/backlog', label: 'Jira: Backlog' },
@@ -147,9 +150,11 @@ export const GROUPS: NavGroupDef[] = [
 
 export const NAV: NavDef[] = GROUPS.flatMap((g) => g.items)
 
-/** The groups a viewer sees: a group behind a slot is dropped while the slot is not on. */
-export function groupsFor(people: boolean): NavGroupDef[] {
+/** The groups a viewer sees: a group behind a slot is dropped while the slot is not on, and so is an item behind one. */
+export function groupsFor(people: boolean, tracker = true): NavGroupDef[] {
   return GROUPS.filter((g) => g.slot !== 'people' || people)
+    .map((g) => ({ ...g, items: g.items.filter((i) => i.slot !== 'tracker' || tracker) }))
+    .filter((g) => g.items.length > 0)
 }
 
 /** The rail entry that owns a path (for the active marker and the header title). */
