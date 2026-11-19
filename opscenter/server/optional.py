@@ -6,6 +6,7 @@ Date:    2026-11-07
 
 Settings: OPSCENTER_LOG_INTAKE   any non empty value other than 0, false or off turns the log intake routes on
           OPSCENTER_DOCS_DRIFT_PROVIDER   a provider (path/to/file.py:ClassName) is the opt in for the docs drift feed (docs_drift.py)
+          OPSCENTER_BUILDS_PROVIDER       the same for the active builds feed (active_builds.py), read only
           OPSCENTER_REPORTS      the same for the reports routes
 Providers: OPSCENTER_LOG_INTAKE_PROVIDER and OPSCENTER_REPORTS_PROVIDER (`path/to/file.py:ClassName`), see each module's http_routes.py.
 API:      enabled(name) -> bool     register(registry) -> [names of the modules registered]
@@ -29,6 +30,7 @@ def register(r):
         enabled("OPSCENTER_LOG_INTAKE")
         or enabled("OPSCENTER_REPORTS")
         or os.environ.get("OPSCENTER_DOCS_DRIFT_PROVIDER", "").strip()
+        or os.environ.get("OPSCENTER_BUILDS_PROVIDER", "").strip()
     ):
         if str(MODULES) not in sys.path:
             sys.path.insert(0, str(MODULES))
@@ -49,4 +51,10 @@ def register(r):
 
         docs_drift.register(r, op.load("OPSCENTER_DOCS_DRIFT_PROVIDER"))
         on.append("docs_drift")
+    if os.environ.get("OPSCENTER_BUILDS_PROVIDER", "").strip():
+        # The provider is the opt in and the route is read only: with none there is no route and the panel is hidden.
+        import active_builds
+
+        active_builds.register(r, op.load("OPSCENTER_BUILDS_PROVIDER"))
+        on.append("active_builds")
     return on

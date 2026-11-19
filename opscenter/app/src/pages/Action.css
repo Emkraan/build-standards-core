@@ -293,3 +293,152 @@
   font-size: var(--fs-label);
   color: var(--text-primary);
 }
+
+/* the counters row on the Now tab: one link per source that can wait on me */
+.ac-counters {
+  margin: 0 0 18px;
+}
+.ac-counters ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ac-counter {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+.ac-counter:hover {
+  border-color: var(--accent);
+}
+.ac-counter-n {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.ac-counter-l {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+.ac-counter[data-tone='alert'] {
+  border-color: var(--alert);
+  background: var(--danger-dim);
+}
+.ac-counter[data-tone='warn'] .ac-counter-n {
+  color: var(--accent);
+}
+.ac-counters-calm {
+  margin: 8px 0 0;
+}
+
+/* the waiting on me panel on the Now tab: pull requests that need my decision, one group per repo */
+.ac-waiting {
+  margin: 0 0 18px;
+}
+.ac-waiting h2 {
+  margin: 0 0 8px;
+  font-size: var(--fs-body);
+}
+.ac-waiting-group h3 {
+  margin: 10px 0 4px;
+  color: var(--text-muted);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+}
+.ac-waiting ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ac-waiting li a {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+.ac-waiting li a:hover {
+  border-color: var(--accent);
+}
+.ac-waiting-what {
+  flex-shrink: 0;
+  font-weight: 600;
+}
+.ac-waiting-title {
+  min-width: 0;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+/* the active builds panel on the Now tab: agent work that is running, stuck, failed or finished */
+.ac-builds {
+  margin: 0 0 18px;
+}
+.ac-builds h2 {
+  margin: 0 0 8px;
+  font-size: var(--fs-body);
+}
+.ac-builds ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ac-builds li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--surface);
+}
+.ac-builds li[data-state='stuck'],
+.ac-builds li[data-state='failed'] {
+  border-color: var(--alert);
+}
+.ac-builds-state {
+  flex-shrink: 0;
+  min-width: 4.5rem;
+  font-weight: 600;
+}
+.ac-builds li[data-state='stuck'] .ac-builds-state,
+.ac-builds li[data-state='failed'] .ac-builds-state {
+  color: var(--alert);
+}
+.ac-builds-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ac-builds-age {
+  flex-shrink: 0;
+  font-size: var(--fs-label);
+}
+.ac-builds-note {
+  margin: 4px 0;
+}

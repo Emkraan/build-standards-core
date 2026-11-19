@@ -81,12 +81,19 @@ class Off(Base):
                 p
                 for p in paths
                 if p.startswith(
-                    ("/api/log-streams", "/api/dashboards", "/api/reports", "/api/log-sink")
+                    (
+                        "/api/log-streams",
+                        "/api/dashboards",
+                        "/api/reports",
+                        "/api/log-sink",
+                        "/api/active-builds",
+                    )
                 )
             ]
         )
         self.assertEqual(self.js("GET", "/api/log-streams")[0], 404)
         self.assertEqual(self.js("GET", "/api/dashboards")[0], 404)
+        self.assertEqual(self.js("GET", "/api/active-builds")[0], 404)
         self.assertFalse((self.d / "intake.db").exists() or (self.d / "reports.db").exists())
         self.assertFalse((self.state / "dashboards.json").exists())
 
@@ -100,7 +107,7 @@ class Off(Base):
     def test_nothing_is_imported_either(self):
         code = (
             f"import sys; sys.path.insert(0, {str(HERE)!r}); import routes; routes.build(); "
-            "print([m for m in ('log_intake', 'reports') if m in sys.modules])"
+            "print([m for m in ('log_intake', 'reports', 'active_builds') if m in sys.modules])"
         )
         env = {k: v for k, v in os.environ.items() if not k.startswith("OPSCENTER_")}
         out = subprocess.run(
@@ -403,6 +410,128 @@ class Reports(Base):
             )[0],
             400,
         )
+
+
+class BuildsBase(Base):
+    """Starts the server with a builds provider. It holds no tests, so a subclass picks its own provider and its own cases."""
+
+    settings = {}
+    provider_source = None
+
+    def make_registry(self):
+        os.environ.pop("OPSCENTER_BUILDS_PROVIDER", None)
+        self.state = self.d / "state"
+        os.environ["OPSCENTER_STATE_DIR"] = str(self.state)
+        pf = self.d / "builds_provider.py"
+        pf.write_text(self.provider_source)
+        os.environ["OPSCENTER_BUILDS_PROVIDER"] = f"{pf}:P"
+        import optional_provider
+
+        optional_provider._cache.clear()
+        import routes
+
+        return routes.build()
+
+    def tearDown(self):
+        os.environ.pop("OPSCENTER_BUILDS_PROVIDER", None)
+        super().tearDown()
+
+
+class Builds(BuildsBase):
+    """The active builds feed is read only, closed until the provider authorises it, and asks the source on every request."""
+
+    def test_only_the_one_read_route_is_added(self):
+        paths = {p for _, p in self.registry.paths()}
+        self.assertIn("/api/active-builds", paths)
+        self.assertFalse(
+            [
+                p
+                for p in paths
+                if p.startswith(("/api/log-streams", "/api/dashboards", "/api/reports"))
+            ]
+        )
+
+    def test_closed_until_the_provider_authorises_and_a_write_is_405(self):
+        self.assertEqual(self.js("GET", "/api/active-builds")[0], 403)
+        self.assertEqual(self.js("GET", "/api/active-builds", None, {"X-User": "stranger"})[0], 403)
+        # The server handles GET, HEAD and POST only (app.py, any other verb is a 501 on every path), so POST is the one write that could
+        # reach the feed, and it must be refused as a known path with the wrong method.
+        self.assertEqual(self.call("POST", "/api/active-builds", {}, ADMIN)[0], 405)
+
+    def test_a_reader_gets_the_rows_with_their_counts(self):
+        status, _, body = self.js("GET", "/api/active-builds", None, READER)
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            body["counts"], {"running": 1, "stuck": 1, "failed": 0, "finished": 0, "total": 2}
+        )
+        self.assertIsNone(body["error"])
+        self.assertEqual(sorted(b["id"] for b in body["builds"]), ["a", "b"])
+
+    def test_every_request_asks_the_source_again_because_a_dead_build_must_not_stay_running(self):
+        for _ in range(3):
+            self.assertEqual(
+                self.js("GET", "/api/active-builds", None, READER)[2]["counts"]["total"], 2
+            )
+        self.assertEqual(
+            Path(self.d / "calls.txt").read_text().count("x"),
+            3,
+            "three requests, three reads of the source",
+        )
+
+
+BUILDS_PROVIDER = textwrap.dedent(
+    """
+    from pathlib import Path
+
+    class P:
+        def authorize(self, headers, action, key=None):
+            who = headers.get("X-User")
+            if who == "admin":
+                return "admin"
+            if who == "reader" and action == "active-builds.read":
+                return "reader"
+            return None
+
+        def active_builds(self, now):
+            counter = Path(__file__).with_name("calls.txt")
+            counter.write_text(counter.read_text() + "x" if counter.exists() else "x")
+            return [
+                {"id": "a", "title": "Fix the importer", "state": "running", "started": now - 600, "activity": "running tests", "activity_at": now - 30},
+                {"id": "b", "title": "Docs pass", "state": "stuck", "started": now - 4000, "activity_at": now - 3000},
+            ]
+    """
+)
+
+
+Builds.provider_source = BUILDS_PROVIDER
+
+
+BUILDS_PROVIDER_DOWN = textwrap.dedent(
+    """
+    class P:
+        def authorize(self, headers, action, key=None):
+            return "reader" if headers.get("X-User") == "reader" else None
+
+        def active_builds(self, now):
+            raise OSError("disk gone")
+    """
+)
+
+
+class BuildsSourceDown(BuildsBase):
+    """A provider that raises is an error the panel can show, never an empty list that reads as nothing running."""
+
+    provider_source = BUILDS_PROVIDER_DOWN
+
+    def test_a_failed_source_is_an_error_and_not_an_empty_board(self):
+        status, _, body = self.js("GET", "/api/active-builds", None, READER)
+        self.assertEqual(status, 200)
+        self.assertEqual(body["builds"], [])
+        self.assertIn("OSError", body["error"])
+        self.assertNotIn("disk gone", body["error"])
+
+    def test_it_is_still_closed_to_a_stranger_when_the_source_is_down(self):
+        self.assertEqual(self.js("GET", "/api/active-builds", None, {"X-User": "stranger"})[0], 403)
 
 
 class BadProvider(Base):

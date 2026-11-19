@@ -166,7 +166,44 @@ const ENG = {
     engItem(3, { severity: 'low', goals: ['G2'] }),
   ],
 }
+// What the server counts for the Action Center row: two open actions, one alert, one platform problem, three debt entries,
+// and a builds feed with one run waiting on an environment approval.
+const BADGES = {
+  action_open: ['fp-1', 'fp-2'],
+  debt: 3,
+  knowledge: 0,
+  alerts: 1,
+  problems: { items: [], counts: { needs_me: 1, worth_a_look: 0, healthy: 0, running: 0, total: 1, by_section: { ci: 1 }, by_item: { ci: 1 } } },
+  builds: { running: 2, waiting: 1 },
+}
+// Pull requests that need a decision from me, one lane each. Every field the lanes' own cards read is given a plain value.
+const LANE_BASE = { generated_utc: '2026-11-10T12:00:00Z', in_progress: [], shipped: [], acted: [] }
+const TEAM_PR = (pr, title, kind) => ({ pr, title, kind, url: `https://example.test/pull/${pr}`, author: 'someone', mine: false, head_sha: 'a'.repeat(40), draft: false, checks: {} })
+const REPO_PR = (pr, title, kind) => ({ pr, title, kind, repo: 'ops_center', slug: 'ops_center', url: `https://example.test/pull/${pr}`, author: 'someone', mine: false, head_sha: 'b'.repeat(40), draft: false, updated: null })
+const PLATFORM = { ...LANE_BASE, repo: 'platform', needs_me: [], counts: { needs_me: 1, in_progress: 0, shipped: 0 }, needs_me_rows: [{ kind: 'plan', pr: 12, title: 'Plan page', what: 'Approve the plan' }], my_prs: [] }
+const TEAM = { ...LANE_BASE, repo: 'team', needs_me: [TEAM_PR(7, 'Fix the sync', 'escalated'), TEAM_PR(8, 'My own change', 'direction')], counts: { needs_me: 2, in_progress: 0, shipped: 0 } }
+const REPOS = { generated_utc: '2026-11-10T12:00:00Z', counts: { needs_me: 1, in_progress: 0 }, repos: [{ repo: 'ops_center', slug: 'ops_center', error: null, needs_me: [REPO_PR(3, 'Red checks', 'checks')], in_progress: [], acted: [] }] }
+// The consumer's builds feed. Times are epoch seconds relative to the real clock, since the panel ages rows against Date.now().
+const nowS = () => Math.floor(Date.now() / 1000)
+const BUILD = (id, title, state, over = {}) => ({ id, title, state, started: nowS() - 900, finished: null, activity: null, activity_at: null, outcome: null, url: null, kind: null, ...over })
+const buildsFeed = (builds, error = null) => ({
+  fetched_utc: '2026-11-19T15:00:00Z',
+  counts: { running: builds.filter((x) => x.state === 'running').length, stuck: builds.filter((x) => x.state === 'stuck').length, failed: builds.filter((x) => x.state === 'failed').length, finished: builds.filter((x) => x.state === 'finished').length, total: builds.length },
+  builds,
+  truncated: 0,
+  error,
+})
+const agentBuilds = () => buildsFeed([
+  BUILD('b1', 'Fix the importer', 'running', { activity: 'running tests', activity_at: nowS() - 10 * 60 }),
+  BUILD('b2', 'Docs pass', 'stuck', { activity_at: nowS() - 3 * 3600, url: 'https://example.test/session/b2' }),
+  BUILD('b3', 'Old cleanup', 'finished', { finished: nowS() - 7200 }),
+])
 const fixtures = () => ({
+  agentBuilds: agentBuilds(),
+  platform: PLATFORM,
+  team: TEAM,
+  repos: REPOS,
+  badges: BADGES,
   eng: ENG,
   drift: DRIFT,
   trend: TREND,
@@ -200,6 +237,11 @@ function fakeBackend(fx) {
     }
     const table = {
       '/api/dark-launches': fx.launches,
+      '/api/badges': fx.badges,
+      '/api/active-builds': fx.agentBuilds,
+      '/api/platform-reviews': fx.platform,
+      '/api/team-reviews': fx.team,
+      '/api/repo-reviews': fx.repos,
       '/api/eng-backlog': fx.eng,
       '/api/docs-drift': fx.drift,
       '/api/jira/sprint-trend': fx.trend,
@@ -422,8 +464,9 @@ test('with the tracker slot off the Jira item leaves the rail and an old Jira li
   await withApp({ ...fixtures(), needsMe: null, approvals: null, active: null, trend: null, closed: null }, async (s, origin) => {
     await visit(s, origin, '/jira', 'light', `location.hash === '#/action'`, 'the redirect to the home route')
     const rail = await s.evaluate(`[...document.querySelectorAll('nav a')].map((a) => a.textContent.trim())`)
-    assert.ok(!rail.some((t) => /^Jira/.test(t)), `no Jira item in the rail: ${JSON.stringify(rail)}`)
-    assert.ok(rail.some((t) => /^Reviews/.test(t)), 'the other items stay')
+    // A rail item carries its badge count on both sides (4Reviews4), so the label is matched after any leading digits.
+    assert.ok(!rail.some((t) => /^\d*Jira/.test(t)), `no Jira item in the rail: ${JSON.stringify(rail)}`)
+    assert.ok(rail.some((t) => /^\d*Reviews/.test(t)), 'the other items stay')
   })
 })
 
@@ -457,5 +500,139 @@ test('the Debt page filters narrow the list and have no axe violation in either 
       assert.ok(await s.evaluate(hasText('Debt entry 3')), `${theme}: Clear brings the low entry back`)
       assert.equal(await s.evaluate(hasText('Clear 1')), false, `${theme}: the clear button leaves once nothing is filtered`)
     }
+  })
+})
+
+// ---- issue 308: Action Center counters row ----
+// One line per tile: its number, its label and where it links. The app uses hash routes, so a link reads as #/path.
+const tileText = (key) =>
+  `(() => {
+    const t = [...document.querySelectorAll('.ac-counter')].find((a) => a.querySelector('.ac-counter-l').textContent === ${JSON.stringify(key)})
+    return t ? t.querySelector('.ac-counter-n').textContent + ' ' + ${JSON.stringify(key)} + ' > ' + t.getAttribute('href') : null
+  })()`
+
+test('the Action Center counters row shows each source with its number and link, and has no axe violation in either theme', { skip, timeout: 120000 }, async () => {
+  await withApp(fixtures(), async (s, origin) => {
+    for (const theme of ['light', 'dark']) {
+      await visit(s, origin, '/action', theme, `document.querySelectorAll('.ac-counter').length > 0`, 'the counters row')
+      const want = {
+        'Actions open': '2 Actions open > #/action',
+        'Alerts': '1 Alerts > #/action/alerts',
+        'Platform problems': '1 Platform problems > #/operations',
+        'Debt entries': '3 Debt entries > #/debt',
+        'Builds waiting': '1 Builds waiting > #/operations/builds',
+        // The configured tracker answers with nothing waiting, so its tile shows an honest zero.
+        'Work waiting': '0 Work waiting > #/jira',
+      }
+      for (const [label, line] of Object.entries(want)) {
+        assert.equal(await s.evaluate(tileText(label)), line, `${theme}: ${label}`)
+      }
+      assert.equal(await s.evaluate(`!!document.querySelector('.ac-counters-calm')`), false, `${theme}: something waits, so no calm line`)
+      const found = await axeFindings(s)
+      assert.deepEqual(found, [], `${theme} theme: ${JSON.stringify(found)}`)
+    }
+  })
+})
+
+test('the counters row leaves out the work tile when the tracker slot is off and says so plainly when nothing waits', { skip, timeout: 120000 }, async () => {
+  const fx = fixtures()
+  fx.needsMe = null
+  fx.approvals = null
+  // No lane has anything waiting either, otherwise the row rightly says something does.
+  fx.platform = { ...PLATFORM, needs_me_rows: [], counts: { needs_me: 0, in_progress: 0, shipped: 0 } }
+  fx.team = { ...TEAM, needs_me: [], counts: { needs_me: 0, in_progress: 0, shipped: 0 } }
+  fx.repos = { ...REPOS, counts: { needs_me: 0, in_progress: 0 }, repos: [{ ...REPOS.repos[0], needs_me: [] }] }
+  fx.badges = {
+    action_open: [],
+    debt: 40,
+    knowledge: 0,
+    alerts: 0,
+    problems: { items: [], counts: { needs_me: 0, worth_a_look: 0, healthy: 0, running: 0, total: 0, by_section: {}, by_item: {} } },
+  }
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/action', 'light', `document.querySelectorAll('.ac-counter').length > 0 && !!document.querySelector('.ac-counters-calm')`, 'the counters row and its calm line')
+    assert.equal(await s.evaluate(tileText('Work waiting')), null, 'no work tile while the slot is off')
+    assert.equal(await s.evaluate(tileText('Builds waiting')), null, 'no builds tile when the feed is not served')
+    assert.equal(await s.evaluate(tileText('Debt entries')), '40 Debt entries > #/debt', 'debt still counts')
+    assert.ok(await s.evaluate(`!!document.querySelector('.ac-counters-calm')`), 'debt alone is not waiting, so the calm line shows')
+  })
+})
+
+// ---- issue 308: Action Center waiting on me panel ----
+const waitingRows = `[...document.querySelectorAll('.ac-waiting li a')].map((a) => a.querySelector('.ac-waiting-what').textContent + ' | ' + a.querySelector('.ac-waiting-title').textContent + ' > ' + a.getAttribute('href'))`
+
+test('the waiting on me panel lists every lane per repo with the click it needs and links to the Reviews card, in both themes', { skip, timeout: 120000 }, async () => {
+  await withApp(fixtures(), async (s, origin) => {
+    for (const theme of ['light', 'dark']) {
+      await visit(s, origin, '/action', theme, `document.querySelectorAll('.ac-waiting li').length > 0`, 'the waiting panel')
+      assert.deepEqual(await s.evaluate(waitingRows), [
+        'Approve the plan | #12 Plan page > #/reviews/platform',
+        'Approve as me | #7 Fix the sync > #/reviews/team',
+        'Give it direction | #8 My own change > #/reviews/team',
+        'Checks are failing | #3 Red checks > #/reviews/ops_center',
+      ], `${theme}: rows`)
+      assert.deepEqual(await s.evaluate(`[...document.querySelectorAll('.ac-waiting-group h3')].map((h) => h.textContent)`), ['Platform', 'Team', 'ops_center'], `${theme}: groups`)
+      assert.equal(await s.evaluate(`document.querySelector('.ac-waiting h2').textContent.replace(/\\s+/g, ' ')`), 'Waiting on me now (4)', `${theme}: heading`)
+      assert.equal(await s.evaluate(`document.querySelectorAll('.ac-waiting button').length`), 0, `${theme}: the panel has no button, the Reviews card does the work`)
+      const found = await axeFindings(s)
+      assert.deepEqual(found, [], `${theme} theme: ${JSON.stringify(found)}`)
+    }
+  })
+})
+
+test('the waiting on me panel is absent when no lane has anything waiting', { skip, timeout: 120000 }, async () => {
+  const fx = fixtures()
+  fx.platform = { ...PLATFORM, needs_me_rows: [], counts: { needs_me: 0, in_progress: 0, shipped: 0 } }
+  fx.team = { ...TEAM, needs_me: [], counts: { needs_me: 0, in_progress: 0, shipped: 0 } }
+  fx.repos = { ...REPOS, counts: { needs_me: 0, in_progress: 0 }, repos: [{ ...REPOS.repos[0], needs_me: [] }] }
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/action', 'light', `document.querySelectorAll('.ac-counter').length > 0`, 'the counters row')
+    assert.equal(await s.evaluate(`!!document.querySelector('.ac-waiting')`), false, 'no panel and no empty heading')
+  })
+})
+
+// ---- issue 308: Action Center active builds panel ----
+const buildRows = `[...document.querySelectorAll('.ac-builds li')].map((li) => li.dataset.state + ' | ' + li.querySelector('.ac-builds-title').textContent + ' | ' + li.querySelector('.ac-builds-age').textContent)`
+
+test('the active builds panel lists what needs a look first with its age, links only safe addresses, and has no axe violation in either theme', { skip, timeout: 120000 }, async () => {
+  await withApp(fixtures(), async (s, origin) => {
+    for (const theme of ['light', 'dark']) {
+      await visit(s, origin, '/action', theme, `document.querySelectorAll('.ac-builds li').length > 0`, 'the builds panel')
+      assert.deepEqual(await s.evaluate(buildRows), [
+        'stuck | Docs pass | 3 h ago',
+        'running | Fix the importer | running tests, 10 min ago',
+        'finished | Old cleanup | 2 h ago',
+      ], `${theme}: rows, stuck first`)
+      assert.equal(await s.evaluate(`document.querySelector('.ac-builds h2').textContent.replace(/\\s+/g, ' ').trim()`), 'Active builds (1 stuck, 1 running)', `${theme}: heading`)
+      assert.equal(await s.evaluate(`document.querySelectorAll('.ac-builds a').length`), 1, `${theme}: only the row with a link has one`)
+      assert.equal(await s.evaluate(`document.querySelector('.ac-builds a').rel`), 'noreferrer noopener', `${theme}: external link is safe`)
+      assert.equal(await s.evaluate(`document.querySelectorAll('.ac-builds button').length`), 0, `${theme}: no Stop button, it is held back`)
+      const found = await axeFindings(s)
+      assert.deepEqual(found, [], `${theme} theme: ${JSON.stringify(found)}`)
+    }
+  })
+})
+
+test('the active builds panel is absent when the consumer has no builds provider', { skip, timeout: 120000 }, async () => {
+  const fx = fixtures()
+  fx.agentBuilds = null
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/action', 'light', `document.querySelectorAll('.ac-counter').length > 0`, 'the counters row')
+    await new Promise((r) => setTimeout(r, 600))
+    assert.equal(await s.evaluate(`!!document.querySelector('.ac-builds')`), false, 'no panel and no empty heading')
+  })
+})
+
+test('a failed build source is shown as an error and never as a calm board', { skip, timeout: 120000 }, async () => {
+  const fx = fixtures()
+  fx.agentBuilds = buildsFeed([], 'the source failed (OSError)')
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/action', 'light', `!!document.querySelector('.ac-builds')`, 'the builds panel')
+    const text = await s.evaluate(`document.querySelector('.ac-builds').textContent.replace(/\\s+/g, ' ')`)
+    assert.match(text, /could not read the build source: the source failed \(OSError\)/)
+    assert.match(text, /not the same as nothing running/)
+    assert.doesNotMatch(text, /Nothing is running, stuck or failed/, 'an unreadable source must not read as calm')
+    const found = await axeFindings(s)
+    assert.deepEqual(found, [], JSON.stringify(found))
   })
 })
