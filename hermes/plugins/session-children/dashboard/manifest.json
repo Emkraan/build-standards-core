@@ -1,7 +1,7 @@
 {
   "name": "session-children",
   "label": "Session children",
-  "description": "Live status of sessions spawned from a parent session.",
-  "version": "1.0.0",
+  "description": "Live status of all background agent work.",
+  "version": "1.1.0",
   "api": "plugin_api.py"
 }

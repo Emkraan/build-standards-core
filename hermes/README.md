@@ -1,6 +1,6 @@
 # Hermes: shared configuration and core skills
 
-Version: 1.4 | Last reviewed: 2026-11-17 | Status: current | Scope: every consumer that runs the
+Version: 1.5 | Last reviewed: 2026-11-18 | Status: current | Scope: every consumer that runs the
 Hermes agent
 
 Consumers that work through the [Hermes agent](https://hermes-agent.nousresearch.com/docs) share
@@ -184,11 +184,11 @@ differs by writing a new directory beside it and renaming it into place, and rep
 | Plugin | Halves | Holds |
 |---|---|---|
 | `session-status` | desktop | A text badge on every sidebar row, read from the app's own status dot, and notifications for needs-input, failed, stopped and long turns |
-| `session-children` | agent and desktop | Spawned sessions linked to their launcher, hidden while they run, archived when they finish cleanly, and shown live under the launcher |
+| `session-children` | agent and desktop | One pane for all background agent work (workstreams, headless runners, subagents, background processes) with state, times and outcome per row, plus spawned sessions linked to their launcher, hidden while they run and archived when they finish cleanly |
 
 A new shipped plugin carries no name, path or value of any estate, passes `ruff` and
 `check-hermes-tools.py`, and is described in `configurations.md`. Behaviour and limits of the two above are
-in `configurations.md` section 18.
+in `configurations.md` section 18, and which kind of background work to use is in section 19.
 
 A consumer opts out of a shipped plugin in `<agent home>/core-opt-out.json`, a reason on every entry
 (`{"plugins": {"<id>": "<reason>"}}`). The job leaves an opted-out plugin as it is and prints

@@ -1,6 +1,6 @@
 # Hermes configurations and plugins that proved themselves
 
-Version: 1.7 | Last reviewed: 2026-11-17 | Status: current | Scope: every consumer that runs the
+Version: 1.8 | Last reviewed: 2026-11-18 | Status: current | Scope: every consumer that runs the
 Hermes agent
 
 Each entry names the setting, the value, why, and the failure it prevents. Values that differ per
@@ -387,20 +387,43 @@ request here and never in the installed copy. Both load at the next desktop rest
   2. archives the child and its whole compression chain the moment it finishes cleanly, and
   3. unhides a child that failed, was interrupted or whose process died, so it shows up for review.
 
-  The desktop half polls a read-only backend route every 3 seconds, with no model call, and shows
-  a running count on the launcher's sidebar row, a pane under the chat listing its spawned
-  sessions with the current activity line and tool-call count, and a status bar chip for all
-  chats. A finished child stays in the pane for 30 minutes. A child that reappears in the sidebar
-  carries a pill naming its launcher.
-- **Limits.** Only sessions launched from a parent session's terminal are linked: a session started
-  by a scheduler has no launcher. The sidebar is one flat, virtualised list with no nesting slot
+  The desktop half polls a read-only backend route every 3 seconds, with no model call. It shows
+  a running count on the owning chat's sidebar row, a status bar chip for all chats (running now,
+  and how many need a look), and one pane under the chat, **Spawned sessions**, with four
+  sections. Each row has a title, a state (running, finished, failed or stuck), the start time, the
+  last activity and the outcome. All times are Eastern with the EST or EDT abbreviation. A failed
+  or stuck row has a coloured edge and tinted background and sorts first, running work never uses
+  the failed colour, and a finished row fades after 10 minutes and leaves after 30. A failed or
+  stuck row stays for 6 hours, because a failure nobody saw is the one that matters. A section
+  whose source cannot be read says so on its own line and never hides the others. A child that
+  reappears in the sidebar carries a pill naming its launcher.
+
+  | Section | What it lists | Where the plugin reads it | Running, failed and stuck mean |
+  |---|---|---|---|
+  | Workstreams | Long agent jobs started by a workstream tool, one session each | The workstream tool's own registry file (a sqlite file with a `work` table, found one level under the agent home), plus the session store for activity | Running: working or starting. Stuck: waiting for an answer, or quiet for 20 minutes. Failed: marked failed, or its session ended while it was marked working |
+  | Headless runners | `hermes chat` sessions started from a session terminal | The plugin's own link file, plus the session store | Running: process alive. Stuck: alive and quiet for 20 minutes. Failed: interrupted, failed, or the process died |
+  | Subagents | Delegated tasks | The session store's background delegation table, and a journal the plugin keeps from the `subagent_start` and `subagent_stop` hooks | Running: not finished. Stuck: the agent reports it is stalling. Failed: reported failed or interrupted, or its owner process ended |
+  | Background processes | Terminal commands started in the background | The process registry checkpoint in the agent home (running), and its retained result files (finished) | Running: process alive. Failed: nonzero exit, killed, or gone with no recorded exit |
+
+  The quiet window is 20 minutes and can be changed with `SESSION_CHILDREN_STUCK_SECONDS`. The pane
+  never reads a workstream brief, a subagent result or a process output, and shows only the
+  executable and first operand of a process command, because arguments can carry values that must
+  not be displayed.
+- **Limits.** Only sessions launched from a parent session's terminal are linked as runners: a
+  session started by a scheduler has no launcher. A synchronous subagent is visible only while its
+  owner process lives and only through the hooks, and a delegation recorded by the agent is
+  preferred over the journal row for the same work. The process registry checkpoint carries no
+  output time, so a background process is shown running or ended and never stuck. A workstream
+  registry the plugin does not recognise shows as unavailable instead of a guess. The sidebar is one flat, virtualised list with no nesting slot
   for plugins, so the pane under the launcher is the nest. The route mounts only at a desktop
   restart, while the desktop half reloads without one. The plugin writes the archived and hidden
   flags through the agent's own session API and never deletes a session.
 - **Prove it** by starting a short child from a session terminal (`hermes chat --query-file F
   --oneshot -Q`), watching it appear in the pane and leave the sidebar, and checking that it is
   archived after a clean finish. Kill a second child with `kill -9` and check that it returns to
-  the sidebar within a few seconds.
+  the sidebar within a few seconds. Start a throwaway background command that sleeps for a minute
+  and check it under Background processes, then kill it and check it moves to Failed. The route's
+  logic is also covered by `tests/test_session_children.py`, which uses synthetic data only.
 - **Opting out.** A consumer that does not want a shipped plugin lists it in `core-opt-out.json` in
   the agent home, with a reason on every entry:
   `{"plugins": {"session-children": "why this estate does not run it"}}`. The nightly job then
@@ -412,3 +435,27 @@ request here and never in the installed copy. Both load at the next desktop rest
   install something the consumer meant to refuse. The reason is the point: an opt-out nobody can
   explain is drift. Prevents: a nightly job that quietly undoes a deliberate local choice, or a
   consumer that forks the plugin in place and loses the edit.
+
+## 19. Which kind of background work to use
+
+The pane in section 18 only helps if work lands in the right section. Pick the kind by what the
+owner would wonder about, not by what is easiest to start.
+
+| Kind | Use it for | Never use it for |
+|---|---|---|
+| Workstream | Long agent work the owner would otherwise wonder about: research, a build or a review that runs for many minutes and ends in a result worth reading | A quick lookup, or a plain script |
+| Subagent | A quick internal look-up that the current turn waits on: read a few files, check one fact, summarise one result | Anything the owner may want to watch, steer or find again later, because it has no title the owner chose and leaves little behind |
+| Background terminal process | A plain script with a clear end: tests, a build, a download, a long query | Agent work, because a process has no reasoning to supervise and shows only an exit code |
+| Headless runner | A supervised multi-hour build that needs its own session and full tool access, started from a session terminal | Anything short, because every runner is a full session |
+
+Rules:
+
+1. One owner-visible job is one workstream. Do not split it into subagents to make it look finished
+   sooner.
+2. Name every workstream and runner by its outcome (what it will produce), because the title is
+   the row the owner reads.
+3. A subagent that runs past a few minutes is in the wrong kind: stop it and start a workstream.
+4. A background process always ends by printing or recording its exit status, so the pane can show
+   Finished or Failed and not only Gone.
+5. Whoever starts background work tells the owner which section to look in. If the pane says
+   nothing is running, nothing is, and that is the answer to "is anything still going".

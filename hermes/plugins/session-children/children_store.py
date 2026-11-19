@@ -1,7 +1,8 @@
 """Link store for session-children.
 
-Purpose: Shared sqlite store (spawned session -> launcher session) used by the hooks
-         in __init__.py and the dashboard backend in dashboard/plugin_api.py.
+Purpose: Shared sqlite store used by the hooks in __init__.py and the dashboard backend in
+         dashboard/plugin_api.py. It holds two things: the link of each spawned session to its
+         launcher session, and a journal of subagents seen through the subagent hooks.
 """
 
 from __future__ import annotations
@@ -63,6 +64,22 @@ def connect() -> sqlite3.Connection:
     if "vis" not in cols:
         # 0 = untouched, 1 = hidden from the sidebar by this plugin, 2 = released back
         conn.execute("ALTER TABLE links ADD COLUMN vis INTEGER NOT NULL DEFAULT 0")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS subagents (\n"
+        " id INTEGER PRIMARY KEY AUTOINCREMENT,\n"
+        " pid INTEGER NOT NULL,\n"
+        " parent_id TEXT NOT NULL,\n"
+        " child_session_id TEXT,\n"
+        " role TEXT,\n"
+        " goal TEXT,\n"
+        " started_at REAL NOT NULL,\n"
+        " updated_at REAL NOT NULL,\n"
+        " finished_at REAL,\n"
+        " status TEXT)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS subagents_open ON subagents(pid, parent_id, finished_at)"
+    )
     conn.execute("CREATE INDEX IF NOT EXISTS links_parent ON links(parent_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS links_pid ON links(pid, started_at)")
     return conn
@@ -132,3 +149,55 @@ def set_hidden(session_id: str, hidden: bool) -> bool:
             db.close()
     except Exception:
         return False
+
+
+JOURNAL_KEEP_SECONDS = 7 * 24 * 3600
+
+
+def _one_line(text, limit: int) -> str:
+    line = str(text or "").strip().splitlines()[0:1]
+    line = line[0].strip() if line else ""
+    return line if len(line) <= limit else line[: limit - 3] + "..."
+
+
+def record_subagent_start(pid: int, parent_id: str, child_session_id, role, goal) -> int:
+    """Journal a subagent the hooks saw start. Only a one-line, clipped goal is kept."""
+    now = time.time()
+    with connect() as conn:
+        conn.execute(
+            "DELETE FROM subagents WHERE finished_at IS NOT NULL AND finished_at < ?",
+            (now - JOURNAL_KEEP_SECONDS,),
+        )
+        cur = conn.execute(
+            "INSERT INTO subagents(pid, parent_id, child_session_id, role, goal, started_at, updated_at) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (pid, parent_id, child_session_id, _one_line(role, 40), _one_line(goal, 120), now, now),
+        )
+        return cur.lastrowid
+
+
+def record_subagent_stop(pid: int, parent_id: str, child_session_id, status) -> bool:
+    """Close the journal row for this subagent. Matches the child session id when the hook gave
+    one, otherwise the newest open row of this process and parent. Returns whether a row closed."""
+    now = time.time()
+    with connect() as conn:
+        row = None
+        if child_session_id:
+            row = conn.execute(
+                "SELECT id FROM subagents WHERE pid=? AND child_session_id=? AND finished_at IS NULL "
+                "ORDER BY id DESC LIMIT 1",
+                (pid, child_session_id),
+            ).fetchone()
+        if row is None:
+            row = conn.execute(
+                "SELECT id FROM subagents WHERE pid=? AND parent_id=? AND finished_at IS NULL "
+                "ORDER BY id DESC LIMIT 1",
+                (pid, parent_id),
+            ).fetchone()
+        if row is None:
+            return False
+        conn.execute(
+            "UPDATE subagents SET finished_at=?, updated_at=?, status=? WHERE id=?",
+            (now, now, _one_line(status, 30) or "completed", row["id"]),
+        )
+        return True
