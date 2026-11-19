@@ -388,7 +388,6 @@ test('the Live automation tab is hidden when no dark launch is registered', { sk
   })
 })
 
-// core-rule: live-actions.1.7
 test('with the tracker slot off the Jira item leaves the rail and an old Jira link lands on the home route', { skip, timeout: 60000 }, async () => {
   await withApp({ ...fixtures(), needsMe: null, approvals: null, active: null, trend: null, closed: null }, async (s, origin) => {
     await visit(s, origin, '/jira', 'light', `location.hash === '#/action'`, 'the redirect to the home route')
