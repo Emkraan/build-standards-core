@@ -135,7 +135,20 @@ const launch = (id, live, status, extra = {}) => ({
 })
 const launches = () => ({ launches: [launch('alpha', 'on', 'enabled'), launch('beta', 'off', 'dark')], error: null })
 
-const fixtures = () => ({ drift: DRIFT, trend: TREND, closed: CLOSED, closedOne: CLOSED_ONE, active: ACTIVE, launches: launches(), posts: [] })
+// A configured tracker answers needs me and approvals even when nothing waits. `needsMe: null` is a tracker slot that is off (no routes, a 404).
+const NEEDS_ME = { generated_utc: '2026-11-10T12:00:00Z', live_ok: true, live_error: '', count: 0, items: [] }
+const APPROVALS = { generated_utc: '2026-11-10T12:00:00Z', pending: [], inflight: [] }
+const fixtures = () => ({
+  drift: DRIFT,
+  trend: TREND,
+  closed: CLOSED,
+  closedOne: CLOSED_ONE,
+  active: ACTIVE,
+  needsMe: NEEDS_ME,
+  approvals: APPROVALS,
+  launches: launches(),
+  posts: [],
+})
 
 function fakeBackend(fx) {
   const json = (res, code, body) => res.writeHead(code, { 'content-type': 'application/json' }).end(JSON.stringify(body))
@@ -162,6 +175,8 @@ function fakeBackend(fx) {
       '/api/jira/sprint-trend': fx.trend,
       '/api/jira/sprints': fx.closed,
       '/api/jira/sprint': url.searchParams.get('id') ? fx.closedOne : fx.active,
+      '/api/jira/needs-me': fx.needsMe,
+      '/api/jira/approvals': fx.approvals,
     }
     const body = table[path]
     if (body === undefined || body === null) return json(res, 404, { error: 'not found' }), true
@@ -370,5 +385,14 @@ test('the Live automation tab is hidden when no dark launch is registered', { sk
     await sleep(500)
     assert.equal(await s.evaluate(hasTab('Live automation')), false, 'no Live automation tab without a registry')
     await visit(s, origin, '/operations/automation/live-automation', 'light', `!location.hash.includes('live-automation')`, 'the redirect to the Overview')
+  })
+})
+
+test('with the tracker slot off the Jira item leaves the rail and an old Jira link lands on the home route', { skip, timeout: 60000 }, async () => {
+  await withApp({ ...fixtures(), needsMe: null, approvals: null, active: null, trend: null, closed: null }, async (s, origin) => {
+    await visit(s, origin, '/jira', 'light', `location.hash === '#/action'`, 'the redirect to the home route')
+    const rail = await s.evaluate(`[...document.querySelectorAll('nav a')].map((a) => a.textContent.trim())`)
+    assert.ok(!rail.some((t) => /^Jira/.test(t)), `no Jira item in the rail: ${JSON.stringify(rail)}`)
+    assert.ok(rail.some((t) => /^Reviews/.test(t)), 'the other items stay')
   })
 })

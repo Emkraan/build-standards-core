@@ -33,6 +33,7 @@ import { redirectOld } from './pages/operations/routes'
 import { NextOneOnOne, SyncChip, useFeed } from './shell/HeaderBits'
 import type { BadgeKey, NavDef } from './shell/nav'
 import { peopleRoute, peopleSlot } from './lib/peopleSlot'
+import { trackerRoute, trackerSlot } from './lib/trackerSlot'
 import { groupsFor, navFor } from './shell/nav'
 import SearchPalette from './shell/SearchPalette'
 
@@ -125,6 +126,15 @@ function PeopleGate({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
+// The Jira pages sit behind the tracker slot (opscenter/DESIGN.md 12.67), the same way: off, an old link leaves for the home route.
+function TrackerGate({ children }: { children: ReactNode }) {
+  const { data, error } = useJiraNeedsMe()
+  const act = trackerRoute(trackerSlot(data), !!error)
+  if (act === 'leave') return <Navigate to="/action" replace />
+  if (act === 'wait') return <Skeleton variant="lines" count={6} label="Loading page" />
+  return <>{children}</>
+}
+
 function GoShortcut({ id, keys, label, to }: { id: string; keys: string; label: string; to: string }) {
   const nav = useNavigate()
   useShortcut({ id, keys, description: `Go to ${label}`, group: 'Navigation', handler: () => nav(to) })
@@ -132,10 +142,10 @@ function GoShortcut({ id, keys, label, to }: { id: string; keys: string; label: 
 }
 
 // G then a letter jumps to a page (the ? sheet lists them).
-function Shortcuts({ people }: { people: boolean }) {
+function Shortcuts({ people, tracker }: { people: boolean; tracker: boolean }) {
   return (
     <>
-      {groupsFor(people).flatMap((g) => g.items).map((n) => (
+      {groupsFor(people, tracker).flatMap((g) => g.items).map((n) => (
         <GoShortcut key={n.key} id={`oc.go.${n.key}`} keys={`g ${n.key}`} label={n.label} to={n.to} />
       ))}
       <GoShortcut id="oc.go.search" keys="g s" label="the Search page" to="/search" />
@@ -152,6 +162,7 @@ export default function App() {
   const people = peopleSlot(oo) === 'on'
   const { data: approvals } = useApprovals()
   const { data: needsMe } = useJiraNeedsMe()
+  const tracker = trackerSlot(needsMe) !== 'off'
   const now = useNow(30_000)
   const feed = useFeed(manifest?.generated_et)
   const badges: Record<BadgeKey, number> = {
@@ -208,7 +219,7 @@ export default function App() {
         </div>
       }
     >
-      {groupsFor(people).map((g) => (
+      {groupsFor(people, tracker).map((g) => (
         <NavGroup key={g.label} label={g.label}>
           {g.items.map((n) => {
             const badge = badgeFor(n)
@@ -288,9 +299,9 @@ export default function App() {
               <Route path="/reviews/:repo/:tab" element={<Reviews />} />
               <Route path="/platform" element={<PlatformRedirect />} />
               <Route path="/platform/:tab" element={<PlatformRedirect />} />
-              <Route path="/jira" element={<JiraHub />} />
-              <Route path="/jira/:tab" element={<JiraHub />} />
-              <Route path="/jira/:tab/:sprintId" element={<JiraHub />} />
+              <Route path="/jira" element={<TrackerGate><JiraHub /></TrackerGate>} />
+              <Route path="/jira/:tab" element={<TrackerGate><JiraHub /></TrackerGate>} />
+              <Route path="/jira/:tab/:sprintId" element={<TrackerGate><JiraHub /></TrackerGate>} />
               <Route path="/debt" element={<EngBacklog />} />
               <Route path="/debt/:tab" element={<EngBacklog />} />
               <Route path="/knowledge" element={<Knowledge />} />
@@ -316,7 +327,7 @@ export default function App() {
           </Suspense>
         </div>
         <SearchPalette />
-        <Shortcuts people={people} />
+        <Shortcuts people={people} tracker={tracker} />
       </AppShell>
       <TooltipLayer />
     </>

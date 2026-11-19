@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiTopic, dataTopic, declare, onStatus, stretchedMs, subscribe } from './live'
 import { PEOPLE_OFF_BOARD } from './peopleSlot'
+import { TRACKER_OFF } from './trackerSlot'
 
 const BASE = import.meta.env.BASE_URL || './'
 
@@ -682,8 +683,15 @@ async function jiraPost<T>(path: string, body: Record<string, unknown>): Promise
 }
 
 export const fetchSprint = (fresh = false) => jiraGet<SprintData>('api/jira/sprint', fresh)
-export const fetchBacklog = (fresh = false) => jiraGet<BacklogData>('api/backlog', fresh)
-export const fetchApprovals = (fresh = false) => jiraGet<ApprovalsData>('api/change-approvals', fresh)
+export const fetchBacklog = (fresh = false) => jiraGet<BacklogData>('api/jira/backlog', fresh)
+export const fetchApprovals = async (fresh = false): Promise<ApprovalsData> => {
+  const res = await fetch(`${BASE}api/jira/approvals${fresh ? '?fresh=1' : ''}`, { cache: 'no-cache' })
+  // No tracker routes: the slot is off, so nothing waits on me here. Every other failure stays an error.
+  if (res.status === 404) return { generated_utc: '', pending: [], inflight: [] }
+  const j = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error((j as { error?: string }).error || `api/jira/approvals -> ${res.status}`)
+  return j as ApprovalsData
+}
 export const useJiraSprint = createLiveStore(fetchSprint, 5 * 60_000)
 export const useBacklog = createLiveStore(fetchBacklog, 5 * 60_000)
 export const useApprovals = createLiveStore(fetchApprovals, 5 * 60_000)
@@ -715,8 +723,17 @@ export interface NeedsMeData {
   live_error: string
   count: number
   items: NeedsMeItem[]
+  /** 'off' when the server has no tracker routes (the tracker slot is off, opscenter/DESIGN.md 12.67). */
+  slot?: 'off'
 }
-export const fetchNeedsMe = (fresh = false) => jiraGet<NeedsMeData>('api/jira/needs-me', fresh)
+export const fetchNeedsMe = async (fresh = false): Promise<NeedsMeData> => {
+  const res = await fetch(`${BASE}api/jira/needs-me${fresh ? '?fresh=1' : ''}`, { cache: 'no-cache' })
+  // No tracker routes: the slot is off. Every other failure stays an error (the shell health line reads it).
+  if (res.status === 404) return { ...TRACKER_OFF, live_ok: false, live_error: '' }
+  const j = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error((j as { error?: string }).error || `api/jira/needs-me -> ${res.status}`)
+  return j as NeedsMeData
+}
 export const useJiraNeedsMe = createLiveStore(fetchNeedsMe, 5 * 60_000)
 export const postNeedsMeDecide = (key: string, decision: NeedsMeDecisionKind | 'undo', question: string, note = '') =>
   jiraPost<{ key: string; decision: NeedsMeDecision | null; already: boolean; trigger_error?: string }>('api/jira/needs-me/decide', {
