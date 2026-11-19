@@ -534,6 +534,137 @@ class BuildsSourceDown(BuildsBase):
         self.assertEqual(self.js("GET", "/api/active-builds", None, {"X-User": "stranger"})[0], 403)
 
 
+class ExtensionsBase(Base):
+    """Starts the server with an extensions provider. It holds no tests, so a subclass picks its own provider and its own cases."""
+
+    settings = {}
+    provider_source = None
+
+    def make_registry(self):
+        os.environ.pop("OPSCENTER_EXTENSIONS_PROVIDER", None)
+        self.state = self.d / "state"
+        os.environ["OPSCENTER_STATE_DIR"] = str(self.state)
+        pf = self.d / "extensions_provider.py"
+        pf.write_text(self.provider_source)
+        os.environ["OPSCENTER_EXTENSIONS_PROVIDER"] = f"{pf}:P"
+        import optional_provider
+
+        optional_provider._cache.clear()
+        import routes
+
+        return routes.build()
+
+    def tearDown(self):
+        os.environ.pop("OPSCENTER_EXTENSIONS_PROVIDER", None)
+        super().tearDown()
+
+
+EXTENSIONS_PROVIDER = textwrap.dedent(
+    """
+    class P:
+        def authorize(self, headers, action, key=None):
+            who = headers.get("X-User")
+            if who == "admin":
+                return "admin"
+            if who == "reader" and action == "extensions.read":
+                return "reader"
+            return None
+
+        def extensions(self, now):
+            return [
+                {"id": "ideas", "title": "Ideas", "group": "Operate", "kind": "list", "lede": "Ideas waiting for a look"},
+                {"id": "wiki", "title": "Wiki", "group": "Knowledge", "kind": "link", "url": "https://wiki.test/home"},
+                {"id": "builds", "title": "Shadow", "group": "Operate", "kind": "list"},
+            ]
+
+        def extension_rows(self, page_id, now):
+            return [{"id": "1", "title": "First idea", "state": "Open"}]
+    """
+)
+
+
+class Extensions(ExtensionsBase):
+    """The extension manifest is read only, closed until the provider authorises it, and drops a page that would shadow a core one."""
+
+    provider_source = EXTENSIONS_PROVIDER
+
+    def test_only_the_two_read_routes_are_added(self):
+        paths = {p for _, p in self.registry.paths()}
+        self.assertIn("/api/extensions", paths)
+        self.assertEqual(len([p for p in paths if p.startswith("/api/extensions")]), 2)
+
+    def test_closed_until_the_provider_authorises_and_a_write_is_405(self):
+        self.assertEqual(self.js("GET", "/api/extensions")[0], 403)
+        self.assertEqual(self.js("GET", "/api/extensions", None, {"X-User": "stranger"})[0], 403)
+        self.assertEqual(
+            self.js("GET", "/api/extensions/ideas", None, {"X-User": "stranger"})[0], 403
+        )
+        self.assertEqual(self.call("POST", "/api/extensions", {}, ADMIN)[0], 405)
+        self.assertEqual(self.call("POST", "/api/extensions/ideas", {}, ADMIN)[0], 405)
+
+    def test_a_reader_gets_the_pages_and_the_shadowing_one_is_dropped(self):
+        status, _, body = self.js("GET", "/api/extensions", None, READER)
+        self.assertEqual(status, 200)
+        self.assertEqual([p["id"] for p in body["pages"]], ["ideas", "wiki"])
+        self.assertIsNone(body["error"])
+
+    def test_a_list_page_gives_its_rows_and_an_unnamed_page_is_a_404(self):
+        status, _, body = self.js("GET", "/api/extensions/ideas", None, READER)
+        self.assertEqual((status, body["rows"][0]["title"]), (200, "First idea"))
+        self.assertEqual(
+            self.js("GET", "/api/extensions/builds", None, READER)[0],
+            404,
+            "a dropped page cannot be asked for",
+        )
+        self.assertEqual(self.js("GET", "/api/extensions/nothing", None, READER)[0], 404)
+
+
+EXTENSIONS_PROVIDER_DOWN = textwrap.dedent(
+    """
+    class P:
+        def authorize(self, headers, action, key=None):
+            return "reader" if headers.get("X-User") == "reader" else None
+
+        def extensions(self, now):
+            raise OSError("disk gone")
+    """
+)
+
+
+class ExtensionsSourceDown(ExtensionsBase):
+    """A provider that raises is an error the client can show, never an empty manifest that reads as no extra pages."""
+
+    provider_source = EXTENSIONS_PROVIDER_DOWN
+
+    def test_a_failed_source_is_an_error_and_not_an_empty_manifest(self):
+        status, _, body = self.js("GET", "/api/extensions", None, READER)
+        self.assertEqual(status, 200)
+        self.assertEqual(body["pages"], [])
+        self.assertIn("OSError", body["error"])
+        self.assertNotIn("disk gone", body["error"])
+
+    def test_a_page_read_is_a_bad_gateway_when_the_source_is_down(self):
+        self.assertEqual(self.js("GET", "/api/extensions/ideas", None, READER)[0], 502)
+
+
+class ExtensionsOff(Base):
+    """With no provider there is no route at all, so the rail shows nothing extra and a consumer that does not use this pays nothing."""
+
+    settings = {}
+    provider = False
+
+    def make_registry(self):
+        os.environ.pop("OPSCENTER_EXTENSIONS_PROVIDER", None)
+        os.environ["OPSCENTER_STATE_DIR"] = str(self.d / "state")
+        import routes
+
+        return routes.build()
+
+    def test_no_provider_means_no_route_and_a_404(self):
+        self.assertFalse([p for _, p in self.registry.paths() if p.startswith("/api/extensions")])
+        self.assertEqual(self.js("GET", "/api/extensions", None, ADMIN)[0], 404)
+
+
 class BadProvider(Base):
     settings = {"OPSCENTER_REPORTS": "1"}
     provider = False

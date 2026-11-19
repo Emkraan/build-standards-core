@@ -18,7 +18,7 @@ import {
 } from '@kit'
 import type { ReactNode } from 'react'
 import { lazy, Suspense, useEffect } from 'react'
-import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 // Shared sheets first, so the page sheets imported by the pages below win ties.
 import './App.css'
 import './shell.css'
@@ -26,7 +26,8 @@ import BrowserBanner from './components/BrowserBanner'
 import FallbackBanner from './components/FallbackBanner'
 import HermesRestartBanner from './components/HermesRestartBanner'
 import { useActionCounts } from './lib/counts'
-import { useApprovals, useData, useJiraNeedsMe, useNow, useOneOnOnes } from './lib/data'
+import { useApprovals, useData, useExtensions, useJiraNeedsMe, useNow, useOneOnOnes } from './lib/data'
+import { extensionRoute, pagesAll } from './lib/extensions'
 import { APP_SUBTITLE } from './lib/config'
 import ActionHub from './pages/ActionHub'
 import { redirectOld } from './pages/operations/routes'
@@ -53,6 +54,7 @@ const PAGES = {
   TeamHub: () => import('./pages/TeamHub'),
 }
 const Plans = lazy(PAGES.Plans)
+const ExtensionPage = lazy(() => import('./components/ExtensionPage'))
 const EngBacklog = lazy(PAGES.EngBacklog)
 const Operations = lazy(PAGES.Operations)
 const JiraHub = lazy(PAGES.JiraHub)
@@ -135,6 +137,17 @@ function TrackerGate({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
+// A page a consumer added: the route waits for the manifest, and leaves for the home route when the manifest does not name the page, so a
+// removed page or a typed address never shows a broken one. The key remounts the page when the address changes to another extension.
+function ExtensionRoute() {
+  const { id = '' } = useParams()
+  const { data, error } = useExtensions()
+  const act = extensionRoute(data, id, !!error)
+  if (act === 'leave') return <Navigate to="/action" replace />
+  if (act === 'wait') return <Skeleton variant="lines" count={6} label="Loading page" />
+  return <ExtensionPage key={id} id={id} />
+}
+
 function GoShortcut({ id, keys, label, to }: { id: string; keys: string; label: string; to: string }) {
   const nav = useNavigate()
   useShortcut({ id, keys, description: `Go to ${label}`, group: 'Navigation', handler: () => nav(to) })
@@ -145,7 +158,7 @@ function GoShortcut({ id, keys, label, to }: { id: string; keys: string; label: 
 function Shortcuts({ people, tracker }: { people: boolean; tracker: boolean }) {
   return (
     <>
-      {groupsFor(people, tracker).flatMap((g) => g.items).map((n) => (
+      {groupsFor(people, tracker).flatMap((g) => g.items).filter((n) => n.key).map((n) => (
         <GoShortcut key={n.key} id={`oc.go.${n.key}`} keys={`g ${n.key}`} label={n.label} to={n.to} />
       ))}
       <GoShortcut id="oc.go.search" keys="g s" label="the Search page" to="/search" />
@@ -163,6 +176,9 @@ export default function App() {
   const { data: approvals } = useApprovals()
   const { data: needsMe } = useJiraNeedsMe()
   const tracker = trackerSlot(needsMe) !== 'off'
+  // Pages a consumer added through the extension manifest. Only a working source adds any, and a failed one adds none (the rail never guesses).
+  const { data: extensions } = useExtensions()
+  const extraPages = pagesAll(extensions)
   const now = useNow(30_000)
   const feed = useFeed(manifest?.generated_et)
   const badges: Record<BadgeKey, number> = {
@@ -219,7 +235,7 @@ export default function App() {
         </div>
       }
     >
-      {groupsFor(people, tracker).map((g) => (
+      {groupsFor(people, tracker, extraPages).map((g) => (
         <NavGroup key={g.label} label={g.label}>
           {g.items.map((n) => {
             const badge = badgeFor(n)
@@ -322,6 +338,7 @@ export default function App() {
               <Route path="/planning" element={<Navigate to="/action" replace />} />
               <Route path="/history" element={<Navigate to="/team/history" replace />} />
               <Route path="/backlog" element={<Navigate to="/jira/backlog" replace />} />
+              <Route path="/extensions/:id" element={<ExtensionRoute />} />
               <Route path="*" element={<Navigate to="/action" replace />} />
             </Routes>
           </Suspense>

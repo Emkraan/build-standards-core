@@ -1,0 +1,28 @@
+.pa {
+  margin-bottom: 1rem;
+}
+.pa-sum {
+  margin: 0 0 0.5rem;
+}
+.pa-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.pa-table th,
+.pa-table td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  font-weight: normal;
+}
+.pa-table thead th {
+  font-size: 0.85em;
+  color: var(--muted-foreground);
+}
+.pa-table tbody th {
+  font-weight: 600;
+}
+.pa-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

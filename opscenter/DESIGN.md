@@ -1846,6 +1846,50 @@ Three rules differ from 12.65 on purpose. The route is read only and closed unti
 
 A Stop action is held back. It is a side effect with no existing route, so it needs its own design under `standards/automation-safety.md` (live re-verification and a typed confirmation) before the panel gets a button.
 
+### 12.69 Pages a consumer adds, and the Platform areas rollup (issue 308, items 22 and 24)
+
+This section supersedes two statements in 12.67. 12.67 says a consumer cannot add a rail item or a page without a core
+change, and that the problem list holds no owner field. Both are now false, and this is the contract that replaces them.
+
+**Extension pages (item 22).** A consumer adds a page and a rail item without a core change by describing the page as data.
+The core serves nothing of its own here. A module `server/modules/extensions.py` registers two read only routes when the
+optional switch `OPSCENTER_EXTENSIONS_PROVIDER` (`path/to/file.py:ClassName`) is set, and with it unset there are no routes
+and the rail shows nothing extra. The provider has two methods, both optional. `extensions(now)` returns the manifest, a list
+of pages `{id, title, group, kind, url, lede}`, and `extension_rows(page_id, now)` returns the rows of one list page,
+`{id, title, detail, state, url, at}`.
+
+| Part | Rule |
+|---|---|
+| `GET /api/extensions` | `{fetched_utc, pages, truncated, error}`. At most 12 pages. 404 when no provider is set. |
+| `GET /api/extensions/<id>` | `{fetched_utc, page, rows, truncated, error}`. At most 200 rows. 404 for an id the manifest does not name. 502 when the source failed, with the same body and the reason in `error`. |
+| `kind` | `list` draws the rows. `link` draws one link to a tool the consumer runs and has no rows. |
+| `id` | `^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$`. It cannot be a path the core serves (the list is checked against the real route table by a test), so a consumer page can never shadow `/builds`, `/people` or another core page. |
+| `group` | One of the four rail groups the core has. Any other value is forced to Platform, so a consumer cannot invent a rail group. |
+| Links | `http` or `https` only. Any other scheme is dropped, so a row link is never a `javascript:` address. |
+| Text | Carries no markup. The client draws every field as text, so a title with markup shows as characters and runs nothing. |
+| Caching | None. Every answer is fresh, so a page the consumer removed leaves the rail at once. |
+| A failing source | Is an error and never an empty manifest. The rail adds no page while the source fails, and an open page shows that the source could not be read, which is not the same as nothing to show. |
+
+The rail puts a consumer page after the core items of its group, so it never moves a core item, and it takes no keyboard
+shortcut and no badge. The command palette lists it. A route for a page the manifest does not name goes to the home page,
+so a removed page or a typed address never shows a broken one. The page is read only: no button, no request that changes
+anything, and a test fails if one is added. The page component is a lazy chunk, so the first load budget is not spent on a
+page most consumers never open.
+
+**Platform areas (item 24).** The problem list now carries `areas`, one row per section that has an item:
+`{section, label, owner, status, needs_me, worth_a_look, healthy, lines}`. `status` is the worst tone among the section's
+items. The three counts are items by tone and `lines` is the same unit as every other count in the list, so the rows add up
+to `counts.lines` and cannot disagree with the badge. The rows are worst first, then by section. The owner and the label come
+from an optional `areas` block of the problem map, keyed by section: `{"areas": {"<section>": {"label": "...", "owner":
+"..."}}}`. With no entry the label is the section name and the owner is null, because the core never invents an owner, and
+the page then says "No owner named" in words and never leaves a blank. An entry for a section with no item adds no row, and a
+malformed entry is ignored. Text from the map is collapsed to one line and clipped to 60 characters. A problem list that
+cannot be built still carries `areas: []`, so a page can tell an empty answer from a broken one, and a server older than
+this field sends no `areas` at all, which the client treats as no rollup and not as an empty one.
+
+The Operations overview shows the rollup above the area cards, as a read only table with one row per area (status, owner,
+problem lines) and a line that counts areas needing me. It is on the overview only, not on a tab, and it is a lazy chunk.
+
 ### 12.66 The sprint trend and the closed sprint view
 
 `tracker/sprint_trend.py` holds the rules, `tracker/work.py` the reads, caches (closed sprints one hour, trend thirty minutes, one past sprint ten minutes) and the routes. Honest limits: the figures are "items in the sprint now" and "done today", not a count at sprint start; the closed list shows only sprints that held the team's issues; a tracker without a Jira style sprint field supplies `tracker_closed_sprints` and `tracker_sprint_items` (rows `{key, status_category, points, later_sprint}`, where `later_sprint` is the source's own answer to "also in a sprint that started later"). The trend card (tiles with the 85 and 70 percent tones) is the app's and is not in this section.
