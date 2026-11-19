@@ -577,6 +577,24 @@ def _table():
             ),
         ),
         (P, "/api/doc-coverage/tackle", "doc_coverage", "tackle_item", lambda m: _doc_tackle(m)),
+        # knowledge curation (server/modules/knowledge.py; the publish mode is engine/publish_mode.py)
+        (G, "/api/curation", "knowledge", "curation", None),
+        (G, "/api/applied", "knowledge", "applied", None),
+        (
+            G,
+            re.compile(r"/api/curation/preview/([A-Za-z0-9_.-]{1,80})"),
+            "knowledge",
+            "preview",
+            lambda m: lambda q: m.preview(q.groups[0]),
+        ),
+        (G, "/api/knowledge/publish-modes", "knowledge", "publish_modes", None),
+        (
+            P,
+            "/api/knowledge/publish-mode",
+            "knowledge",
+            "set_publish_mode",
+            lambda m: lambda q: m.set_publish_mode(q.payload()),
+        ),
         # core consumption panel (server/modules/core_consumption.py)
         (
             G,
