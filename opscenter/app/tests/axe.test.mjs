@@ -68,7 +68,9 @@ test('axe finds no critical or serious violation in the light and dark theme', {
   const srv = await serve()
   const profile = mkdtempSync(join(tmpdir(), 'axe-chrome-'))
   const port = 9400 + Math.floor(Math.random() * 400)
-  const chrome = spawn(CHROME, chromeArgs({ port, profile }), { stdio: 'ignore' })
+  // Own process group, so the cleanup can stop the browser's helper processes too, not only the parent.
+  const chrome = spawn(CHROME, chromeArgs({ port, profile }), { stdio: 'ignore', detached: true })
+  const exited = new Promise((r) => chrome.once('exit', r))
   try {
     const s = await cdpSession(port)
     await s.send('Page.enable')
@@ -85,8 +87,19 @@ test('axe finds no critical or serious violation in the light and dark theme', {
     }
     s.close()
   } finally {
-    chrome.kill('SIGKILL')
+    try {
+      process.kill(-chrome.pid, 'SIGKILL')
+    } catch {
+      chrome.kill('SIGKILL')
+    }
+    await Promise.race([exited, new Promise((r) => setTimeout(r, 5000))])
     srv.close()
-    rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+    // A helper process can still be flushing the profile for a moment. A leftover temp folder is not a
+    // failure of the behaviour under test, so it is reported and the test result stands.
+    try {
+      rmSync(profile, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 })
+    } catch (e) {
+      console.warn(`could not remove the browser profile ${profile}: ${e.code || e.message}`)
+    }
   }
 })

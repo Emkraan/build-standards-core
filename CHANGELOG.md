@@ -11,6 +11,13 @@ A consumer porting to the core found the Knowledge page empty and the Debt page 
 - Added: 11 server tests for the module and 5 unit tests for the filters, and an end to end check through the real route registry that the five routes answer, the preview carries its policy, a traversal name does not read outside the proposals folder, and a bad mode or class is a 400 or 404.
 - Known and not fixed here: the Approve and kind buttons on automation cards post to `api/automation/approve`, which no server module serves. What approving a table row means is the consumer's own decision logic, so this needs a stated contract before it is built. The rest of issue 308 (the active builds panel with a Stop action, the counters row, the per repo waiting panel, the Platform health page, the flat rail and the header strip) follows in later pull requests.
 
+## 2026-11-19 (v2.18.1, ops-center: the accessibility browser test no longer fails on its own cleanup)
+
+The `app` check went red on a dependency update (#304) while every axe assertion passed: the test's cleanup deleted the browser profile while a Chrome helper process was still writing it, and `rmdir` failed with `ENOTEMPTY`.
+
+- Fixed: `opscenter/app/tests/axe.test.mjs` stops the browser the way `liveActions.test.mjs` and `ocTabs.test.mjs` already do. Chrome starts in its own process group, the whole group is killed, the test waits up to 5 seconds for the exit, and a profile folder that still cannot be removed is a warning, not a failure.
+- Consumers: nothing to change. Only the core's own test suite changes.
+
 ## 2026-11-18 (v2.18.0, ops-center: tracker slot off by default, two dead Jira tabs fixed, DESIGN says what ships)
 
 A consumer porting to the core read the running ops center against the design and found that the server and structure promises did not match the tree (issue 308, items 20 to 24). Checked against v2.17.0, four of the five were real. This entry closes them and records the larger gaps the same issue found, which are the next changes in the program.
