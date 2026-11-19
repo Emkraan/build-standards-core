@@ -25,6 +25,7 @@ export default function TeamHub() {
       <HubHeader
         eyebrow="People"
         title="Team Performance"
+        subtitle="How the team did this cycle, each member's review, the yearly review and the trends."
         tabs={[
           { to: '/team', label: 'This cycle', end: true },
           { to: '/team/members', label: 'Member reviews' },

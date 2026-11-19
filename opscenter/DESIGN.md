@@ -1827,16 +1827,30 @@ jobs, CI and backup, spend, core approvals). A consumer adds areas or live facts
 owner field today. An owner per area is a provider detail line until the item shape gains one. A page that groups the
 list by area with those counts is the next change in this program.
 
-**What is left of the parity program.** The Knowledge endpoints are served by `server/modules/knowledge.py` (v2.19.0), the
-Debt page has its filters, and the Now tab has the counters row, the waiting on me panel and the active builds panel
-(v2.20.0). The waiting panel only links to the Reviews card, where the one guarded Approve and merge flow lives, so it adds
-no second path around the typed confirmation. The active builds panel is a provider slot (`OPSCENTER_BUILDS_PROVIDER`, row
-shape `{id, title, state, started, finished, activity, activity_at, outcome, url, kind}`, state one of running, stuck, failed
-or finished) and is read only: a Stop action is a side effect and waits for its own design under
-`standards/automation-safety.md`. Still open, each as its own pull request: the Platform health page over the problem list
-above, the work tracking page and the flat rail a consumer asked for, the header strip, and a rail item and page extension
-point for a consumer. Open and waiting on a stated contract: `POST /api/automation/approve`, what approving an automation
-table row means.
+**Where the parity items live.** Issue 308 asked for 28 things a consumer's running ops center has. This is the record of
+where each one is in core, checked against the code in v2.21.0.
+
+| Items | Where |
+|---|---|
+| 3, 24 per area platform health | The Operations overview, one card per area with Needs me, Worth a look and Healthy, over the problem list (`problems.py`) |
+| 4 header strip | The feed strip in `shell/HeaderBits.tsx` (live data line, synced chip, improvements waiting, and a warning when the Enterprise fallback is billing) and `HermesRestartBanner.tsx`, which links to the engine card on the Operations overview |
+| 5 Action Center tabs | Now, Live (v2.21.0), Alerts, Completed and Routing |
+| 6, 8 counters and waiting on me | The Now tab (v2.20.0). The waiting panel only links to the Reviews card, so no second path around the typed confirmation |
+| 7, 26 active builds | The Now tab panel and the Live tab, over the provider slot in 12.68 (v2.20.0, v2.21.0), read only |
+| 9, 10, 11 views, columns, Routing | The Action Center and the Routing tab |
+| 12, 13 Reviews | One tab per repo with a working state, the Needs me, In progress, My PRs and Recently shipped sections, the Stuck state, and the blocking, high, medium and low rollup |
+| 14, 17 Debt filters, Knowledge endpoints | v2.19.0 |
+| 15 1:1 cards | The shared person card with the avatar and the coverage meter |
+| 16, 18, 19 Team, Plans, Links | Already in core |
+| 20 to 24 | v2.18.0, 12.67 |
+| 25, 27 | Work tracking detail and the history revert link, which shows when the feed supplies `revert_url` |
+| 28 scope lines | Every page header (v2.21.0) |
+
+Two items are layout choices and not defects. Item 1, the flat rail: core groups the same items under Operate, People,
+Knowledge and Platform, each with its need me badge. Item 2, `/work`: `/jira` holds the same sprint, backlog and changes
+content. Two things are left out of core on purpose. A Stop action on a running build is a side effect with no existing
+route and needs its own design under `standards/automation-safety.md`. `POST /api/automation/approve` is a consumer
+contract about what approving an automation table row means.
 
 ### 12.68 The active builds feed (provider slot, read only)
 
