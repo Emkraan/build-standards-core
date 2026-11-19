@@ -10,7 +10,9 @@ import {
   ModalSection,
   Pill,
   Segmented,
+  Select,
   Skeleton,
+  Switch,
   Table,
   Textarea,
   Toolbar,
@@ -20,6 +22,14 @@ import { Navigate, useParams } from 'react-router-dom'
 import { HubHeader } from '../components/HubHeader'
 import { LinkButton, LivePill, LoadError } from '../components/StateBlocks'
 import type { EngAct, EngItem } from '../lib/data'
+import {
+  type DebtFilters,
+  NO_DEBT_FILTERS,
+  activeFilterCount,
+  applyDebtFilters,
+  effortBand,
+  optionsFor,
+} from '../lib/debtFilters'
 import { hermesSessionUrl, postEngDecide, postEngHandle, postEngTackle, useEngBacklog, useTackleSessions } from '../lib/data'
 import './EngBacklog.css'
 
@@ -260,6 +270,8 @@ export default function EngBacklog() {
   const [openUid, setOpenUid] = useState<string | null>(null)
   const [kind, setKind] = useState<Kind>('all')
   const [q, setQ] = useState('')
+  const [flt, setFlt] = useState<DebtFilters>(NO_DEBT_FILTERS)
+  const setF = (patch: Partial<DebtFilters>) => setFlt((f) => ({ ...f, ...patch }))
 
   if (rawTab && !ETABS.includes(rawTab as ETab)) return <Navigate to="/debt" replace />
 
@@ -267,9 +279,8 @@ export default function EngBacklog() {
   const tabOf = (it: EngItem): ETab => (it.snoozed ? 'snoozed' : it.bucket)
   const n = (t: ETab) => items.filter((it) => tabOf(it) === t).length
   const tab: ETab = (rawTab as ETab) || (n('decide') > 0 ? 'decide' : 'todo')
-  const rows = items
-    .filter((it) => tabOf(it) === tab)
-    .filter((it) => kind === 'all' || it.kind === kind)
+  const inTab = items.filter((it) => tabOf(it) === tab).filter((it) => kind === 'all' || it.kind === kind)
+  const rows = applyDebtFilters(inTab, flt)
     .sort((a, b) => (SEV_RANK[b.severity] || 0) - (SEV_RANK[a.severity] || 0) || b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
   const live = (it: EngItem) => !!sessions?.[`eng-${it.uid}`]?.live
   const shownItem = openUid ? items.find((it) => it.uid === openUid) : undefined
@@ -377,6 +388,47 @@ export default function EngBacklog() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
+            </Toolbar>
+            <Toolbar label="Narrow entries">
+              <Select aria-label="Severity" value={flt.severity} onChange={(e) => setF({ severity: e.target.value })}>
+                <option value="all">Any severity</option>
+                {optionsFor(inTab, (it) => [it.severity]).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.value} ({o.n})
+                  </option>
+                ))}
+              </Select>
+              <Select aria-label="Goal" value={flt.goal} onChange={(e) => setF({ goal: e.target.value })}>
+                <option value="all">Any goal</option>
+                {optionsFor(inTab, (it) => it.goals).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.value} ({o.n})
+                  </option>
+                ))}
+              </Select>
+              <Select aria-label="Effort" value={flt.effort} onChange={(e) => setF({ effort: e.target.value })}>
+                <option value="all">Any effort</option>
+                {optionsFor(inTab, (it) => [effortBand(it.effort)]).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.value} ({o.n})
+                  </option>
+                ))}
+              </Select>
+              <Select aria-label="Status" value={flt.status} onChange={(e) => setF({ status: e.target.value })}>
+                <option value="all">Any status</option>
+                {optionsFor(inTab, (it) => [it.status.toLowerCase()]).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.value} ({o.n})
+                  </option>
+                ))}
+              </Select>
+              <Switch label="Has folded entries" checked={flt.hasFolded} onChange={(on) => setF({ hasFolded: on })} />
+              <Switch label="Folded into another" checked={flt.foldedInto} onChange={(on) => setF({ foldedInto: on })} />
+              {activeFilterCount(flt) > 0 && (
+                <Button variant="ghost" onClick={() => setFlt(NO_DEBT_FILTERS)}>
+                  Clear {activeFilterCount(flt)}
+                </Button>
+              )}
             </Toolbar>
             {error && !d ? (
               <LoadError title="Could not load the debt and improvement entries" error={error} />

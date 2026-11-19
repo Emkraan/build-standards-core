@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-19 (v2.19.0, ops-center: Knowledge page endpoints served, Debt page filters)
+
+A consumer porting to the core found the Knowledge page empty and the Debt page without the filters the running ops center has (issue 308, items 14 and 17). Checked against v2.18.0 by comparing every path the app calls with the routes the server registers.
+
+- Added: `server/modules/knowledge.py` serves the five paths the Knowledge page called with nothing behind them: `GET /api/curation` (staged proposals, minus any the applier already recorded for the same content, each with its pending send back note), `GET /api/applied` (every recorded outcome), `GET /api/curation/preview/<fp>` (the staged body as a page for a new tab), `GET /api/knowledge/publish-modes` and `POST /api/knowledge/publish-mode` (the per class mode, written through `engine/publish_mode.py` under its own lock). Approve, reject and send back were already served by `POST /api/approve`.
+- Added: the preview page is model written HTML opened on the app's own origin, so it is sent with a policy that runs no script, loads nothing and cannot be framed, plus `nosniff` and `no-store`. A name with a path separator or a leading dot is a 404 that does not echo the name.
+- Added: every read answers an empty board when a file is missing or unreadable, so a consumer that has not run the knowledge job yet sees an empty Proposals tab and not an error.
+- Added: severity, goal, effort and status filters and two fold toggles (has folded entries, folded into another) on the Debt page, with `app/src/lib/debtFilters.ts` holding the decisions so a test can load them. Each filter offers only values present in the current tab, with counts. Effort is free text in the entries, so it is banded by its leading size word or a stated duration, and anything else reads as unsized.
+- Added: 11 server tests for the module and 5 unit tests for the filters, and an end to end check through the real route registry that the five routes answer, the preview carries its policy, a traversal name does not read outside the proposals folder, and a bad mode or class is a 400 or 404.
+- Known and not fixed here: the Approve and kind buttons on automation cards post to `api/automation/approve`, which no server module serves. What approving a table row means is the consumer's own decision logic, so this needs a stated contract before it is built. The rest of issue 308 (the active builds panel with a Stop action, the counters row, the per repo waiting panel, the Platform health page, the flat rail and the header strip) follows in later pull requests.
+
 ## 2026-11-19 (v2.18.1, ops-center: the accessibility browser test no longer fails on its own cleanup)
 
 The `app` check went red on a dependency update (#304) while every axe assertion passed: the test's cleanup deleted the browser profile while a Chrome helper process was still writing it, and `rmdir` failed with `ENOTEMPTY`.

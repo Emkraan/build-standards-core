@@ -1827,10 +1827,11 @@ jobs, CI and backup, spend, core approvals). A consumer adds areas or live facts
 owner field today. An owner per area is a provider detail line until the item shape gains one. A page that groups the
 list by area with those counts is the next change in this program.
 
-**What is left of the parity program.** This section and its pull request close the server and structure answers. Still
-open, each as its own pull request in this order: the Knowledge endpoints that no module registers (curation, applied
-log, publish mode), the Platform health page over the problem list above, the work tracking page and the flat rail
-a consumer asked for, the header strip, and a rail item and page extension point for a consumer.
+**What is left of the parity program.** The Knowledge endpoints are served by `server/modules/knowledge.py` (v2.19.0) and the
+Debt page has its filters. Still open, each as its own pull request: the active builds panel over the session pane data
+with a Stop action, the counters row, the per repo waiting panel, the Platform health page over the problem list above, the
+work tracking page and the flat rail a consumer asked for, the header strip, and a rail item and page extension point for a
+consumer. Open and waiting on a stated contract: `POST /api/automation/approve`, what approving an automation table row means.
 
 ### 12.66 The sprint trend and the closed sprint view
 

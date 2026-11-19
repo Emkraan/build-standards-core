@@ -138,7 +138,36 @@ const launches = () => ({ launches: [launch('alpha', 'on', 'enabled'), launch('b
 // A configured tracker answers needs me and approvals even when nothing waits. `needsMe: null` is a tracker slot that is off (no routes, a 404).
 const NEEDS_ME = { generated_utc: '2026-11-10T12:00:00Z', live_ok: true, live_error: '', count: 0, items: [] }
 const APPROVALS = { generated_utc: '2026-11-10T12:00:00Z', pending: [], inflight: [] }
+const engItem = (n, extra = {}) => ({
+  uid: `td-00000${n}`,
+  id: `TD-${n}`,
+  kind: 'TD',
+  title: `Debt entry ${n}`,
+  line: n,
+  status: 'open',
+  outcome: 'open',
+  bucket: 'todo',
+  severity: 'medium',
+  goals: ['G1'],
+  effort: 'small',
+  owner: '',
+  date: '2026-11-0' + n,
+  body: '',
+  snoozed: null,
+  children: [],
+  ...extra,
+})
+const ENG = {
+  generated_utc: '2026-11-10T12:00:00Z',
+  counts: {},
+  items: [
+    engItem(1, { severity: 'high' }),
+    engItem(2, { severity: 'high', effort: 'large' }),
+    engItem(3, { severity: 'low', goals: ['G2'] }),
+  ],
+}
 const fixtures = () => ({
+  eng: ENG,
   drift: DRIFT,
   trend: TREND,
   closed: CLOSED,
@@ -171,6 +200,7 @@ function fakeBackend(fx) {
     }
     const table = {
       '/api/dark-launches': fx.launches,
+      '/api/eng-backlog': fx.eng,
       '/api/docs-drift': fx.drift,
       '/api/jira/sprint-trend': fx.trend,
       '/api/jira/sprints': fx.closed,
@@ -394,5 +424,38 @@ test('with the tracker slot off the Jira item leaves the rail and an old Jira li
     const rail = await s.evaluate(`[...document.querySelectorAll('nav a')].map((a) => a.textContent.trim())`)
     assert.ok(!rail.some((t) => /^Jira/.test(t)), `no Jira item in the rail: ${JSON.stringify(rail)}`)
     assert.ok(rail.some((t) => /^Reviews/.test(t)), 'the other items stay')
+  })
+})
+
+// ---- issue 308: Debt page filters ----
+test('the Debt page filters narrow the list and have no axe violation in either theme', { skip, timeout: 120000 }, async () => {
+  await withApp(fixtures(), async (s, origin) => {
+    for (const theme of ['light', 'dark']) {
+      await visit(s, origin, '/debt/todo', theme, hasText('Debt entry 3'), 'the debt rows')
+      assert.ok(await s.evaluate(hasText('Debt entry 1')), `${theme}: the first entry is listed`)
+      for (const label of ['Severity', 'Goal', 'Effort', 'Status']) {
+        assert.ok(await s.evaluate(`!!document.querySelector('select[aria-label="${label}"]')`), `${theme}: the ${label} filter is shown`)
+      }
+      let found = await axeFindings(s)
+      assert.deepEqual(found, [], `${theme} theme, unfiltered: ${JSON.stringify(found)}`)
+      // Choose high severity through the real control: the low entry leaves, the two high ones stay.
+      await s.evaluate(`(() => {
+        const sel = document.querySelector('select[aria-label="Severity"]')
+        const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set
+        set.call(sel, 'high')
+        sel.dispatchEvent(new Event('change', { bubbles: true }))
+      })()`)
+      await sleep(300)
+      assert.ok(await s.evaluate(`${hasText('Debt entry 1')} && ${hasText('Debt entry 2')}`), `${theme}: both high entries stay`)
+      assert.equal(await s.evaluate(hasText('Debt entry 3')), false, `${theme}: the low entry leaves`)
+      assert.ok(await s.evaluate(hasText('Clear 1')), `${theme}: the clear button counts the active filter`)
+      found = await axeFindings(s)
+      assert.deepEqual(found, [], `${theme} theme, filtered: ${JSON.stringify(found)}`)
+      // Clear puts every entry back, which the next theme's pass relies on (the same hash does not reload the page).
+      await s.evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Clear 1').click()`)
+      await sleep(300)
+      assert.ok(await s.evaluate(hasText('Debt entry 3')), `${theme}: Clear brings the low entry back`)
+      assert.equal(await s.evaluate(hasText('Clear 1')), false, `${theme}: the clear button leaves once nothing is filtered`)
+    }
   })
 })
