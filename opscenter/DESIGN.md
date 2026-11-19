@@ -1827,6 +1827,11 @@ jobs, CI and backup, spend, core approvals). A consumer adds areas or live facts
 owner field today. An owner per area is a provider detail line until the item shape gains one. A page that groups the
 list by area with those counts is the next change in this program.
 
+**What is left of the parity program.** This section and its pull request close the server and structure answers. Still
+open, each as its own pull request in this order: the Knowledge endpoints that no module registers (curation, applied
+log, publish mode), the Platform health page over the problem list above, the work tracking page and the flat rail
+a consumer asked for, the header strip, and a rail item and page extension point for a consumer.
+
 ### 12.66 The sprint trend and the closed sprint view
 
 `tracker/sprint_trend.py` holds the rules, `tracker/work.py` the reads, caches (closed sprints one hour, trend thirty minutes, one past sprint ten minutes) and the routes. Honest limits: the figures are "items in the sprint now" and "done today", not a count at sprint start; the closed list shows only sprints that held the team's issues; a tracker without a Jira style sprint field supplies `tracker_closed_sprints` and `tracker_sprint_items` (rows `{key, status_category, points, later_sprint}`, where `later_sprint` is the source's own answer to "also in a sprint that started later"). The trend card (tiles with the 85 and 70 percent tones) is the app's and is not in this section.
