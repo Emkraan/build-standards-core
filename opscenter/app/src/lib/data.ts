@@ -1,6 +1,7 @@
 // Central data access. The app is fully static; all data comes from JSON files
 // bundled under public/data by bundle_data.py. This hook fetches once and caches.
 import { useEffect, useRef, useState } from 'react'
+import type { ActiveBuildsFeed, ActiveBuildsState } from './activeBuilds'
 import { apiTopic, dataTopic, declare, onStatus, stretchedMs, subscribe } from './live'
 import { PEOPLE_OFF_BOARD } from './peopleSlot'
 import { TRACKER_OFF } from './trackerSlot'
@@ -1012,6 +1013,14 @@ export const useDocsDrift = createLiveStore<DocsDriftState>(async () => {
   if (!res.ok) throw new Error(`api/docs-drift -> ${res.status}`)
   return { configured: true, ...((await res.json()) as DocsDrift) }
 }, 60_000)
+// GET /api/active-builds exists only when the consumer configured a builds provider (server/modules/active_builds.py), so a 404 means
+// there is none and the panel stays hidden. It is read only and every answer is fresh, so a build that died is not shown as running.
+export const useActiveBuilds = createLiveStore<ActiveBuildsState>(async () => {
+  const res = await fetch(`${BASE}api/active-builds`, { cache: 'no-cache' })
+  if (res.status === 404) return { configured: false }
+  if (!res.ok) throw new Error(`api/active-builds -> ${res.status}`)
+  return { configured: true, ...((await res.json()) as ActiveBuildsFeed) }
+}, 30_000)
 /** Check again (refresh) or start a run (run). A refusal carries its reason. */
 export async function postDocsDrift(act: 'refresh' | 'run'): Promise<{ started?: boolean }> {
   const res = await fetch(`${BASE}api/docs-drift/${act}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })

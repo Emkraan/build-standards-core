@@ -1827,11 +1827,24 @@ jobs, CI and backup, spend, core approvals). A consumer adds areas or live facts
 owner field today. An owner per area is a provider detail line until the item shape gains one. A page that groups the
 list by area with those counts is the next change in this program.
 
-**What is left of the parity program.** The Knowledge endpoints are served by `server/modules/knowledge.py` (v2.19.0) and the
-Debt page has its filters. Still open, each as its own pull request: the active builds panel over the session pane data
-with a Stop action, the counters row, the per repo waiting panel, the Platform health page over the problem list above, the
-work tracking page and the flat rail a consumer asked for, the header strip, and a rail item and page extension point for a
-consumer. Open and waiting on a stated contract: `POST /api/automation/approve`, what approving an automation table row means.
+**What is left of the parity program.** The Knowledge endpoints are served by `server/modules/knowledge.py` (v2.19.0), the
+Debt page has its filters, and the Now tab has the counters row, the waiting on me panel and the active builds panel
+(v2.20.0). The waiting panel only links to the Reviews card, where the one guarded Approve and merge flow lives, so it adds
+no second path around the typed confirmation. The active builds panel is a provider slot (`OPSCENTER_BUILDS_PROVIDER`, row
+shape `{id, title, state, started, finished, activity, activity_at, outcome, url, kind}`, state one of running, stuck, failed
+or finished) and is read only: a Stop action is a side effect and waits for its own design under
+`standards/automation-safety.md`. Still open, each as its own pull request: the Platform health page over the problem list
+above, the work tracking page and the flat rail a consumer asked for, the header strip, and a rail item and page extension
+point for a consumer. Open and waiting on a stated contract: `POST /api/automation/approve`, what approving an automation
+table row means.
+
+### 12.68 The active builds feed (provider slot, read only)
+
+`server/modules/active_builds.py` reports agent work that is running, stuck, failed or finished, for the Active builds panel on the Now tab. It is a provider slot like 12.65: the consumer supplies where sessions come from and how it knows one is alive, and the core owns the row shape, the four states, the limits and the route. The contract (provider methods, the build shape, the summary shape) is in the module header and is the document the consumer builds against. The provider is the opt in (`OPSCENTER_BUILDS_PROVIDER`), with none no route exists and the panel is hidden.
+
+Three rules differ from 12.65 on purpose. The route is read only and closed until the provider authorises `active-builds.read`, and the module has no way to start or stop anything. Nothing is cached, because a build shown as running after it died is worse than showing nothing, so every request asks the provider again under an 8 second limit. A source that fails, is slow or returns something that is not a list is reported as an error and drawn as "I could not read the build source", never as an empty board, since nothing running and unable to tell are different answers. This is the agent work feed. The Builds tab of the Operations hub is the release pipeline, a different thing, and the counters row tile "Builds waiting" counts that pipeline.
+
+A Stop action is held back. It is a side effect with no existing route, so it needs its own design under `standards/automation-safety.md` (live re-verification and a typed confirmation) before the panel gets a button.
 
 ### 12.66 The sprint trend and the closed sprint view
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-11-19 (v2.20.0, ops-center: counters row, waiting on me panel, active builds provider slot)
+
+A consumer porting to the core found the Action Center without the at a glance parts the running ops center has (issue 308, items 6, 7, 8 and 26). Three additions to the Now tab, all read only, all loaded after first paint so the landing page keeps its first load budget.
+
+- Added: a counters row at the top of the Now tab, one link per source that can wait on me: actions open, reviews waiting, alerts, platform problems, debt entries, builds waiting and, only while the tracker slot answers, work waiting. `app/src/lib/counterRow.ts` decides which tiles show, so a test can load it without the browser. A tile whose source is off is left out and is never shown as a zero. Every tile points at a route the app really serves, and a test reads the route table to keep it that way.
+- Added: a waiting on me panel under the counters, every pull request that needs a decision from me grouped by repo (platform, team, then each other repo), each row saying what the click is and linking to its card on the Reviews page. It lists and links only. The one guarded Approve and merge flow, with its typed confirmation and maintenance window check, stays on the Reviews card, so there is no second and faster path around it. A test fails if the component or its logic ever imports a post function or sends a request.
+- Added: an active builds panel for agent work that is running, stuck, failed or finished, fed by `GET /api/active-builds`. The feed is a provider slot like docs drift. The consumer supplies where sessions come from and how it knows one is alive, and the core owns the row shape, the four states, the limits and the route (`server/modules/active_builds.py`, opt in with `OPSCENTER_BUILDS_PROVIDER`). With no provider there is no route and no panel. The route is read only and closed until the provider authorises `active-builds.read`.
+- Added: a source that fails, is slow (cut off at 8 s) or returns something that is not a list is reported as an error and shown as "I could not read the build source", never as an empty board, because nothing running and unable to tell are different answers. Every request asks the provider again and nothing is cached, so a build that died is not shown as running. An unknown state is kept and drawn as the provider sent it, never called running. Only http and https addresses become links.
+- Added: stuck rows list first, then failed, running and finished, and a running or stuck row is aged by its last output.
+- Added: 14 unit tests for the counters and the waiting panel, 11 for the builds logic, 21 server tests for the module and 6 more in `optional_test.py` for the opt in, the read only route and a failing source, and 7 browser tests with an accessibility scan in both themes.
+- Not built here: a Stop action on a running build. It is a side effect with no existing route, so it needs its own design under `standards/automation-safety.md` (live re-verification and a typed confirmation). The panel has no button and a test keeps it that way until that design exists.
+- Known: first load is 147.4 of 150 KB, so the next additions to the Now tab must stay lazy.
+
 ## 2026-11-19 (v2.19.0, ops-center: Knowledge page endpoints served, Debt page filters)
 
 A consumer porting to the core found the Knowledge page empty and the Debt page without the filters the running ops center has (issue 308, items 14 and 17). Checked against v2.18.0 by comparing every path the app calls with the routes the server registers.

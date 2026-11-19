@@ -1,5 +1,5 @@
 import { Button, Pill as KitPill, useToast } from '@kit'
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ActionTable, { type ActionItem } from '../components/ActionTable'
 import { hoursUntil } from '../components/Approvals'
@@ -21,6 +21,11 @@ import {
   useReplied,
   useTackleSessions,
 } from '../lib/data'
+
+// The counters row and the waiting panel load after the first paint, so the landing page keeps its first-load budget.
+const CounterRow = lazy(() => import('../components/CounterRow'))
+const WaitingOnMe = lazy(() => import('../components/WaitingOnMe'))
+const ActiveBuilds = lazy(() => import('../components/ActiveBuilds'))
 
 interface ActionCenterData {
   headline?: string
@@ -305,6 +310,12 @@ export default function ActionCenter() {
       {/* JSM approvals and platform reviews live on their own pages, pointers only */}
       <ChangesBanner />
       <ReviewsBanner />
+
+      <Suspense fallback={null}>
+        <CounterRow />
+        <WaitingOnMe />
+        <ActiveBuilds />
+      </Suspense>
 
       {/* Actionable synthesized items */}
       <div className="ac-controls">
