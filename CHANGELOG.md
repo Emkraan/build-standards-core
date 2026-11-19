@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-19 (v2.18.1, ops-center: the accessibility browser test no longer fails on its own cleanup)
+
+The `app` check went red on a dependency update (#304) while every axe assertion passed: the test's cleanup deleted the browser profile while a Chrome helper process was still writing it, and `rmdir` failed with `ENOTEMPTY`.
+
+- Fixed: `opscenter/app/tests/axe.test.mjs` stops the browser the way `liveActions.test.mjs` and `ocTabs.test.mjs` already do. Chrome starts in its own process group, the whole group is killed, the test waits up to 5 seconds for the exit, and a profile folder that still cannot be removed is a warning, not a failure.
+- Consumers: nothing to change. Only the core's own test suite changes.
+
 ## 2026-11-18 (v2.18.0, ops-center: tracker slot off by default, two dead Jira tabs fixed, DESIGN says what ships)
 
 A consumer porting to the core read the running ops center against the design and found that the server and structure promises did not match the tree (issue 308, items 20 to 24). Checked against v2.17.0, four of the five were real. This entry closes them and records the larger gaps the same issue found, which are the next changes in the program.
