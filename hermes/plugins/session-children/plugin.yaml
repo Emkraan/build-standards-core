@@ -1,10 +1,12 @@
 name: session-children
 label: Session children
 kind: standalone
-version: 1.0.0
+version: 1.1.0
 author: build-standards-core
-description: Links every session spawned from another session (hermes chat run from a parent's terminal) to its launcher, archives it the moment it completes cleanly, and shows live child status on the parent (sidebar badge, Spawned sessions pane, status bar chip).
+description: Shows all background agent work in one pane, in four sections (workstreams, headless runners, subagents, background processes), with state, start, last activity and outcome per item. Links every session spawned from another session (hermes chat run from a parent's terminal) to its launcher and archives it the moment it completes cleanly. Sidebar badge, Spawned sessions pane and status bar chip.
 provides_hooks:
   - on_session_start
   - on_session_end
   - on_session_finalize
+  - subagent_start
+  - subagent_stop
