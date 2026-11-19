@@ -29,8 +29,8 @@ test('a claimed session reads as launching, never as running before it is', () =
 })
 
 test('a session carries its ticket and takes its last activity before its start', () => {
-  const [r] = liveSessions({ a: sess({ ticket: 'ITEA-1', started: iso(NOW - 900), last_active: iso(NOW - 60) }) })
-  assert.equal(r.ticket, 'ITEA-1')
+  const [r] = liveSessions({ a: sess({ ticket: 'WORK-1', started: iso(NOW - 900), last_active: iso(NOW - 60) }) })
+  assert.equal(r.ticket, 'WORK-1')
   assert.equal(r.since, NOW - 60)
   assert.equal(liveSessions({ a: sess({ started: 'not a date', last_active: undefined }) })[0].since, null, 'a bad time is no time, not a made up one')
 })

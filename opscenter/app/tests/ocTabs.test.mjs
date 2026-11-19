@@ -201,7 +201,7 @@ const agentBuilds = () => buildsFeed([
 // Live tackle sessions in the shape GET /api/tackle returns, keyed by item. One is acting, one is history.
 const tackleSessions = () => ({
   sessions: {
-    fp1: { title: 'Tighten the importer', session: 's1', pid: 11, state: 'running', started: new Date(Date.now() - 20 * 60e3).toISOString(), last_active: new Date(Date.now() - 5 * 60e3).toISOString(), log: '', live: true, ticket: 'ITEA-77' },
+    fp1: { title: 'Tighten the importer', session: 's1', pid: 11, state: 'running', started: new Date(Date.now() - 20 * 60e3).toISOString(), last_active: new Date(Date.now() - 5 * 60e3).toISOString(), log: '', live: true, ticket: 'WORK-77' },
     fp2: { title: 'Old finished chat', session: 's2', pid: 12, state: 'finished', started: new Date(Date.now() - 9 * 3600e3).toISOString(), log: '', live: false },
   },
 })
@@ -664,7 +664,7 @@ test('the Live tab lists what is acting, stuck first, counts it on the tab, and 
         'build | running | Fix the importer',
       ], `${theme}: stuck first, then the freshest sign of life, history left out`)
       assert.equal(await s.evaluate(`document.querySelectorAll('.ac-live button').length`), 0, `${theme}: no Stop button`)
-      assert.equal(await s.evaluate(`document.querySelector('.ac-live li[data-kind="session"] .ac-live-ticket').textContent`), 'ITEA-77', `${theme}: the session carries its ticket`)
+      assert.equal(await s.evaluate(`document.querySelector('.ac-live li[data-kind="session"] .ac-live-ticket').textContent`), 'WORK-77', `${theme}: the session carries its ticket`)
       assert.match(flat(await s.evaluate(`document.querySelector('.hub-head').innerText`)), /Live 3\b/, `${theme}: the tab counts three acting`)
       const found = await axeFindings(s)
       assert.deepEqual(found, [], `${theme} theme: ${JSON.stringify(found)}`)
