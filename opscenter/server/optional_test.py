@@ -425,10 +425,13 @@ class BuildsBase(Base):
         pf = self.d / "builds_provider.py"
         pf.write_text(self.provider_source)
         os.environ["OPSCENTER_BUILDS_PROVIDER"] = f"{pf}:P"
+        # routes first: importing it puts server/modules on the path, which optional_provider needs.
+        # The other order only worked when an earlier class in the same run had already imported routes.
+        # The import sorter wants the reverse, which is the order that broke, so it is told to leave this one.
+        import routes  # noqa: I001
         import optional_provider
 
         optional_provider._cache.clear()
-        import routes
 
         return routes.build()
 
@@ -556,10 +559,13 @@ class ExtensionsBase(Base):
         pf = self.d / "extensions_provider.py"
         pf.write_text(self.provider_source)
         os.environ["OPSCENTER_EXTENSIONS_PROVIDER"] = f"{pf}:P"
+        # routes first: importing it puts server/modules on the path, which optional_provider needs.
+        # The other order only worked when an earlier class in the same run had already imported routes.
+        # The import sorter wants the reverse, which is the order that broke, so it is told to leave this one.
+        import routes  # noqa: I001
         import optional_provider
 
         optional_provider._cache.clear()
-        import routes
 
         return routes.build()
 

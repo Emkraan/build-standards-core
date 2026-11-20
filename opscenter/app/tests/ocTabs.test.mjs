@@ -343,6 +343,23 @@ async function cdpSession(port) {
   return { send, evaluate, waitFor, close: () => ws.close() }
 }
 
+// Resolves true once no CSS transition is still running on the page. Flipping the theme starts colour
+// transitions and axe reads the colour it sees at that instant, so a scan taken mid transition measures
+// a blend of the two themes (a settled light chip is 5.67 to 1, mid blend it is 1.4 to 3.7). A fixed
+// sleep only guesses how long that takes. Looping animations such as the status dots never end, so
+// only CSSTransition counts. False means it gave up after about 5 seconds, which a caller must fail on.
+const SETTLED_JS = `(async () => {
+  const live = () => document.getAnimations().filter((a) => a instanceof CSSTransition && (a.playState === 'running' || a.playState === 'pending'))
+  for (let i = 0; i < 100; i++) {
+    if (live().length === 0) {
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+      if (live().length === 0) return true
+    }
+    await new Promise((r) => setTimeout(r, 50))
+  }
+  return false
+})()`
+
 const skip = browserGate({ chrome: CHROME, dist: DIST })
 
 async function withApp(fx, body) {
@@ -379,7 +396,7 @@ async function visit(s, origin, route, theme, ready, what) {
   await s.waitFor(`document.querySelectorAll('#root *').length > 20`, 'the shell to render')
   await s.evaluate(`localStorage.setItem('shell.theme', '${theme}'); document.documentElement.setAttribute('data-theme', '${theme}'); true`)
   await s.waitFor(ready, what)
-  await sleep(400)
+  assert.equal(await s.evaluate(SETTLED_JS), true, `${route}: the page did not stop transitioning`)
 }
 
 async function axeFindings(s) {
@@ -410,6 +427,24 @@ test('the Docs drift tab is hidden when no provider is configured, and its route
   await withApp({ ...fixtures(), drift: null }, async (s, origin) => {
     await visit(s, origin, '/knowledge/drift', 'light', `location.hash === '#/knowledge' && ${hasTab('Proposals')}`, 'the redirect to Proposals')
     assert.equal(await s.evaluate(hasTab('Docs drift')), false, 'no Docs drift tab without a provider')
+  })
+})
+
+// ---- an axe scan must not read a colour in the middle of a theme transition ----
+test('a scan after a theme flip waits for the colour transition, so axe never reads a blend of both themes', { skip, timeout: 120000 }, async () => {
+  await withApp(fixtures(), async (s, origin) => {
+    await visit(s, origin, '/jira', 'dark', hasText('Sprint trend'), 'the sprint card')
+    // Slow the header chip down so a transition is certainly still running a moment after the flip.
+    await s.evaluate(`const st = document.createElement('style'); st.textContent = '.next-chip { transition: color 1.5s linear !important }'; document.head.appendChild(st); true`)
+    await s.evaluate(`localStorage.setItem('shell.theme', 'light'); document.documentElement.setAttribute('data-theme', 'light'); true`)
+    await sleep(200)
+    assert.equal(await s.evaluate(`document.getAnimations().some((a) => a instanceof CSSTransition && a.playState === 'running')`), true, 'the transition is still running, so this test is really testing the wait')
+    const t0 = Date.now()
+    assert.equal(await s.evaluate(SETTLED_JS), true, 'the wait ended because the transition ended, not because it gave up')
+    assert.ok(Date.now() - t0 > 400, 'it waited for the transition and did not return at once')
+    assert.equal(await s.evaluate(`getComputedStyle(document.querySelector('.next-chip')).color`), 'rgb(42, 53, 71)', 'the chip holds its settled light colour')
+    const found = await axeFindings(s)
+    assert.deepEqual(found, [], `no finding once settled: ${JSON.stringify(found)}`)
   })
 })
 

@@ -1907,6 +1907,14 @@ this field sends no `areas` at all, which the client treats as no rollup and not
 The Operations overview shows the rollup above the area cards, as a read only table with one row per area (status, owner,
 problem lines) and a line that counts areas needing me. It is on the overview only, not on a tab, and it is a lazy chunk.
 
+### 12.71 Two test rules: wait for transitions, and run a class alone
+
+Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.
+
+**A scan waits for transitions, it does not sleep.** The theme flip starts colour transitions (the header chip has a 120 ms one), and axe reads whatever colour the element has at that instant. A settled light chip measures 5.67 to 1 and a dark one 6.79 to 1, against 4.5, but halfway through the flip the text is a blend of both themes and measures between 1.4 and 3.7. The old helper flipped the theme and slept a guessed 400 ms, so a slow runner could scan mid blend and report a contrast failure on a component that was fine. The tests now call one step, `SETTLED_JS`, that resolves true once no `CSSTransition` is running (two animation frames apart, so a transition that starts late is seen) and returns false after about 5 seconds, which the caller must fail on. Only transitions count. The status dots and the logo loop forever by design, so waiting on every animation would never finish. `axe.test.mjs` and `ocTabs.test.mjs` both use it, and a browser test slows the chip to 1.5 s, flips the theme and proves the wait lasts as long as the transition and ends on the settled colour. CPU load alone could not reproduce the failure, because Chrome stops starting well before the chip is late, so the proof forces the slow transition directly.
+
+**Every server test class passes alone.** `tests/test_opscenter_lanes.py` loads the server test modules into one process, so a class that works only because an earlier class imported something first is invisible there. `optional_test.py` had two such classes (`Builds` and `Extensions`) that imported a provider module before `routes`, and `routes` is what puts `server/modules` on the path. Run alone, as a person does when chasing a failure, they errored with `No module named 'optional_provider'` in 0.07 s and read as a code fault. The order is fixed, and `EachClassRunsAlone` runs every test class of `optional_test` in its own process and fails by class name. It reads the class list from the source and fails if it finds fewer than six, so it cannot pass by looking at nothing.
+
 ### 12.70 The follow-up items 25 to 28 on issue 308
 
 The issue body lists items 1 to 24. A follow-up comment on it adds 25 to 28, and the 12.67 table above stops at 24, so this section records them. Each was checked against the code on main and not from the issue text.
