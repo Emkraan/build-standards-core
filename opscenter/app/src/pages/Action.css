@@ -442,3 +442,52 @@
 .ac-builds-note {
   margin: 4px 0;
 }
+
+/* the Live tab: what is acting right now, sessions and builds in one list */
+.ac-live {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ac-live li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--surface);
+}
+.ac-live li[data-state='stuck'] {
+  border-color: var(--alert);
+}
+.ac-live-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ac-live-ticket {
+  flex-shrink: 0;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+.ac-live-age {
+  flex-shrink: 0;
+  font-size: var(--fs-label);
+}
+
+/* the restart banner's link to the engine card on the Operations overview */
+.hermes-more {
+  align-self: center;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+  text-decoration: underline;
+}
+.hermes-more:hover,
+.hermes-more:focus-visible {
+  color: var(--text);
+}

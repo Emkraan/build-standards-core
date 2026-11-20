@@ -198,7 +198,18 @@ const agentBuilds = () => buildsFeed([
   BUILD('b2', 'Docs pass', 'stuck', { activity_at: nowS() - 3 * 3600, url: 'https://example.test/session/b2' }),
   BUILD('b3', 'Old cleanup', 'finished', { finished: nowS() - 7200 }),
 ])
+// Live tackle sessions in the shape GET /api/tackle returns, keyed by item. One is acting, one is history.
+const tackleSessions = () => ({
+  sessions: {
+    fp1: { title: 'Tighten the importer', session: 's1', pid: 11, state: 'running', started: new Date(Date.now() - 20 * 60e3).toISOString(), last_active: new Date(Date.now() - 5 * 60e3).toISOString(), log: '', live: true, ticket: 'WORK-77' },
+    fp2: { title: 'Old finished chat', session: 's2', pid: 12, state: 'finished', started: new Date(Date.now() - 9 * 3600e3).toISOString(), log: '', live: false },
+  },
+})
+// GET /api/hermes-restart when plugins changed after the engine started: the banner shows its choices.
+const RESTART_STALE = { alert: 'stale', safe: true, busy: [], quiet_s: 600, quiet_needed_s: 300, pending: null, running: null, last: null }
 const fixtures = () => ({
+  restart: null,
+  tackle: tackleSessions(),
   agentBuilds: agentBuilds(),
   platform: PLATFORM,
   team: TEAM,
@@ -239,6 +250,8 @@ function fakeBackend(fx) {
       '/api/dark-launches': fx.launches,
       '/api/badges': fx.badges,
       '/api/active-builds': fx.agentBuilds,
+      '/api/tackle': fx.tackle,
+      '/api/hermes-restart': fx.restart,
       '/api/platform-reviews': fx.platform,
       '/api/team-reviews': fx.team,
       '/api/repo-reviews': fx.repos,
@@ -634,5 +647,87 @@ test('a failed build source is shown as an error and never as a calm board', { s
     assert.doesNotMatch(text, /Nothing is running, stuck or failed/, 'an unreadable source must not read as calm')
     const found = await axeFindings(s)
     assert.deepEqual(found, [], JSON.stringify(found))
+  })
+})
+
+// ---- issue 308: the Live tab, scope lines and the restart link ----
+const flat = (text) => String(text).replace(/\s+/g, ' ').trim()
+const liveRows = `[...document.querySelectorAll('.ac-live li')].map((li) => li.dataset.kind + ' | ' + li.dataset.state + ' | ' + li.querySelector('.ac-live-title').textContent)`
+
+test('the Live tab lists what is acting, stuck first, counts it on the tab, and has no axe violation in either theme', { skip, timeout: 120000 }, async () => {
+  await withApp(fixtures(), async (s, origin) => {
+    for (const theme of ['light', 'dark']) {
+      await visit(s, origin, '/action/live', theme, `document.querySelectorAll('.ac-live li').length > 0`, 'the Live list')
+      assert.deepEqual(await s.evaluate(liveRows), [
+        'build | stuck | Docs pass',
+        'session | running | Tighten the importer',
+        'build | running | Fix the importer',
+      ], `${theme}: stuck first, then the freshest sign of life, history left out`)
+      assert.equal(await s.evaluate(`document.querySelectorAll('.ac-live button').length`), 0, `${theme}: no Stop button`)
+      assert.equal(await s.evaluate(`document.querySelector('.ac-live li[data-kind="session"] .ac-live-ticket').textContent`), 'WORK-77', `${theme}: the session carries its ticket`)
+      assert.match(flat(await s.evaluate(`document.querySelector('.hub-head').innerText`)), /Live 3\b/, `${theme}: the tab counts three acting`)
+      const found = await axeFindings(s)
+      assert.deepEqual(found, [], `${theme} theme: ${JSON.stringify(found)}`)
+    }
+  })
+})
+
+test('the Live tab says nothing is acting only when both sources answered and nothing is acting', { skip, timeout: 120000 }, async () => {
+  const fx = fixtures()
+  fx.agentBuilds = null
+  fx.tackle = { sessions: {} }
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/action/live', 'light', `document.body.textContent.includes('Nothing is acting right now')`, 'the calm line')
+    assert.equal(await s.evaluate(`document.querySelectorAll('.ac-live li').length`), 0)
+  })
+})
+
+test('a failed build source on the Live tab is an error and never a calm board', { skip, timeout: 120000 }, async () => {
+  const fx = fixtures()
+  fx.agentBuilds = buildsFeed([], 'the source failed (OSError)')
+  fx.tackle = { sessions: {} }
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/action/live', 'light', `document.body.textContent.includes('not the same as nothing acting')`, 'the error')
+    const text = flat(await s.evaluate(`document.body.textContent`))
+    assert.match(text, /not the same as nothing acting/)
+    assert.doesNotMatch(text, /Nothing is acting right now/)
+    const found = await axeFindings(s)
+    assert.deepEqual(found, [], JSON.stringify(found))
+  })
+})
+
+test('every page header now carries a one line scope statement', { skip, timeout: 180000 }, async () => {
+  await withApp(fixtures(), async (s, origin) => {
+    for (const [route, title] of [['/action', 'Action Center'], ['/debt', 'Debt and improvements'], ['/knowledge', 'Knowledge'], ['/team', 'Team Performance']]) {
+      await visit(s, origin, route, 'light', `!!document.querySelector('.hub-head h1, .hub-head h2')`, `the ${title} header`)
+      const sub = flat(await s.evaluate(`document.querySelector('.hub-head .page-sub')?.textContent || ''`))
+      assert.ok(sub.length > 20, `${title}: a scope line is shown, got ${JSON.stringify(sub)}`)
+      assert.equal(/[;\u2014]/.test(sub), false, `${title}: no semicolon or em dash in the line`)
+    }
+  })
+})
+
+test('the restart banner offers its two timings and a link to the engine card on Operations, and has no axe violation', { skip, timeout: 120000 }, async () => {
+  const fx = fixtures()
+  fx.restart = RESTART_STALE
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/action', 'light', `[...document.querySelectorAll('a')].some((a) => a.textContent.trim() === 'More restart options')`, 'the restart link')
+    const text = flat(await s.evaluate(`document.body.textContent`))
+    assert.match(text, /Restart when idle/)
+    assert.match(text, /After 5 quiet minutes/)
+    assert.equal(await s.evaluate(`[...document.querySelectorAll('a')].find((a) => a.textContent.trim() === 'More restart options').getAttribute('href')`), '#/operations', 'the link goes to the page that holds the engine card')
+    const found = await axeFindings(s)
+    assert.deepEqual(found, [], JSON.stringify(found))
+  })
+})
+
+test('the engine card the restart link points at is on the Operations overview', { skip, timeout: 120000 }, async () => {
+  const fx = fixtures()
+  fx.restart = RESTART_STALE
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/operations', 'light', `!!document.querySelector('.ac-none, .hub-body, .infra-stack')`, 'the Operations overview')
+    await new Promise((r) => setTimeout(r, 800))
+    assert.equal(await s.evaluate(`document.querySelectorAll('.hermes-engine').length`), 1, 'exactly one Hermes engine card is on the overview')
+    assert.match(flat(await s.evaluate(`document.querySelector('.hermes-engine').textContent`)), /Hermes engine/)
   })
 })

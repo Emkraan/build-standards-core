@@ -443,6 +443,7 @@ export default function Knowledge() {
       <HubHeader
         eyebrow="Knowledge"
         title="Knowledge"
+        subtitle="The documentation changes proposed and published, and where our docs fall behind the code."
         tabs={[
           { to: '/knowledge', label: 'Proposals', n: cur ? pending.length : undefined, end: true },
           { to: '/knowledge/coverage', label: 'Doc coverage', n: docs?.open_count },
