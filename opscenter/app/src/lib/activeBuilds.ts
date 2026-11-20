@@ -15,6 +15,15 @@ export interface ActiveBuild {
   outcome: string | null
   url: string | null
   kind: string | null
+  /** The pull request that carries the work, when the source names one. A count that was not sent stays null and is never read as zero. */
+  pr?: BuildPr | null
+}
+
+export interface BuildPr {
+  number: number
+  url: string | null
+  state: 'open' | 'merged' | 'closed' | null
+  red: number | null
 }
 
 export interface ActiveBuildsFeed {
@@ -67,6 +76,49 @@ export function ageText(thenSeconds: number | null, nowSeconds: number): string 
 export function rowAge(b: ActiveBuild, nowSeconds: number): string {
   const at = b.state === 'finished' || b.state === 'failed' ? (b.finished ?? b.activity_at ?? b.started) : (b.activity_at ?? b.started)
   return ageText(at, nowSeconds)
+}
+
+const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? '' : 's'}`
+
+/** A span between two epoch seconds in words. A missing end, a missing start or an end before the start gives nothing, never a made up span. */
+export function durationText(startSeconds: number | null, endSeconds: number | null): string {
+  if (startSeconds === null || endSeconds === null || endSeconds < startSeconds) return ''
+  const m = Math.round((endSeconds - startSeconds) / 60)
+  if (m < 1) return 'under a minute'
+  if (m < 60) return `about ${plural(m, 'minute')}`
+  const h = Math.round(m / 60)
+  if (h < 48) return `about ${plural(h, 'hour')}`
+  return `about ${plural(Math.round(h / 24), 'day')}`
+}
+
+/**
+ * The one sentence under a row that tells what to do or what happened. A stuck build says how long it has been silent, measured from its last
+ * output and from its start when it never produced any, with the real span and no fixed threshold of the client's own (the server decided it
+ * is stuck). A finished or failed build says how long it ran and how long ago it ended. Each part appears only when its times are real.
+ */
+export function rowNote(b: ActiveBuild, nowSeconds: number): string {
+  if (b.state === 'stuck') {
+    const span = durationText(b.activity_at ?? b.started, nowSeconds)
+    return span ? `No output for ${span.replace(/^about /, '')}, check the log before waiting longer` : ''
+  }
+  if (b.state === 'finished' || b.state === 'failed') {
+    const ago = b.finished === null ? '' : ageText(b.finished, nowSeconds)
+    if (!ago) return ''
+    const word = b.state === 'finished' ? 'finished' : 'failed'
+    const took = durationText(b.started, b.finished)
+    if (!took) return `${word[0].toUpperCase()}${word.slice(1)} ${ago}`
+    return `${b.state === 'finished' ? 'Took' : 'Ran'} ${took}, ${word} ${ago}`
+  }
+  return ''
+}
+
+/** The pull request as the row draws it: the words, the number and a link that is http or https only. Null when the row names no pull request. */
+export function prLine(pr: BuildPr | null | undefined): { text: string; number: number; href: string | null } | null {
+  if (!pr) return null
+  const state = pr.state === null ? '' : ` ${pr.state}`
+  // Checks are reported only for an open request, and only when the source sent a count: a missing count is no claim.
+  const red = pr.state === 'open' && pr.red !== null ? (pr.red === 0 ? ', none red' : `, ${pr.red} red`) : ''
+  return { text: `Pull request${state}${red}`, number: pr.number, href: safeLink(pr.url) }
 }
 
 /** The heading's summary, for example "1 stuck, 2 running". A zero is left out, so a calm board is an empty string. */

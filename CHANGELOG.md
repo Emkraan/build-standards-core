@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-11-20 (v2.23.0, ops-center: pull request and plain sentence on Active builds rows, the panel on Operations)
+
+The follow-up items on the consumer parity issue (issue 308, items 25 to 28). The issue body lists items 1 to 24 and a follow-up comment adds 25 to 28, which the earlier releases of this series did not account for. Each was checked against the code. Items 25 and 27 were already in core, item 28 was in core but guarded only on four pages, and item 26 had two real gaps that this release closes. The panel stays read only.
+
+- Added: an optional `pr` block on an Active builds row, item 26. `{number, url?, state?, red?}` from the provider, validated in `server/modules/active_builds.py`. The number must be a positive whole number or the block is dropped. A state other than open, merged or closed is left unset and never read as open. The failing check count is a whole number from zero to 999, and a source that sends none leaves it unset, so a row never says "none red" for a count nobody sent. The link follows the http or https rule of the row link. A row with no block carries `pr: null`, and an older source keeps working unchanged.
+- Added: the row reads "Pull request open, 1 red" with the number as a link. A merged or closed request reports no check count. The decisions are in `prLine` in `lib/activeBuilds.ts` so a test loads them without a browser.
+- Added: one plain sentence under a row from `rowNote`, built only from times the source sent. A stuck row says "No output for 25 minutes, check the log before waiting longer", measured from the last output (from the start when it never produced any), with no fixed threshold in the client because the server already decided the row is stuck. A finished row says "Took about 59 minutes, finished 2 min ago" and a failed one "Ran about 9 minutes, failed 1 min ago". A missing start drops the duration, a missing end drops the "ago", and a span that runs backwards is no span.
+- Added: the Active builds panel on the Operations overview, below the engine card and above the areas table, lazy loaded. With no provider there is no panel there either, and a failing source is drawn as an error and never as a calm board.
+- Added: `tests/scopeLines.test.mjs`, item 28. It reads every page file that draws a `HubHeader` and fails by name when one has no subtitle, or when a literal line is too short or holds a semicolon or an em dash. Until now only four pages were read by a browser test, so a page that lost its scope line went unnoticed.
+- Changed: the panel's rules moved from `pages/Action.css` to `components/ActiveBuilds.css`, imported by the component. The Action Center stylesheet loaded only with that page, so the panel would have drawn unstyled on Operations. A browser test asserts the row is a flex box on that page.
+- Changed: `opscenter/DESIGN.md` 12.68 describes the `pr` block and the row sentence, the parity table row for item 7 names item 26 and v2.23.0, and the new 12.70 records items 25 to 28 with where each lives.
+- Added: 9 server tests for the `pr` block in `active_builds_test.py` and 1 in `optional_test.py` that reads it through the real HTTP route, 6 unit tests for the sentence and the pull request line, 3 for the scope lines, and 2 browser tests with an accessibility scan in both themes. A mutation check on each guard (a boolean as a number, a zero number, an unknown state read as open, a missing count read as zero, an uncapped count, an unfiltered link, a fixed stuck threshold, a missing subtitle) is caught by a test.
+- Fixed: the browser test found two real accessibility defects in the first draft of the pull request link, a contrast failure in the dark theme and a link that was told apart from the text around it only by colour. The link is now its own element beside its words.
+- Not built here: a Stop action on a running build, which stays held under `standards/automation-safety.md`, and `POST /api/automation/approve`, which is a consumer contract about what approving a row means.
+- Known: first load is 148.9 of 150 KB, the same as main, because the panel and its stylesheet are in the lazy chunk. 1.1 KB is still left, so the next additions must stay lazy.
+
 ## 2026-11-20 (v2.22.1, overlay: create-github-app-token pinned to v3.4.0)
 
 Renovate's update of the GitHub App token action in the consumer overlay template.

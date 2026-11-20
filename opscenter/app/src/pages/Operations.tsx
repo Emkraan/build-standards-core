@@ -24,6 +24,7 @@ import { LIVE_AUTOMATION, OPERATIONS_BASE, operationsSections } from './operatio
 import './Infrastructure.css'
 
 const PlatformAreas = lazy(() => import('../components/PlatformAreas'))
+const ActiveBuilds = lazy(() => import('../components/ActiveBuilds'))
 
 function CiAndGithub() {
   return (
@@ -86,6 +87,9 @@ export default function Operations() {
     body = (
       <div className="infra-stack">
         <HermesEngineCard />
+        <Suspense fallback={null}>
+          <ActiveBuilds />
+        </Suspense>
         {rollup && rollup.length > 0 && (
           <Suspense fallback={null}>
             <PlatformAreas rows={rollup} />

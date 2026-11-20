@@ -1,9 +1,11 @@
-// The active builds panel on the Action Center: agent work that is running, stuck, failed or finished, from the consumer's own feed.
+// The active builds panel: agent work that is running, stuck, failed or finished, from the consumer's own feed. It shows on the Action Center
+// and on the Operations overview. A row can carry the pull request that holds the work and one plain sentence on what happened or what to do.
 // It reads and links only. A Stop action is held back until it has its own design under standards/automation-safety.md (issue 308,
 // items 7 and 26). The decisions live in lib/activeBuilds.ts so a test can load them without the browser.
 
 import { useActiveBuilds } from '../lib/data'
-import { orderedBuilds, panelMode, rowAge, safeLink, stateWord, summaryLine } from '../lib/activeBuilds'
+import { orderedBuilds, panelMode, prLine, rowAge, rowNote, safeLink, stateWord, summaryLine } from '../lib/activeBuilds'
+import './ActiveBuilds.css'
 
 export default function ActiveBuilds() {
   const { data } = useActiveBuilds()
@@ -33,11 +35,32 @@ export default function ActiveBuilds() {
             ) : (
               <span>{b.title}</span>
             )
+            const pr = prLine(b.pr)
+            const note = rowNote(b, now)
             return (
               <li key={b.id} data-state={b.state}>
                 <span className="ac-builds-state">{stateWord(b.state)}</span>
                 <span className="ac-builds-title">{title}</span>
                 <span className="ac-builds-age muted">{[b.activity, rowAge(b, now)].filter(Boolean).join(', ')}</span>
+                {pr && (
+                  <span className="ac-builds-pr">
+                    {pr.href ? (
+                      <a
+                        className="ac-builds-pr-link"
+                        href={pr.href}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        aria-label={`Pull request ${pr.number}, opens the pull request`}
+                      >
+                        #{pr.number}
+                      </a>
+                    ) : (
+                      <span className="ac-builds-pr-num">#{pr.number}</span>
+                    )}
+                    <span className="muted">{pr.text}</span>
+                  </span>
+                )}
+                {note && <p className="ac-builds-detail muted">{note}</p>}
               </li>
             )
           })}

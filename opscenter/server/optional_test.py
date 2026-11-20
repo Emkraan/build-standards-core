@@ -467,6 +467,15 @@ class Builds(BuildsBase):
         self.assertIsNone(body["error"])
         self.assertEqual(sorted(b["id"] for b in body["builds"]), ["a", "b"])
 
+    def test_a_row_carries_its_pull_request_and_an_older_row_carries_none(self):
+        rows = {b["id"]: b for b in self.js("GET", "/api/active-builds", None, READER)[2]["builds"]}
+        self.assertEqual(
+            rows["a"]["pr"],
+            {"number": 42, "url": "https://example.test/pull/42", "state": "open", "red": 1},
+        )
+        self.assertIn("pr", rows["b"], "the key is always present so a client never has to guess")
+        self.assertIsNone(rows["b"]["pr"], "a feed that sends no pull request is not given one")
+
     def test_every_request_asks_the_source_again_because_a_dead_build_must_not_stay_running(self):
         for _ in range(3):
             self.assertEqual(
@@ -496,7 +505,7 @@ BUILDS_PROVIDER = textwrap.dedent(
             counter = Path(__file__).with_name("calls.txt")
             counter.write_text(counter.read_text() + "x" if counter.exists() else "x")
             return [
-                {"id": "a", "title": "Fix the importer", "state": "running", "started": now - 600, "activity": "running tests", "activity_at": now - 30},
+                {"id": "a", "title": "Fix the importer", "state": "running", "started": now - 600, "activity": "running tests", "activity_at": now - 30, "pr": {"number": 42, "url": "https://example.test/pull/42", "state": "open", "red": 1}},
                 {"id": "b", "title": "Docs pass", "state": "stuck", "started": now - 4000, "activity_at": now - 3000},
             ]
     """

@@ -122,6 +122,72 @@ class Summarize(unittest.TestCase):
         self.assertEqual(ab.summarize({"id": "x"}, NOW)["counts"]["total"], 0)
 
 
+class PullRequest(unittest.TestCase):
+    """The optional pr block: a row can say which pull request carries it and how its checks stand."""
+
+    def pr(self, **over):
+        return {"number": 42, "url": "https://x.test/pull/42", "state": "open", "red": 1, **over}
+
+    def row(self, **over):
+        return ab.summarize([build(1, pr=self.pr(**over))], NOW)["builds"][0]
+
+    def test_a_row_with_no_pr_carries_none_never_an_empty_block(self):
+        self.assertIsNone(ab.summarize([build(1)], NOW)["builds"][0]["pr"])
+
+    def test_a_good_block_is_kept_whole(self):
+        self.assertEqual(
+            self.row()["pr"],
+            {"number": 42, "url": "https://x.test/pull/42", "state": "open", "red": 1},
+        )
+
+    def test_a_block_that_is_not_an_object_is_no_pr(self):
+        for bad in ("42", 42, [42], True, None):
+            row = ab.summarize([build(1, pr=bad)], NOW)["builds"][0]
+            self.assertIsNone(row["pr"], repr(bad))
+
+    def test_a_number_must_be_a_positive_whole_number(self):
+        for bad in (0, -3, 1.5, "7", True, None, float("nan")):
+            self.assertIsNone(
+                ab.summarize([build(1, pr=self.pr(number=bad))], NOW)["builds"][0]["pr"], repr(bad)
+            )
+
+    def test_only_http_and_https_links_survive_on_the_pr(self):
+        self.assertIsNone(self.row(url="javascript:alert(1)")["pr"]["url"])
+        self.assertIsNone(self.row(url="file:///etc/passwd")["pr"]["url"])
+        self.assertEqual(self.row(url="http://x.test/p")["pr"]["url"], "http://x.test/p")
+
+    def test_state_is_open_merged_or_closed_and_anything_else_is_unknown_not_open(self):
+        for given, want in (
+            ("open", "open"),
+            ("MERGED", "merged"),
+            ("Closed", "closed"),
+            ("draft", None),
+            ("", None),
+            (7, None),
+        ):
+            self.assertEqual(self.row(state=given)["pr"]["state"], want, repr(given))
+
+    def test_red_is_a_count_that_is_never_negative_and_never_invented(self):
+        self.assertEqual(self.row(red=0)["pr"]["red"], 0)
+        self.assertEqual(self.row(red=3)["pr"]["red"], 3)
+        for bad in (-1, 1.5, "2", True, None):
+            self.assertIsNone(self.row(red=bad)["pr"]["red"], repr(bad))
+        pr = ab.summarize([build(1, pr={"number": 5})], NOW)["builds"][0]["pr"]
+        self.assertIsNone(
+            pr["red"], "a consumer that sends no check count is not told it has none failing"
+        )
+
+    def test_a_huge_red_count_is_capped_so_a_bad_source_cannot_fill_the_row(self):
+        self.assertEqual(self.row(red=10**9)["pr"]["red"], ab.MAX_RED)
+
+    def test_a_pr_does_not_change_the_counts_or_the_order(self):
+        rows = [build(1, state="stuck", pr=self.pr()), build(2)]
+        out = ab.summarize(rows, NOW)
+        self.assertEqual(
+            out["counts"], {"running": 1, "stuck": 1, "failed": 0, "finished": 0, "total": 2}
+        )
+
+
 class Read(unittest.TestCase):
     def test_a_good_source_gives_rows_and_no_error(self):
         out = ab.read(Source([build(1)]), NOW)

@@ -4,7 +4,7 @@ Purpose: The active builds feed (a provider slot, read only): agent work that is
          what is being built and what needs a look. The consumer owns where the sessions come from (an agent runner's own database, a queue, a
          service) and how it knows one is alive. The core owns the row shape, the state vocabulary, the limits and the route. Nothing here starts
          or stops anything: a Stop action is a separate decision with its own confirmation (issue 308, items 7 and 26).
-Date:    2026-11-19
+Date:    2026-11-20
 Notes:   Opt in: with no provider (`OPSCENTER_BUILDS_PROVIDER` unset) there is no route and the panel is hidden. Unlike the docs drift feed this
          is never cached: a build shown as running after it died is the wrong answer, so every GET asks the provider, under a short limit.
          A source that fails or is slow is reported as an error with no rows. It is never shown as an empty list, because "nothing is running"
@@ -13,9 +13,12 @@ Notes:   Opt in: with no provider (`OPSCENTER_BUILDS_PROVIDER` unset) there is n
 Provider (`path/to/file.py:ClassName`):
          active_builds(now) -> [<build>]                            the sessions as the consumer sees them, any order
          authorize(headers, action, key) -> actor | falsy           action active-builds.read; the null default refuses everything
-Build:   {id, title, state, started, finished?, activity?, activity_at?, outcome?, url?, kind?}
+Build:   {id, title, state, started, finished?, activity?, activity_at?, outcome?, url?, kind?, pr?}
          state: running | stuck | failed | finished     An unknown state is kept and drawn neutral. `started` and the other times are epoch
          seconds or an ISO string with an offset. `url` is shown only when it is an http or https link.
+         pr: {number, url?, state?, red?}   the pull request that carries the work. number is a positive whole number, state is open,
+         merged or closed (anything else is dropped, never called open), red is the count of failing checks (a missing count stays
+         missing, it is never turned into zero), url follows the same http or https rule. A malformed block is no block.
 Summary: {fetched_utc, counts: {running, stuck, failed, finished, total}, builds (at most 50, newest first), truncated, error}
 Route:   GET /api/active-builds
 API:     summarize(builds, now=None)  read(provider, now=None)  register(registry, provider)
@@ -30,6 +33,8 @@ import optional_provider as op
 
 MAX_BUILDS = 50
 MAX_TEXT = 200
+MAX_RED = 999
+PR_STATES = ("open", "merged", "closed")
 TIMEOUT_SECONDS = 8
 STATES = ("running", "stuck", "failed", "finished")
 
@@ -61,6 +66,39 @@ def _safe_url(value):
     return text if text.startswith(("https://", "http://")) else None
 
 
+def _whole(value):
+    """A whole number from a real number type. A boolean, a string, a float with a fraction, NaN and infinity are not numbers here."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if (
+        isinstance(value, float)
+        and value == value
+        and value not in (float("inf"), float("-inf"))
+        and value == int(value)
+    ):
+        return int(value)
+    return None
+
+
+def _pr(raw):
+    """The pull request block, or None. Each part is checked alone, so one bad part never takes the others down with it."""
+    if not isinstance(raw, dict):
+        return None
+    number = _whole(raw.get("number"))
+    if number is None or number <= 0:
+        return None
+    state = _clip(raw.get("state"), 20).lower() if isinstance(raw.get("state"), str) else ""
+    red = _whole(raw.get("red"))
+    return {
+        "number": number,
+        "url": _safe_url(raw.get("url")),
+        "state": state if state in PR_STATES else None,
+        "red": min(red, MAX_RED) if red is not None and red >= 0 else None,
+    }
+
+
 def _build(raw):
     if not isinstance(raw, dict) or raw.get("id") in (None, ""):
         return None
@@ -76,6 +114,7 @@ def _build(raw):
         "outcome": _clip(raw.get("outcome")) or None,
         "url": _safe_url(raw.get("url")),
         "kind": _clip(raw.get("kind"), 40) or None,
+        "pr": _pr(raw.get("pr")),
     }
 
 

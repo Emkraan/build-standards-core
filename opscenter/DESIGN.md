@@ -1837,7 +1837,7 @@ record of where each is in core, checked against the code in v2.22.0.
 | 4 header strip | The feed in `shell/HeaderBits.tsx` (live data line, synced chip, improvements waiting, and a warning when the Enterprise fallback is billing) and `HermesRestartBanner.tsx`, which links to the engine card on the Operations overview (v2.21.0) |
 | 5 Action Center tabs | Now, Live (v2.21.0), Alerts, Completed and Routing |
 | 6, 8 counters and waiting on me | The Now tab (v2.20.0). The waiting panel only links to the Reviews card, so there is no second path around the typed confirmation |
-| 7 active builds | The Now tab panel and the Live tab, over the provider slot in 12.68 (v2.20.0, v2.21.0), read only |
+| 7, 26 active builds | The Now tab panel, the Live tab and the Operations overview, over the provider slot in 12.68 (v2.20.0, v2.21.0, v2.23.0), read only. A row can name its pull request with the failing checks and carries a plain sentence on what happened or what to do (12.68) |
 | 9, 10, 11 views, columns, Routing | The Action Center and its Routing tab |
 | 12, 13 Reviews | One tab per repo with a working state, the Needs me, In progress, My PRs and Recently shipped sections, the Stuck state, and the blocking, high, medium and low rollup |
 | 14, 17 Debt filters, Knowledge endpoints | v2.19.0 |
@@ -1853,11 +1853,15 @@ running build is a side effect with no existing route and needs its own design u
 
 ### 12.68 The active builds feed (provider slot, read only)
 
-`server/modules/active_builds.py` reports agent work that is running, stuck, failed or finished, for the Active builds panel on the Now tab. It is a provider slot like 12.65: the consumer supplies where sessions come from and how it knows one is alive, and the core owns the row shape, the four states, the limits and the route. The contract (provider methods, the build shape, the summary shape) is in the module header and is the document the consumer builds against. The provider is the opt in (`OPSCENTER_BUILDS_PROVIDER`), with none no route exists and the panel is hidden.
+`server/modules/active_builds.py` reports agent work that is running, stuck, failed or finished, for the Active builds panel on the Now tab and on the Operations overview. It is a provider slot like 12.65: the consumer supplies where sessions come from and how it knows one is alive, and the core owns the row shape, the four states, the limits and the route. The contract (provider methods, the build shape, the summary shape) is in the module header and is the document the consumer builds against. The provider is the opt in (`OPSCENTER_BUILDS_PROVIDER`), with none no route exists and the panel is hidden.
 
 Three rules differ from 12.65 on purpose. The route is read only and closed until the provider authorises `active-builds.read`, and the module has no way to start or stop anything. Nothing is cached, because a build shown as running after it died is worse than showing nothing, so every request asks the provider again under an 8 second limit. A source that fails, is slow or returns something that is not a list is reported as an error and drawn as "I could not read the build source", never as an empty board, since nothing running and unable to tell are different answers. This is the agent work feed. The Builds tab of the Operations hub is the release pipeline, a different thing, and the counters row tile "Builds waiting" counts that pipeline.
 
 A Stop action is held back. It is a side effect with no existing route, so it needs its own design under `standards/automation-safety.md` (live re-verification and a typed confirmation) before the panel gets a button.
+
+A build row may carry an optional `pr` block (issue 308, item 26): `{number, url?, state?, red?}`. The number must be a positive whole number or the whole block is dropped. The state is open, merged or closed and anything else is left unset, never read as open. The failing check count `red` is a whole number from zero up to 999, and a source that sends no count leaves it unset, so the row never says "none red" for a count nobody sent. The link follows the same http or https rule as the row link. A row with no block carries `pr: null`, so a client does not have to guess, and an older source that never sends one keeps working. The row reads "Pull request open, 1 red" for an open request, and a merged or closed request reports no check count because there is nothing left to fix.
+
+Each row also gets one plain sentence from `rowNote` in `lib/activeBuilds.ts`, from times the source really sent. A stuck row says "No output for 25 minutes, check the log before waiting longer", where the span is measured from the last output (or from the start when it never produced any) and the client holds no fixed threshold of its own, because the server already decided the row is stuck. A finished row says "Took about 59 minutes, finished 2 min ago" and a failed one "Ran about 9 minutes, failed 1 min ago". A missing start leaves out the duration, a missing end leaves out the "ago", and a span that runs backwards is no span. A running row gets no sentence. The panel has its own stylesheet, imported by the component, so it is styled on every page that mounts it.
 
 ### 12.69 Pages a consumer adds, and the Platform areas rollup (issue 308, items 22 and 24)
 
@@ -1902,6 +1906,19 @@ this field sends no `areas` at all, which the client treats as no rollup and not
 
 The Operations overview shows the rollup above the area cards, as a read only table with one row per area (status, owner,
 problem lines) and a line that counts areas needing me. It is on the overview only, not on a tab, and it is a lazy chunk.
+
+### 12.70 The follow-up items 25 to 28 on issue 308
+
+The issue body lists items 1 to 24. A follow-up comment on it adds 25 to 28, and the 12.67 table above stops at 24, so this section records them. Each was checked against the code on main and not from the issue text.
+
+| Item | State | Where |
+|---|---|---|
+| 25 work tracking tabs | In core | Sprint has the mine or team scope, Hide done and the Synced stamp (`pages/Sprint.tsx`). Backlog has the issue type filter and Move To Current Sprint (`pages/Backlog.tsx`). Changes lists change requests where the owner is the approver (`pages/JiraHub.tsx`). Needs me carries its counters and empty state |
+| 26 derived build state | Closed in v2.23.0 | The stuck and finished sentences, the pull request on a row and the panel on the Operations overview (12.68). Before this release a row had no field for a pull request, so it could not say "Pull request open, 1 red" |
+| 27 Knowledge | In core | Proposals has the publish mode switch (`components/PublishMode.tsx`). Doc coverage is the registry of what runs, joined with the daily audit, with a tier, a responsible and accountable owner per row (`owner_r` and `owner_a`), gap counts by priority and a filter. Docs drift is report only. History has Page history and Revert to previous version |
+| 28 scope sub-lines | Closed in v2.23.0 | Every core page draws a `HubHeader` with a subtitle, which is its scope line, and the Action Center tab body sits under the Action hub header. v2.21.0 added the line to the four pages that had none. `tests/scopeLines.test.mjs` now reads every page file that draws a header and fails by name when one has no subtitle or a literal line is too short or holds a semicolon or an em dash |
+
+The Stop action and `POST /api/automation/approve` stay out of the core for the reasons in 12.68 and 12.67.
 
 ### 12.66 The sprint trend and the closed sprint view
 
