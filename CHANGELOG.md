@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-20 (v2.22.1, overlay: create-github-app-token pinned to v3.4.0)
+
+Renovate's update of the GitHub App token action in the consumer overlay template.
+
+- Changed: `actions/create-github-app-token` v3.4.0 in `templates/overlay/.github/workflows/core-update.yml`, so a consumer gets the same pin on its next sync.
+
 ## 2026-11-19 (v2.22.0, ops-center: pages a consumer adds as data and the Platform areas rollup)
 
 The last two items of the consumer parity issue (issue 308, items 22 and 24). A consumer can now add a page and a rail item without a core change, and the Operations overview rolls the problem list up by area with an owner. Both are read only and both are lazy chunks, so the first load stays inside its budget.
