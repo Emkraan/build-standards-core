@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-20 (v2.21.1, overlay: create-github-app-token pinned to v3.4.0)
+
+Renovate's update of the GitHub App token action in the consumer overlay template.
+
+- Changed: `actions/create-github-app-token` v3.4.0 in `templates/overlay/.github/workflows/core-update.yml`, so a consumer gets the same pin on its next sync.
+
 ## 2026-11-19 (v2.21.0, ops-center: Live tab, scope lines, restart options link, parity audit)
 
 This is the second to last change for issue 308, which lists 24 items. I read each remaining item against the code before building anything, and most of what I had carried as open already existed, so this release adds only what was missing and records where each item lives. Two items are still open and are named at the end.
