@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-11-19 (v2.22.0, ops-center: pages a consumer adds as data and the Platform areas rollup)
+
+The last two items of the consumer parity issue (issue 308, items 22 and 24). A consumer can now add a page and a rail item without a core change, and the Operations overview rolls the problem list up by area with an owner. Both are read only and both are lazy chunks, so the first load stays inside its budget.
+
+- Added: extension pages, item 22. A consumer describes pages as data through `OPSCENTER_EXTENSIONS_PROVIDER` (`path/to/file.py:ClassName`, methods `extensions` and `extension_rows`, both optional). `server/modules/extensions.py` serves `GET /api/extensions` (the manifest, at most 12 pages) and `GET /api/extensions/<id>` (one page, at most 200 rows). With no provider there are no routes and the rail shows nothing extra.
+- Added: a page is a `list` (rows drawn as text) or a `link` (one link to a tool the consumer runs). An id cannot be a path the core serves, and a test reads the app route table to keep that list from drifting. A group the core does not have is forced to Platform. A link must be http or https. Text carries no markup and is drawn as text, so a title with markup runs nothing.
+- Added: the rail lists a consumer page after the core items of its group and the command palette finds it. A page the manifest does not name goes to the home page. A failing source adds no page and an open page says the source could not be read, which is not the same as nothing to show.
+- Added: the Platform areas rollup, item 24. The problem list carries `areas`, one row per section with a status (the worst tone in it), the counts by tone, the problem lines and an owner and label from an optional `areas` block of the problem map. The core never invents an owner and says "No owner named" when none is set. The rows add up to the list's own line count, so they cannot disagree with the rail badge.
+- Added: the rollup table on the Operations overview, above the area cards and on the overview only. A server that sends no `areas` shows no rollup, and a problem list that cannot be built still carries an empty `areas` so the two are told apart.
+- Added: 36 server tests for the extension module, 7 in `optional_test.py` for the opt in, the read only routes and a failing source, 10 for the areas rows and 1 for the guarded fallback, 11 and 7 unit tests for the client decisions, and 8 browser tests with an accessibility scan in both themes. Each guard was proven by a mutant that its test catches.
+- Not built here: a control on an extension page or on the rollup. Both read and show only, and a test fails if a button or a request that changes anything is added.
+- Known: first load is 148.9 of 150 KB, up 1.7 KB from 147.2 on main. Only 1.1 KB is left, so the next additions must stay lazy.
+
 ## 2026-11-19 (v2.21.0, ops-center: Live tab, scope lines, restart options link, parity audit)
 
 This is the second to last change for issue 308, which lists 24 items. I read each remaining item against the code before building anything, and most of what I had carried as open already existed, so this release adds only what was missing and records where each item lives. Two items are still open and are named at the end.

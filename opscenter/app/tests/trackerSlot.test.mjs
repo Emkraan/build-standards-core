@@ -48,13 +48,13 @@ test('the backlog and changes tabs call the paths the server registers', () => {
 test('the rail item, the shortcuts, the palette and the Jira routes follow the slot', () => {
   const nav = read('../src/shell/nav.tsx')
   assert.match(nav, /slot: 'tracker'/)
-  assert.match(nav, /export function groupsFor\(people: boolean, tracker = true\)/)
+  assert.match(nav, /export function groupsFor\(people: boolean, tracker = true, extra: ExtensionPage\[\] = \[\]\)/)
   const app = read('../src/App.tsx')
   assert.match(app, /TrackerGate/)
-  assert.match(app, /groupsFor\(people, tracker\)/)
+  assert.match(app, /groupsFor\(people, tracker, extraPages\)/)
   for (const route of ['/jira"', '/jira/:tab"', '/jira/:tab/:sprintId"']) {
     assert.match(app, new RegExp(`path="${route.replace('/', '\\/')}[^\\n]*TrackerGate`), route)
   }
   const palette = read('../src/shell/SearchPalette.tsx')
-  assert.match(palette, /groupsFor\(peopleOn, trackerOn\)/)
+  assert.match(palette, /groupsFor\(peopleOn, trackerOn, pagesAll\(ext\)\)/)
 })

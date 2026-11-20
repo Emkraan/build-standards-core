@@ -2,6 +2,8 @@
 // bundled under public/data by bundle_data.py. This hook fetches once and caches.
 import { useEffect, useRef, useState } from 'react'
 import type { ActiveBuildsFeed, ActiveBuildsState } from './activeBuilds'
+import type { ExtensionManifest, ExtensionRows, ExtensionsState } from './extensions'
+import type { PlatformArea } from './platformAreas'
 import { apiTopic, dataTopic, declare, onStatus, stretchedMs, subscribe } from './live'
 import { PEOPLE_OFF_BOARD } from './peopleSlot'
 import { TRACKER_OFF } from './trackerSlot'
@@ -1021,6 +1023,26 @@ export const useActiveBuilds = createLiveStore<ActiveBuildsState>(async () => {
   if (!res.ok) throw new Error(`api/active-builds -> ${res.status}`)
   return { configured: true, ...((await res.json()) as ActiveBuildsFeed) }
 }, 30_000)
+// GET /api/extensions exists only when the consumer configured an extensions provider (server/modules/extensions.py), so a 404 means there
+// is none and the rail adds nothing. It is read only and every answer is fresh, so a page the consumer removed leaves the rail at once.
+export const useExtensions = createLiveStore<ExtensionsState>(async () => {
+  const res = await fetch(`${BASE}api/extensions`, { cache: 'no-cache' })
+  if (res.status === 404) return { configured: false }
+  if (!res.ok) throw new Error(`api/extensions -> ${res.status}`)
+  return { configured: true, ...((await res.json()) as ExtensionManifest) }
+}, 60_000)
+// One page's rows. A page asks for its own id, so each id keeps its own store and a page does not show another page's rows.
+const extensionRowStores: Record<string, () => LiveState<ExtensionRows>> = {}
+export function useExtensionRows(id: string): LiveState<ExtensionRows> {
+  extensionRowStores[id] ??= createLiveStore<ExtensionRows>(async () => {
+    const res = await fetch(`${BASE}api/extensions/${encodeURIComponent(id)}`, { cache: 'no-cache' })
+    if (res.status === 404) return { fetched_utc: '', page: null, rows: [], truncated: 0, error: 'no such page' }
+    // A 502 carries the same body with the reason, so it is read and shown, not thrown.
+    if (!res.ok && res.status !== 502) throw new Error(`api/extensions/${id} -> ${res.status}`)
+    return (await res.json()) as ExtensionRows
+  }, 60_000)
+  return extensionRowStores[id]()
+}
 /** Check again (refresh) or start a run (run). A refusal carries its reason. */
 export async function postDocsDrift(act: 'refresh' | 'run'): Promise<{ started?: boolean }> {
   const res = await fetch(`${BASE}api/docs-drift/${act}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
@@ -2874,6 +2896,8 @@ export interface Problems {
     by_section: Record<string, number>
     by_item: Record<string, number>
   }
+  /** One row per section with a status and an owner (issue 308, item 24). A server older than the field sends none. */
+  areas?: PlatformArea[]
 }
 
 // ---- Core consumption (standard section 19): consumption.json rendered, approvals by gh ----

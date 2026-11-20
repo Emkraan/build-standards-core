@@ -4,12 +4,14 @@
 // `problems`). The client applies no threshold of its own. Old /builds, /infra/* and /core links redirect here (App.tsx).
 import { EmptyState, HubHeader, HubOverview, hubPath, resolveHubRoute, Skeleton } from '@kit'
 import type { AreaCardData, AreaTone } from '@kit'
+import { lazy, Suspense } from 'react'
 import type { ComponentType } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import HermesEngineCard from '../components/HermesEngineCard'
 import LiveAutomation from '../components/LiveAutomation'
 import { useBadges, useBuilds, useDarkLaunches } from '../lib/data'
 import { splitLaunches } from '../lib/darkLaunches'
+import { areaRows } from '../lib/platformAreas'
 import type { ProblemItem, ProblemTone } from '../lib/data'
 import CoreConsumption from './CoreConsumption'
 import Ci from './infra/Ci'
@@ -20,6 +22,8 @@ import Spend from './infra/Spend'
 import BuildTab from './operations/Builds'
 import { LIVE_AUTOMATION, OPERATIONS_BASE, operationsSections } from './operations/sections'
 import './Infrastructure.css'
+
+const PlatformAreas = lazy(() => import('../components/PlatformAreas'))
 
 function CiAndGithub() {
   return (
@@ -76,11 +80,17 @@ export default function Operations() {
       detail: acting.map((l) => l.title),
     })
   }
+  const rollup = areaRows(problems)
   let body
   if (route.kind === 'overview') {
     body = (
       <div className="infra-stack">
         <HermesEngineCard />
+        {rollup && rollup.length > 0 && (
+          <Suspense fallback={null}>
+            <PlatformAreas rows={rollup} />
+          </Suspense>
+        )}
         {problems && areas.length === 0 ? (
           <EmptyState compact pose="idle" title="Nothing is configured to run here yet." />
         ) : (

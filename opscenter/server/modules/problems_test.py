@@ -193,6 +193,116 @@ class Problems(unittest.TestCase):
         self.assertEqual((by["ci"]["tone"], by["ci"]["details"]), ("needs_me", ["down"]))
 
 
+class Areas(unittest.TestCase):
+    """The Platform areas contract (issue 308, item 24): one row per section of the problem list with a single status, the counts the
+    list already holds, and an owner and a label the consumer names in the problem map. It is derived from the list, so it cannot disagree."""
+
+    def setUp(self):
+        self.mods = {}
+        self._mod = pb._mod
+        pb._mod = lambda name: self.mods.get(name)
+
+    def tearDown(self):
+        pb._mod = self._mod
+        os.environ.pop("OPSCENTER_PROBLEM_MAP", None)
+
+    def put_map(self, data):
+        p = Path(TMP.name) / "areas-map.json"
+        p.write_text(json.dumps(data))
+        os.environ["OPSCENTER_PROBLEM_MAP"] = str(p)
+
+    def infra(self, **areas):
+        self.mods["infra"] = types.SimpleNamespace(
+            badge_problems=lambda: {"areas": areas, "looks": {}}
+        )
+
+    def by_section(self):
+        return {a["section"]: a for a in pb.collect()["areas"]}
+
+    def test_there_is_one_row_per_section_even_with_no_map(self):
+        self.infra(jobs=["a job failed"])
+        rows = self.by_section()
+        self.assertIn("automation", rows)
+        row = rows["automation"]
+        self.assertEqual(
+            set(row),
+            {"section", "label", "owner", "status", "needs_me", "worth_a_look", "healthy", "lines"},
+        )
+        self.assertIsNone(row["owner"], "no owner is invented when the consumer names none")
+
+    def test_the_status_is_the_worst_tone_in_the_section(self):
+        self.infra(jobs=["a job failed"])
+        self.assertEqual(self.by_section()["automation"]["status"], "needs_me")
+
+    def test_a_section_of_only_healthy_items_is_healthy_and_has_no_lines(self):
+        self.infra()
+        row = self.by_section()["automation"]
+        self.assertEqual((row["status"], row["lines"], row["needs_me"]), ("healthy", 0, 0))
+
+    def test_the_counts_are_the_ones_of_the_list_so_they_cannot_disagree(self):
+        self.infra(jobs=["one", "two"])
+        out = pb.collect()
+        rows = {a["section"]: a for a in out["areas"]}
+        self.assertEqual(sum(a["lines"] for a in out["areas"]), out["counts"]["lines"])
+        self.assertEqual(rows["automation"]["lines"], out["counts"]["by_section"]["automation"])
+
+    def test_the_problem_map_names_the_label_and_owner_of_an_area(self):
+        self.put_map(
+            {"areas": {"automation": {"label": "Automation and jobs", "owner": "Platform team"}}}
+        )
+        self.infra(jobs=["x"])
+        row = self.by_section()["automation"]
+        self.assertEqual((row["label"], row["owner"]), ("Automation and jobs", "Platform team"))
+
+    def test_a_map_entry_for_a_section_with_no_items_adds_no_row(self):
+        self.put_map({"areas": {"ghost": {"label": "Ghost", "owner": "Nobody"}}})
+        self.infra()
+        self.assertNotIn("ghost", self.by_section())
+
+    def test_a_malformed_map_is_ignored_and_never_raises(self):
+        for bad in (
+            {"areas": "x"},
+            {"areas": ["a"]},
+            {"areas": {"automation": "x"}},
+            {"areas": {"automation": {"owner": 7, "label": ["l"]}}},
+        ):
+            self.put_map(bad)
+            self.infra(jobs=["x"])
+            row = self.by_section()["automation"]
+            self.assertIsNone(row["owner"], repr(bad))
+
+    def test_text_from_the_map_is_clipped_and_collapsed(self):
+        self.put_map(
+            {"areas": {"automation": {"owner": "a\n  b " + "x" * 200, "label": "L" * 200}}}
+        )
+        self.infra(jobs=["x"])
+        row = self.by_section()["automation"]
+        self.assertTrue(row["owner"].startswith("a b "))
+        self.assertLessEqual(len(row["owner"]), 60)
+        self.assertLessEqual(len(row["label"]), 60)
+
+    def test_the_rows_are_worst_first_then_by_section_whatever_order_the_items_arrive_in(self):
+        # _areas is a function in its own right, so it is given items in the WORST order for it: healthy first, the one that needs me last.
+        def it(section, tone, count):
+            return {"section": section, "tone": tone, "count": count}
+
+        got = pb._areas(
+            [
+                it("zeta", "healthy", 0),
+                it("beta", "worth_a_look", 1),
+                it("alpha", "healthy", 0),
+                it("omega", "needs_me", 2),
+            ]
+        )
+        self.assertEqual([a["section"] for a in got], ["omega", "beta", "alpha", "zeta"])
+        self.assertEqual(
+            [a["status"] for a in got], ["needs_me", "worth_a_look", "healthy", "healthy"]
+        )
+
+    def test_no_sources_is_an_empty_list_of_areas(self):
+        self.assertEqual(pb.collect()["areas"], [])
+
+
 class Provider(unittest.TestCase):
     """OPSCENTER_PROBLEMS_PROVIDER: live headlines, running on any item and a consumer's own problem sources."""
 
