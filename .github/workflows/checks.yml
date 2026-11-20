@@ -11,10 +11,16 @@ permissions:
   contents: read
   issues: read
   pull-requests: read
+# A new push to a pull request cancels its superseded run; push, merge queue and dispatched runs
+# are never cancelled, and required checks report from the newest run. A push to main is keyed on its
+# sha too, so a newer merge never replaces a pending secret-scan-main run and every landed commit is scanned.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}${{ github.event_name == 'push' && format('-{0}', github.sha) || '' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   secret-scan-main:
     if: github.event_name == 'push'
-    runs-on: ${{ fromJSON(vars.CORE_RUNNER || '"ubuntu-24.04"') }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -27,7 +33,7 @@ jobs:
 
   ci:
     if: github.event_name != 'push'
-    runs-on: ${{ fromJSON(vars.CORE_RUNNER || '"ubuntu-24.04"') }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -16,11 +16,11 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: visual-${{ github.ref }}-${{ inputs.update-baselines || false }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ inputs.update-baselines || false }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   changes:
-    runs-on: ${{ fromJSON(vars.CORE_RUNNER || '"ubuntu-latest"') }}
+    runs-on: ubuntu-latest
     outputs:
       ui: ${{ steps.diff.outputs.ui }}
     steps:
