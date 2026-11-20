@@ -207,9 +207,22 @@ const tackleSessions = () => ({
 })
 // GET /api/hermes-restart when plugins changed after the engine started: the banner shows its choices.
 const RESTART_STALE = { alert: 'stale', safe: true, busy: [], quiet_s: 600, quiet_needed_s: 300, pending: null, running: null, last: null }
+const extPages = () => [
+  { id: 'reports', title: 'Reports', group: 'Operate', kind: 'list', url: null, lede: 'Reports waiting for a look' },
+  { id: 'docs', title: 'Team docs', group: 'Knowledge', kind: 'link', url: 'https://docs.example.test/home', lede: null },
+]
+const extManifest = (pages = extPages(), error = null) => ({ fetched_utc: '2026-11-19T15:00:00Z', pages, truncated: 0, error })
+const extRows = (page, rows, error = null) => ({ fetched_utc: '2026-11-19T15:00:00Z', page, rows, truncated: 0, error })
+const EXT_ROWS = [
+  { id: 'r1', title: 'Cache the group lookups', detail: 'Cuts the cold start', state: 'Open', url: 'https://tool.example.test/r1', at: '2026-11-18' },
+  { id: 'r2', title: '<img src=x onerror=window.__pwned=1>', detail: null, state: null, url: null, at: null },
+  { id: 'r3', title: 'A row with an unsafe address', detail: null, state: 'Open', url: null, at: null },
+]
 const fixtures = () => ({
   restart: null,
   tackle: tackleSessions(),
+  extensions: null,
+  extRows: null,
   agentBuilds: agentBuilds(),
   platform: PLATFORM,
   team: TEAM,
@@ -246,7 +259,14 @@ function fakeBackend(fx) {
       })
       return true
     }
+    const ext = path.match(/^\/api\/extensions\/([a-z0-9-]+)$/)
+    if (ext && fx.extRows) {
+      const out = typeof fx.extRows === 'function' ? fx.extRows(ext[1]) : fx.extRows[ext[1]]
+      if (!out) return json(res, 404, extRows(null, [], 'no such page')), true
+      return json(res, out.error ? 502 : 200, out), true
+    }
     const table = {
+      '/api/extensions': fx.extensions,
       '/api/dark-launches': fx.launches,
       '/api/badges': fx.badges,
       '/api/active-builds': fx.agentBuilds,
@@ -672,6 +692,112 @@ test('the Live tab lists what is acting, stuck first, counts it on the tab, and 
   })
 })
 
+// ---- issue 308, item 22: pages a consumer adds through the extension manifest ----
+// Read the text in the browser and collapse the whitespace here in Node, so no regex backslash travels inside an evaluate() template string.
+const flatEval = async (s, expr) => String(await s.evaluate(expr)).replace(/\s+/g, ' ').trim()
+
+test('a consumer page appears in its rail group after the core items, opens, and draws its rows as text', { skip, timeout: 120000 }, async () => {
+  const fx = fixtures()
+  fx.extensions = extManifest()
+  fx.extRows = { reports: extRows(extPages()[0], EXT_ROWS), docs: extRows(extPages()[1], []) }
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/extensions/reports', 'light', `!!document.querySelector('.ext-rows')`, 'the extension page')
+    const rail = await s.evaluate(`[...document.querySelectorAll('a[href="#/extensions/reports"], a[href="#/extensions/docs"]')].map((a) => a.textContent.trim())`)
+    assert.deepEqual(rail, ['Reports', 'Team docs'], 'both pages are in the rail')
+    const groups = await s.evaluate(`[...document.querySelectorAll('a[href="#/extensions/reports"]')].map((a) => a.closest('nav, section, div')?.textContent.includes('Action Center'))`)
+    assert.ok(groups.some(Boolean), 'the Reports page sits in the Operate group with the core items')
+    const rows = await s.evaluate(`[...document.querySelectorAll('.ext-rows li')].length`)
+    assert.equal(rows, 3)
+    const markup = await s.evaluate(`document.querySelectorAll('.ext-rows img').length + (window.__pwned ? 1 : 0)`)
+    assert.equal(markup, 0, 'a title with markup is drawn as text and runs nothing')
+    assert.match(await flatEval(s, `document.querySelector('.ext-rows').textContent`), /<img src=x onerror=window\.__pwned=1>/)
+    const links = await s.evaluate(`[...document.querySelectorAll('.ext-rows a')].map((a) => a.getAttribute('href') + '|' + a.rel)`)
+    assert.deepEqual(links, ['https://tool.example.test/r1|noreferrer noopener'], 'only the row with a safe address is a link')
+    const found = await axeFindings(s)
+    assert.deepEqual(found, [], JSON.stringify(found))
+    await visit(s, origin, '/extensions/reports', 'dark', `!!document.querySelector('.ext-rows')`, 'the extension page, dark')
+    const dark = await axeFindings(s)
+    assert.deepEqual(dark, [], JSON.stringify(dark))
+  })
+})
+
+test('a link page points at the consumer tool and lists no rows', { skip, timeout: 60000 }, async () => {
+  const fx = fixtures()
+  fx.extensions = extManifest()
+  fx.extRows = { reports: extRows(extPages()[0], []), docs: extRows(extPages()[1], []) }
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/extensions/docs', 'light', `!!document.querySelector('.ext-link a')`, 'the link page')
+    assert.equal(await s.evaluate(`document.querySelector('.ext-link a').getAttribute('href')`), 'https://docs.example.test/home')
+    assert.equal(await s.evaluate(`document.querySelectorAll('.ext-rows').length`), 0)
+  })
+})
+
+test('a consumer with no provider gets nothing in the rail, and a typed address lands on the home page', { skip, timeout: 60000 }, async () => {
+  const fx = fixtures()
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/extensions/reports', 'light', `location.hash === '#/action'`, 'the redirect home')
+    assert.equal(await s.evaluate(`document.querySelectorAll('a[href^="#/extensions/"]').length`), 0)
+  })
+})
+
+test('a page the manifest does not name lands on the home page', { skip, timeout: 60000 }, async () => {
+  const fx = fixtures()
+  fx.extensions = extManifest()
+  fx.extRows = { reports: extRows(extPages()[0], EXT_ROWS) }
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/extensions/never-declared', 'light', `location.hash === '#/action'`, 'the redirect home')
+  })
+})
+
+test('a failed manifest adds no page, and a failed page read is an error and never an empty list', { skip, timeout: 120000 }, async () => {
+  const fx = fixtures()
+  fx.extensions = extManifest([], 'the source failed (OSError)')
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/action', 'light', `!!document.querySelector('.ac-counter')`, 'the Action Center')
+    await new Promise((r) => setTimeout(r, 500))
+    assert.equal(await s.evaluate(`document.querySelectorAll('a[href^="#/extensions/"]').length`), 0, 'a failing source adds nothing and invents nothing')
+  })
+  const fx2 = fixtures()
+  fx2.extensions = extManifest()
+  fx2.extRows = { reports: extRows(extPages()[0], [], 'the source failed (KeyError)'), docs: extRows(extPages()[1], []) }
+  await withApp(fx2, async (s, origin) => {
+    await visit(s, origin, '/extensions/reports', 'light', `document.body.textContent.includes('could not be read')`, 'the error')
+    const text = await flatEval(s, `document.body.textContent`)
+    assert.match(text, /The source could not be read/)
+    assert.match(text, /the source failed \(KeyError\)\. This is not the same as nothing to show/)
+    assert.doesNotMatch(text, /Nothing to show yet/, 'an unreadable source must not read as calm')
+    const found = await axeFindings(s)
+    assert.deepEqual(found, [], JSON.stringify(found))
+  })
+})
+
+// ---- issue 308, item 24: the Platform areas rollup on the Operations overview ----
+const AREA_ROWS = [
+  { section: 'automation', label: 'Automation and jobs', owner: 'Platform team', status: 'needs_me', needs_me: 1, worth_a_look: 0, healthy: 1, lines: 2 },
+  { section: 'builds', label: 'Builds and releases', owner: null, status: 'worth_a_look', needs_me: 0, worth_a_look: 1, healthy: 0, lines: 1 },
+  { section: 'cost', label: 'cost', owner: 'Finance <script>window.__pwned=1</script>', status: 'healthy', needs_me: 0, worth_a_look: 0, healthy: 1, lines: 0 },
+]
+const withAreas = (areas) => ({ ...BADGES, problems: { ...BADGES.problems, ...(areas === undefined ? {} : { areas }) } })
+
+test('the Operations overview shows one row per area with its status, owner and problem lines, as text, in both themes', { skip, timeout: 120000 }, async () => {
+  const fx = fixtures()
+  fx.badges = withAreas(AREA_ROWS)
+  await withApp(fx, async (s, origin) => {
+    for (const theme of ['light', 'dark']) {
+      await visit(s, origin, '/operations', theme, `!!document.querySelector('.pa-table')`, 'the areas table')
+      const text = await flatEval(s, `document.querySelector('.pa').textContent`)
+      assert.match(text, /3 areas, 1 needs me\./)
+      assert.match(text, /Automation and jobs\s*Needs me\s*Owner: Platform team\s*2/)
+      assert.match(text, /Builds and releases\s*Worth a look\s*No owner named\s*1/, 'an area with no owner says so in words')
+      assert.match(text, /Owner: Finance <script>window\.__pwned=1<\/script>/, 'owner text with markup is drawn as text')
+      assert.equal(await s.evaluate(`window.__pwned ? 1 : 0`), 0, 'nothing in the owner text ran')
+      assert.equal(await s.evaluate(`document.querySelectorAll('.pa button, .pa a, .pa input').length`), 0, 'the rollup has no control')
+      const found = await axeFindings(s)
+      assert.deepEqual(found, [], `${theme}: ${JSON.stringify(found)}`)
+    }
+  })
+})
+
 test('the Live tab says nothing is acting only when both sources answered and nothing is acting', { skip, timeout: 120000 }, async () => {
   const fx = fixtures()
   fx.agentBuilds = null
@@ -729,5 +855,26 @@ test('the engine card the restart link points at is on the Operations overview',
     await new Promise((r) => setTimeout(r, 800))
     assert.equal(await s.evaluate(`document.querySelectorAll('.hermes-engine').length`), 1, 'exactly one Hermes engine card is on the overview')
     assert.match(flat(await s.evaluate(`document.querySelector('.hermes-engine').textContent`)), /Hermes engine/)
+  })
+})
+
+test('a server that sends no areas shows no rollup, and an empty areas list shows none either', { skip, timeout: 90000 }, async () => {
+  for (const areas of [undefined, []]) {
+    const fx = fixtures()
+    fx.badges = withAreas(areas)
+    await withApp(fx, async (s, origin) => {
+      await visit(s, origin, '/operations', 'light', hasText('what we run and whether it is healthy'), 'the Operations hub')
+      await new Promise((r) => setTimeout(r, 400))
+      assert.equal(await s.evaluate(`document.querySelectorAll('.pa').length`), 0)
+    })
+  }
+})
+
+test('the rollup is on the overview only, not on a tab', { skip, timeout: 90000 }, async () => {
+  const fx = fixtures()
+  fx.badges = withAreas(AREA_ROWS)
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/operations/automation/live-automation', 'light', hasText('Launch alpha'), 'the acting launch')
+    assert.equal(await s.evaluate(`document.querySelectorAll('.pa').length`), 0)
   })
 })

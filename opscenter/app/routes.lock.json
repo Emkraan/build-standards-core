@@ -12,6 +12,7 @@
     "/debt",
     "/debt/:tab",
     "/drafts",
+    "/extensions/:id",
     "/history",
     "/infra",
     "/infra/:tab",

@@ -2,6 +2,8 @@
 // command palette can jump to. One list feeds the rail, the palette and the G shortcuts.
 import type { NavHue } from '@kit'
 import type { ReactNode } from 'react'
+import type { ExtensionPage } from '../lib/extensions'
+import { extensionPath } from '../lib/extensions'
 import {
   IconBook,
   IconChart,
@@ -29,6 +31,8 @@ export interface NavDef {
   pages?: { to: string; label: string }[]
   /** An optional slot: the item exists only while that slot is on (opscenter/DESIGN.md 12.67). */
   slot?: 'tracker'
+  /** A page a consumer added through the extension manifest (opscenter/DESIGN.md 12.69). It has no badge and no shortcut. */
+  extension?: true
 }
 
 // Completed lives inside Action Center, Review History inside Team Performance. Jira holds
@@ -151,10 +155,18 @@ export const GROUPS: NavGroupDef[] = [
 export const NAV: NavDef[] = GROUPS.flatMap((g) => g.items)
 
 /** The groups a viewer sees: a group behind a slot is dropped while the slot is not on, and so is an item behind one. */
-export function groupsFor(people: boolean, tracker = true): NavGroupDef[] {
+export function groupsFor(people: boolean, tracker = true, extra: ExtensionPage[] = []): NavGroupDef[] {
   return GROUPS.filter((g) => g.slot !== 'people' || people)
-    .map((g) => ({ ...g, items: g.items.filter((i) => i.slot !== 'tracker' || tracker) }))
+    .map((g) => ({
+      ...g,
+      items: [...g.items.filter((i) => i.slot !== 'tracker' || tracker), ...extra.filter((p) => p.group === g.label).map(extensionItem)],
+    }))
     .filter((g) => g.items.length > 0)
+}
+
+/** A consumer page as a rail item. It comes after the core items of its group, so it never moves one, and it takes no G shortcut. */
+function extensionItem(p: ExtensionPage): NavDef {
+  return { to: extensionPath(p.id), label: p.title, icon: <IconLink />, hue: 'blue', key: '', extension: true }
 }
 
 /** The rail entry that owns a path (for the active marker and the header title). */

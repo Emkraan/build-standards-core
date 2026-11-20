@@ -31,6 +31,13 @@ sources and live facts without forking this file. Every method is optional and r
 A source whose key is already an item adds its lines to that item and raises its tone; a new key is a new item. A provider that
 cannot be loaded or raises shows as one needs_me item, never as clear.
 
+Areas (issue 308, item 24): the list also carries `areas`, one row per section that has an item:
+      {section, label, owner, status, needs_me, worth_a_look, healthy, lines}
+      `status` is the worst tone among the section's items, `needs_me` / `worth_a_look` / `healthy` count its items by tone and `lines` is the
+      same unit as every other count here, so the rows add up to `counts.lines`. `label` and `owner` come from an optional `areas` block of the
+      problem map, keyed by section: {"areas": {"<section>": {"label": "...", "owner": "..."}}}. With no entry the label is the section name
+      and the owner is null, because the core never invents an owner. An entry for a section with no item adds no row. Worst first, then by section.
+
 Where an item lives is configuration: OPSCENTER_PROBLEM_MAP (a JSON file, default <state>/problem-map.json) may set
 {"hub": "<default hub>", "<source key>": {"hub", "section", "item", "label"}}. The source keys are builds:<product>, jobs, ci,
 spend and core. The defaults are hub "operations" and the sections builds, automation and cost.
@@ -74,6 +81,42 @@ def _place(key, section, item, label):
         "item": str(o.get("item") or item),
         "label": str(o.get("label") or label),
     }
+
+
+def _text(value, limit=60):
+    """Plain text from the map: a string collapsed to one line and clipped, anything else is nothing."""
+    return " ".join(value.split())[:limit] if isinstance(value, str) and value.strip() else None
+
+
+def _areas(items):
+    """One row per section of the list. It reads only the list it is given, so the rows cannot disagree with the counts."""
+    named = _map().get("areas")
+    named = named if isinstance(named, dict) else {}
+    rows = {}
+    for i in items:
+        row = rows.setdefault(
+            i["section"],
+            {"needs_me": 0, "worth_a_look": 0, "healthy": 0, "lines": 0},
+        )
+        row[i["tone"]] += 1
+        row["lines"] += i["count"]
+    out = []
+    for section, row in rows.items():
+        entry = named.get(section) if isinstance(named.get(section), dict) else {}
+        status = (
+            "needs_me" if row["needs_me"] else "worth_a_look" if row["worth_a_look"] else "healthy"
+        )
+        out.append(
+            {
+                "section": section,
+                "label": _text(entry.get("label")) or section,
+                "owner": _text(entry.get("owner")),
+                "status": status,
+                **row,
+            }
+        )
+    out.sort(key=lambda a: (_TONE_ORDER[a["status"]], a["section"]))
+    return out
 
 
 def _item(
@@ -391,4 +434,4 @@ def collect():
             )
             k = f"{i['section']}/{i['item']}"
             counts["by_item"][k] = counts["by_item"].get(k, 0) + i["count"]
-    return {"items": items, "counts": counts}
+    return {"items": items, "counts": counts, "areas": _areas(items)}
