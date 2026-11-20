@@ -49,5 +49,49 @@ class LaneChecks(unittest.TestCase):
         self.assertIn("FAILURES: 0", r.stdout)
 
 
+class EachClassRunsAlone(unittest.TestCase):
+    """The server test modules are loaded together, so a class that only works because an earlier one imported something first goes
+    unnoticed. Running one class by itself is what a person does to chase a failure, and it must give the same answer as the full run."""
+
+    MODULES = ("optional_test",)
+
+    def test_every_class_passes_in_its_own_process(self):
+        import os
+        import re
+        import subprocess
+        import tempfile
+
+        server = OPSCENTER / "server"
+        for module in self.MODULES:
+            source = (server / f"{module}.py").read_text()
+            # A class with a test_ method of its own holds cases. A base class holds none and is skipped.
+            owners = []
+            for block in re.split(r"(?m)^class ", source)[1:]:
+                name = re.match(r"(\w+)", block).group(1)
+                if re.search(r"(?m)^    def test_", block):
+                    owners.append(name)
+            self.assertGreater(
+                len(owners),
+                5,
+                f"{module}: found no test classes, so this check would pass by looking at nothing",
+            )
+            for name in owners:
+                with self.subTest(module=module, cls=name), tempfile.TemporaryDirectory() as home:
+                    env = {**os.environ, "HOME": home}
+                    r = subprocess.run(
+                        [sys.executable, "-m", "unittest", f"{module}.{name}"],
+                        cwd=server,
+                        env=env,
+                        capture_output=True,
+                        text=True,
+                        timeout=240,
+                    )
+                    self.assertEqual(
+                        r.returncode, 0, f"{module}.{name} fails when run alone:\n{r.stderr[-700:]}"
+                    )
+                    ran = re.search(r"Ran (\d+) test", r.stderr)
+                    self.assertTrue(ran and int(ran.group(1)) > 0, f"{module}.{name} ran no test")
+
+
 if __name__ == "__main__":
     unittest.main()

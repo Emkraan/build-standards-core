@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-20 (v2.23.1, ops-center: theme scans wait for transitions and server test classes run alone)
+
+Two defects in the core's own tests, logged as TD-213 while building v2.23.0. No product code changes.
+
+- Fixed: an accessibility scan taken just after a theme flip could read a colour halfway between the two themes. The helper flipped the theme and slept a guessed 400 ms, so on a slow runner axe measured the header chip at 1.4 to 3.7 against a 4.5 limit when it measures 5.67 (light) and 6.79 (dark) once settled. Both browser scanners now call `SETTLED_JS`, which resolves true when no CSS transition is running and false after about 5 seconds, and the caller fails on false. Looping animations are ignored because they never end. This removes a fixed 400 ms sleep from every `ocTabs` page visit, and the browser suite (38 tests with the one added here) passes on three consecutive runs without it.
+- Added: a browser test that slows the chip's transition to 1.5 s, flips the theme, and asserts the wait lasts as long as the transition and ends on the settled colour with no finding. Two mutants are caught, a wait that returns at once and a wait that counts every animation.
+- Fixed: `Builds` and `Extensions` in `opscenter/server/optional_test.py` imported `optional_provider` before `routes`, and `routes` is what puts `server/modules` on the path. They passed only when an earlier class had already imported `routes`, and errored with `No module named 'optional_provider'` when run alone. The import order is fixed in both base classes.
+- Added: `EachClassRunsAlone` in `tests/test_opscenter_lanes.py`, which runs each of the 10 test classes in `optional_test.py` in its own process and fails by class name. It reads the class list from the source and fails on fewer than six, so it cannot pass by finding nothing. With the old import order restored in one base class it fails and names `Builds` and `BuildsSourceDown`.
+- Changed: `opscenter/DESIGN.md` 12.71 records both rules with the contrast numbers.
+- Known: the rule covers `optional_test` only. `server_test.py` and the module tests are not yet checked class by class, and `MODULES` in the new test is the place to add them.
+
 ## 2026-11-20 (v2.23.0, ops-center: pull request and plain sentence on Active builds rows, the panel on Operations)
 
 The follow-up items on the consumer parity issue (issue 308, items 25 to 28). The issue body lists items 1 to 24 and a follow-up comment adds 25 to 28, which the earlier releases of this series did not account for. Each was checked against the code. Items 25 and 27 were already in core, item 28 was in core but guarded only on four pages, and item 26 had two real gaps that this release closes. The panel stays read only.
