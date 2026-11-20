@@ -1907,7 +1907,7 @@ this field sends no `areas` at all, which the client treats as no rollup and not
 The Operations overview shows the rollup above the area cards, as a read only table with one row per area (status, owner,
 problem lines) and a line that counts areas needing me. It is on the overview only, not on a tab, and it is a lazy chunk.
 
-### 12.71 Two test rules from TD-213: wait for transitions, and run a class alone
+### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.
 

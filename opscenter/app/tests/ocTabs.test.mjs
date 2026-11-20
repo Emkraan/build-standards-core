@@ -430,7 +430,7 @@ test('the Docs drift tab is hidden when no provider is configured, and its route
   })
 })
 
-// ---- TD-213: an axe scan must not read a colour in the middle of a theme transition ----
+// ---- an axe scan must not read a colour in the middle of a theme transition ----
 test('a scan after a theme flip waits for the colour transition, so axe never reads a blend of both themes', { skip, timeout: 120000 }, async () => {
   await withApp(fixtures(), async (s, origin) => {
     await visit(s, origin, '/jira', 'dark', hasText('Sprint trend'), 'the sprint card')

@@ -2,7 +2,7 @@
 
 ## 2026-11-20 (v2.23.1, ops-center: theme scans wait for transitions and server test classes run alone)
 
-Two defects in the core's own tests, logged as TD-213 while building v2.23.0. No product code changes.
+Two defects in the core's own tests, found while building v2.23.0 (issue 308). No product code changes.
 
 - Fixed: an accessibility scan taken just after a theme flip could read a colour halfway between the two themes. The helper flipped the theme and slept a guessed 400 ms, so on a slow runner axe measured the header chip at 1.4 to 3.7 against a 4.5 limit when it measures 5.67 (light) and 6.79 (dark) once settled. Both browser scanners now call `SETTLED_JS`, which resolves true when no CSS transition is running and false after about 5 seconds, and the caller fails on false. Looping animations are ignored because they never end. This removes a fixed 400 ms sleep from every `ocTabs` page visit, and the browser suite (38 tests with the one added here) passes on three consecutive runs without it.
 - Added: a browser test that slows the chip's transition to 1.5 s, flips the theme, and asserts the wait lasts as long as the transition and ends on the settled colour with no finding. Two mutants are caught, a wait that returns at once and a wait that counts every animation.
