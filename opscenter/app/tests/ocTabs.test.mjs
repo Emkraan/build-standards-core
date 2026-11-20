@@ -208,8 +208,8 @@ const tackleSessions = () => ({
 // GET /api/hermes-restart when plugins changed after the engine started: the banner shows its choices.
 const RESTART_STALE = { alert: 'stale', safe: true, busy: [], quiet_s: 600, quiet_needed_s: 300, pending: null, running: null, last: null }
 const extPages = () => [
-  { id: 'ideas', title: 'Ideas', group: 'Operate', kind: 'list', url: null, lede: 'Ideas waiting for a look' },
-  { id: 'wiki', title: 'Team wiki', group: 'Knowledge', kind: 'link', url: 'https://wiki.example.test/home', lede: null },
+  { id: 'reports', title: 'Reports', group: 'Operate', kind: 'list', url: null, lede: 'Reports waiting for a look' },
+  { id: 'docs', title: 'Team docs', group: 'Knowledge', kind: 'link', url: 'https://docs.example.test/home', lede: null },
 ]
 const extManifest = (pages = extPages(), error = null) => ({ fetched_utc: '2026-11-19T15:00:00Z', pages, truncated: 0, error })
 const extRows = (page, rows, error = null) => ({ fetched_utc: '2026-11-19T15:00:00Z', page, rows, truncated: 0, error })
@@ -699,13 +699,13 @@ const flatEval = async (s, expr) => String(await s.evaluate(expr)).replace(/\s+/
 test('a consumer page appears in its rail group after the core items, opens, and draws its rows as text', { skip, timeout: 120000 }, async () => {
   const fx = fixtures()
   fx.extensions = extManifest()
-  fx.extRows = { ideas: extRows(extPages()[0], EXT_ROWS), wiki: extRows(extPages()[1], []) }
+  fx.extRows = { reports: extRows(extPages()[0], EXT_ROWS), docs: extRows(extPages()[1], []) }
   await withApp(fx, async (s, origin) => {
-    await visit(s, origin, '/extensions/ideas', 'light', `!!document.querySelector('.ext-rows')`, 'the extension page')
-    const rail = await s.evaluate(`[...document.querySelectorAll('a[href="#/extensions/ideas"], a[href="#/extensions/wiki"]')].map((a) => a.textContent.trim())`)
-    assert.deepEqual(rail, ['Ideas', 'Team wiki'], 'both pages are in the rail')
-    const groups = await s.evaluate(`[...document.querySelectorAll('a[href="#/extensions/ideas"]')].map((a) => a.closest('nav, section, div')?.textContent.includes('Action Center'))`)
-    assert.ok(groups.some(Boolean), 'the Ideas page sits in the Operate group with the core items')
+    await visit(s, origin, '/extensions/reports', 'light', `!!document.querySelector('.ext-rows')`, 'the extension page')
+    const rail = await s.evaluate(`[...document.querySelectorAll('a[href="#/extensions/reports"], a[href="#/extensions/docs"]')].map((a) => a.textContent.trim())`)
+    assert.deepEqual(rail, ['Reports', 'Team docs'], 'both pages are in the rail')
+    const groups = await s.evaluate(`[...document.querySelectorAll('a[href="#/extensions/reports"]')].map((a) => a.closest('nav, section, div')?.textContent.includes('Action Center'))`)
+    assert.ok(groups.some(Boolean), 'the Reports page sits in the Operate group with the core items')
     const rows = await s.evaluate(`[...document.querySelectorAll('.ext-rows li')].length`)
     assert.equal(rows, 3)
     const markup = await s.evaluate(`document.querySelectorAll('.ext-rows img').length + (window.__pwned ? 1 : 0)`)
@@ -715,7 +715,7 @@ test('a consumer page appears in its rail group after the core items, opens, and
     assert.deepEqual(links, ['https://tool.example.test/r1|noreferrer noopener'], 'only the row with a safe address is a link')
     const found = await axeFindings(s)
     assert.deepEqual(found, [], JSON.stringify(found))
-    await visit(s, origin, '/extensions/ideas', 'dark', `!!document.querySelector('.ext-rows')`, 'the extension page, dark')
+    await visit(s, origin, '/extensions/reports', 'dark', `!!document.querySelector('.ext-rows')`, 'the extension page, dark')
     const dark = await axeFindings(s)
     assert.deepEqual(dark, [], JSON.stringify(dark))
   })
@@ -724,10 +724,10 @@ test('a consumer page appears in its rail group after the core items, opens, and
 test('a link page points at the consumer tool and lists no rows', { skip, timeout: 60000 }, async () => {
   const fx = fixtures()
   fx.extensions = extManifest()
-  fx.extRows = { ideas: extRows(extPages()[0], []), wiki: extRows(extPages()[1], []) }
+  fx.extRows = { reports: extRows(extPages()[0], []), docs: extRows(extPages()[1], []) }
   await withApp(fx, async (s, origin) => {
-    await visit(s, origin, '/extensions/wiki', 'light', `!!document.querySelector('.ext-link a')`, 'the link page')
-    assert.equal(await s.evaluate(`document.querySelector('.ext-link a').getAttribute('href')`), 'https://wiki.example.test/home')
+    await visit(s, origin, '/extensions/docs', 'light', `!!document.querySelector('.ext-link a')`, 'the link page')
+    assert.equal(await s.evaluate(`document.querySelector('.ext-link a').getAttribute('href')`), 'https://docs.example.test/home')
     assert.equal(await s.evaluate(`document.querySelectorAll('.ext-rows').length`), 0)
   })
 })
@@ -735,7 +735,7 @@ test('a link page points at the consumer tool and lists no rows', { skip, timeou
 test('a consumer with no provider gets nothing in the rail, and a typed address lands on the home page', { skip, timeout: 60000 }, async () => {
   const fx = fixtures()
   await withApp(fx, async (s, origin) => {
-    await visit(s, origin, '/extensions/ideas', 'light', `location.hash === '#/action'`, 'the redirect home')
+    await visit(s, origin, '/extensions/reports', 'light', `location.hash === '#/action'`, 'the redirect home')
     assert.equal(await s.evaluate(`document.querySelectorAll('a[href^="#/extensions/"]').length`), 0)
   })
 })
@@ -743,7 +743,7 @@ test('a consumer with no provider gets nothing in the rail, and a typed address 
 test('a page the manifest does not name lands on the home page', { skip, timeout: 60000 }, async () => {
   const fx = fixtures()
   fx.extensions = extManifest()
-  fx.extRows = { ideas: extRows(extPages()[0], EXT_ROWS) }
+  fx.extRows = { reports: extRows(extPages()[0], EXT_ROWS) }
   await withApp(fx, async (s, origin) => {
     await visit(s, origin, '/extensions/never-declared', 'light', `location.hash === '#/action'`, 'the redirect home')
   })
@@ -759,9 +759,9 @@ test('a failed manifest adds no page, and a failed page read is an error and nev
   })
   const fx2 = fixtures()
   fx2.extensions = extManifest()
-  fx2.extRows = { ideas: extRows(extPages()[0], [], 'the source failed (KeyError)'), wiki: extRows(extPages()[1], []) }
+  fx2.extRows = { reports: extRows(extPages()[0], [], 'the source failed (KeyError)'), docs: extRows(extPages()[1], []) }
   await withApp(fx2, async (s, origin) => {
-    await visit(s, origin, '/extensions/ideas', 'light', `document.body.textContent.includes('could not be read')`, 'the error')
+    await visit(s, origin, '/extensions/reports', 'light', `document.body.textContent.includes('could not be read')`, 'the error')
     const text = await flatEval(s, `document.body.textContent`)
     assert.match(text, /The source could not be read/)
     assert.match(text, /the source failed \(KeyError\)\. This is not the same as nothing to show/)

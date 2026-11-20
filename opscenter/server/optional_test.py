@@ -572,8 +572,8 @@ EXTENSIONS_PROVIDER = textwrap.dedent(
 
         def extensions(self, now):
             return [
-                {"id": "ideas", "title": "Ideas", "group": "Operate", "kind": "list", "lede": "Ideas waiting for a look"},
-                {"id": "wiki", "title": "Wiki", "group": "Knowledge", "kind": "link", "url": "https://wiki.test/home"},
+                {"id": "reports", "title": "Reports", "group": "Operate", "kind": "list", "lede": "Reports waiting for a look"},
+                {"id": "docs", "title": "Docs", "group": "Knowledge", "kind": "link", "url": "https://docs.example.test/home"},
                 {"id": "builds", "title": "Shadow", "group": "Operate", "kind": "list"},
             ]
 
@@ -597,19 +597,19 @@ class Extensions(ExtensionsBase):
         self.assertEqual(self.js("GET", "/api/extensions")[0], 403)
         self.assertEqual(self.js("GET", "/api/extensions", None, {"X-User": "stranger"})[0], 403)
         self.assertEqual(
-            self.js("GET", "/api/extensions/ideas", None, {"X-User": "stranger"})[0], 403
+            self.js("GET", "/api/extensions/reports", None, {"X-User": "stranger"})[0], 403
         )
         self.assertEqual(self.call("POST", "/api/extensions", {}, ADMIN)[0], 405)
-        self.assertEqual(self.call("POST", "/api/extensions/ideas", {}, ADMIN)[0], 405)
+        self.assertEqual(self.call("POST", "/api/extensions/reports", {}, ADMIN)[0], 405)
 
     def test_a_reader_gets_the_pages_and_the_shadowing_one_is_dropped(self):
         status, _, body = self.js("GET", "/api/extensions", None, READER)
         self.assertEqual(status, 200)
-        self.assertEqual([p["id"] for p in body["pages"]], ["ideas", "wiki"])
+        self.assertEqual([p["id"] for p in body["pages"]], ["reports", "docs"])
         self.assertIsNone(body["error"])
 
     def test_a_list_page_gives_its_rows_and_an_unnamed_page_is_a_404(self):
-        status, _, body = self.js("GET", "/api/extensions/ideas", None, READER)
+        status, _, body = self.js("GET", "/api/extensions/reports", None, READER)
         self.assertEqual((status, body["rows"][0]["title"]), (200, "First idea"))
         self.assertEqual(
             self.js("GET", "/api/extensions/builds", None, READER)[0],
@@ -644,7 +644,7 @@ class ExtensionsSourceDown(ExtensionsBase):
         self.assertNotIn("disk gone", body["error"])
 
     def test_a_page_read_is_a_bad_gateway_when_the_source_is_down(self):
-        self.assertEqual(self.js("GET", "/api/extensions/ideas", None, READER)[0], 502)
+        self.assertEqual(self.js("GET", "/api/extensions/reports", None, READER)[0], 502)
 
 
 class ExtensionsOff(Base):

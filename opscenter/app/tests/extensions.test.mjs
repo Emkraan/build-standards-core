@@ -5,7 +5,7 @@ import { EXTENSION_GROUPS, extensionPath, extensionRoute, extensionsMode, pageMo
 
 const page = (id, group = 'Operate', over = {}) => ({ id, title: id, group, kind: 'list', url: null, lede: null, ...over })
 const manifest = (pages, over = {}) => ({ configured: true, fetched_utc: 'x', pages, truncated: 0, error: null, ...over })
-const rows = (over = {}) => ({ fetched_utc: 'x', page: page('ideas'), rows: [], truncated: 0, error: null, ...over })
+const rows = (over = {}) => ({ fetched_utc: 'x', page: page('reports'), rows: [], truncated: 0, error: null, ...over })
 const row = (id) => ({ id, title: id, detail: null, state: null, url: null, at: null })
 
 test('no provider adds nothing to the rail, and so does a state that has not loaded yet', () => {
@@ -43,13 +43,13 @@ test('the rail gets every page of a working source and none from a failing, abse
 })
 
 test('the page route waits for the first answer, shows a named page, and leaves for any other case', () => {
-  const s = manifest([page('ideas')])
-  assert.equal(extensionRoute(null, 'ideas', false), 'wait', 'the first answer has not arrived')
-  assert.equal(extensionRoute(null, 'ideas', true), 'leave', 'an unreachable server shows nothing to open')
-  assert.equal(extensionRoute(s, 'ideas', false), 'show')
+  const s = manifest([page('reports')])
+  assert.equal(extensionRoute(null, 'reports', false), 'wait', 'the first answer has not arrived')
+  assert.equal(extensionRoute(null, 'reports', true), 'leave', 'an unreachable server shows nothing to open')
+  assert.equal(extensionRoute(s, 'reports', false), 'show')
   assert.equal(extensionRoute(s, 'other', false), 'leave', 'a page the manifest does not name')
-  assert.equal(extensionRoute({ configured: false }, 'ideas', false), 'leave', 'no provider')
-  assert.equal(extensionRoute(manifest([page('ideas')], { error: 'x' }), 'ideas', false), 'leave', 'a failing source')
+  assert.equal(extensionRoute({ configured: false }, 'reports', false), 'leave', 'no provider')
+  assert.equal(extensionRoute(manifest([page('reports')], { error: 'x' }), 'reports', false), 'leave', 'a failing source')
 })
 
 test('the rail groups are the four the core has, so a page cannot invent one', () => {
@@ -57,7 +57,7 @@ test('the rail groups are the four the core has, so a page cannot invent one', (
 })
 
 test('an extension page lives under its own prefix, clear of every core route', () => {
-  assert.equal(extensionPath('ideas'), '/extensions/ideas')
+  assert.equal(extensionPath('reports'), '/extensions/reports')
 })
 
 test('only an http or https address is a link, and anything else is dropped', () => {
@@ -69,7 +69,7 @@ test('only an http or https address is a link, and anything else is dropped', ()
 
 test('a page is an error when its source failed, a link for a link page, and otherwise rows or an honest empty', () => {
   assert.equal(pageMode(rows({ error: 'the source failed (OSError)', rows: [row('r1')] })), 'error')
-  assert.equal(pageMode(rows({ page: page('wiki', 'Knowledge', { kind: 'link', url: 'https://t.test' }) })), 'link')
+  assert.equal(pageMode(rows({ page: page('docs', 'Knowledge', { kind: 'link', url: 'https://t.test' }) })), 'link')
   assert.equal(pageMode(rows({ rows: [row('r1')] })), 'rows')
   assert.equal(pageMode(rows()), 'empty')
   assert.equal(pageMode(null), 'empty')
