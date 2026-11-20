@@ -391,58 +391,6 @@
 }
 
 
-/* the active builds panel on the Now tab: agent work that is running, stuck, failed or finished */
-.ac-builds {
-  margin: 0 0 18px;
-}
-.ac-builds h2 {
-  margin: 0 0 8px;
-  font-size: var(--fs-body);
-}
-.ac-builds ul {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.ac-builds li {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm, 8px);
-  background: var(--surface);
-}
-.ac-builds li[data-state='stuck'],
-.ac-builds li[data-state='failed'] {
-  border-color: var(--alert);
-}
-.ac-builds-state {
-  flex-shrink: 0;
-  min-width: 4.5rem;
-  font-weight: 600;
-}
-.ac-builds li[data-state='stuck'] .ac-builds-state,
-.ac-builds li[data-state='failed'] .ac-builds-state {
-  color: var(--alert);
-}
-.ac-builds-title {
-  min-width: 0;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ac-builds-age {
-  flex-shrink: 0;
-  font-size: var(--fs-label);
-}
-.ac-builds-note {
-  margin: 4px 0;
-}
-
 /* the Live tab: what is acting right now, sessions and builds in one list */
 .ac-live {
   display: grid;

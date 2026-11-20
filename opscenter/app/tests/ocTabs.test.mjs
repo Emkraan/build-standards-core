@@ -798,6 +798,58 @@ test('the Operations overview shows one row per area with its status, owner and 
   })
 })
 
+// ---- issue 308, item 26: the pull request and the plain sentence on an Active builds row, and the panel on Operations ----
+const PR_BUILDS = () => buildsFeed([
+  BUILD('p1', 'Fix the importer', 'running', { activity: 'running tests', activity_at: nowS() - 60, pr: { number: 42, url: 'https://example.test/pull/42', state: 'open', red: 1 } }),
+  BUILD('p2', 'Docs pass', 'stuck', { started: nowS() - 5400, activity_at: nowS() - 25 * 60 }),
+  BUILD('p3', 'Old cleanup', 'finished', { started: nowS() - 59 * 60 - 120, finished: nowS() - 120, pr: { number: 7, url: 'javascript:alert(1)', state: 'merged', red: 2 } }),
+  BUILD('p4', 'No times at all', 'failed', { started: null, finished: null }),
+])
+
+test('the Operations overview shows the Active builds panel with the pull request and the plain sentences, in both themes', { skip, timeout: 150000 }, async () => {
+  const fx = fixtures()
+  fx.agentBuilds = PR_BUILDS()
+  await withApp(fx, async (s, origin) => {
+    for (const theme of ['light', 'dark']) {
+      await visit(s, origin, '/operations', theme, `!!document.querySelector('.ac-builds li')`, 'the builds panel')
+      const text = await flatEval(s, `document.querySelector('.ac-builds').textContent`)
+      assert.match(text, /Pull request open, 1 red/, 'an open request names its failing checks')
+      assert.match(text, /No output for 25 minutes, check the log before waiting longer/, 'a stuck row says the real silence')
+      assert.match(text, /Took about 59 minutes, finished 2 min ago/, 'a finished row says how long it took')
+      assert.match(text, /Pull request merged(?!, \d)/, 'a merged request reports no red count')
+      assert.doesNotMatch(text, /javascript:/, 'a bad link is never printed as a link')
+      assert.equal(await s.evaluate(`[...document.querySelectorAll('.ac-builds a')].map((a) => a.getAttribute('href')).join(',')`), 'https://example.test/pull/42', 'only the http link is drawn')
+      assert.equal(await s.evaluate(`document.querySelectorAll('.ac-builds button, .ac-builds input, .ac-builds form').length`), 0, 'the panel has no control that writes')
+      // It is styled wherever it mounts: the row is a bordered flex box here, not a bare list item.
+      assert.equal(await s.evaluate(`getComputedStyle(document.querySelector('.ac-builds li')).display`), 'flex', `${theme}: the panel stylesheet loads on this page`)
+      const found = await axeFindings(s)
+      assert.deepEqual(found, [], `${theme}: ${JSON.stringify(found)}`)
+    }
+  })
+})
+
+test('a row from an older feed with no pull request field still draws, and a quiet or failed source never reads as a calm board on Operations', { skip, timeout: 150000 }, async () => {
+  const fx = fixtures()
+  fx.agentBuilds = buildsFeed([BUILD('o1', 'Plain row', 'running', { activity: 'working' })])
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/operations', 'light', `!!document.querySelector('.ac-builds li')`, 'the plain row')
+    const text = await flatEval(s, `document.querySelector('.ac-builds').textContent`)
+    assert.match(text, /Plain row/)
+    assert.doesNotMatch(text, /Pull request/, 'no pull request is named when the feed sent none')
+  })
+  const bad = fixtures()
+  bad.agentBuilds = buildsFeed([], 'the source failed (OSError)')
+  await withApp(bad, async (s, origin) => {
+    await visit(s, origin, '/operations', 'light', `document.body.textContent.includes('This is not the same as nothing running')`, 'the error')
+  })
+  const none = fixtures()
+  none.agentBuilds = null
+  await withApp(none, async (s, origin) => {
+    await visit(s, origin, '/operations', 'light', `!!document.querySelector('.infra-stack')`, 'the overview')
+    assert.equal(await s.evaluate(`document.querySelectorAll('.ac-builds').length`), 0, 'no provider means no panel on Operations')
+  })
+})
+
 test('the Live tab says nothing is acting only when both sources answered and nothing is acting', { skip, timeout: 120000 }, async () => {
   const fx = fixtures()
   fx.agentBuilds = null
