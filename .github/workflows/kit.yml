@@ -7,9 +7,14 @@ on:
       - '.github/workflows/kit.yml'
 permissions:
   contents: read
+# A new push to a pull request cancels its superseded run; push, merge queue and dispatched runs
+# are never cancelled, and required checks report from the newest run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   kit:
-    runs-on: ${{ fromJSON(vars.CORE_RUNNER || '"ubuntu-latest"') }}
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: opscenter/kit
