@@ -364,6 +364,7 @@ export default function EngBacklog() {
       <HubHeader
         eyebrow="Operate"
         title="Debt and improvements"
+        subtitle="Every technical debt entry and improvement, and the ones waiting on my decision."
         tabs={[
           { to: '/debt/decide', label: 'Needs decision', n: n('decide') },
           { to: '/debt/todo', label: 'To do', n: n('todo') },

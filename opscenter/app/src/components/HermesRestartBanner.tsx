@@ -1,5 +1,6 @@
 import { Button } from '@kit'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { type HermesBusy, postHermesRestart, relTime, useHermesRestart } from '../lib/data'
 import AlertBanner from './AlertBanner'
 
@@ -44,6 +45,9 @@ export default function HermesRestartBanner() {
       <Button size="sm" variant="ghost" disabled={busy} onClick={() => act('idle')}>
         After 5 quiet minutes
       </Button>
+      <Link className="hermes-more" to="/operations">
+        More restart options
+      </Link>
     </>
   )
   if (data.alert === 'pending' && data.pending) {

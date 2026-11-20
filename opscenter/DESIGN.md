@@ -1796,10 +1796,9 @@ contract (12.15), not a code change in the core.
 **Extension points for pages a consumer adds.** Server: a module that registers its own routes with the route registry
 through the optional module switch (`server/optional.py`), each behind its own environment variable and with its own
 provider (`path/to/file.py:ClassName`, every method optional, a missing one is the null default). A consumer never
-edits a core file for this. App: the route list and the rail are core files in this release, so a consumer page that
-needs a rail item is filed upward as a pull request to the core, as rule 1 of section 0 says. A slot UI mount (section
-5.1) is not built. This is the honest gap: a consumer can add server routes and data today and cannot add a rail item
-or a page without a core change.
+edits a core file for this. App: a consumer adds a rail item and a page by describing them as data through the extension
+manifest, which 12.69 defines (`OPSCENTER_EXTENSIONS_PROVIDER`), so a page no longer needs a core change. A slot UI mount
+(section 5.1) is not built, and the manifest is the way a consumer reaches the rail.
 
 **What the scheduled jobs card includes.** `server/modules/cron_pulse.py` reads the agent runtime's job file and shows
 a job on a Reviews page card only when it maps to that card. A job maps in three ways: its monitor script or prompt
@@ -1823,20 +1822,34 @@ running, total, lines, by section and by item). The core builds items for the ar
 jobs, CI and backup, spend, core approvals). A consumer adds areas or live facts without a fork through
 `OPSCENTER_PROBLEMS_PROVIDER` (`path/to/file.py:ClassName`, every method optional: `headlines`, `healthy`, `running`,
 `needs_me`, `worth_a_look`) and places an item by `OPSCENTER_PROBLEM_MAP` (a JSON file, default
-`<state>/problem-map.json`, which sets the hub, section, item and label of each source key). The contract holds no
-owner field today. An owner per area is a provider detail line until the item shape gains one. A page that groups the
-list by area with those counts is the next change in this program.
+`<state>/problem-map.json`, which sets the hub, section, item and label of each source key). The list also carries
+`areas`, one row per section with a status, the counts and an owner from the problem map, and the Operations overview shows
+them as a table. 12.69 defines both.
 
-**What is left of the parity program.** The Knowledge endpoints are served by `server/modules/knowledge.py` (v2.19.0), the
-Debt page has its filters, and the Now tab has the counters row, the waiting on me panel and the active builds panel
-(v2.20.0). The waiting panel only links to the Reviews card, where the one guarded Approve and merge flow lives, so it adds
-no second path around the typed confirmation. The active builds panel is a provider slot (`OPSCENTER_BUILDS_PROVIDER`, row
-shape `{id, title, state, started, finished, activity, activity_at, outcome, url, kind}`, state one of running, stuck, failed
-or finished) and is read only: a Stop action is a side effect and waits for its own design under
-`standards/automation-safety.md`. Still open, each as its own pull request: the Platform health page over the problem list
-above, the work tracking page and the flat rail a consumer asked for, the header strip, and a rail item and page extension
-point for a consumer. Open and waiting on a stated contract: `POST /api/automation/approve`, what approving an automation
-table row means.
+**Where the parity items live.** Issue 308 lists 24 things a consumer's running ops center has that core lacked. This is the
+record of where each is in core, checked against the code in v2.22.0.
+
+| Items | Where |
+|---|---|
+| 1 flat rail | A layout choice. Core groups the same destinations under Operate, People, Knowledge and Platform, each with its need me badge |
+| 2 work tracking page | A layout choice. `/jira` holds the same sprint, backlog and changes content, behind the tracker slot (v2.18.0) |
+| 3 Platform page | The Operations overview, with one card per area over the problem list (`problems.py`) and, above them, the areas rollup table with an owner per area (12.69, v2.22.0) |
+| 4 header strip | The feed in `shell/HeaderBits.tsx` (live data line, synced chip, improvements waiting, and a warning when the Enterprise fallback is billing) and `HermesRestartBanner.tsx`, which links to the engine card on the Operations overview (v2.21.0) |
+| 5 Action Center tabs | Now, Live (v2.21.0), Alerts, Completed and Routing |
+| 6, 8 counters and waiting on me | The Now tab (v2.20.0). The waiting panel only links to the Reviews card, so there is no second path around the typed confirmation |
+| 7 active builds | The Now tab panel and the Live tab, over the provider slot in 12.68 (v2.20.0, v2.21.0), read only |
+| 9, 10, 11 views, columns, Routing | The Action Center and its Routing tab |
+| 12, 13 Reviews | One tab per repo with a working state, the Needs me, In progress, My PRs and Recently shipped sections, the Stuck state, and the blocking, high, medium and low rollup |
+| 14, 17 Debt filters, Knowledge endpoints | v2.19.0 |
+| 15 1:1 cards | The shared person card with the avatar and the coverage meter, in Direct reports and Director and product owner groups |
+| 16, 18, 19 Team, Plans, Links | Already in core |
+| 20, 21, 23 | v2.18.0 and the 12.67 text above (layout, tracker slot, what the jobs card includes) |
+| 22 extension point | The server manifest and the rail, palette and route in the app, read only (12.69, v2.22.0). A consumer adds a page as data and never edits a core file |
+| 24 Platform areas contract | The problem list carries `areas` with an owner and label from the problem map, and the Operations overview draws them (12.69, v2.22.0) |
+
+Two items are layout choices and not defects, 1 and 2. Two things are left out of core on purpose. A Stop action on a
+running build is a side effect with no existing route and needs its own design under `standards/automation-safety.md`.
+`POST /api/automation/approve` is a consumer contract about what approving an automation table row means.
 
 ### 12.68 The active builds feed (provider slot, read only)
 
