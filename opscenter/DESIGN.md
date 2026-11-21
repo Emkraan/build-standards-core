@@ -2015,6 +2015,27 @@ rows) and no longer holds the Hermes engine card: that is Host and access, item 
 links there. The pairing and device screens are further items of Host and access. The Knowledge tab is labelled Doc drift, and the Team
 yearly tab already carries its year.
 
+
+
+### 12.77 Pairing and alerts on Platform, Host and access (issue 327, second comment)
+
+`Host and access` has a Device access item (`/platform/host/device-access`) for the phone app, built on standards/hermes-api-access.md sections 5
+and 6. It is a provider slot (`server/modules/phone_pairing.py`, `OPSCENTER_PHONE_PROVIDER=path/to/file.py:ClassName`, every method optional):
+`status()` (five checks, each true, false or unknown), `devices()`, `pair()` (one time link), `test(id)`, `remove(id)` and `authorize(headers, action,
+key)` (actions `phone.read`, `phone.pair`, `phone.test`, `phone.remove`; the null default refuses everything). With no provider there is no route and
+the page shows an empty state with the setup steps (install the pinned plugin, stage the key and certificates, set the provider).
+
+- **Pair a device.** A button asks the provider for the link and the page draws it as a QR for 60 seconds, then clears it (or on Hide now, or when the
+  page goes away). The route is `POST /api/phone-access/pair`, answers `Cache-Control: no-store`, and answers 403 to any request that carries a
+  forwarding header (`X-Forwarded-For`, `Forwarded`, `X-Real-IP`, `Via`): a client that reached the server through a proxy, which is what a LAN client
+  looks like, never gets the link. The server keeps, logs and caches nothing of it, the page never holds it in state or in the DOM as text (the QR is a
+  vector image with no text node), and it is never put in a URL.
+- **Paired devices.** A list with Test notification and Remove. Each opens a confirmation first, and the server refuses either without
+  `confirm: true`, so a stray request changes nothing.
+- **Status.** API server reachable, edge certificate covers the host, push plugin pinned, installed plugin matches the pin, and only the API server is
+  connected. An unknown check reads Unknown, never OK. A source that fails shows an error and never an empty list.
+- The QR is drawn with `qrcode-generator` in a chunk loaded when the button is pressed, so it costs the first load nothing.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

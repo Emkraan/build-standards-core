@@ -8,6 +8,7 @@ import { lazy, Suspense } from 'react'
 import type { ComponentType } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import HermesEngineCard from '../components/HermesEngineCard'
+import PhoneAccess from '../components/PhoneAccess'
 import LiveAutomation from '../components/LiveAutomation'
 import { useBadges, useBuilds, useDarkLaunches } from '../lib/data'
 import { splitLaunches } from '../lib/darkLaunches'
@@ -46,6 +47,7 @@ const BODY: Record<string, ComponentType> = {
   core: CoreConsumption,
   'live-automation': LiveAutomation,
   hermes: HermesEngineCard,
+  'device-access': PhoneAccess,
 }
 
 const TONE: Record<ProblemTone, AreaTone> = { needs_me: 'alert', worth_a_look: 'warn', healthy: 'good' }

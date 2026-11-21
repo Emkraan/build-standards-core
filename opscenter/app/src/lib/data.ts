@@ -2960,3 +2960,30 @@ export const postCorePr = (repo: string, number: number, confirm: string) =>
   docPost<{ done: string[]; already?: boolean }>('api/core-consumption/approve-pr', { repo, number, confirm })
 export const postCoreItem = (issue: number, id: string, confirm: string) =>
   docPost<{ done: string[]; already?: boolean }>('api/core-consumption/approve-item', { issue, id, confirm })
+
+// ---- Phone pairing and alerts (server/modules/phone_pairing.py, DESIGN.md 12.77) ----
+export interface PhoneDevice {
+  id: string
+  name: string | null
+  paired_at: string | null
+  last_seen: string | null
+}
+export interface PhoneStatus {
+  api_reachable: boolean | null
+  edge_covers_host: boolean | null
+  plugin_pinned: boolean | null
+  plugin_matches_pin: boolean | null
+  only_api_connected: boolean | null
+}
+export type PhoneAccess = { configured: false } | ({ configured: true; fetched_utc: string; status: PhoneStatus; devices: PhoneDevice[]; truncated: number; error: string | null })
+// GET /api/phone-access exists only when the consumer configured a provider, so a 404 means none and the page shows the setup steps.
+export const usePhoneAccess = createLiveStore<PhoneAccess>(async () => {
+  const res = await fetch(`${BASE}api/phone-access`, { cache: 'no-cache' })
+  if (res.status === 404) return { configured: false }
+  if (!res.ok && res.status !== 502) throw new Error(`api/phone-access -> ${res.status}`)
+  return { configured: true, ...((await res.json()) as Omit<Extract<PhoneAccess, { configured: true }>, 'configured'>) }
+}, 60_000)
+/** The one time pairing link. It lives only in the memory of the caller: nothing here stores or logs it. */
+export const postPhonePair = () => jiraPost<{ link: string; expires_in: number }>('api/phone-access/pair', {})
+export const postPhoneTest = (id: string) => jiraPost<{ ok: boolean; detail?: string }>('api/phone-access/test', { id, confirm: true })
+export const postPhoneRemove = (id: string) => jiraPost<{ ok: boolean }>('api/phone-access/remove', { id, confirm: true })
