@@ -1372,9 +1372,9 @@ could not be run here without python-docx (pinned in `people/requirements.txt` f
 While the slot is off (`OPSCENTER_PEOPLE` unset, the default) the people pages render nothing and cost nothing. The server
 adds no people route (`one_on_ones` and `yearly_reviews` are skipped when the route table is built), so `GET /api/one-on-ones`
 answers 404. The app reads that 404 as the off state, not as a failure: the People group leaves the rail, the shortcuts and
-the palette, the sync chip is not drawn, and `/people`, `/team` and `/team/:tab` (all still in `routes.lock.json`) leave for
-the home route. Before the first answer a people route waits, and an unreachable server still shows the page so its own
-error is read. Tests: `app/tests/peopleSlot.test.mjs` for the decision, `server/server_test.py` for the route table with the
+the palette, the sync chip is not drawn, and `/people`, `/team` and `/team/:tab` (all still in `routes.lock.json`) show the
+"needs the people slot" state (12.72), which replaced the redirect to the home route. Before the first answer a people route
+waits, and an unreachable server still shows the page so its own error is read. Tests: `app/tests/peopleSlot.test.mjs` for the decision, `server/server_test.py` for the route table with the
 slot off and on.
 
 ### 12.15 The work tracker adapter (item 18)
@@ -1786,7 +1786,8 @@ command.
 
 **The tracker slot (null by default).** The tracker routes (`/api/jira/*`, `/api/sprint-move`) are registered only
 when `OPSCENTER_TRACKER` is on, the same switch as the people slot (12.14). Off, every one of them answers 404 and the
-app hides the Jira rail item, its badge, its shortcut and its pages, and an old link leaves for the home route. A
+app hides the Jira rail item, its badge, its shortcut and its palette entries, and its pages show the "needs the tracker slot"
+state (12.72), which replaced the redirect to the home route. A
 consumer on another tracker never sees a 502 from a driver that is not there. On, the reference tracker (`tracker/`)
 runs through its driver command and parameters (12.15), and a missing token or site is a real error the page shows. A
 consumer on another tracker keeps the slot off and supplies its own pages through the extension point below. The
@@ -1906,6 +1907,44 @@ this field sends no `areas` at all, which the client treats as no rollup and not
 
 The Operations overview shows the rollup above the area cards, as a read only table with one row per area (status, owner,
 problem lines) and a line that counts areas needing me. It is on the overview only, not on a tab, and it is a lazy chunk.
+
+### 12.72 The rail is a parameter, and a disabled slot says so (issue 326, items 1 to 3)
+
+This section supersedes the redirect rule in 12.14 and 12.67 ("an old link leaves for the home route"). A redirect made a disabled
+page look like a broken route, so the page now says what it needs.
+
+**The rail is a consumer parameter.** The core's default is one flat rail with no group headings, in this order and with these
+labels: Action Center, Work tracking, Pull requests, Platform, Debt and improvements, 1:1s, Team, Knowledge, Plans, Links, each
+with its own need-me badge (the route paths are unchanged in this release). A consumer sets labels, order and flat versus grouped
+with one build time variable, `VITE_NAV` (read by `app/src/lib/navLayout.ts`), a JSON object, every key optional:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `layout` | `flat` | `flat` is the default flat rail. `grouped` draws group headings. |
+| `labels` | none | `{"/jira": "Jira"}`: a label per route path. A route not named keeps the core label (the header, the palette and the shortcut sheet follow it). |
+| `order` | core order | route paths, first to last. A route not named follows in core order. |
+| `groups` | Today (`/action`), Deliver (`/jira`, `/reviews`, `/operations`), Improve (`/debt`), People (`/people`, `/team`), Knowledge (`/knowledge`, `/plans`, `/links`) | `[{"label": "Operate", "items": ["/action"]}]`, used only by `grouped`. A page no group names (a consumer extension page) still shows, in a last group called More, and is never dropped. |
+
+A value that does not parse, or names no known route, falls back to the default for that key, so a typo never empties the rail. A
+group with no visible item (its slot is off) is not drawn. Pages a consumer adds through the extension manifest (12.69) follow the
+core items of the flat rail. The slot rules are unchanged: with the people slot off the 1:1s and Team items leave the rail, with the
+tracker slot off Work tracking leaves it.
+
+**A disabled slot says so.** `/jira` and its tabs show "Work tracking needs the tracker slot", and `/people`, `/team` and
+`/team/:tab` show "1:1s needs the people slot" or "Team needs the people slot". The state names the switch (`OPSCENTER_TRACKER`,
+`OPSCENTER_PEOPLE`) and the section that says what the consumer supplies. The address does not change. The route decision is
+`show`, `wait` or `off` (`peopleRoute`, `trackerRoute`); before the first answer the page waits, and an unreachable server still shows
+the page so its own error is read. What a consumer supplies to turn each page on: for Work tracking, `OPSCENTER_TRACKER` on and a
+`driver_cmd` that speaks the call contract of 12.15 (the tools the Needs me, Sprint, Backlog and Changes views call); for 1:1s and
+Team, `OPSCENTER_PEOPLE` and the four adapters of 12.14 (roster, calendar, meetings, message feeds), each optional with a null
+default. A plain data file that feeds these pages without a driver or provider is not built yet, and is listed as open on issue 327.
+
+**An empty state never blanks the app.** A server with no review configuration answers the platform reviews without a `gate` or a
+`policy` object, and the page read both without a guard: it threw while rendering and, with no boundary around the routed page,
+blanked the whole app, so the Pull requests page and every page after it showed nothing. The page now reads both as optional (the
+footer says nothing about a policy the server did not name), and the routed page sits in the kit's page error boundary keyed by the
+route, so a page that throws shows a crash panel while the rail and header keep working and another page clears it. The Links page
+renders from its own catalog and was blank only because the app was.
 
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 

@@ -15,6 +15,7 @@ import ClosedSprints from './ClosedSprints'
 import NeedsMe from './NeedsMe'
 import Sprint from './Sprint'
 import './Jira.css'
+import { pageTitle } from '../lib/config'
 
 function Changes() {
   return (
@@ -59,7 +60,7 @@ export default function JiraHub() {
     <div className="hub">
       <HubHeader
         eyebrow="Operate"
-        title="Jira"
+        title={pageTitle('/jira', 'Work tracking')}
         subtitle="My sprint, the tickets waiting on my call, my backlog and the changes waiting on my approval, live from Jira."
         tabs={[
           { to: '/jira', label: sp?.sprint ? `Sprint: ${sp.sprint.name}` : 'Sprint', n: myOpen, end: true },

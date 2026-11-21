@@ -9,6 +9,7 @@ import {
   Header,
   NavGroup,
   NavItem,
+  PageErrorBoundary,
   Rail,
   SearchTrigger,
   Skeleton,
@@ -22,9 +23,6 @@ import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } fr
 // Shared sheets first, so the page sheets imported by the pages below win ties.
 import './App.css'
 import './shell.css'
-import BrowserBanner from './components/BrowserBanner'
-import FallbackBanner from './components/FallbackBanner'
-import HermesRestartBanner from './components/HermesRestartBanner'
 import { useActionCounts } from './lib/counts'
 import { useApprovals, useData, useExtensions, useJiraNeedsMe, useNow, useOneOnOnes } from './lib/data'
 import { extensionRoute, pagesAll } from './lib/extensions'
@@ -65,6 +63,11 @@ const Reviews = lazy(PAGES.Reviews)
 const PlatformRedirect = lazy(() => PAGES.Reviews().then((m) => ({ default: m.PlatformRedirect })))
 const Search = lazy(PAGES.Search)
 const TeamHub = lazy(PAGES.TeamHub)
+// The banners show only while something is wrong (engine restart, fallback model, browser), so they load after first paint instead of with the shell.
+const HermesRestartBanner = lazy(() => import('./components/HermesRestartBanner'))
+const FallbackBanner = lazy(() => import('./components/FallbackBanner'))
+const BrowserBanner = lazy(() => import('./components/BrowserBanner'))
+const SlotNeeded = lazy(() => import('./components/SlotNeeded'))
 
 function usePrefetchPages() {
   useEffect(() => {
@@ -118,21 +121,22 @@ function OldRoute() {
   return <Navigate to={redirectOld(pathname, search, hash) ?? '/operations'} replace />
 }
 
-// The people pages sit behind the people slot (opscenter/DESIGN.md 12.14): while it is off an old link leaves for the home
-// route (the route stays in routes.lock.json), before the first answer the page waits, and an unreachable server still shows it.
+// The people pages sit behind the people slot (opscenter/DESIGN.md 12.14): while it is off the page says it needs the slot (12.72),
+// before the first answer it waits, and an unreachable server still shows the page, which reports its own failure.
 function PeopleGate({ children }: { children: ReactNode }) {
   const { data, error } = useOneOnOnes()
+  const { pathname } = useLocation()
   const act = peopleRoute(peopleSlot(data), !!error)
-  if (act === 'leave') return <Navigate to="/action" replace />
+  if (act === 'off') return <SlotNeeded slot="people" page={pathname.startsWith('/team') ? 'Team' : '1:1s'} />
   if (act === 'wait') return <Skeleton variant="lines" count={6} label="Loading page" />
   return <>{children}</>
 }
 
-// The Jira pages sit behind the tracker slot (opscenter/DESIGN.md 12.67), the same way: off, an old link leaves for the home route.
+// The work tracking pages sit behind the tracker slot (opscenter/DESIGN.md 12.67), the same way: off, the page says it needs the slot.
 function TrackerGate({ children }: { children: ReactNode }) {
   const { data, error } = useJiraNeedsMe()
   const act = trackerRoute(trackerSlot(data), !!error)
-  if (act === 'leave') return <Navigate to="/action" replace />
+  if (act === 'off') return <SlotNeeded slot="tracker" page="Work tracking" />
   if (act === 'wait') return <Skeleton variant="lines" count={6} label="Loading page" />
   return <>{children}</>
 }
@@ -235,9 +239,8 @@ export default function App() {
         </div>
       }
     >
-      {groupsFor(people, tracker, extraPages).map((g) => (
-        <NavGroup key={g.label} label={g.label}>
-          {g.items.map((n) => {
+      {groupsFor(people, tracker, extraPages).map((g) => {
+        const items = g.items.map((n) => {
             const badge = badgeFor(n)
             const count = n.badge ? badges[n.badge] : 0
             // The collapsed rail hides the kit badge, so the count rides on the icon itself.
@@ -263,9 +266,18 @@ export default function App() {
                 className={badge ? 'has-count' : undefined}
               />
             )
-          })}
-        </NavGroup>
-      ))}
+        })
+        // The flat rail has no heading: one labelled group of items (the kit group needs a visible label, so it is not used).
+        return g.label ? (
+          <NavGroup key={g.label} label={g.label}>
+            {items}
+          </NavGroup>
+        ) : (
+          <div key="flat" className="nav-section" role="group" aria-label="Pages">
+            {items}
+          </div>
+        )
+      })}
     </Rail>
   )
 
@@ -296,11 +308,15 @@ export default function App() {
       >
         <div className="oc-page">
           <div className="oc-alerts">
-            <FallbackBanner />
-            <BrowserBanner />
-            <HermesRestartBanner />
+            <Suspense fallback={null}>
+              <FallbackBanner />
+              <BrowserBanner />
+              <HermesRestartBanner />
+            </Suspense>
           </div>
           <Suspense fallback={<Skeleton variant="lines" count={6} label="Loading page" />}>
+            {/* A page that throws while it renders shows its own crash panel; the rail and header stay usable and another page clears it. */}
+            <PageErrorBoundary resetKey={pathname}>
             <Routes>
               <Route path="/" element={<Navigate to="/action" replace />} />
               <Route path="/action" element={<ActionHub />} />
@@ -341,6 +357,7 @@ export default function App() {
               <Route path="/extensions/:id" element={<ExtensionRoute />} />
               <Route path="*" element={<Navigate to="/action" replace />} />
             </Routes>
+            </PageErrorBoundary>
           </Suspense>
         </div>
         <SearchPalette />

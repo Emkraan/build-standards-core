@@ -6,8 +6,8 @@
 /** on: the slot answered. off: the server has no people routes. unknown: not answered yet, or the server is unreachable. */
 export type PeopleSlot = 'on' | 'off' | 'unknown'
 
-/** What a people route does: show the page, wait for the first answer, or leave for the home route. */
-export type PeopleRoute = 'show' | 'wait' | 'leave'
+/** What a people route does: show the page, wait for the first answer, or say the slot is off (the page names the slot it needs, opscenter/DESIGN.md 12.72). */
+export type PeopleRoute = 'show' | 'wait' | 'off'
 
 export interface SlotFlag {
   slot?: 'off'
@@ -28,7 +28,7 @@ export function peopleSlot(data: SlotFlag | null | undefined): PeopleSlot {
 
 /** An unreachable server (an error and no answer) still shows the page, which reports its own failure. */
 export function peopleRoute(slot: PeopleSlot, failed: boolean): PeopleRoute {
-  if (slot === 'off') return 'leave'
+  if (slot === 'off') return 'off'
   if (slot === 'on' || failed) return 'show'
   return 'wait'
 }
