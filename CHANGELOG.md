@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-21 (v2.29.2, ops-center: a Kind filter on Debt and improvements)
+
+The reference Debt page narrows by Kind, Severity, Goal and Effort. The core had no Kind filter.
+
+- Added: a Kind filter (technical debt or improvement) in the Narrow entries row of Debt and improvements, counted like the other filters and included in the Clear count.
+- Adoption risk: none.
+
+Refs #326.
 ## 2026-11-21 (v2.29.1, ops-center: plans follow the state directory)
 
 A consumer that set only `OPSCENTER_STATE_DIR` got an empty Plans page, because the plans module read `PLANS_DIR` or `~/.opscenter/state/plans` and ignored the state directory the rest of the state follows.

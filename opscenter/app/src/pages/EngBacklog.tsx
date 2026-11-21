@@ -392,6 +392,14 @@ export default function EngBacklog() {
               />
             </Toolbar>
             <Toolbar label="Narrow entries">
+              <Select aria-label="Kind" value={flt.kind} onChange={(e) => setF({ kind: e.target.value })}>
+                <option value="all">Any kind</option>
+                {optionsFor(inTab, (it) => [it.kind]).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.value === 'IMP' ? 'Improvement' : 'Technical debt'} ({o.n})
+                  </option>
+                ))}
+              </Select>
               <Select aria-label="Severity" value={flt.severity} onChange={(e) => setF({ severity: e.target.value })}>
                 <option value="all">Any severity</option>
                 {optionsFor(inTab, (it) => [it.severity]).map((o) => (

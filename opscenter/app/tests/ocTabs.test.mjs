@@ -636,7 +636,7 @@ test('the Debt page filters narrow the list and have no axe violation in either 
     for (const theme of ['light', 'dark']) {
       await visit(s, origin, '/debt/todo', theme, hasText('Debt entry 3'), 'the debt rows')
       assert.ok(await s.evaluate(hasText('Debt entry 1')), `${theme}: the first entry is listed`)
-      for (const label of ['Severity', 'Goal', 'Effort', 'Status']) {
+      for (const label of ['Kind', 'Severity', 'Goal', 'Effort', 'Status']) {
         assert.ok(await s.evaluate(`!!document.querySelector('select[aria-label="${label}"]')`), `${theme}: the ${label} filter is shown`)
       }
       let found = await axeFindings(s)

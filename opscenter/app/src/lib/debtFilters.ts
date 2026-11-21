@@ -1,4 +1,4 @@
-// Filters for the Debt and improvements page: severity, goal, effort, status and the fold toggles.
+// Filters for the Debt and improvements page: kind, severity, goal, effort, status and the fold toggles.
 // Pure functions over EngItem so tests/debtFilters.test.mjs can load this file as it is.
 
 export interface DebtFilterItem {
@@ -12,6 +12,8 @@ export interface DebtFilterItem {
 }
 
 export interface DebtFilters {
+  /** all, TD (technical debt) or IMP (improvement). */
+  kind: string
   severity: string
   goal: string
   effort: string
@@ -21,6 +23,7 @@ export interface DebtFilters {
 }
 
 export const NO_DEBT_FILTERS: DebtFilters = {
+  kind: 'all',
   severity: 'all',
   goal: 'all',
   effort: 'all',
@@ -63,6 +66,7 @@ export function optionsFor<T extends DebtFilterItem>(items: T[], pick: (it: T) =
 
 export function applyDebtFilters<T extends DebtFilterItem>(items: T[], f: DebtFilters): T[] {
   return items.filter((it) => {
+    if (f.kind !== 'all' && it.kind !== f.kind) return false
     if (f.severity !== 'all' && it.severity !== f.severity) return false
     if (f.goal !== 'all' && !it.goals.includes(f.goal)) return false
     if (f.effort !== 'all' && effortBand(it.effort) !== f.effort) return false
@@ -74,4 +78,4 @@ export function applyDebtFilters<T extends DebtFilterItem>(items: T[], f: DebtFi
 }
 
 export const activeFilterCount = (f: DebtFilters) =>
-  (['severity', 'goal', 'effort', 'status'] as const).filter((k) => f[k] !== 'all').length + (f.hasFolded ? 1 : 0) + (f.foldedInto ? 1 : 0)
+  (['kind', 'severity', 'goal', 'effort', 'status'] as const).filter((k) => f[k] !== 'all').length + (f.hasFolded ? 1 : 0) + (f.foldedInto ? 1 : 0)
