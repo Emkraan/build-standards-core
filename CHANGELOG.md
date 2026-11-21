@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-11-21 (v2.27.0, ops-center: page chip, header trail, notice tray, mobile tab bar and the stat row)
+
+The page chrome of the reference ops center: every hub page opens with the accent chip, the header says where I am as a trail, system notices are one tray, a phone gets a bottom tab bar, and the stat row is a shared piece.
+
+- Added: `PageHeader` and `HubHeader` take an `icon`, drawn as the 40px accent chip (`ds-head`); hub pages pass their rail icon. Pages no longer pass an eyebrow.
+- Changed: the header title is the trail "<Group> / <Page> / <Tab>"; system notices are the kit `Notice` row in a `notice-tray`; below 901px a bottom tab bar (Action Center, Pull requests, Work tracking, Platform, Menu) appears and the search trigger goes compact.
+- Added: `StatRow` for the stat tiles of each page tab.
+- Changed: the first load budget is 160 KB gzip (was 150), for the chrome that loads on every route.
+- Adoption risk: a consumer that styled `.oc-alert` or passed an eyebrow sees the kit notice row and no eyebrow.
+
+Refs #327.
+
 ## 2026-11-21 (v2.25.2, ops-center: Work tracking is /work and Platform is /platform)
 
 The rail and page titles took the reference names in v2.25.0 but the addresses were still /jira and /operations, and /platform redirected into one review lane.

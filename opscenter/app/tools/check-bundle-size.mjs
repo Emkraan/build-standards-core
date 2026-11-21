@@ -12,7 +12,7 @@ const DIST = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist')
 // Budgets in KB of gzip. Entry chunk is the app code that loads first. First load adds the vendor
 // chunks the page preloads. Raise a budget only in a PR that says why.
 const BUDGET_ENTRY_GZIP_KB = Number(process.env.BUNDLE_BUDGET_ENTRY_KB || 70)
-const BUDGET_FIRST_LOAD_GZIP_KB = Number(process.env.BUNDLE_BUDGET_FIRST_LOAD_KB || 150)
+const BUDGET_FIRST_LOAD_GZIP_KB = Number(process.env.BUNDLE_BUDGET_FIRST_LOAD_KB || 160)
 
 const indexPath = join(DIST, 'index.html')
 if (!existsSync(indexPath)) {

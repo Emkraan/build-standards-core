@@ -1955,6 +1955,27 @@ and `/backlog`. `/platform` used to redirect into the platform review lane; its 
 `/platform/shipped`) still do, and every other `/platform` address is the hub. `routes.lock.json` lists both the new and the old routes.
 The `VITE_NAV` keys (12.72) are route paths, so a consumer names `/work` and `/platform`; the default groups use them.
 
+### 12.75 Page chrome and shell pieces (issue 327, parity spec sections 2 and 3)
+
+Every page header takes the rail icon of its page as a 40px accent chip beside the title (`icon` of the kit `PageHeader` and `HubHeader`,
+`ds-head`): a 24px title, a 14px one line sub and a soft accent wash at the start edge. The icon is read from the navigation list by route
+(`components/HubHeader.tsx`), so the chip and the rail never disagree. No page draws an eyebrow line (ops-center-layout rule 17); the group
+is part of the header trail instead.
+
+- **Header trail.** The header title is "<Group> / <Page> / <Tab>" (`breadcrumb`, `groupOf` in `lib/navLayout.ts`), plain text and never a link.
+  The group comes from the grouped layout's groups (12.72) in every layout, the tab only when the address is one of the page's listed tabs.
+- **Notice tray.** The system notices above a page (fallback model, browser window, engine restart, review gate) are the kit `Notice` row inside
+  one `section.notice-tray`: a tone icon, a one line title, at most one action and a chevron that opens the detail. An empty tray takes no space.
+  `AlertBanner` keeps its name and renders that row.
+- **Mobile tab bar.** Under 901px a bottom bar offers Action Center, Pull requests, Work tracking and Platform (when the rail has them, with
+  the consumer labels) and a Menu button that opens the rail drawer; a count is said to a screen reader as ", <n> need me". The search
+  trigger is compact there.
+- **Stat row.** `StatRow` (`components/StatRow.tsx`) is the row of equal tiles each page tab uses: an 81px tile with a 32px accent chip, label,
+  value and optional sub line; a tile with a handler is a button that filters the page, and a zero value is muted, never coloured. Two columns
+  under 901px.
+- **Bundle budget.** The first load budget goes from 150 to 160 KB gzip: the kit chrome (page chip, notice row) and the tab bar load with the shell
+  on every route.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

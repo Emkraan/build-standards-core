@@ -109,3 +109,13 @@ export function arrange<T extends Routed>(items: T[], layout: NavLayout): Arrang
   if (rest.length) out.push({ label: 'More', items: rest })
   return out
 }
+
+/** The group heading a route sits under in the grouped layout (the consumer's groups, or the default five), for the header breadcrumb in any layout. */
+export function groupOf(route: string, layout: NavLayout): string | undefined {
+  return layout.groups.find((g) => g.items.includes(route))?.label
+}
+
+/** The header breadcrumb: "<Group> / <Page> / <Tab>", leaving out the parts a page does not have. */
+export function breadcrumb(parts: (string | null | undefined)[]): string {
+  return parts.filter((p): p is string => !!p).join(' / ')
+}

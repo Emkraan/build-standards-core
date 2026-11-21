@@ -618,7 +618,6 @@ export default function Plans() {
   return (
     <div className="hub">
       <HubHeader
-        eyebrow="Knowledge"
         title="Plans"
         subtitle="What we are building and the plans behind it. Messages are not tracked here, they go straight to Teams, Outlook or the chat."
       />

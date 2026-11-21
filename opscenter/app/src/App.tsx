@@ -26,7 +26,8 @@ import './shell.css'
 import { useActionCounts } from './lib/counts'
 import { useApprovals, useData, useExtensions, useJiraNeedsMe, useNow, useOneOnOnes } from './lib/data'
 import { extensionRoute, pagesAll } from './lib/extensions'
-import { APP_SUBTITLE } from './lib/config'
+import { APP_SUBTITLE, NAV_LAYOUT } from './lib/config'
+import { breadcrumb, groupOf } from './lib/navLayout'
 import ActionHub from './pages/ActionHub'
 import { movedTo, platformTarget } from './lib/legacyRoutes'
 import { redirectOld } from './pages/operations/routes'
@@ -35,6 +36,7 @@ import type { BadgeKey, NavDef } from './shell/nav'
 import { peopleRoute, peopleSlot } from './lib/peopleSlot'
 import { trackerRoute, trackerSlot } from './lib/trackerSlot'
 import { groupsFor, navFor } from './shell/nav'
+import MobileTabBar from './components/MobileTabBar'
 import SearchPalette from './shell/SearchPalette'
 
 // Every page but the landing hub loads on demand (the charts library alone is about a third of the
@@ -294,9 +296,16 @@ export default function App() {
     </Rail>
   )
 
+  // The header names where I am as a trail: group, page and, when the address is one of the page's tabs, that tab.
+  const tab = active?.pages?.find((p) => p.to === pathname)?.label.replace(`${active.label}: `, '')
+  const crumb = active
+    ? breadcrumb([groupOf(active.to, NAV_LAYOUT), active.label, tab])
+    : pathname.startsWith('/search')
+      ? 'Search'
+      : 'Ops Center'
   const header = (
     <Header
-      title={active?.label ?? (pathname.startsWith('/search') ? 'Search' : 'Ops Center')}
+      title={crumb}
       subtitle={today}
       actions={
         <>
@@ -306,7 +315,7 @@ export default function App() {
         </>
       }
     >
-      <SearchTrigger label="Search everything" />
+      <SearchTrigger label="Search everything" compact="auto" />
     </Header>
   )
 
@@ -320,13 +329,13 @@ export default function App() {
         strip={<FeedStrip health={feed.health} items={feed.items} search={false} greeting="Nothing is waiting on me right now." />}
       >
         <div className="oc-page">
-          <div className="oc-alerts">
+          <section className="notice-tray oc-alerts" aria-label="Notices">
             <Suspense fallback={null}>
               <FallbackBanner />
               <BrowserBanner />
               <HermesRestartBanner />
             </Suspense>
-          </div>
+          </section>
           <Suspense fallback={<Skeleton variant="lines" count={6} label="Loading page" />}>
             {/* A page that throws while it renders shows its own crash panel; the rail and header stay usable and another page clears it. */}
             <PageErrorBoundary resetKey={pathname}>
@@ -378,6 +387,7 @@ export default function App() {
           </Suspense>
         </div>
         <SearchPalette />
+        <MobileTabBar items={groupsFor(people, tracker).flatMap((g) => g.items)} count={(n) => (n.badge ? badges[n.badge] : 0)} />
         <Shortcuts people={people} tracker={tracker} />
       </AppShell>
       <TooltipLayer />

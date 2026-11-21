@@ -14,7 +14,7 @@ export default function ExtensionPage({ id }: { id: string }) {
   const { data: rows, error } = useExtensionRows(id)
   const page = rows?.page ?? (manifest && manifest.configured ? (manifest.pages.find((p) => p.id === id) ?? null) : null)
   const title = page?.title ?? 'Extension'
-  const header = <HubHeader eyebrow={page?.group ?? 'Extension'} title={title} subtitle={page?.lede ?? undefined} />
+  const header = <HubHeader title={title} subtitle={page?.lede ?? undefined} />
   // A failed read is an error even while an earlier copy is held, so a stale list never reads as current.
   if (error) return <>{header}<LoadError title="I could not read this page" error={error} /></>
   if (!rows) return <>{header}<Skeleton variant="lines" count={4} label="Loading the page" /></>

@@ -75,12 +75,19 @@ export interface PageHeaderProps {
   status?: ReactNode;
   /** Opt in to the tinted header: the accent wash, a hairline accent ring and a top light. Off by default, so a plain header looks as before. */
   wash?: boolean | undefined;
+  /** The rail icon of the page. It draws the accent chip beside the title (the reference page header) and takes the accent wash. */
+  icon?: ReactNode;
 }
 
 /** The page title block. It takes no actions by design (rule 6). */
-export function PageHeader({ title, subtitle, eyebrow, status, wash }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, eyebrow, status, wash, icon }: PageHeaderProps) {
   return (
-    <div className="page-header" data-wash={wash ? '' : undefined}>
+    <div className={cx('page-header', icon ? 'ds-head' : undefined)} data-wash={wash ? '' : undefined}>
+      {icon ? (
+        <span className="ds-head-chip" aria-hidden="true">
+          {icon}
+        </span>
+      ) : null}
       <div className="page-header-text">
         {eyebrow ? <p className="page-eyebrow">{eyebrow}</p> : null}
         <h1 className="page-title">{title}</h1>

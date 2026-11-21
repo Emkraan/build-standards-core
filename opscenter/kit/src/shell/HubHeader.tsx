@@ -116,6 +116,8 @@ export interface HubHeaderProps {
   /** One line saying what the hub is for. */
   subtitle?: string | undefined;
   eyebrow?: string | undefined;
+  /** The rail icon: draws the accent chip beside the title (PageHeader icon). */
+  icon?: ReactNode;
   /** Status badges only. */
   status?: ReactNode;
   /** The route the hub lives at, for example `/platform`. Not needed with `headerOnly`. */
@@ -157,14 +159,14 @@ function sum(items: readonly HubItem[]): number | undefined {
   return n > 0 ? n : undefined;
 }
 
-function FlatHubHeader({ title, subtitle, eyebrow, status, base, tabs, item, indexKey, onNavigate }: Pick<HubHeaderProps, 'title' | 'subtitle' | 'eyebrow' | 'status' | 'item' | 'indexKey'> & { base: string; onNavigate: (path: string) => void; tabs: readonly HubItem[] }) {
+function FlatHubHeader({ title, subtitle, eyebrow, status, icon, base, tabs, item, indexKey, onNavigate }: Pick<HubHeaderProps, 'title' | 'subtitle' | 'eyebrow' | 'status' | 'icon' | 'item' | 'indexKey'> & { base: string; onNavigate: (path: string) => void; tabs: readonly HubItem[] }) {
   const root = base.replace(/\/+$/, '');
   const items: TabItem[] = tabs.map((t) => ({ id: t.key === indexKey ? root || '/' : `${root}/${seg(t.key)}`, label: t.label, badge: badge(t.count, t.live) }));
   const cur = unseg(item);
   const value = items[tabs.findIndex((t) => t.key === cur)]?.id ?? items[Math.max(0, tabs.findIndex((t) => t.key === indexKey))]?.id ?? '';
   return (
     <div className="hub-head">
-      <PageHeader eyebrow={eyebrow} title={title} subtitle={subtitle} status={status} />
+      <PageHeader eyebrow={eyebrow} title={title} subtitle={subtitle} status={status} icon={icon} />
       <Tabs label={`${title} tabs`} items={items} value={value} onChange={onNavigate} />
     </div>
   );
@@ -177,6 +179,7 @@ export function HubHeader({
   subtitle,
   eyebrow,
   status,
+  icon,
   base = '/',
   sections = [],
   tabs,
@@ -190,11 +193,11 @@ export function HubHeader({
   if (headerOnly) {
     return (
       <div className="hub-head">
-        <PageHeader eyebrow={eyebrow} title={title} subtitle={subtitle} status={status} />
+        <PageHeader eyebrow={eyebrow} title={title} subtitle={subtitle} status={status} icon={icon} />
       </div>
     );
   }
-  if (tabs) return <FlatHubHeader {...{ title, subtitle, eyebrow, status, base, tabs, item, indexKey, onNavigate }} />;
+  if (tabs) return <FlatHubHeader {...{ title, subtitle, eyebrow, status, icon, base, tabs, item, indexKey, onNavigate }} />;
   warnOnce(sections);
   const root = base.replace(/\/+$/, '') || '/';
   const pre = root === '/' ? '' : root;
@@ -220,7 +223,7 @@ export function HubHeader({
   const secondValue = second.find((t) => t.id === `${pre}/${seg(open?.key ?? '')}/${seg(itemKey ?? '')}`)?.id ?? second[0]?.id ?? '';
   return (
     <div className="hub-head">
-      <PageHeader eyebrow={eyebrow} title={title} subtitle={subtitle} status={status} />
+      <PageHeader eyebrow={eyebrow} title={title} subtitle={subtitle} status={status} icon={icon} />
       <Tabs
         label={`${title} sections`}
         items={top}

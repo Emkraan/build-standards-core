@@ -557,6 +557,23 @@ test('old /jira and /operations addresses land on /work and /platform with the t
   })
 })
 
+test('every hub page has the accent chip and the header names a trail, and at phone width the tab bar shows with no axe violation', { skip, timeout: 120000 }, async () => {
+  await withApp(fixtures(), async (s, origin) => {
+    await s.send('Emulation.setDeviceMetricsOverride', { width: 1300, height: 900, deviceScaleFactor: 1, mobile: false })
+    await visit(s, origin, '/debt', 'light', hasText('Debt and improvements'), 'the Debt page')
+    assert.equal(await s.evaluate(`!!document.querySelector('.page-header.ds-head .ds-head-chip svg')`), true, 'the chip carries the rail icon')
+    assert.equal(await s.evaluate(`document.querySelector('.header-title').textContent`), 'Improve / Debt and improvements', 'the trail')
+    assert.equal(await s.evaluate(`getComputedStyle(document.querySelector('.oc-tabbar')).display`), 'none', 'no tab bar on a wide screen')
+    await s.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 800, deviceScaleFactor: 1, mobile: true })
+    await s.waitFor(`getComputedStyle(document.querySelector('.oc-tabbar')).display === 'flex'`, 'the tab bar at phone width')
+    const tabs = await s.evaluate(`[...document.querySelectorAll('.oc-tabbar .oc-tab-label')].map((e) => e.textContent)`)
+    assert.deepEqual(tabs.at(-1), 'Menu')
+    assert.ok(tabs.includes('Action Center'), JSON.stringify(tabs))
+    assert.deepEqual(await axeFindings(s), [], 'no axe violation at phone width')
+    await s.send('Emulation.clearDeviceMetricsOverride')
+  })
+})
+
 // ---- issue 308: Debt page filters ----
 test('the Debt page filters narrow the list and have no axe violation in either theme', { skip, timeout: 120000 }, async () => {
   await withApp(fixtures(), async (s, origin) => {
