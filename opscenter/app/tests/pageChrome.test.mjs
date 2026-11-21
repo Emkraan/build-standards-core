@@ -41,3 +41,17 @@ test('a zero stat is muted and a stat with a handler is a button', () => {
   assert.match(src, /data-zero=/)
   assert.match(src, /<button key=\{s\.key\} type="button" className="ds-stat" aria-pressed/)
 })
+
+test('the Work tracking tabs open with the reference stat rows and labels', () => {
+  const want = {
+    Sprint: ['My items', 'In progress', 'To do', 'Points done'],
+    NeedsMe: ['Waiting on my call', 'Oldest wait', 'Closing now'],
+    Backlog: ['Backlog items', 'High and highest', 'In progress outside the sprint', 'Active sprint'],
+  }
+  for (const [page, labels] of Object.entries(want)) {
+    const src = read(`../src/pages/${page}.tsx`)
+    assert.match(src, /<StatRow/, page)
+    assert.doesNotMatch(src, /<StatTile/, page)
+    for (const l of labels) assert.ok(src.includes(`'${l}'`), `${page}: ${l}`)
+  }
+})
