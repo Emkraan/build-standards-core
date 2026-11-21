@@ -433,7 +433,7 @@ test('the Docs drift tab is hidden when no provider is configured, and its route
 // ---- an axe scan must not read a colour in the middle of a theme transition ----
 test('a scan after a theme flip waits for the colour transition, so axe never reads a blend of both themes', { skip, timeout: 120000 }, async () => {
   await withApp(fixtures(), async (s, origin) => {
-    await visit(s, origin, '/jira', 'dark', hasText('Sprint trend'), 'the sprint card')
+    await visit(s, origin, '/work', 'dark', hasText('Sprint trend'), 'the sprint card')
     // Slow the header chip down so a transition is certainly still running a moment after the flip.
     await s.evaluate(`const st = document.createElement('style'); st.textContent = '.next-chip { transition: color 1.5s linear !important }'; document.head.appendChild(st); true`)
     await s.evaluate(`localStorage.setItem('shell.theme', 'light'); document.documentElement.setAttribute('data-theme', 'light'); true`)
@@ -452,14 +452,14 @@ test('a scan after a theme flip waits for the colour transition, so axe never re
 test('the sprint trend card and the closed sprints tab have no axe violation in either theme', { skip, timeout: 120000 }, async () => {
   await withApp(fixtures(), async (s, origin) => {
     for (const theme of ['light', 'dark']) {
-      await visit(s, origin, '/jira', theme, hasText('Sprint trend') && hasText('Items in sprint'), 'the sprint trend card')
+      await visit(s, origin, '/work', theme, hasText('Sprint trend') && hasText('Items in sprint'), 'the sprint trend card')
       assert.ok(await s.evaluate(hasTab('Closed sprints')), `${theme}: the Closed sprints tab is in the hub`)
       let found = await axeFindings(s)
       assert.deepEqual(found, [], `${theme} theme, Sprint tab: ${JSON.stringify(found)}`)
-      await visit(s, origin, '/jira/closed', theme, hasText('Closed sprints') && hasText('Sprint 32'), 'the closed sprint list')
+      await visit(s, origin, '/work/closed', theme, hasText('Closed sprints') && hasText('Sprint 32'), 'the closed sprint list')
       found = await axeFindings(s)
       assert.deepEqual(found, [], `${theme} theme, closed list: ${JSON.stringify(found)}`)
-      await visit(s, origin, '/jira/closed/31', theme, hasText('FIX-2'), 'the closed sprint items')
+      await visit(s, origin, '/work/closed/31', theme, hasText('FIX-2'), 'the closed sprint items')
       assert.ok(await s.evaluate(hasText('read only')), `${theme}: the view says it is read only`)
       found = await axeFindings(s)
       assert.deepEqual(found, [], `${theme} theme, closed sprint: ${JSON.stringify(found)}`)
@@ -469,16 +469,16 @@ test('the sprint trend card and the closed sprints tab have no axe violation in 
 
 test('the sprint trend card and the closed sprints tab are hidden when the tracker has no sprint source', { skip, timeout: 60000 }, async () => {
   await withApp({ ...fixtures(), trend: null, closed: null }, async (s, origin) => {
-    await visit(s, origin, '/jira', 'light', hasText('FIX-9'), 'the active sprint')
+    await visit(s, origin, '/work', 'light', hasText('FIX-9'), 'the active sprint')
     assert.equal(await s.evaluate(hasText('Sprint trend')), false, 'no trend card without a sprint source')
     assert.equal(await s.evaluate(hasTab('Closed sprints')), false, 'no Closed sprints tab without a sprint source')
-    await visit(s, origin, '/jira/closed', 'light', `location.hash === '#/jira'`, 'the redirect to the Sprint tab')
+    await visit(s, origin, '/work/closed', 'light', `location.hash === '#/work'`, 'the redirect to the Sprint tab')
   })
 })
 
 test('an id that is not in the closed list never opens a sprint view', { skip, timeout: 60000 }, async () => {
   await withApp(fixtures(), async (s, origin) => {
-    await visit(s, origin, '/jira/closed/999', 'light', hasText('not one of the recent closed sprints'), 'the refusal')
+    await visit(s, origin, '/work/closed/999', 'light', hasText('not one of the recent closed sprints'), 'the refusal')
     assert.equal(await s.evaluate(hasText('FIX-1')), false, 'no ticket of any sprint is shown')
   })
 })
@@ -489,13 +489,13 @@ const clickByText = (sel, text) => `(() => { const el = [...document.querySelect
 test('the Live automation tab lists the acting launch, and the Action Center keeps only the dark one, in both themes', { skip, timeout: 120000 }, async () => {
   await withApp(fixtures(), async (s, origin) => {
     for (const theme of ['light', 'dark']) {
-      await visit(s, origin, '/operations/automation/live-automation', theme, hasText('Launch alpha'), 'the acting launch')
+      await visit(s, origin, '/platform/automation/live-automation', theme, hasText('Launch alpha'), 'the acting launch')
       assert.ok(await s.evaluate(hasTab('Live automation')), `${theme}: the item is in the Automation section`)
       assert.equal(await s.evaluate(hasText('Launch beta')), false, `${theme}: a dark launch is not listed as live`)
       assert.ok(await s.evaluate(`!!document.querySelector('[role="switch"][aria-checked="true"]')`), `${theme}: the launch has its Disable switch, on`)
       let found = await axeFindings(s)
       assert.deepEqual(found, [], `${theme} theme, Live automation: ${JSON.stringify(found)}`)
-      await visit(s, origin, '/operations', theme, hasText('Live automation') && hasText('Launch alpha'), 'the Overview card')
+      await visit(s, origin, '/platform', theme, hasText('Live automation') && hasText('Launch alpha'), 'the Overview card')
       found = await axeFindings(s)
       assert.deepEqual(found, [], `${theme} theme, Overview: ${JSON.stringify(found)}`)
       await visit(s, origin, '/action', theme, hasText('Launch beta'), 'the dark launch in the Action Center')
@@ -508,7 +508,7 @@ test('the Live automation tab lists the acting launch, and the Action Center kee
 test('the Disable switch asks first, sets the launch back and returns it to the Action Center', { skip, timeout: 60000 }, async () => {
   const fx = fixtures()
   await withApp(fx, async (s, origin) => {
-    await visit(s, origin, '/operations/automation/live-automation', 'light', hasText('Launch alpha'), 'the acting launch')
+    await visit(s, origin, '/platform/automation/live-automation', 'light', hasText('Launch alpha'), 'the acting launch')
     await s.evaluate(`document.querySelector('[role="switch"]').click(); true`)
     await s.waitFor(hasText('Disable Launch alpha?'), 'the confirmation')
     assert.deepEqual(fx.posts, [], 'nothing is sent before the confirmation')
@@ -521,17 +521,17 @@ test('the Disable switch asks first, sets the launch back and returns it to the 
 
 test('the Live automation tab is hidden when no dark launch is registered', { skip, timeout: 60000 }, async () => {
   await withApp({ ...fixtures(), launches: { launches: [], error: null } }, async (s, origin) => {
-    await visit(s, origin, '/operations', 'light', hasText('what we run and whether it is healthy'), 'the Operations hub')
+    await visit(s, origin, '/platform', 'light', hasText('what we run and whether it is healthy'), 'the Operations hub')
     await sleep(500)
     assert.equal(await s.evaluate(hasTab('Live automation')), false, 'no Live automation tab without a registry')
-    await visit(s, origin, '/operations/automation/live-automation', 'light', `!location.hash.includes('live-automation')`, 'the redirect to the Overview')
+    await visit(s, origin, '/platform/automation/live-automation', 'light', `!location.hash.includes('live-automation')`, 'the redirect to the Overview')
   })
 })
 
 test('with the tracker slot off the Work tracking item leaves the rail and its page says it needs the tracker slot', { skip, timeout: 60000 }, async () => {
   await withApp({ ...fixtures(), needsMe: null, approvals: null, active: null, trend: null, closed: null }, async (s, origin) => {
-    await visit(s, origin, '/jira', 'light', hasText('Work tracking needs the tracker slot'), 'the explicit slot state')
-    assert.equal(await s.evaluate(`location.hash`), '#/jira', 'the address stays: a disabled page is not a redirect')
+    await visit(s, origin, '/work', 'light', hasText('Work tracking needs the tracker slot'), 'the explicit slot state')
+    assert.equal(await s.evaluate(`location.hash`), '#/work', 'the address stays: a disabled page is not a redirect')
     assert.equal(await s.evaluate(hasText('OPSCENTER_TRACKER')), true, 'the state names the switch')
     const rail = await s.evaluate(`[...document.querySelectorAll('nav a')].map((a) => a.textContent.trim())`)
     // A rail item carries its badge count on both sides (4Reviews4), so the label is matched after any leading digits.
@@ -546,6 +546,14 @@ test('a server with no review config answers the platform reviews without a gate
   await withApp({ ...fixtures(), platform: empty }, async (s, origin) => {
     await visit(s, origin, '/reviews/platform', 'light', hasText('Nothing needs you'), 'the empty reviews page')
     assert.equal(await s.evaluate(`!!document.querySelector('nav')`), true, 'the shell is still there')
+  })
+})
+
+test('old /jira and /operations addresses land on /work and /platform with the tab kept', { skip, timeout: 60000 }, async () => {
+  await withApp(fixtures(), async (s, origin) => {
+    await visit(s, origin, '/jira/backlog', 'light', `location.hash === '#/work/backlog'`, 'the redirect to Work tracking')
+    await visit(s, origin, '/operations/automation/live-automation', 'light', `location.hash.startsWith('#/platform/automation')`, 'the redirect to Platform')
+    await visit(s, origin, '/platform/mine', 'light', `location.hash === '#/reviews/platform/mine'`, 'the lane tab keeps its old meaning')
   })
 })
 
@@ -597,11 +605,11 @@ test('the Action Center counters row shows each source with its number and link,
       const want = {
         'Actions open': '2 Actions open > #/action',
         'Alerts': '1 Alerts > #/action/alerts',
-        'Platform problems': '1 Platform problems > #/operations',
+        'Platform problems': '1 Platform problems > #/platform',
         'Debt entries': '3 Debt entries > #/debt',
-        'Builds waiting': '1 Builds waiting > #/operations/builds',
+        'Builds waiting': '1 Builds waiting > #/platform/builds',
         // The configured tracker answers with nothing waiting, so its tile shows an honest zero.
-        'Work waiting': '0 Work waiting > #/jira',
+        'Work waiting': '0 Work waiting > #/work',
       }
       for (const [label, line] of Object.entries(want)) {
         assert.equal(await s.evaluate(tileText(label)), line, `${theme}: ${label}`)
@@ -830,7 +838,7 @@ test('the Operations overview shows one row per area with its status, owner and 
   fx.badges = withAreas(AREA_ROWS)
   await withApp(fx, async (s, origin) => {
     for (const theme of ['light', 'dark']) {
-      await visit(s, origin, '/operations', theme, `!!document.querySelector('.pa-table')`, 'the areas table')
+      await visit(s, origin, '/platform', theme, `!!document.querySelector('.pa-table')`, 'the areas table')
       const text = await flatEval(s, `document.querySelector('.pa').textContent`)
       assert.match(text, /3 areas, 1 needs me\./)
       assert.match(text, /Automation and jobs\s*Needs me\s*Owner: Platform team\s*2/)
@@ -857,7 +865,7 @@ test('the Operations overview shows the Active builds panel with the pull reques
   fx.agentBuilds = PR_BUILDS()
   await withApp(fx, async (s, origin) => {
     for (const theme of ['light', 'dark']) {
-      await visit(s, origin, '/operations', theme, `!!document.querySelector('.ac-builds li')`, 'the builds panel')
+      await visit(s, origin, '/platform', theme, `!!document.querySelector('.ac-builds li')`, 'the builds panel')
       const text = await flatEval(s, `document.querySelector('.ac-builds').textContent`)
       assert.match(text, /Pull request open, 1 red/, 'an open request names its failing checks')
       assert.match(text, /No output for 25 minutes, check the log before waiting longer/, 'a stuck row says the real silence')
@@ -878,7 +886,7 @@ test('a row from an older feed with no pull request field still draws, and a qui
   const fx = fixtures()
   fx.agentBuilds = buildsFeed([BUILD('o1', 'Plain row', 'running', { activity: 'working' })])
   await withApp(fx, async (s, origin) => {
-    await visit(s, origin, '/operations', 'light', `!!document.querySelector('.ac-builds li')`, 'the plain row')
+    await visit(s, origin, '/platform', 'light', `!!document.querySelector('.ac-builds li')`, 'the plain row')
     const text = await flatEval(s, `document.querySelector('.ac-builds').textContent`)
     assert.match(text, /Plain row/)
     assert.doesNotMatch(text, /Pull request/, 'no pull request is named when the feed sent none')
@@ -886,12 +894,12 @@ test('a row from an older feed with no pull request field still draws, and a qui
   const bad = fixtures()
   bad.agentBuilds = buildsFeed([], 'the source failed (OSError)')
   await withApp(bad, async (s, origin) => {
-    await visit(s, origin, '/operations', 'light', `document.body.textContent.includes('This is not the same as nothing running')`, 'the error')
+    await visit(s, origin, '/platform', 'light', `document.body.textContent.includes('This is not the same as nothing running')`, 'the error')
   })
   const none = fixtures()
   none.agentBuilds = null
   await withApp(none, async (s, origin) => {
-    await visit(s, origin, '/operations', 'light', `!!document.querySelector('.infra-stack')`, 'the overview')
+    await visit(s, origin, '/platform', 'light', `!!document.querySelector('.infra-stack')`, 'the overview')
     assert.equal(await s.evaluate(`document.querySelectorAll('.ac-builds').length`), 0, 'no provider means no panel on Operations')
   })
 })
@@ -939,7 +947,7 @@ test('the restart banner offers its two timings and a link to the engine card on
     const text = flat(await s.evaluate(`document.body.textContent`))
     assert.match(text, /Restart when idle/)
     assert.match(text, /After 5 quiet minutes/)
-    assert.equal(await s.evaluate(`[...document.querySelectorAll('a')].find((a) => a.textContent.trim() === 'More restart options').getAttribute('href')`), '#/operations', 'the link goes to the page that holds the engine card')
+    assert.equal(await s.evaluate(`[...document.querySelectorAll('a')].find((a) => a.textContent.trim() === 'More restart options').getAttribute('href')`), '#/platform', 'the link goes to the page that holds the engine card')
     const found = await axeFindings(s)
     assert.deepEqual(found, [], JSON.stringify(found))
   })
@@ -949,7 +957,7 @@ test('the engine card the restart link points at is on the Operations overview',
   const fx = fixtures()
   fx.restart = RESTART_STALE
   await withApp(fx, async (s, origin) => {
-    await visit(s, origin, '/operations', 'light', `!!document.querySelector('.ac-none, .hub-body, .infra-stack')`, 'the Operations overview')
+    await visit(s, origin, '/platform', 'light', `!!document.querySelector('.ac-none, .hub-body, .infra-stack')`, 'the Operations overview')
     await new Promise((r) => setTimeout(r, 800))
     assert.equal(await s.evaluate(`document.querySelectorAll('.hermes-engine').length`), 1, 'exactly one Hermes engine card is on the overview')
     assert.match(flat(await s.evaluate(`document.querySelector('.hermes-engine').textContent`)), /Hermes engine/)
@@ -961,7 +969,7 @@ test('a server that sends no areas shows no rollup, and an empty areas list show
     const fx = fixtures()
     fx.badges = withAreas(areas)
     await withApp(fx, async (s, origin) => {
-      await visit(s, origin, '/operations', 'light', hasText('what we run and whether it is healthy'), 'the Operations hub')
+      await visit(s, origin, '/platform', 'light', hasText('what we run and whether it is healthy'), 'the Operations hub')
       await new Promise((r) => setTimeout(r, 400))
       assert.equal(await s.evaluate(`document.querySelectorAll('.pa').length`), 0)
     })
@@ -972,7 +980,7 @@ test('the rollup is on the overview only, not on a tab', { skip, timeout: 90000 
   const fx = fixtures()
   fx.badges = withAreas(AREA_ROWS)
   await withApp(fx, async (s, origin) => {
-    await visit(s, origin, '/operations/automation/live-automation', 'light', hasText('Launch alpha'), 'the acting launch')
+    await visit(s, origin, '/platform/automation/live-automation', 'light', hasText('Launch alpha'), 'the acting launch')
     assert.equal(await s.evaluate(`document.querySelectorAll('.pa').length`), 0)
   })
 })

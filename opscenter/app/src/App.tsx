@@ -28,6 +28,7 @@ import { useApprovals, useData, useExtensions, useJiraNeedsMe, useNow, useOneOnO
 import { extensionRoute, pagesAll } from './lib/extensions'
 import { APP_SUBTITLE } from './lib/config'
 import ActionHub from './pages/ActionHub'
+import { movedTo, platformTarget } from './lib/legacyRoutes'
 import { redirectOld } from './pages/operations/routes'
 import { NextOneOnOne, SyncChip, useFeed } from './shell/HeaderBits'
 import type { BadgeKey, NavDef } from './shell/nav'
@@ -60,7 +61,6 @@ const Knowledge = lazy(PAGES.Knowledge)
 const Links = lazy(PAGES.Links)
 const OneOnOnes = lazy(PAGES.OneOnOnes)
 const Reviews = lazy(PAGES.Reviews)
-const PlatformRedirect = lazy(() => PAGES.Reviews().then((m) => ({ default: m.PlatformRedirect })))
 const Search = lazy(PAGES.Search)
 const TeamHub = lazy(PAGES.TeamHub)
 // The banners show only while something is wrong (engine restart, fallback model, browser), so they load after first paint instead of with the shell.
@@ -118,7 +118,7 @@ function badgeTip(key: BadgeKey, n: number): string {
 // Old /builds, /core and /infra/<tab> links land on their item in Operations with the query string kept.
 function OldRoute() {
   const { pathname, search, hash } = useLocation()
-  return <Navigate to={redirectOld(pathname, search, hash) ?? '/operations'} replace />
+  return <Navigate to={redirectOld(pathname, search, hash) ?? '/platform'} replace />
 }
 
 // The people pages sit behind the people slot (opscenter/DESIGN.md 12.14): while it is off the page says it needs the slot (12.72),
@@ -130,6 +130,19 @@ function PeopleGate({ children }: { children: ReactNode }) {
   if (act === 'off') return <SlotNeeded slot="people" page={pathname.startsWith('/team') ? 'Team' : '1:1s'} />
   if (act === 'wait') return <Skeleton variant="lines" count={6} label="Loading page" />
   return <>{children}</>
+}
+
+// /jira and /operations moved to /work and /platform (12.73): the old address lands on the same tab, query and hash kept.
+function MovedRoute() {
+  const { pathname, search, hash } = useLocation()
+  return <Navigate to={movedTo(pathname, search, hash) ?? '/action'} replace />
+}
+
+// /platform is the Platform hub. Its old meaning, a redirect into the platform review lane, survives for the three lane tabs.
+function PlatformEntry() {
+  const { section } = useParams()
+  const t = platformTarget(section)
+  return t.kind === 'lane' ? <Navigate to={t.to} replace /> : <Operations />
 }
 
 // The work tracking pages sit behind the tracker slot (opscenter/DESIGN.md 12.67), the same way: off, the page says it needs the slot.
@@ -329,11 +342,9 @@ export default function App() {
               <Route path="/reviews" element={<Reviews />} />
               <Route path="/reviews/:repo" element={<Reviews />} />
               <Route path="/reviews/:repo/:tab" element={<Reviews />} />
-              <Route path="/platform" element={<PlatformRedirect />} />
-              <Route path="/platform/:tab" element={<PlatformRedirect />} />
-              <Route path="/jira" element={<TrackerGate><JiraHub /></TrackerGate>} />
-              <Route path="/jira/:tab" element={<TrackerGate><JiraHub /></TrackerGate>} />
-              <Route path="/jira/:tab/:sprintId" element={<TrackerGate><JiraHub /></TrackerGate>} />
+              <Route path="/work" element={<TrackerGate><JiraHub /></TrackerGate>} />
+              <Route path="/work/:tab" element={<TrackerGate><JiraHub /></TrackerGate>} />
+              <Route path="/work/:tab/:sprintId" element={<TrackerGate><JiraHub /></TrackerGate>} />
               <Route path="/debt" element={<EngBacklog />} />
               <Route path="/debt/:tab" element={<EngBacklog />} />
               <Route path="/knowledge" element={<Knowledge />} />
@@ -342,10 +353,16 @@ export default function App() {
               <Route path="/links" element={<Links />} />
               <Route path="/drafts" element={<Navigate to="/plans" replace />} />
               <Route path="/search" element={<Search />} />
-              <Route path="/operations" element={<Operations />} />
-              <Route path="/operations/:section" element={<Operations />} />
-              <Route path="/operations/:section/:item" element={<Operations />} />
+              <Route path="/platform" element={<PlatformEntry />} />
+              <Route path="/platform/:section" element={<PlatformEntry />} />
+              <Route path="/platform/:section/:item" element={<Operations />} />
               {/* Builds, CI, spend and the core moved into Operations; old links keep their place (layout rule 9). */}
+              <Route path="/jira" element={<MovedRoute />} />
+              <Route path="/jira/:tab" element={<MovedRoute />} />
+              <Route path="/jira/:tab/:sprintId" element={<MovedRoute />} />
+              <Route path="/operations" element={<MovedRoute />} />
+              <Route path="/operations/:section" element={<MovedRoute />} />
+              <Route path="/operations/:section/:item" element={<MovedRoute />} />
               <Route path="/builds" element={<OldRoute />} />
               <Route path="/core" element={<OldRoute />} />
               <Route path="/infra" element={<OldRoute />} />
@@ -353,7 +370,7 @@ export default function App() {
               {/* old bookmarks */}
               <Route path="/planning" element={<Navigate to="/action" replace />} />
               <Route path="/history" element={<Navigate to="/team/history" replace />} />
-              <Route path="/backlog" element={<Navigate to="/jira/backlog" replace />} />
+              <Route path="/backlog" element={<Navigate to="/work/backlog" replace />} />
               <Route path="/extensions/:id" element={<ExtensionRoute />} />
               <Route path="*" element={<Navigate to="/action" replace />} />
             </Routes>

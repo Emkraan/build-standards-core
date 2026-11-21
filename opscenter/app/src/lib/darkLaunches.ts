@@ -5,7 +5,7 @@
 // tests/darkLaunches.test.mjs can load this file without React or the data layer.
 import type { DarkLaunch } from './data'
 
-export const LIVE_AUTOMATION_PATH = '/operations/automation/live-automation'
+export const LIVE_AUTOMATION_PATH = '/platform/automation/live-automation'
 
 export const isActing = (l: Pick<DarkLaunch, 'live' | 'status'>): boolean => l.live === 'on' || (l.live === 'unknown' && l.status === 'enabled')
 

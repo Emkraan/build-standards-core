@@ -7,7 +7,7 @@ import { test } from 'node:test'
 import { arrange, DEFAULT_GROUPS, DEFAULT_NAV_LAYOUT, parseNavLayout } from '../src/lib/navLayout.ts'
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8')
-const ITEMS = ['/action', '/jira', '/reviews', '/operations', '/debt', '/people', '/team', '/knowledge', '/plans', '/links'].map((to) => ({ to, label: to.slice(1) }))
+const ITEMS = ['/action', '/work', '/reviews', '/platform', '/debt', '/people', '/team', '/knowledge', '/plans', '/links'].map((to) => ({ to, label: to.slice(1) }))
 const tos = (g) => g.flatMap((x) => x.items.map((i) => i.to))
 
 test('unset, empty, malformed or non-object values give the default flat layout', () => {
@@ -23,18 +23,18 @@ test('flat is one group with no heading, in core order, with every item', () => 
 })
 
 test('labels replace the core label by route and leave the others', () => {
-  const l = parseNavLayout(JSON.stringify({ labels: { '/jira': 'Jira', '/operations': 'Operations', 'bad': 'x', '/plans': '  ' } }))
+  const l = parseNavLayout(JSON.stringify({ labels: { '/work': 'Jira', '/platform': 'Operations', 'bad': 'x', '/plans': '  ' } }))
   const g = arrange(ITEMS, l)
   const by = Object.fromEntries(g[0].items.map((i) => [i.to, i.label]))
-  assert.equal(by['/jira'], 'Jira')
-  assert.equal(by['/operations'], 'Operations')
+  assert.equal(by['/work'], 'Jira')
+  assert.equal(by['/platform'], 'Operations')
   assert.equal(by['/plans'], 'plans')
   assert.equal(by['/action'], 'action')
 })
 
 test('order moves the named routes first, in that order, and the rest follow in core order', () => {
   const l = parseNavLayout(JSON.stringify({ order: ['/links', '/action', '/nowhere'] }))
-  assert.deepEqual(tos(arrange(ITEMS, l)).slice(0, 4), ['/links', '/action', '/jira', '/reviews'])
+  assert.deepEqual(tos(arrange(ITEMS, l)).slice(0, 4), ['/links', '/action', '/work', '/reviews'])
   assert.equal(tos(arrange(ITEMS, l)).length, ITEMS.length)
 })
 
@@ -42,9 +42,9 @@ test('grouped uses the default five groups, or the consumer groups, and never dr
   const g = arrange(ITEMS, parseNavLayout('{"layout":"grouped"}'))
   assert.deepEqual(g.map((x) => x.label), ['Today', 'Deliver', 'Improve', 'People', 'Knowledge'])
   assert.equal(tos(g).length, ITEMS.length)
-  const own = arrange(ITEMS, parseNavLayout(JSON.stringify({ layout: 'grouped', groups: [{ label: 'Operate', items: ['/action', '/jira'] }, { label: 'Empty', items: ['/gone'] }] })))
+  const own = arrange(ITEMS, parseNavLayout(JSON.stringify({ layout: 'grouped', groups: [{ label: 'Operate', items: ['/action', '/work'] }, { label: 'Empty', items: ['/gone'] }] })))
   assert.deepEqual(own.map((x) => x.label), ['Operate', 'More'])
-  assert.deepEqual(own[0].items.map((i) => i.to), ['/action', '/jira'])
+  assert.deepEqual(own[0].items.map((i) => i.to), ['/action', '/work'])
   assert.equal(tos(own).length, ITEMS.length)
 })
 
@@ -67,7 +67,7 @@ test('the rail, the shortcuts and the palette read the layout through groupsFor,
 
 test('a hub page titles itself with the rail label, so a consumer label renames both (ops-center-layout rule 22)', () => {
   const nav = read('../src/shell/nav.tsx')
-  for (const [page, route] of [['JiraHub', '/jira'], ['OneOnOnes', '/people'], ['Operations', '/operations'], ['TeamHub', '/team'], ['EngBacklog', '/debt'], ['Reviews', '/reviews']]) {
+  for (const [page, route] of [['JiraHub', '/work'], ['OneOnOnes', '/people'], ['Operations', '/platform'], ['TeamHub', '/team'], ['EngBacklog', '/debt'], ['Reviews', '/reviews']]) {
     const src = read(`../src/pages/${page}.tsx`)
     const m = src.match(new RegExp(`title=\\{pageTitle\\('${route}', '([^']+)'\\)\\}`))
     assert.ok(m, `${page} uses pageTitle for ${route}`)

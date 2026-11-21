@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-21 (v2.25.2, ops-center: Work tracking is /work and Platform is /platform)
+
+The rail and page titles took the reference names in v2.25.0 but the addresses were still /jira and /operations, and /platform redirected into one review lane.
+
+- Changed: Work tracking lives at `/work` and Platform at `/platform`; every link inside the app, the palette, the counters row and the header chips use them. The `VITE_NAV` keys are these paths.
+- Changed: `/jira*` and `/operations*` redirect to the new addresses with tab, query and hash kept, as do `/builds`, `/core`, `/infra` and `/backlog`. `/platform/progress`, `/platform/mine` and `/platform/shipped` still reach the platform review lane.
+- Adoption risk: a consumer that set `VITE_NAV` with `/jira` or `/operations` keys renames them to `/work` and `/platform`. Bookmarks and relay links keep working.
+
+Refs #327.
+
 ## 2026-11-21 (v2.25.1, ops-center: a test fails when a design token or an accent drifts)
 
 The ops center must carry the reference design tokens and the full accent ladder, and nothing checked either. A new test reads the dark root block of `opscenter/tokens/tokens.css` and fails on any difference in the surfaces, borders, text, status colours, hue channels, radii, type scale, layout, motion and font stack. It also checks that every one of the 13 named accents defines the six per-theme variables in both the light and the dark theme and that light and dark differ.

@@ -87,16 +87,16 @@ test('without a builds feed there is no builds section and the others stay', () 
 
 test('every old route redirects and keeps its tab, query string and hash', () => {
   const r = routes.redirectOld
-  assert.equal(r('/builds', '?run=7', '#x'), '/operations/builds?run=7#x')
-  assert.equal(r('/core', '?pr=3'), '/operations/cost/core?pr=3')
-  assert.equal(r('/infra'), '/operations')
-  assert.equal(r('/infra/spend', '?w=7'), '/operations/cost/spend?w=7')
-  assert.equal(r('/infra/jobs', '?q=a'), '/operations/automation/jobs?q=a')
-  assert.equal(r('/infra/ci'), '/operations/automation/ci')
-  assert.equal(r('/infra/live', '?x=1'), '/operations/automation/ci?x=1')
-  assert.equal(r('/infra/github'), '/operations/automation/ci')
-  assert.equal(r('/infra/unknown', '?z=1'), '/operations?z=1')
-  assert.equal(r('/infra/jobs/'), '/operations/automation/jobs')
+  assert.equal(r('/builds', '?run=7', '#x'), '/platform/builds?run=7#x')
+  assert.equal(r('/core', '?pr=3'), '/platform/cost/core?pr=3')
+  assert.equal(r('/infra'), '/platform')
+  assert.equal(r('/infra/spend', '?w=7'), '/platform/cost/spend?w=7')
+  assert.equal(r('/infra/jobs', '?q=a'), '/platform/automation/jobs?q=a')
+  assert.equal(r('/infra/ci'), '/platform/automation/ci')
+  assert.equal(r('/infra/live', '?x=1'), '/platform/automation/ci?x=1')
+  assert.equal(r('/infra/github'), '/platform/automation/ci')
+  assert.equal(r('/infra/unknown', '?z=1'), '/platform?z=1')
+  assert.equal(r('/infra/jobs/'), '/platform/automation/jobs')
   assert.equal(r('/reviews'), null)
 })
 
@@ -104,22 +104,22 @@ test('an old route ends on an item or the overview within one more hop, with its
   const secs = sections.operationsSections(builds, problems)
   for (const [path, search] of [['/builds', '?a=1'], ['/core', '?a=1'], ['/infra', '?a=1'], ['/infra/spend', '?a=1'], ['/infra/jobs', '?a=1'], ['/infra/ci', '?a=1'], ['/infra/live', '?a=1'], ['/infra/github', '?a=1']]) {
     let to = routes.redirectOld(path, search)
-    assert.ok(to.startsWith('/operations') && to.endsWith('?a=1'), to)
+    assert.ok(to.startsWith('/platform') && to.endsWith('?a=1'), to)
     for (let hop = 0; hop < 2; hop++) {
       const [, , section, itemKey] = to.split('?')[0].split('/')
-      const hub = kit.resolveHubRoute('/operations', secs, section, itemKey)
+      const hub = kit.resolveHubRoute('/platform', secs, section, itemKey)
       if (hub.kind !== 'redirect') break
       to = `${hub.to}?a=1`
     }
     const [, , section, itemKey] = to.split('?')[0].split('/')
-    assert.notEqual(kit.resolveHubRoute('/operations', secs, section, itemKey).kind, 'redirect', `${path} -> ${to}`)
+    assert.notEqual(kit.resolveHubRoute('/platform', secs, section, itemKey).kind, 'redirect', `${path} -> ${to}`)
   }
 })
 
 test('a deep link resolves to its item and an unknown one goes to the section or the overview', () => {
   const secs = sections.operationsSections(builds, problems)
-  assert.equal(kit.resolveHubRoute('/operations', secs, 'automation', 'ci').kind, 'item')
-  assert.equal(kit.resolveHubRoute('/operations', secs, undefined, undefined).kind, 'overview')
-  assert.equal(kit.resolveHubRoute('/operations', secs, 'automation', 'nope').to, '/operations/automation/jobs')
-  assert.equal(kit.resolveHubRoute('/operations', secs, 'jobs', undefined).to, '/operations/automation/jobs')
+  assert.equal(kit.resolveHubRoute('/platform', secs, 'automation', 'ci').kind, 'item')
+  assert.equal(kit.resolveHubRoute('/platform', secs, undefined, undefined).kind, 'overview')
+  assert.equal(kit.resolveHubRoute('/platform', secs, 'automation', 'nope').to, '/platform/automation/jobs')
+  assert.equal(kit.resolveHubRoute('/platform', secs, 'jobs', undefined).to, '/platform/automation/jobs')
 })
