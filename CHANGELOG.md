@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-20 (v2.24.0, standards: the operator's standing sign-off on their own work)
+
+An operator who builds a change and then clicks to approve it adds nothing, and an adopting repo that ran a standing rule for exactly that had no place in the standards for it. Rule 10 allowed one standing exception and rule 16 said a destroy or replace always needs a fresh click. This adds a second, operator-recorded exception for the operator's own pull requests, off by default, with the stops that stay and the stops the operator may waive written down.
+
+- Added: `standards/automation-safety.md` section 9, the operator's standing sign-off on their own work. It covers only pull requests the operator authored and the runs that come from them. The switch has three parts: on (exactly true, missing is off), dry run (the default when missing, logs what it would do and holds) and floor (on unless the operator sets an explicit false). With the floor on it never covers a data-bearing delete, a high-risk or unnamed permission grant, a guard file or a classifier at its highest. With the floor waived it covers them and writes each waived stop into the log line. Facts always stop it: a plan with errors or unreadable, a failed guard, a red check, an automated review block, a freeze, the head and plan pins and the guard on objects other open pull requests own. Where the operator's click starts a deploy or a delete, it presses the app's own operator action. Any error leaves the item held.
+- Changed: `automation-safety` 1.10 now names two standing exceptions, the bounded own-PR lane and this one, each logged.
+- Changed: `automation-safety` 1.16 says a destroy or replace needs a fresh click unless this standing sign-off is on and the pull request is the operator's own. With it off, which is the default, nothing changes.
+- Changed: `standards/rules.json` carries the new text for both rules and `hermes/skills/core-practices/SKILL.md` is regenerated from it.
+- Adoption risk: none for an adopting repo that does not turn it on. An adopting repo that does must keep the stops that are facts.
+- Not changed: the own-PR merge lane's code and its tests. They keep asserting that a destroy or a replace is never covered while the standing sign-off is off.
+
 ## 2026-11-20 (v2.23.1, ops-center: theme scans wait for transitions and server test classes run alone)
 
 Two defects in the core's own tests, found while building v2.23.0 (issue 308). No product code changes.
