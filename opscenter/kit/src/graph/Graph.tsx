@@ -239,7 +239,7 @@ function ControlledGraph({
         edges={edges}
         {...handlers}
         nodeTypes={types}
-        colorMode={colorMode ?? scheme}
+        forceColorMode={colorMode ?? scheme}
         fitView={fitView}
         fitViewOptions={{ padding: 0.15 }}
         minZoom={0.2}
