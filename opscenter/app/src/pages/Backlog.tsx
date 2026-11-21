@@ -3,23 +3,10 @@
 // are not lost (the old query dropped them). Live via useBacklog().
 // Kit build: StatTile strip, a Toolbar with refresh, type filter and text filter, and one kit
 // Table per group (planned / unplanned) sharing the same column widths.
+import { IconKanban } from '../components/icons'
+import { StatRow } from '../components/StatRow'
 import type { SegmentedOption, StatusTone, TableColumn } from '@kit'
-import {
-  Badge,
-  Button,
-  Card,
-  CardHead,
-  EmptyState,
-  Input,
-  Pill,
-  Segmented,
-  Skeleton,
-  StatTile,
-  StatusDot,
-  Table,
-  Toolbar,
-  useToast,
-} from '@kit'
+import { Badge, Button, Card, CardHead, EmptyState, IconAlert, IconCheck, IconClock, Input, Pill, Segmented, Skeleton, StatusDot, Table, Toolbar, useToast } from '@kit'
 import { useMemo, useState } from 'react'
 import { InHermes } from '../components/InHermes'
 import { LoadError } from '../components/StateBlocks'
@@ -205,12 +192,15 @@ export default function Backlog() {
     <div className="page">
       <p className="jr-lede">My open work not in the current sprint. Move an item straight into the active sprint.</p>
 
-      <div className="jr-stats kpi-strip">
-        <StatTile value={data ? data.count : '-'} label="backlog items" />
-        <StatTile value={highCount} label="high / highest" tone={highCount ? 'danger' : 'info'} />
-        <StatTile value={inProgressCount} label="in progress, outside the sprint" tone={inProgressCount ? 'warning' : 'info'} />
-        <StatTile value={sprint ? sprint.name : 'none'} label="active sprint" tone={sprint ? 'success' : 'danger'} />
-      </div>
+      <StatRow
+        label="Backlog summary"
+        stats={[
+          { key: 'items', label: 'Backlog items', value: data ? data.count : '-', icon: <IconKanban /> },
+          { key: 'high', label: 'High and highest', value: highCount, icon: <IconAlert /> },
+          { key: 'prog', label: 'In progress outside the sprint', value: inProgressCount, icon: <IconClock /> },
+          { key: 'sprint', label: 'Active sprint', value: sprint ? sprint.name : 'none', icon: <IconCheck /> },
+        ]}
+      />
 
       {error && !data && (
         <Card>

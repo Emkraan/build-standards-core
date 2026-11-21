@@ -2045,6 +2045,13 @@ instead of showing zero. Alerts and Knowledge have their own tab and rail badge,
 any more. The reference also shows a Stuck plans tile; it needs a count of plans that stopped moving, which the core does not serve, so it is
 not drawn.
 
+### 12.79 Work tracking stat rows (issue 327, parity spec section 5.2)
+
+The Sprint, Needs me and Backlog tabs open with the shared `StatRow` instead of the hero KPI strip, with the reference labels: Sprint has My items
+(Team items in the team scope), Done with its pace, In progress, To do and Points done; Needs me has Waiting on my call, Oldest wait and Closing
+now; Backlog has Backlog items, High and highest, In progress outside the sprint and Active sprint. The Mine or team scope control, the sprint
+selector and the board were already as specified. Column widths of the Backlog and Changes tables follow in the table width slice.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

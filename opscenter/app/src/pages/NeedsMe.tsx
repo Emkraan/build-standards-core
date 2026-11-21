@@ -4,8 +4,9 @@
 // ticket with a full closure comment within a few minutes. The row shows Closing now and polls
 // until Jira reads Closed. Keep open takes it off this list until the close-out's reason changes. Both
 // apply at once with Undo. Tackle opens a Hermes session to work it through first.
+import { StatRow } from '../components/StatRow'
 import type { TableColumn } from '@kit'
-import { Button, Card, CardHead, EmptyState, Input, Pill, Skeleton, Spinner, StatTile, Table, Toolbar, useToast } from '@kit'
+import { Button, Card, CardHead, EmptyState, IconCheck, IconClock, Input, Pill, Skeleton, Spinner, Table, Toolbar, useToast } from '@kit'
 import { useEffect, useState } from 'react'
 import { InHermes } from '../components/InHermes'
 import { LoadError } from '../components/StateBlocks'
@@ -171,11 +172,14 @@ export default function NeedsMe() {
         ticket right away.
       </p>
 
-      <div className="jr-stats kpi-strip">
-        <StatTile value={data ? data.count : '-'} label="waiting on my call" tone={data?.count ? 'warning' : 'success'} />
-        <StatTile value={waiting.length ? waited(oldest) : '-'} label="oldest wait" tone={oldest >= 3 ? 'danger' : 'info'} />
-        <StatTile value={closing} label="closing now" tone="info" />
-      </div>
+      <StatRow
+        label="Needs me summary"
+        stats={[
+          { key: 'wait', label: 'Waiting on my call', value: data ? data.count : '-', icon: <IconClock /> },
+          { key: 'old', label: 'Oldest wait', value: waiting.length ? waited(oldest) : '-', icon: <IconClock /> },
+          { key: 'close', label: 'Closing now', value: closing, icon: <IconCheck /> },
+        ]}
+      />
 
       {error && !data && (
         <Card>

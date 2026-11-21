@@ -5,22 +5,10 @@
 // process (server refuses done-category transitions too).
 // Kit build: Toolbar (scope Segmented, refresh), a sprint Card, StatTile strip, Avatar person
 // tiles with the raised .is-selected state, and board columns of issue cards.
-import type { DotTone, SegmentedOption, StatTone } from '@kit'
-import {
-  Avatar,
-  Badge,
-  Button,
-  Card,
-  CardHead,
-  EmptyState,
-  Pill,
-  Segmented,
-  Skeleton,
-  StatTile,
-  StatusDot,
-  Toolbar,
-  useConfirm,
-} from '@kit'
+import { IconKanban } from '../components/icons'
+import { StatRow } from '../components/StatRow'
+import type { DotTone, SegmentedOption } from '@kit'
+import { Avatar, Badge, Button, Card, CardHead, EmptyState, IconCheck, IconClock, Pill, Segmented, Skeleton, StatusDot, Toolbar, useConfirm } from '@kit'
 import { useMemo, useState } from 'react'
 import { confirmText } from '../components/confirmText'
 import { InHermes } from '../components/InHermes'
@@ -45,7 +33,6 @@ const COLS: { cat: string; label: string; dot: DotTone }[] = [
   { cat: 'indeterminate', label: 'In Progress', dot: 'info' },
   { cat: 'done', label: 'Done', dot: 'success' },
 ]
-const STAT_TONE: Record<Tone, StatTone> = { good: 'success', warn: 'warning', alert: 'danger' }
 
 const catOf = (i: SprintItem) => (['new', 'indeterminate', 'done'].includes(i.status_category) ? i.status_category : 'new')
 const isHold = (i: SprintItem) => /hold/i.test(i.status)
@@ -365,21 +352,22 @@ export default function Sprint() {
       )}
 
       {sp && (
-        <div className="jr-stats sp-stats kpi-strip">
-          <StatTile value={st.total} label={team ? (view.person ? `${firstName(view.person)}'s items` : 'team items') : 'my items'} />
-          <StatTile
-            value={`${st.done}/${st.total}`}
-            label={`done, ${tone === 'good' ? 'on pace' : 'behind pace'}`}
-            tone={tone ? STAT_TONE[tone] : 'accent'}
-          />
-          <StatTile
-            value={st.prog}
-            label={st.stale ? `in progress (${st.stale} quiet ${STALE_DAYS}d+)` : 'in progress'}
-            tone={st.stale ? 'warning' : 'info'}
-          />
-          <StatTile value={st.todo} label={st.hold ? `to do (${st.hold} on hold)` : 'to do'} hue="teal" />
-          <StatTile value={`${st.ptsDone}/${st.pts}`} label="points done" hue="violet" />
-        </div>
+        <StatRow
+          label="Sprint summary"
+          stats={[
+            { key: 'items', label: team ? (view.person ? `${firstName(view.person)}'s items` : 'Team items') : 'My items', value: st.total, icon: <IconKanban /> },
+            { key: 'done', label: tone === 'good' ? 'Done, on pace' : 'Done, behind pace', value: `${st.done}/${st.total}`, icon: <IconCheck /> },
+            {
+              key: 'prog',
+              label: 'In progress',
+              value: st.prog,
+              sub: st.stale ? `${st.stale} quiet ${STALE_DAYS}d+` : undefined,
+              icon: <IconClock />,
+            },
+            { key: 'todo', label: 'To do', value: st.todo, sub: st.hold ? `${st.hold} on hold` : undefined, icon: <IconKanban /> },
+            { key: 'pts', label: 'Points done', value: `${st.ptsDone}/${st.pts}`, icon: <IconCheck /> },
+          ]}
+        />
       )}
 
       {sp && team && (
