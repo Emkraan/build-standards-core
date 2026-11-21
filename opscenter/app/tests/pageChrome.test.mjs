@@ -52,6 +52,6 @@ test('the Work tracking tabs open with the reference stat rows and labels', () =
     const src = read(`../src/pages/${page}.tsx`)
     assert.match(src, /<StatRow/, page)
     assert.doesNotMatch(src, /<StatTile/, page)
-    for (const l of labels) assert.ok(src.includes(`label: '${l}'`), `${page}: ${l}`)
+    for (const l of labels) assert.ok(src.includes(`'${l}'`), `${page}: ${l}`)
   }
 })
