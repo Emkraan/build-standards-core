@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-21 (v2.24.1, ops-center: the graph builds under @xyflow/react 12 and 13)
+
+The graph kit named the theme prop for one major of @xyflow/react, so Renovate's 13 bump failed the type check. The prop is now chosen per installed major.
+
+- Changed: `opscenter/kit/src/graph/Graph.tsx` passes the theme as `colorMode` under 12 and `forceColorMode` under 13 (13 renamed it and dropped the old name from its types). The kit type-checks under both. The `colorMode` prop of the Graph component keeps its name and meaning.
+- Adoption risk: none for the public API of the kit.
+
+Refs #322.
+
 ## 2026-11-20 (v2.24.0, standards: the operator's standing sign-off on their own work)
 
 An operator who builds a change and then clicks to approve it adds nothing, and an adopting repo that ran a standing rule for exactly that had no place in the standards for it. Rule 10 allowed one standing exception and rule 16 said a destroy or replace always needs a fresh click. This adds a second, operator-recorded exception for the operator's own pull requests, off by default, with the stops that stay and the stops the operator may waive written down.

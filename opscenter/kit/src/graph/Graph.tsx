@@ -23,6 +23,7 @@ import {
   useEdgesState,
   useNodesState,
 } from '@xyflow/react';
+import * as xyflow from '@xyflow/react';
 import type { ColorMode, Edge, EdgeMarker, Node, NodeProps, NodeTypes, ReactFlowProps } from '@xyflow/react';
 import { useMemo } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
@@ -239,7 +240,7 @@ function ControlledGraph({
         edges={edges}
         {...handlers}
         nodeTypes={types}
-        colorMode={colorMode ?? scheme}
+        {...{ [COLOR_MODE_PROP]: colorMode ?? scheme }}
         fitView={fitView}
         fitViewOptions={{ padding: 0.15 }}
         minZoom={0.2}
@@ -256,6 +257,11 @@ function ControlledGraph({
     </div>
   );
 }
+
+// @xyflow/react 12 takes the theme as `colorMode`; 13 renamed it `forceColorMode` and dropped the
+// old name from its types. `useNode` is new in 13, so it tells the two apart at runtime, and the
+// computed spread keeps the file type-checking under both.
+const COLOR_MODE_PROP = 'useNode' in xyflow ? 'forceColorMode' : 'colorMode';
 
 function UncontrolledGraph({ defaultNodes = [], defaultEdges = [], ...rest }: GraphProps) {
   const [nodes, , onNodesChange] = useNodesState(defaultNodes);
