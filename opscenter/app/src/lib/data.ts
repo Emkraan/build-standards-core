@@ -2124,8 +2124,8 @@ export interface PlatformReviews {
     runbook_releases?: number
     waiting_on_prs?: number
   }
-  gate: { failures: number; updated?: string; last_error?: string; last_audit_date?: string }
-  policy: { path: string; version?: number }
+  gate?: { failures: number; updated?: string; last_error?: string; last_audit_date?: string }
+  policy?: { path: string; version?: number }
 }
 export const fetchPlatformReviews = () => apiJson<PlatformReviews>('api/platform-reviews')
 export const postPlatformDecision = (

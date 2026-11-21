@@ -4,6 +4,9 @@ import type { NavHue } from '@kit'
 import type { ReactNode } from 'react'
 import type { ExtensionPage } from '../lib/extensions'
 import { extensionPath } from '../lib/extensions'
+import { NAV_LAYOUT } from '../lib/config'
+import type { NavLayout } from '../lib/navLayout'
+import { arrange } from '../lib/navLayout'
 import {
   IconBook,
   IconChart,
@@ -29,139 +32,120 @@ export interface NavDef {
   key: string
   /** Sub-pages (tabs) listed in the command palette. */
   pages?: { to: string; label: string }[]
-  /** An optional slot: the item exists only while that slot is on (opscenter/DESIGN.md 12.67). */
-  slot?: 'tracker'
+  /** An optional slot: the item exists only while that slot is on (opscenter/DESIGN.md 12.14 and 12.67). */
+  slot?: 'tracker' | 'people'
   /** A page a consumer added through the extension manifest (opscenter/DESIGN.md 12.69). It has no badge and no shortcut. */
   extension?: true
 }
 
-// Completed lives inside Action Center, Review History inside Team Performance. Jira holds
-// Sprint / Backlog / Changes (JSM approvals), and its badge counts only what waits on me
-// (changes pending my approval).
+// The rail items in the core's own order (one flat rail, opscenter/DESIGN.md 12.72). The layout parameter (lib/navLayout.ts) relabels,
+// reorders or groups them. Completed lives inside Action Center, Review History inside Team. Work tracking holds Sprint / Needs me /
+// Backlog / Changes (JSM approvals), and its badge counts only what waits on me (changes pending my approval).
 export interface NavGroupDef {
   label: string
   items: NavDef[]
-  /** An optional slot: the group exists only while that slot is on (opscenter/DESIGN.md 12.14). */
-  slot?: 'people'
 }
 
-export const GROUPS: NavGroupDef[] = [
+export const ITEMS: NavDef[] = [
   {
-    label: 'Operate',
-    items: [
-      {
-        to: '/action',
-        label: 'Action Center',
-        icon: <IconZap />,
-        hue: 'brand',
-        badge: 'action',
-        key: 'a',
-        pages: [{ to: '/action/completed', label: 'Action Center: Completed' }],
-      },
-      {
-        to: '/jira',
-        label: 'Jira',
-        icon: <IconKanban />,
-        hue: 'blue',
-        badge: 'jira',
-        key: 'j',
-        slot: 'tracker',
-        pages: [
-          { to: '/jira/needs-me', label: 'Jira: Tickets that need my call' },
-          { to: '/jira/backlog', label: 'Jira: Backlog' },
-          { to: '/jira/changes', label: 'Jira: Changes waiting on my approval' },
-        ],
-      },
-      {
-        to: '/reviews',
-        label: 'Reviews',
-        icon: <IconPullRequest />,
-        hue: 'teal',
-        badge: 'reviews',
-        key: 'r',
-        pages: [
-          { to: '/reviews/platform', label: 'Reviews: platform' },
-          { to: '/reviews/platform/mine', label: 'Reviews: platform, my PRs' },
-          { to: '/reviews/team', label: 'Reviews: team' },
-          { to: '/reviews/ops_center', label: 'Reviews: ops center' },
-          { to: '/reviews/build-standards-core', label: 'Reviews: Core' },
-        ],
-      },
-      { to: '/debt', label: 'Debt & IMP', icon: <IconWrench />, hue: 'amber', badge: 'debt', key: 'd' },
+    to: '/action',
+    label: 'Action Center',
+    icon: <IconZap />,
+    hue: 'brand',
+    badge: 'action',
+    key: 'a',
+    pages: [{ to: '/action/completed', label: 'Completed' }],
+  },
+  {
+    to: '/jira',
+    label: 'Work tracking',
+    icon: <IconKanban />,
+    hue: 'blue',
+    badge: 'jira',
+    key: 'j',
+    slot: 'tracker',
+    pages: [
+      { to: '/jira/needs-me', label: 'Tickets that need my call' },
+      { to: '/jira/backlog', label: 'Backlog' },
+      { to: '/jira/changes', label: 'Changes waiting on my approval' },
     ],
   },
   {
-    label: 'People',
-    slot: 'people',
-    items: [
-      { to: '/people', label: '1:1 Board', icon: <IconMessage />, hue: 'green', badge: 'oneonone', key: 'o' },
-      {
-        to: '/team',
-        label: 'Team Performance',
-        icon: <IconChart />,
-        hue: 'red',
-        key: 't',
-        pages: [
-          { to: '/team/members', label: 'Team: Member reviews' },
-          { to: '/team/yearly', label: 'Team: Yearly review' },
-          { to: '/team/history', label: 'Team: Trends' },
-        ],
-      },
+    to: '/reviews',
+    label: 'Pull requests',
+    icon: <IconPullRequest />,
+    hue: 'teal',
+    badge: 'reviews',
+    key: 'r',
+    pages: [
+      { to: '/reviews/platform', label: 'platform' },
+      { to: '/reviews/platform/mine', label: 'platform, my PRs' },
+      { to: '/reviews/team', label: 'team' },
+      { to: '/reviews/ops_center', label: 'ops center' },
+      { to: '/reviews/build-standards-core', label: 'Core' },
     ],
   },
   {
-    label: 'Knowledge',
-    items: [
-      {
-        to: '/knowledge',
-        label: 'Knowledge',
-        icon: <IconBook />,
-        hue: 'blue',
-        badge: 'knowledge',
-        key: 'k',
-        pages: [
-          { to: '/knowledge/coverage', label: 'Knowledge: Doc coverage' },
-          { to: '/knowledge/history', label: 'Knowledge: History' },
-        ],
-      },
-      // Project trackers and the SBAR plan library from state/plans. Messages are never tracked.
-      { to: '/plans', label: 'Plans', icon: <IconFile />, hue: 'teal', key: 'f' },
-      // The firm admin consoles and references (replaced the M&M Links Google Site, 2026-10-26).
-      { to: '/links', label: 'Links', icon: <IconLink />, hue: 'green', badge: 'links', key: 'l' },
-    ],
-  },
-  {
+    to: '/operations',
     label: 'Platform',
-    items: [
-      {
-        to: '/operations',
-        label: 'Operations',
-        icon: <IconServer />,
-        hue: 'violet',
-        badge: 'operations',
-        key: 'i',
-        pages: [
-          { to: '/operations/builds', label: 'Operations: Builds and releases' },
-          { to: '/operations/automation/jobs', label: 'Operations: Scheduled jobs' },
-          { to: '/operations/automation/ci', label: 'Operations: CI, backup and GitHub' },
-          { to: '/operations/cost/spend', label: 'Operations: LLM spend' },
-          { to: '/operations/cost/core', label: 'Operations: Core consumption' },
-        ],
-      },
+    icon: <IconServer />,
+    hue: 'violet',
+    badge: 'operations',
+    key: 'i',
+    pages: [
+      { to: '/operations/builds', label: 'Builds and releases' },
+      { to: '/operations/automation/jobs', label: 'Scheduled jobs' },
+      { to: '/operations/automation/ci', label: 'CI, backup and GitHub' },
+      { to: '/operations/cost/spend', label: 'LLM spend' },
+      { to: '/operations/cost/core', label: 'Core consumption' },
     ],
   },
+  { to: '/debt', label: 'Debt and improvements', icon: <IconWrench />, hue: 'amber', badge: 'debt', key: 'd' },
+  // The people pages sit behind the people slot (opscenter/DESIGN.md 12.14): the items exist only while it is on.
+  { to: '/people', label: '1:1s', icon: <IconMessage />, hue: 'green', badge: 'oneonone', key: 'o', slot: 'people' },
+  {
+    to: '/team',
+    label: 'Team',
+    icon: <IconChart />,
+    hue: 'red',
+    key: 't',
+    slot: 'people',
+    pages: [
+      { to: '/team/members', label: 'Member reviews' },
+      { to: '/team/yearly', label: 'Yearly review' },
+      { to: '/team/history', label: 'Trends' },
+    ],
+  },
+  {
+    to: '/knowledge',
+    label: 'Knowledge',
+    icon: <IconBook />,
+    hue: 'blue',
+    badge: 'knowledge',
+    key: 'k',
+    pages: [
+      { to: '/knowledge/coverage', label: 'Doc coverage' },
+      { to: '/knowledge/history', label: 'History' },
+    ],
+  },
+  // Project trackers and the SBAR plan library from state/plans. Messages are never tracked.
+  { to: '/plans', label: 'Plans', icon: <IconFile />, hue: 'teal', key: 'f' },
+  // The admin consoles and references.
+  { to: '/links', label: 'Links', icon: <IconLink />, hue: 'green', badge: 'links', key: 'l' },
 ]
 
-export const NAV: NavDef[] = GROUPS.flatMap((g) => g.items)
+export const NAV: NavDef[] = ITEMS
 
-/** The groups a viewer sees: a group behind a slot is dropped while the slot is not on, and so is an item behind one. */
-export function groupsFor(people: boolean, tracker = true, extra: ExtensionPage[] = []): NavGroupDef[] {
-  return GROUPS.filter((g) => g.slot !== 'people' || people)
-    .map((g) => ({
-      ...g,
-      items: [...g.items.filter((i) => i.slot !== 'tracker' || tracker), ...extra.filter((p) => p.group === g.label).map(extensionItem)],
-    }))
-    .filter((g) => g.items.length > 0)
+/** The rail a viewer sees: an item behind a slot that is not on is dropped, a consumer page follows the core items, and the layout parameter relabels, orders and groups them. */
+export function groupsFor(people: boolean, tracker = true, extra: ExtensionPage[] = [], layout: NavLayout = NAV_LAYOUT): NavGroupDef[] {
+  const shown = [
+    ...ITEMS.filter((i) => (i.slot !== 'people' || people) && (i.slot !== 'tracker' || tracker)),
+    ...extra.map(extensionItem),
+  ]
+  return arrange(shown, layout).map((g) => ({
+    label: g.label,
+    items: g.items.map((i) => ({ ...i, pages: i.pages?.map((p) => ({ to: p.to, label: `${i.label}: ${p.label}` })) })),
+  }))
 }
 
 /** A consumer page as a rail item. It comes after the core items of its group, so it never moves one, and it takes no G shortcut. */
@@ -171,5 +155,7 @@ function extensionItem(p: ExtensionPage): NavDef {
 
 /** The rail entry that owns a path (for the active marker and the header title). */
 export function navFor(pathname: string): NavDef | undefined {
-  return NAV.find((n) => pathname === n.to || pathname.startsWith(`${n.to}/`))
+  return groupsFor(true, true)
+    .flatMap((g) => g.items)
+    .find((n) => pathname === n.to || pathname.startsWith(`${n.to}/`))
 }

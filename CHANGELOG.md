@@ -8,6 +8,19 @@ The ops center must carry the reference design tokens and the full accent ladder
 - Adoption risk: none, a test only.
 
 Refs #327.
+## 2026-11-21 (v2.25.0, ops-center: a flat rail you can configure, disabled pages that say so, and an empty state that no longer blanks the app)
+
+The rail was a fixed set of four groups, a disabled slot sent the page to the Action Center with no message, and a server with no review configuration blanked the whole app.
+
+- Changed: the default rail is one flat list with no group headings: Action Center, Work tracking, Pull requests, Platform, Debt and improvements, 1:1s, Team, Knowledge, Plans, Links, each with its own need-me badge. Route paths are unchanged. Each hub page titles itself with its rail label (rule 22), so Reviews is Pull requests, Jira is Work tracking, Operations is Platform, 1:1 Board is 1:1s and Team Performance is Team.
+- Added: the rail is a consumer parameter. `VITE_NAV` (a JSON object, `app/src/lib/navLayout.ts`) sets labels per route, the order, and `flat` or `grouped` with the groups. A bad value falls back to the default for that key. The palette entries and the header follow the labels.
+- Changed: with the tracker or people slot off, `/jira`, `/people`, `/team` and its tabs show "needs the <slot> slot" naming the switch, instead of redirecting to the Action Center. `peopleRoute` and `trackerRoute` answer `off` where they answered `leave`. `opscenter/DESIGN.md` 12.72 replaces the redirect rule of 12.14 and 12.67 and records what a consumer supplies to turn each page on.
+- Fixed: a server with no review configuration answers the platform reviews without a `gate` or `policy` object and the page threw while rendering, which blanked every page. Both are optional now and the footer drops the policy line.
+- Added: the routed page sits in the kit page error boundary keyed by the route, so a page that throws shows a crash panel while the rail and header stay usable.
+- Changed: the three banners above the page load after first paint, which keeps the first load within its budget.
+- Adoption risk: a consumer that relied on the old labels or on the redirect for a disabled slot sets `VITE_NAV` labels, or reads the new state. The Work tracking data-file contract for a tracker with no driver is not built and stays open on 327.
+
+Refs #326.
 
 ## 2026-11-21 (v2.24.2, ops-center: the graph moves to @xyflow/react 13)
 

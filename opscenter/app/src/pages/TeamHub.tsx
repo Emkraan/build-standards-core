@@ -10,6 +10,7 @@ import TeamHistory from './TeamHistory'
 import TeamPerformance from './TeamPerformance'
 import YearlyReview from './YearlyReview'
 import './Team.css'
+import { pageTitle } from '../lib/config'
 
 export default function TeamHub() {
   const { tab } = useParams()
@@ -24,7 +25,7 @@ export default function TeamHub() {
     <div className="hub">
       <HubHeader
         eyebrow="People"
-        title="Team Performance"
+        title={pageTitle('/team', 'Team')}
         subtitle="How the team did this cycle, each member's review, the yearly review and the trends."
         tabs={[
           { to: '/team', label: 'This cycle', end: true },

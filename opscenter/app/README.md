@@ -20,6 +20,7 @@ Live automation each hide when their provider is not configured.
 |---|---|---|
 | `VITE_PRIMARY_REPO` | `owner/primary` | `owner/name` of the repo behind the primary Reviews lane (pull request links) |
 | `VITE_APP_SUBTITLE` | empty | the sidebar build card subtitle |
+| `VITE_NAV` | flat rail | JSON `{layout, labels, order, groups}`: the rail's labels, order and flat versus grouped (opscenter/DESIGN.md 12.72) |
 
 ## Commands
 

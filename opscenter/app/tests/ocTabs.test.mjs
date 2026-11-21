@@ -528,13 +528,24 @@ test('the Live automation tab is hidden when no dark launch is registered', { sk
   })
 })
 
-test('with the tracker slot off the Jira item leaves the rail and an old Jira link lands on the home route', { skip, timeout: 60000 }, async () => {
+test('with the tracker slot off the Work tracking item leaves the rail and its page says it needs the tracker slot', { skip, timeout: 60000 }, async () => {
   await withApp({ ...fixtures(), needsMe: null, approvals: null, active: null, trend: null, closed: null }, async (s, origin) => {
-    await visit(s, origin, '/jira', 'light', `location.hash === '#/action'`, 'the redirect to the home route')
+    await visit(s, origin, '/jira', 'light', hasText('Work tracking needs the tracker slot'), 'the explicit slot state')
+    assert.equal(await s.evaluate(`location.hash`), '#/jira', 'the address stays: a disabled page is not a redirect')
+    assert.equal(await s.evaluate(hasText('OPSCENTER_TRACKER')), true, 'the state names the switch')
     const rail = await s.evaluate(`[...document.querySelectorAll('nav a')].map((a) => a.textContent.trim())`)
     // A rail item carries its badge count on both sides (4Reviews4), so the label is matched after any leading digits.
-    assert.ok(!rail.some((t) => /^\d*Jira/.test(t)), `no Jira item in the rail: ${JSON.stringify(rail)}`)
-    assert.ok(rail.some((t) => /^\d*Reviews/.test(t)), 'the other items stay')
+    assert.ok(!rail.some((t) => /^\d*Work tracking/.test(t)), `no Work tracking item in the rail: ${JSON.stringify(rail)}`)
+    assert.ok(rail.some((t) => /^\d*Pull requests/.test(t)), 'the other items stay')
+    assert.deepEqual(await axeFindings(s), [], 'the slot state has no axe violation')
+  })
+})
+
+test('a server with no review config answers the platform reviews without a gate or a policy and the page shows its empty state', { skip, timeout: 60000 }, async () => {
+  const empty = { ...fixtures().platform, needs_me_rows: [], counts: { needs_me: 0, in_progress: 0, shipped: 0 }, configured: false, gate: undefined, policy: undefined }
+  await withApp({ ...fixtures(), platform: empty }, async (s, origin) => {
+    await visit(s, origin, '/reviews/platform', 'light', hasText('Nothing needs you'), 'the empty reviews page')
+    assert.equal(await s.evaluate(`!!document.querySelector('nav')`), true, 'the shell is still there')
   })
 })
 
@@ -911,7 +922,7 @@ test('a failed build source on the Live tab is an error and never a calm board',
 
 test('every page header now carries a one line scope statement', { skip, timeout: 180000 }, async () => {
   await withApp(fixtures(), async (s, origin) => {
-    for (const [route, title] of [['/action', 'Action Center'], ['/debt', 'Debt and improvements'], ['/knowledge', 'Knowledge'], ['/team', 'Team Performance']]) {
+    for (const [route, title] of [['/action', 'Action Center'], ['/debt', 'Debt and improvements'], ['/knowledge', 'Knowledge'], ['/team', 'Team']]) {
       await visit(s, origin, route, 'light', `!!document.querySelector('.hub-head h1, .hub-head h2')`, `the ${title} header`)
       const sub = flat(await s.evaluate(`document.querySelector('.hub-head .page-sub')?.textContent || ''`))
       assert.ok(sub.length > 20, `${title}: a scope line is shown, got ${JSON.stringify(sub)}`)
