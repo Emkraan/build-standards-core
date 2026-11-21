@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-21 (v2.24.1, ops-center: the graph moves to @xyflow/react 13)
+
+The graph kit takes the @xyflow/react 13 major. Renovate's bump renamed one prop, and the graph specimen renders a few pixels differently under the new release.
+
+- Changed: `opscenter/kit/src/graph/Graph.tsx` passes the theme as `forceColorMode`, the prop version 13 uses for what `colorMode` did.
+- Changed: the specimen-graph visual baselines are regenerated in CI for the new renderer.
+- Adoption risk: none for the public API of the kit; the `colorMode` prop of the Graph component keeps its name and meaning.
+
 ## 2026-11-20 (v2.24.0, standards: the operator's standing sign-off on their own work)
 
 An operator who builds a change and then clicks to approve it adds nothing, and an adopting repo that ran a standing rule for exactly that had no place in the standards for it. Rule 10 allowed one standing exception and rule 16 said a destroy or replace always needs a fresh click. This adds a second, operator-recorded exception for the operator's own pull requests, off by default, with the stops that stay and the stops the operator may waive written down.
