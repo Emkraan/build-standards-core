@@ -2015,6 +2015,8 @@ rows) and no longer holds the Hermes engine card: that is Host and access, item 
 links there. The pairing and device screens are further items of Host and access. The Knowledge tab is labelled Doc drift, and the Team
 yearly tab already carries its year.
 
+
+
 ### 12.77 Pairing and alerts on Platform, Host and access (issue 327, second comment)
 
 `Host and access` has a Device access item (`/platform/host/device-access`) for the phone app, built on standards/hermes-api-access.md sections 5
