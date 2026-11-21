@@ -79,3 +79,12 @@ export function applyDebtFilters<T extends DebtFilterItem>(items: T[], f: DebtFi
 
 export const activeFilterCount = (f: DebtFilters) =>
   (['kind', 'severity', 'goal', 'effort', 'status'] as const).filter((k) => f[k] !== 'all').length + (f.hasFolded ? 1 : 0) + (f.foldedInto ? 1 : 0)
+
+/** Rows drawn at once. Done holds several hundred entries, so a list shows one window and loads the next on request. */
+export const DEBT_WINDOW = 100
+
+/** The window of a list: the rows to draw and how many are left. A text search spans the whole list, so it shows every match. */
+export function pageDebtRows<T>(rows: T[], limit: number, searching: boolean): { shown: T[]; left: number } {
+  if (searching || rows.length <= limit) return { shown: rows, left: 0 }
+  return { shown: rows.slice(0, limit), left: rows.length - limit }
+}

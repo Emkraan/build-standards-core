@@ -2065,6 +2065,13 @@ read and the only control an extension page has. Actions on rows (approve, deny,
 drawer and a row link to a local document are not built: an action is a write through a provider and needs its own safety design (recorded on
 issue 327 with a recommended default).
 
+### 12.81 Debt lists draw one window at a time (issue 327, parity spec section 5.5)
+
+Done holds several hundred entries, so every Debt tab draws 100 rows (`DEBT_WINDOW`, `pageDebtRows` in `lib/debtFilters.ts`) and a "Show 100 more (n left)"
+button grows the window. The window starts over when the tab, the kind or any filter changes. A text search spans the whole list and shows
+every match, so a search never hides a hit behind the window. The Kind filter of 12.76's neighbour (`Kind` select) duplicates the All, Tech debt
+and Improvements segmented control above it; both stay because the segmented control is the reference and the select keeps an old link working.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

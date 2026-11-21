@@ -648,6 +648,18 @@ test('a long extension list shows its first window and loads the next on request
   })
 })
 
+test('a long Debt list shows 100 rows and loads the next window on request', { skip, timeout: 120000 }, async () => {
+  const fx = fixtures()
+  fx.eng = { ...ENG, items: Array.from({ length: 250 }, (_, i) => engItem(i + 1, { bucket: 'done', status: 'resolved' })) }
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/debt/done', 'light', hasText('Debt entry 100') && hasText('150 left'), 'the first window')
+    assert.equal(await s.evaluate(hasText('Debt entry 101')), false, 'the second window is not drawn yet')
+    await s.evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('more (150 left)')).click(); true`)
+    await s.waitFor(`${hasText('Debt entry 200')} && ${hasText('50 left')}`, 'the second window')
+    assert.deepEqual(await axeFindings(s), [], 'no axe violation')
+  })
+})
+
 // ---- issue 308: Debt page filters ----
 test('the Debt page filters narrow the list and have no axe violation in either theme', { skip, timeout: 120000 }, async () => {
   await withApp(fixtures(), async (s, origin) => {

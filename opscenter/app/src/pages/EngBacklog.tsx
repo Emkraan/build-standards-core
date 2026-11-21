@@ -27,6 +27,8 @@ import {
   NO_DEBT_FILTERS,
   activeFilterCount,
   applyDebtFilters,
+  DEBT_WINDOW,
+  pageDebtRows,
   effortBand,
   optionsFor,
 } from '../lib/debtFilters'
@@ -272,6 +274,7 @@ export default function EngBacklog() {
   const [kind, setKind] = useState<Kind>('all')
   const [q, setQ] = useState('')
   const [flt, setFlt] = useState<DebtFilters>(NO_DEBT_FILTERS)
+  const [win, setWin] = useState({ key: '', limit: DEBT_WINDOW })
   const setF = (patch: Partial<DebtFilters>) => setFlt((f) => ({ ...f, ...patch }))
 
   if (rawTab && !ETABS.includes(rawTab as ETab)) return <Navigate to="/debt" replace />
@@ -283,6 +286,10 @@ export default function EngBacklog() {
   const inTab = items.filter((it) => tabOf(it) === tab).filter((it) => kind === 'all' || it.kind === kind)
   const rows = applyDebtFilters(inTab, flt)
     .sort((a, b) => (SEV_RANK[b.severity] || 0) - (SEV_RANK[a.severity] || 0) || b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
+  // One window of a long list (Done holds hundreds): the window grows on request and starts over when the list changes.
+  const listKey = `${tab}|${kind}|${JSON.stringify(flt)}`
+  const limit = win.key === listKey ? win.limit : DEBT_WINDOW
+  const { shown: windowRows, left } = pageDebtRows(rows, limit, q.trim() !== '')
   const live = (it: EngItem) => !!sessions?.[`eng-${it.uid}`]?.live
   const shownItem = openUid ? items.find((it) => it.uid === openUid) : undefined
   const SUB: Record<ETab, string> = {
@@ -449,7 +456,7 @@ export default function EngBacklog() {
                 className="eb-table"
                 caption={`Debt and improvement entries: ${tab}`}
                 columns={columns}
-                rows={rows}
+                rows={windowRows}
                 rowKey={(it) => it.uid}
                 filter={q}
                 defaultSort={null}
@@ -458,6 +465,14 @@ export default function EngBacklog() {
                 empty={<EmptyState compact pose="celebrate" title="Nothing here." />}
                 noMatch={<EmptyState compact icon={<IconSearch />} title="No matching entries" body="Try a shorter or different search." />}
               />
+            )}
+            {left > 0 && (
+              <p className="muted eb-more">
+                Showing {windowRows.length} of {rows.length}.{' '}
+                <Button size="sm" variant="secondary" onClick={() => setWin({ key: listKey, limit: limit + DEBT_WINDOW })}>
+                  Show {Math.min(DEBT_WINDOW, left)} more ({left} left)
+                </Button>
+              </p>
             )}
           </Card>
         </div>
