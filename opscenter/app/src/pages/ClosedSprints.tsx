@@ -20,7 +20,7 @@ const LIST_COLUMNS: TableColumn<ClosedSprint>[] = [
     key: 'name',
     header: 'Sprint',
     value: (s) => s.name,
-    render: (s) => <Link to={`/jira/closed/${s.id}`}>{s.name || `Sprint ${s.id}`}</Link>,
+    render: (s) => <Link to={`/work/closed/${s.id}`}>{s.name || `Sprint ${s.id}`}</Link>,
   },
   { key: 'span', header: 'Dates', value: (s) => s.end || s.start, render: (s) => span(s) },
   { key: 'complete', header: 'Closed', value: (s) => s.complete, render: (s) => (s.complete ? fmtDate(s.complete) : '-') },
@@ -66,7 +66,7 @@ function OneSprint({ id }: { id: number }) {
     }
   }, [id])
   const rows = useMemo(() => (data ? data.items.filter((i) => scope === 'team' || i.mine) : []), [data, scope])
-  if (err) return <LoadError title="This sprint did not load" error={err} hint={<Link to="/jira/closed">Back to the closed sprints</Link>} />
+  if (err) return <LoadError title="This sprint did not load" error={err} hint={<Link to="/work/closed">Back to the closed sprints</Link>} />
   if (!data) return <Skeleton variant="lines" count={6} label="Loading the sprint" />
   const done = rows.filter((i) => i.status_category === 'done').length
   const pointsDone = rows.filter((i) => i.status_category === 'done').reduce((n, i) => n + (i.points ?? 0), 0)
@@ -74,7 +74,7 @@ function OneSprint({ id }: { id: number }) {
   return (
     <div className="jr-stack">
       <div>
-        <Link to="/jira/closed">All closed sprints</Link>
+        <Link to="/work/closed">All closed sprints</Link>
       </div>
       <p className="jr-lede">A closed sprint is read only: nothing here changes a ticket.</p>
       <Card>
@@ -109,7 +109,7 @@ function OneSprint({ id }: { id: number }) {
   )
 }
 
-/** The closed sprints tab. `/jira/closed` lists them, `/jira/closed/<id>` opens one. */
+/** The closed sprints tab. `/work/closed` lists them, `/work/closed/<id>` opens one. */
 export default function ClosedSprints() {
   const { sprintId } = useParams()
   const { data, error } = useClosedSprints()
@@ -118,7 +118,7 @@ export default function ClosedSprints() {
   if (sprintId !== undefined) {
     const id = Number(sprintId)
     if (!Number.isInteger(id) || !data.sprints.some((s) => s.id === id)) {
-      return <LoadError title="That is not one of the recent closed sprints" hint={<Link to="/jira/closed">Back to the closed sprints</Link>} />
+      return <LoadError title="That is not one of the recent closed sprints" hint={<Link to="/work/closed">Back to the closed sprints</Link>} />
     }
     return <OneSprint id={id} />
   }

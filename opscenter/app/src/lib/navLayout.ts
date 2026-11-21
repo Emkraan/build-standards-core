@@ -2,9 +2,9 @@
 // grouped. The default is one flat rail in the core's own order with the core's own labels. A consumer sets one build time
 // variable, VITE_NAV, to a JSON object:
 //   { "layout": "flat" | "grouped",
-//     "order":  ["/action", "/jira", ...],                 route paths, first to last; a route not listed follows in core order
-//     "labels": { "/jira": "Jira" },                       a label per route path; a route not listed keeps the core label
-//     "groups": [ { "label": "Deliver", "items": ["/jira", "/reviews"] } ] }   used by "grouped" only
+//     "order":  ["/action", "/work", ...],                 route paths, first to last; a route not listed follows in core order
+//     "labels": { "/work": "Jira" },                       a label per route path; a route not listed keeps the core label
+//     "groups": [ { "label": "Deliver", "items": ["/work", "/reviews"] } ] }   used by "grouped" only
 // Anything that does not parse, or names no known value, falls back to the default, so a typo never empties the rail.
 // Free of React so tests/navLayout.test.mjs can load it as it is.
 
@@ -25,7 +25,7 @@ export interface NavLayout {
 /** The grouped layout when a consumer picks "grouped" and names no groups of its own. */
 export const DEFAULT_GROUPS: NavGroupSpec[] = [
   { label: 'Today', items: ['/action'] },
-  { label: 'Deliver', items: ['/jira', '/reviews', '/operations'] },
+  { label: 'Deliver', items: ['/work', '/reviews', '/platform'] },
   { label: 'Improve', items: ['/debt'] },
   { label: 'People', items: ['/people', '/team'] },
   { label: 'Knowledge', items: ['/knowledge', '/plans', '/links'] },

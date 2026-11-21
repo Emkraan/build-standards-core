@@ -79,9 +79,3 @@ export default function Reviews() {
     </div>
   )
 }
-
-// Old /platform and /platform/<tab> bookmarks and relay links land on the same view.
-export function PlatformRedirect() {
-  const { tab } = useParams()
-  return <Navigate to={tab ? `/reviews/platform/${tab}` : '/reviews/platform'} replace />
-}

@@ -45,7 +45,7 @@ export default function HermesRestartBanner() {
       <Button size="sm" variant="ghost" disabled={busy} onClick={() => act('idle')}>
         After 5 quiet minutes
       </Button>
-      <Link className="hermes-more" to="/operations">
+      <Link className="hermes-more" to="/platform">
         More restart options
       </Link>
     </>

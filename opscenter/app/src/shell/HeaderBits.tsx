@@ -112,7 +112,7 @@ export function useFeed(refreshedEt: string | undefined): { health: HealthLine; 
       tone: 'critical',
       title: 'Enterprise is billing Hermes while Team has headroom.',
       body: 'Open LLM spend.',
-      onOpen: () => nav('/operations/cost/spend'),
+      onOpen: () => nav('/platform/cost/spend'),
     })
   }
   if (br?.alert) {
@@ -146,7 +146,7 @@ export function useFeed(refreshedEt: string | undefined): { health: HealthLine; 
       id: 'changes',
       tone: 'info',
       title: `JSM: ${pending} change${pending === 1 ? '' : 's'} waiting on my approval.`,
-      onOpen: () => nav('/jira/changes'),
+      onOpen: () => nav('/work/changes'),
     })
   }
   const m = nextMeeting(oo, now)

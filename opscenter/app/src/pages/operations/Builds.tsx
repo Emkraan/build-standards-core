@@ -1,4 +1,4 @@
-// Builds tab of the Operations hub (/operations/builds/<product>): live app_e release and endpoint agent build, release and rollout runs
+// Builds tab of the Operations hub (/platform/builds/<product>): live app_e release and endpoint agent build, release and rollout runs
 // on platform. Each product card shows what is live right now (read from device management, the blob and GitHub,
 // not assumed) and every pipeline's runs: a run in flight expands to its jobs and step bars, a
 // waiting run names the environment it needs and links to the approval card, a failed run shows

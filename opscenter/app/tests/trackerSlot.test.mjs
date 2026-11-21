@@ -52,7 +52,7 @@ test('the rail item, the shortcuts, the palette and the Jira routes follow the s
   const app = read('../src/App.tsx')
   assert.match(app, /TrackerGate/)
   assert.match(app, /groupsFor\(people, tracker, extraPages\)/)
-  for (const route of ['/jira"', '/jira/:tab"', '/jira/:tab/:sprintId"']) {
+  for (const route of ['/work"', '/work/:tab"', '/work/:tab/:sprintId"']) {
     assert.match(app, new RegExp(`path="${route.replace('/', '\\/')}[^\\n]*TrackerGate`), route)
   }
   const palette = read('../src/shell/SearchPalette.tsx')

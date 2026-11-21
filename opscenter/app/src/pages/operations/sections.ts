@@ -1,4 +1,4 @@
-// The Operations hub: everything we run, in sections with one tab per item (/operations/<section>/<item>, DESIGN.md 12.46).
+// The Operations hub: everything we run, in sections with one tab per item (/platform/<section>/<item>, DESIGN.md 12.46).
 // The section keys and titles are the problem list's defaults (problems.py: builds, automation, cost); the build items
 // are whatever products the pipelines feed carries, so a consumer's products need no change here. Counts and the working
 // state of an item come from the server's problem list and nowhere else.
@@ -6,7 +6,7 @@ import type { HubSection } from '@kit'
 import { hubPath } from '@kit'
 import type { Builds, Problems } from '../../lib/data'
 
-export const OPERATIONS_BASE = '/operations'
+export const OPERATIONS_BASE = '/platform'
 /** The Live automation item (OC-20): enabled dark launches. It sits in Automation and exists only when a dark launch is registered. */
 export const LIVE_AUTOMATION = { key: 'live-automation', label: 'Live automation' }
 

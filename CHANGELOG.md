@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-21 (v2.25.2, ops-center: Work tracking is /work and Platform is /platform)
+
+The rail and page titles took the reference names in v2.25.0 but the addresses were still /jira and /operations, and /platform redirected into one review lane.
+
+- Changed: Work tracking lives at `/work` and Platform at `/platform`; every link inside the app, the palette, the counters row and the header chips use them. The `VITE_NAV` keys are these paths.
+- Changed: `/jira*` and `/operations*` redirect to the new addresses with tab, query and hash kept, as do `/builds`, `/core`, `/infra` and `/backlog`. `/platform/progress`, `/platform/mine` and `/platform/shipped` still reach the platform review lane.
+- Adoption risk: a consumer that set `VITE_NAV` with `/jira` or `/operations` keys renames them to `/work` and `/platform`. Bookmarks and relay links keep working.
+
+Refs #327.
+
 ## 2026-11-21 (v2.25.0, ops-center: a flat rail you can configure, disabled pages that say so, and an empty state that no longer blanks the app)
 
 The rail was a fixed set of four groups, a disabled slot sent the page to the Action Center with no message, and a server with no review configuration blanked the whole app.

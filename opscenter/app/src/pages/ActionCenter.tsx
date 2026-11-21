@@ -90,7 +90,7 @@ function ReviewsBanner() {
   )
 }
 
-// JSM change approvals live on the Jira hub (/jira/changes). Only a compact
+// JSM change approvals live on the Jira hub (/work/changes). Only a compact
 // pointer here, hidden when nothing waits on me. Flags the nearest window.
 function ChangesBanner() {
   const { data } = useApprovals()
@@ -102,7 +102,7 @@ function ChangesBanner() {
     .sort((a, b) => a - b)[0]
   const n = pending.length
   return (
-    <Link className="lane-banner" to="/jira/changes">
+    <Link className="lane-banner" to="/work/changes">
       <span className="lane-dot" />
       <b>
         JSM: {n} change{n === 1 ? '' : 's'} waiting on my approval

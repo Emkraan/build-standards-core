@@ -1,4 +1,4 @@
-// Operations: everything we run, in sections with one tab per item (/operations/<section>/<item>, DESIGN.md 12.46). One hub for
+// Operations: everything we run, in sections with one tab per item (/platform/<section>/<item>, DESIGN.md 12.46). One hub for
 // builds, scheduled jobs, CI, backup, spend and the core: the Overview is one card per item, grouped under the same section
 // titles, and every number on the Overview, the tabs and the rail comes from the server's problem list (GET /api/badges,
 // `problems`). The client applies no threshold of its own. Old /builds, /infra/* and /core links redirect here (App.tsx).
@@ -123,7 +123,7 @@ export default function Operations() {
     <div className="hub infra operations">
       <HubHeader
         eyebrow="Operate"
-        title={pageTitle('/operations', 'Platform')}
+        title={pageTitle('/platform', 'Platform')}
         subtitle="Builds, scheduled jobs, CI and backup, spend and the core: what we run and whether it is healthy."
         base={OPERATIONS_BASE}
         sections={sections}

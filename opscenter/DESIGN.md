@@ -1915,22 +1915,22 @@ page look like a broken route, so the page now says what it needs.
 
 **The rail is a consumer parameter.** The core's default is one flat rail with no group headings, in this order and with these
 labels: Action Center, Work tracking, Pull requests, Platform, Debt and improvements, 1:1s, Team, Knowledge, Plans, Links, each
-with its own need-me badge (the route paths are unchanged in this release). A consumer sets labels, order and flat versus grouped
+with its own need-me badge (the route paths follow in 12.73). A consumer sets labels, order and flat versus grouped
 with one build time variable, `VITE_NAV` (read by `app/src/lib/navLayout.ts`), a JSON object, every key optional:
 
 | Key | Default | Meaning |
 |---|---|---|
 | `layout` | `flat` | `flat` is the default flat rail. `grouped` draws group headings. |
-| `labels` | none | `{"/jira": "Jira"}`: a label per route path. A route not named keeps the core label (the header, the palette and the shortcut sheet follow it). |
+| `labels` | none | `{"/work": "Jira"}`: a label per route path. A route not named keeps the core label (the header, the palette and the shortcut sheet follow it). |
 | `order` | core order | route paths, first to last. A route not named follows in core order. |
-| `groups` | Today (`/action`), Deliver (`/jira`, `/reviews`, `/operations`), Improve (`/debt`), People (`/people`, `/team`), Knowledge (`/knowledge`, `/plans`, `/links`) | `[{"label": "Operate", "items": ["/action"]}]`, used only by `grouped`. A page no group names (a consumer extension page) still shows, in a last group called More, and is never dropped. |
+| `groups` | Today (`/action`), Deliver (`/work`, `/reviews`, `/platform`), Improve (`/debt`), People (`/people`, `/team`), Knowledge (`/knowledge`, `/plans`, `/links`) | `[{"label": "Operate", "items": ["/action"]}]`, used only by `grouped`. A page no group names (a consumer extension page) still shows, in a last group called More, and is never dropped. |
 
 A value that does not parse, or names no known route, falls back to the default for that key, so a typo never empties the rail. A
 group with no visible item (its slot is off) is not drawn. Pages a consumer adds through the extension manifest (12.69) follow the
 core items of the flat rail. The slot rules are unchanged: with the people slot off the 1:1s and Team items leave the rail, with the
 tracker slot off Work tracking leaves it.
 
-**A disabled slot says so.** `/jira` and its tabs show "Work tracking needs the tracker slot", and `/people`, `/team` and
+**A disabled slot says so.** `/work` and its tabs show "Work tracking needs the tracker slot", and `/people`, `/team` and
 `/team/:tab` show "1:1s needs the people slot" or "Team needs the people slot". The state names the switch (`OPSCENTER_TRACKER`,
 `OPSCENTER_PEOPLE`) and the section that says what the consumer supplies. The address does not change. The route decision is
 `show`, `wait` or `off` (`peopleRoute`, `trackerRoute`); before the first answer the page waits, and an unreachable server still shows
@@ -1945,6 +1945,15 @@ blanked the whole app, so the Pull requests page and every page after it showed 
 footer says nothing about a policy the server did not name), and the routed page sits in the kit's page error boundary keyed by the
 route, so a page that throws shows a crash panel while the rail and header keep working and another page clears it. The Links page
 renders from its own catalog and was blank only because the app was.
+
+### 12.73 Work tracking is /work and Platform is /platform (issue 327)
+
+The rail takes the reference routes. Work tracking is `/work` (with `/work/:tab` and `/work/:tab/:sprintId`) and Platform is `/platform`
+(with `/platform/:section` and `/platform/:section/:item`). The old `/jira*` and `/operations*` addresses stay as redirects to the same
+tab with the query string and hash kept (`lib/legacyRoutes.ts`, rule 9: an old link never breaks), and so do `/builds`, `/core`, `/infra`
+and `/backlog`. `/platform` used to redirect into the platform review lane; its three lane tabs (`/platform/progress`, `/platform/mine`,
+`/platform/shipped`) still do, and every other `/platform` address is the hub. `routes.lock.json` lists both the new and the old routes.
+The `VITE_NAV` keys (12.72) are route paths, so a consumer names `/work` and `/platform`; the default groups use them.
 
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 

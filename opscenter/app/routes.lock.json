@@ -29,12 +29,16 @@
     "/planning",
     "/plans",
     "/platform",
-    "/platform/:tab",
+    "/platform/:section",
+    "/platform/:section/:item",
     "/reviews",
     "/reviews/:repo",
     "/reviews/:repo/:tab",
     "/search",
     "/team",
-    "/team/:tab"
+    "/team/:tab",
+    "/work",
+    "/work/:tab",
+    "/work/:tab/:sprintId"
   ]
 }
