@@ -45,9 +45,9 @@ Related: [PR Review and Merge](pr-review-and-merge.md), [Live Actions](live-acti
 9. **Kill only your own processes.** Track the process ids a job starts and stop them by id or process group after checking the command line still matches. Never kill by a name pattern.
    - Prevents: one job stopping a sibling run, a gateway or the operator's own session.
    - Acceptance (review): no `pkill`, `killall` or pattern kill in the job, and stops are by recorded id.
-10. **Human gates stay human.** Automation never approves its own work, bypasses a red required check, applies a delete or grants access on the owner's behalf. It prepares the evidence and a button, and the owner's click is the sign-off. One standing exception, recorded as the owner's decision (2026-10-21): the bounded own-PR merge lane (section 8) may bypass the approval count on the owner's own pull requests, and nothing else.
+10. **Human gates stay human.** Automation never approves its own work, bypasses a red required check, applies a delete or grants access on the operator's behalf. It prepares the evidence and a button, and the operator's click is the sign-off. Two standing exceptions, each recorded as the operator's decision. The bounded own-PR merge lane (section 8, 2026-10-21) may bypass the approval count on the operator's own pull requests. The operator's standing sign-off (section 9, 2026-11-20) may record the operator's click on the operator's own work, only while its switch is on. Nothing else.
     - Prevents: automation turning a review into a formality.
-    - Acceptance (review): every bypass or privileged call is reachable only from an owner action, or is the bounded own-PR lane's approval-count bypass, logged per merge.
+    - Acceptance (review): every bypass or privileged call is reachable only from an operator action, or is the bounded own-PR lane's approval-count bypass, logged per merge, or is the standing sign-off, logged per act.
 11. **An installer replaces a script by renaming a new file into place.** An installer or updater replaces a script by writing a new file beside it and renaming it over the old one, and never overwrites a script that may be running. A shell reads a script incrementally from its open file, so rewriting it in place changes the running copy halfway through.
    - Prevents: a running job that reads half of an old script and half of a new one after an install, and a failure nobody can reproduce.
    - Acceptance (repo check RC026): repo check RC026 reports an install or deploy shell script that writes a shell or Python file in place with no rename.
@@ -63,9 +63,9 @@ Related: [PR Review and Merge](pr-review-and-merge.md), [Live Actions](live-acti
 15. **A green PR the lane never merged is re-run once, then reported once.** A pull request that stays green for the stale-ready window and that the lane never merged has its latest CI run re-run once per head, then one alert line. A pull request waiting that long on a review result gets the alert only.
    - Prevents: a green pull request that nobody notices because its gate run stalled, and an alert that repeats every pass.
    - Acceptance (test): a test ages a ready pull request, asserts one re-run per head and one alert line, and that a young one is left alone.
-16. **A sign-off covers every rule hit, is bound to the head, and never covers a destroy or a replace.** A held pull request merges only when a recorded sign-off bound to the current head covers every rule hit by its content fingerprint. A plan that destroys or replaces is never covered by a sign-off and always needs a fresh click.
+16. **A sign-off covers every rule hit, is bound to the head, and never covers a destroy or a replace.** A held pull request merges only when a recorded sign-off bound to the current head covers every rule hit by its content fingerprint. A plan that destroys or replaces is never covered by a sign-off and always needs a fresh click, unless the operator's standing sign-off (section 9) is on and the pull request is the operator's own.
    - Prevents: a merge carried over a head nobody reviewed, a changed rule hit approved by an old click, and a delete merged on a carried approval.
-   - Acceptance (test): tests assert a sign-off on another head or another fingerprint does not cover, one missing rule fails the cover, and plan-destroy and plan-replace are never covered (`signoff_store_test.py`, `own_pr_merge_checks.py`).
+   - Acceptance (test): tests assert a sign-off on another head or another fingerprint does not cover, one missing rule fails the cover, and plan-destroy and plan-replace are never covered (`signoff_store_test.py`, `own_pr_merge_checks.py`). With the standing sign-off off, which is the default, none of this changes.
 17. **A reply or resolve from a card fails closed and never tags an automated reviewer.** A reply or resolve from a card fails closed on a failed read: nothing is posted and the click returns the error. Automated reviewers are listed on the card and never tagged. A resolve acts as the approver and only on a thread that is open on that pull request.
    - Prevents: a comment posted on a guess after a failed read, a bot paged by a status comment, and a resolve of a thread from another pull request.
    - Acceptance (test): tests assert a failed thread read raises and posts nothing, automated threads are listed and never tagged, and a thread not open on the pull request is refused (`review_threads_test.py`).
@@ -163,3 +163,34 @@ this lane and falls under rule 10 unchanged.
 - Acceptance (test): with the switch on, an owner pull request that is green with no hold merges and
   logs the bypass; a red or pending check, a freeze, a hold label, a firing escalation or another
   author each leaves it unmerged; with the switch off nothing merges.
+
+## 9. The operator's standing sign-off on their own work
+
+An operator who builds a change and then clicks to approve it adds nothing. A repo may let a standing rule
+record the operator's sign-off for the operator's own pull requests and the applies that come from them. The
+operator recorded this decision (2026-11-20). It is off unless the operator turns it on, and any rule that goes
+further is not this rule and falls under rule 10 unchanged.
+
+- **Whose work:** only pull requests the operator authored, decided from the system of record (the PR
+  author), and the runs that come from them after merge. Never another person's pull request, and never
+  one the operator is only reviewing. Those keep every stop.
+- **Switch:** the operator sets it, in three parts. On means exactly true, and a missing or unreadable file
+  is off. Dry run is the default when the part is missing: it logs what it would do and holds (section 3).
+  Floor is on unless the operator sets it to an explicit false.
+- **Policy stops:** with the floor on, the standing sign-off never covers a data-bearing delete or
+  replace, a high-risk or unnamed permission grant, a change to a file that decides who approves or what
+  is forbidden, or a risk classifier at its highest. With the floor explicitly waived by the operator it
+  covers them, and every waived stop is written into the log line.
+- **Facts always stop it:** a plan with errors, an unreadable or unfinished plan, a failed guard (a rule
+  hit with no content fingerprint), a red or missing required check, a block from an automated review,
+  a freeze window, the head and plan pins, and the guard against deleting objects another open pull
+  request owns.
+- **Same click:** where the operator's click starts a deploy or a delete, the standing rule presses the
+  app's own operator action, so the verification, the dispatch and the release record are the click's, not a
+  copy.
+- **Fails closed:** any error leaves the item held for the operator.
+- **Log:** every act writes the pull request, the head, the plan facts and each waived stop.
+- Acceptance (test): with the switch off or missing nothing is acted on and with dry run on only a
+  would-act line is written. Another author's pull request is never covered. Each fact above leaves the
+  item held with the floor waived. With the floor on, each policy stop leaves it held, and with the floor
+  waived a policy stop passes and its log line names it.

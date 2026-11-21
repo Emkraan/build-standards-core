@@ -972,7 +972,7 @@
       "id": "automation-safety.1.10",
       "ref": "automation-safety.md 1.10",
       "title": "Human gates stay human",
-      "statement": "Automation never approves its own work, bypasses a red required check, applies a delete or grants access on the owner's behalf. It prepares the evidence and a button, and the owner's click is the sign-off. The one standing exception is the bounded own-PR merge lane (section 8), which may bypass only the approval count.",
+      "statement": "Automation never approves its own work, bypasses a red required check, applies a delete or grants access on the operator's behalf. The operator's click is the sign-off. Two standing exceptions: the bounded own-PR merge lane (section 8), which may bypass only the approval count, and the operator's standing sign-off (section 9) on the operator's own work.",
       "level": "must",
       "applies_to": [
         "all"
@@ -980,7 +980,7 @@
       "check": {
         "kind": "review"
       },
-      "acceptance": "Every bypass or privileged call is reachable only from an owner action."
+      "acceptance": "Every bypass or privileged call is reachable only from an operator action, the bounded own-PR lane's approval-count bypass, or the standing sign-off, each logged."
     },
     {
       "id": "automation-safety.7",
@@ -1086,7 +1086,7 @@
       "id": "automation-safety.1.16",
       "ref": "automation-safety.md 1.16",
       "title": "A sign-off covers every rule hit, is bound to the head, and never covers a destroy or a replace",
-      "statement": "A held pull request merges only when a recorded sign-off bound to the current head covers every rule hit by its content fingerprint. A plan that destroys or replaces is never covered by a sign-off and always needs a fresh click.",
+      "statement": "A held pull request merges only when a recorded sign-off bound to the current head covers every rule hit by its content fingerprint. A plan that destroys or replaces is never covered by a sign-off and always needs a fresh click, unless the operator's standing sign-off (section 9) is on and the pull request is the operator's own.",
       "level": "must",
       "applies_to": [
         "local-ops"
@@ -1094,7 +1094,7 @@
       "check": {
         "kind": "test"
       },
-      "acceptance": "tests assert a sign-off on another head or another fingerprint does not cover, one missing rule fails the cover, and plan-destroy and plan-replace are never covered (`signoff_store_test.py`, `own_pr_merge_checks.py`)."
+      "acceptance": "tests assert a sign-off on another head or another fingerprint does not cover, one missing rule fails the cover, and plan-destroy and plan-replace are never covered (`signoff_store_test.py`, `own_pr_merge_checks.py`). With the standing sign-off off, which is the default, none of this changes."
     },
     {
       "id": "automation-safety.1.17",
