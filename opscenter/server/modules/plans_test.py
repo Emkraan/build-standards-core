@@ -492,9 +492,8 @@ class PlansStateDir(unittest.TestCase):
         import subprocess
         import tempfile
 
-        code = "import sys; sys.path.insert(0, %r); import plans; print(plans.PLANS)" % str(
-            Path(__file__).resolve().parent
-        )
+        here = str(Path(__file__).resolve().parent)
+        code = f"import sys; sys.path.insert(0, {here!r}); import plans; print(plans.PLANS)"
         with tempfile.TemporaryDirectory() as d:
             env = {
                 k: v
