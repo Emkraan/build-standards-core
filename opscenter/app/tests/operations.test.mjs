@@ -65,7 +65,7 @@ test('the build items are the products of the feed, each once, in feed order', (
 
 test('section and item counts are lookups in the server list, never computed from data', () => {
   const secs = sections.operationsSections(builds, problems)
-  assert.deepEqual(secs.map((s) => s.key), ['builds', 'automation', 'cost'])
+  assert.deepEqual(secs.map((s) => s.key), ['builds', 'automation', 'host', 'cost'])
   const by = Object.fromEntries(secs.flatMap((s) => s.items.map((i) => [`${s.key}/${i.key}`, i.count])))
   assert.equal(by['builds/app'], 1)
   assert.equal(by['builds/agent'], undefined)
@@ -82,7 +82,7 @@ test('the rail badge is the sum of the per-section counts of the same list', () 
 })
 
 test('without a builds feed there is no builds section and the others stay', () => {
-  assert.deepEqual(sections.operationsSections(null, null).map((s) => s.key), ['automation', 'cost'])
+  assert.deepEqual(sections.operationsSections(null, null).map((s) => s.key), ['automation', 'host', 'cost'])
 })
 
 test('every old route redirects and keeps its tab, query string and hash', () => {

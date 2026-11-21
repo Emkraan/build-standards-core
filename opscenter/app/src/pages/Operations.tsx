@@ -2,7 +2,7 @@
 // builds, scheduled jobs, CI, backup, spend and the core: the Overview is one card per item, grouped under the same section
 // titles, and every number on the Overview, the tabs and the rail comes from the server's problem list (GET /api/badges,
 // `problems`). The client applies no threshold of its own. Old /builds, /infra/* and /core links redirect here (App.tsx).
-import { EmptyState, HubHeader, HubOverview, hubPath, resolveHubRoute, Skeleton } from '@kit'
+import { EmptyState, HubHeader, HubOverview, hubPath, IconAlert, IconCheck, IconWarning, resolveHubRoute, Skeleton } from '@kit'
 import type { AreaCardData, AreaTone } from '@kit'
 import { lazy, Suspense } from 'react'
 import type { ComponentType } from 'react'
@@ -19,6 +19,7 @@ import Github from './infra/Github'
 import Jobs from './infra/Jobs'
 import LiveJobs from './infra/LiveJobs'
 import Spend from './infra/Spend'
+import { StatRow } from '../components/StatRow'
 import { navFor } from '../shell/nav'
 import BuildTab from './operations/Builds'
 import { LIVE_AUTOMATION, OPERATIONS_BASE, operationsSections } from './operations/sections'
@@ -44,6 +45,7 @@ const BODY: Record<string, ComponentType> = {
   spend: Spend,
   core: CoreConsumption,
   'live-automation': LiveAutomation,
+  hermes: HermesEngineCard,
 }
 
 const TONE: Record<ProblemTone, AreaTone> = { needs_me: 'alert', worth_a_look: 'warn', healthy: 'good' }
@@ -88,7 +90,14 @@ export default function Operations() {
   if (route.kind === 'overview') {
     body = (
       <div className="infra-stack">
-        <HermesEngineCard />
+        <StatRow
+          label="Platform summary"
+          stats={[
+            { key: 'needs', label: 'Needs me', value: needs, sub: `in ${areas.filter((a) => a.tone === 'alert').length} areas`, icon: <IconAlert /> },
+            { key: 'look', label: 'Worth a look', value: areas.filter((a) => a.tone === 'warn').length, icon: <IconWarning /> },
+            { key: 'ok', label: 'Healthy', value: areas.filter((a) => a.tone === 'good').length, sub: `of ${areas.length} areas`, icon: <IconCheck /> },
+          ]}
+        />
         <Suspense fallback={null}>
           <ActiveBuilds />
         </Suspense>
@@ -125,7 +134,7 @@ export default function Operations() {
       <HubHeader
         title={pageTitle('/platform', 'Platform')}
         icon={navFor('/platform')?.icon}
-        subtitle="Builds, scheduled jobs, CI and backup, spend and the core: what we run and whether it is healthy."
+        subtitle="The releases, jobs, host and standards that keep our platform running."
         base={OPERATIONS_BASE}
         sections={sections}
         section={section}
