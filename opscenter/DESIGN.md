@@ -1937,7 +1937,7 @@ tracker slot off Work tracking leaves it.
 the page so its own error is read. What a consumer supplies to turn each page on: for Work tracking, `OPSCENTER_TRACKER` on and a
 `driver_cmd` that speaks the call contract of 12.15 (the tools the Needs me, Sprint, Backlog and Changes views call); for 1:1s and
 Team, `OPSCENTER_PEOPLE` and the four adapters of 12.14 (roster, calendar, meetings, message feeds), each optional with a null
-default. A plain data file that feeds these pages without a driver or provider is not built yet, and is listed as open on issue 327.
+default. A plain data file form that feeds these pages without a driver or provider is 12.74.
 
 **An empty state never blanks the app.** A server with no review configuration answers the platform reviews without a `gate` or a
 `policy` object, and the page read both without a guard: it threw while rendering and, with no boundary around the routed page,
@@ -1955,6 +1955,7 @@ and `/backlog`. `/platform` used to redirect into the platform review lane; its 
 `/platform/shipped`) still do, and every other `/platform` address is the hub. `routes.lock.json` lists both the new and the old routes.
 The `VITE_NAV` keys (12.72) are route paths, so a consumer names `/work` and `/platform`; the default groups use them.
 
+<<<<<<< HEAD
 ### 12.75 Page chrome and shell pieces (issue 327, parity spec sections 2 and 3)
 
 Every page header takes the rail icon of its page as a 40px accent chip beside the title (`icon` of the kit `PageHeader` and `HubHeader`,
@@ -1975,6 +1976,37 @@ is part of the header trail instead.
   under 901px.
 - **Bundle budget.** The first load budget goes from 150 to 160 KB gzip: the kit chrome (page chip, notice row) and the tab bar load with the shell
   on every route.
+=======
+### 12.74 The data file form of the tracker and people slots (issue 326, items 2 and 4)
+
+A consumer on another tracker, or with no tracker, supplies Work tracking, 1:1s and Team as plain JSON files in the state directory
+(`server/modules/data_slots.py`). It turns the slot on for the pages without a driver command and without a provider file. Read only:
+no write route is registered, so approvals, ticket moves and 1:1 edits are absent (a button that needs one is not drawn or answers 404).
+
+| Switch | Pages it turns on | Files (under `<state>/slots/`) |
+|---|---|---|
+| `OPSCENTER_TRACKER_FILES=1` | Work tracking: Sprint, Needs me, Backlog, Changes | `tracker/sprint.json`, `tracker/backlog.json`, `tracker/approvals.json`, `tracker/needs-me.json` |
+| `OPSCENTER_PEOPLE_FILES=1` | 1:1s, and the people gate for Team | `people/board.json` |
+
+Each file is one JSON object in the shape its page already reads (the `SprintData`, `BacklogData`, `ApprovalsData`, `NeedsMeData` and
+`OneOnOneBoard` types in `app/src/lib/data.ts`; every key the page needs is also its own empty default):
+
+| File | Keys | Notes |
+|---|---|---|
+| `tracker/sprint.json` | `sprint` (`{id, name, start, end, active}` or null), `me`, `items[]` (`{key, summary, status, status_category, mine, priority, points, url, ...}`) | No sprint means the Sprint tab says so. |
+| `tracker/backlog.json` | `active_sprint`, `items[]` | `count` defaults to the length of `items`. |
+| `tracker/approvals.json` | `pending[]`, `inflight[]` | The Changes tab rows. |
+| `tracker/needs-me.json` | `items[]` (`{key, summary, status, url, question, since, days, phase, decision}`) | `phase` is `needs_me` or `closing`; `count` defaults to the number of `needs_me` rows. |
+| `people/board.json` | `people[]`, `sources` | One entry per person with their topics. |
+
+A missing file is the empty page, never a 404, because a 404 means the slot is off. A file that is not a JSON object, or whose list
+key is not a list, is an error the page shows (502), never a calm empty page. `generated_utc` is the file's modification time unless the
+file carries one. Closed sprints and the sprint trend are not part of this form, so those tabs stay hidden. The Team pages already read
+plain datasets (`team-performance.json`, `member-profiles.json` and `history-master.json`, served as `/data/<name>`), so with the
+people gate on, a consumer supplies those three files and nothing else; each is a file the reference people provider writes. The
+form is the contract for a consumer that produces the files itself (a nightly export, a script). It is not a second driver: a consumer
+that wants writes uses the provider and driver forms of 12.14 and 12.15.
+>>>>>>> 481087ac1b569505b2e47659b29fd45f510e23cf
 
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 

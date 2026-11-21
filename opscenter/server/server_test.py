@@ -587,5 +587,75 @@ class RoutesWithTracker(unittest.TestCase):
         self.assertEqual(s, 400)
 
 
+class RoutesWithDataFiles(unittest.TestCase):
+    """The data file form of the slots (modules/data_slots.py, DESIGN.md 12.74): the pages' reads come from plain files, read only."""
+
+    def setUp(self):
+        self.inner = Routes("test_modules_that_are_present_answer_with_an_empty_state")
+        os.environ["OPSCENTER_TRACKER_FILES"] = "1"
+        os.environ["OPSCENTER_PEOPLE_FILES"] = "1"
+        self.inner.setUp()
+        self.slots = Path(os.environ["OPSCENTER_STATE_DIR"]) / "slots"
+
+    def tearDown(self):
+        self.inner.tearDown()
+        os.environ.pop("OPSCENTER_TRACKER_FILES", None)
+        os.environ.pop("OPSCENTER_PEOPLE_FILES", None)
+
+    def put(self, rel, text):
+        f = self.slots / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(text, encoding="utf-8")
+
+    def test_the_slots_are_on_and_a_missing_file_is_an_empty_page_not_a_404(self):
+        for path, key in (
+            ("/api/jira/sprint", "items"),
+            ("/api/jira/backlog", "items"),
+            ("/api/jira/approvals", "pending"),
+            ("/api/jira/needs-me", "items"),
+            ("/api/one-on-ones", "people"),
+        ):
+            s, body = self.inner.js("GET", path)
+            self.assertEqual(s, 200, path)
+            self.assertEqual(body[key], [], path)
+            self.assertTrue(body["generated_utc"], path)
+        s, body = self.inner.js("GET", "/api/jira/needs-me")
+        self.assertEqual((body["count"], body["live_ok"]), (0, True))
+
+    def test_a_file_is_served_with_its_own_rows_and_a_derived_count(self):
+        self.put("tracker/backlog.json", json.dumps({"items": [{"key": "A-1"}, {"key": "A-2"}]}))
+        self.put(
+            "tracker/needs-me.json",
+            json.dumps(
+                {"items": [{"key": "A-1", "phase": "needs_me"}, {"key": "A-2", "phase": "closing"}]}
+            ),
+        )
+        s, body = self.inner.js("GET", "/api/jira/backlog")
+        self.assertEqual((s, body["count"], body["items"][0]["key"]), (200, 2, "A-1"))
+        s, body = self.inner.js("GET", "/api/jira/needs-me")
+        self.assertEqual(body["count"], 1)
+
+    def test_a_bad_file_is_an_error_the_page_shows_never_an_empty_page(self):
+        self.put("tracker/sprint.json", "{not json")
+        s, _ = self.inner.js("GET", "/api/jira/sprint")
+        self.assertEqual(s, 502)
+        self.put("tracker/approvals.json", "[]")
+        s, _ = self.inner.js("GET", "/api/jira/approvals")
+        self.assertEqual(s, 502)
+        self.put("people/board.json", json.dumps({"people": "x"}))
+        s, _ = self.inner.js("GET", "/api/one-on-ones")
+        self.assertEqual(s, 502)
+
+    def test_it_is_read_only_and_the_provider_routes_are_not_registered(self):
+        names = {r.name for r in self.inner.registry.routes}
+        self.assertNotIn("work.sprint", names)
+        self.assertNotIn("one_on_ones.board", names)
+        self.assertNotIn("needs_me.decide", names)
+        s, _ = self.inner.js(
+            "POST", "/api/jira/needs-me/decide", {"key": "A-1", "decision": "close"}
+        )
+        self.assertEqual(s, 404)
+
+
 if __name__ == "__main__":
     unittest.main()
