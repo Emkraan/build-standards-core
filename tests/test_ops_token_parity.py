@@ -81,7 +81,8 @@ def first_root():
 
 
 def accent_block(name, theme):
-    m = re.search(r'^:root\[data-app-accent="%s"\]\[data-theme="%s"\] \{(.*?)^\}' % (name, theme), CSS, flags=re.S | re.M)
+    pattern = r'^:root\[data-app-accent="' + name + r'"\]\[data-theme="' + theme + r'"\] \{(.*?)^\}'
+    m = re.search(pattern, CSS, flags=re.S | re.M)
     return decls(m.group(1)) if m else {}
 
 
