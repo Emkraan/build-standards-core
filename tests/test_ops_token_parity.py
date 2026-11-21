@@ -65,13 +65,37 @@ EXPECTED = {
 }
 
 # The default accent is the root block (indigo); the named accents are the rest of the ladder.
-ACCENTS = ["blue", "indigo", "violet", "fuchsia", "rose", "red", "orange", "hub", "amber", "gold", "green", "teal", "cyan"]
-PER_THEME = ["--accent-hover", "--accent-bright", "--accent-dim", "--accent-veil", "--accent-glow", "--border-accent"]
+ACCENTS = [
+    "blue",
+    "indigo",
+    "violet",
+    "fuchsia",
+    "rose",
+    "red",
+    "orange",
+    "hub",
+    "amber",
+    "gold",
+    "green",
+    "teal",
+    "cyan",
+]
+PER_THEME = [
+    "--accent-hover",
+    "--accent-bright",
+    "--accent-dim",
+    "--accent-veil",
+    "--accent-glow",
+    "--border-accent",
+]
 
 
 def decls(block):
     block = re.sub(r"/\*.*?\*/", "", block, flags=re.S)
-    return {m.group(1): " ".join(m.group(2).split()) for m in re.finditer(r"(--[\w-]+)\s*:\s*([^;]+);", block)}
+    return {
+        m.group(1): " ".join(m.group(2).split())
+        for m in re.finditer(r"(--[\w-]+)\s*:\s*([^;]+);", block)
+    }
 
 
 def first_root():
