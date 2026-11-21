@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-21 (v2.29.1, ops-center: plans follow the state directory)
+
+A consumer that set only `OPSCENTER_STATE_DIR` got an empty Plans page, because the plans module read `PLANS_DIR` or `~/.opscenter/state/plans` and ignored the state directory the rest of the state follows.
+
+- Fixed: the plans folder is `<state>/plans` when `PLANS_DIR` is not set. `PLANS_DIR` still wins.
+- Adoption risk: none for a consumer that set `PLANS_DIR` or kept the default state directory.
+
+Refs #326.
 ## 2026-11-21 (v2.29.0, ops-center: pair and manage phone alerts from Platform, Host and access)
 
 The ops center had no screen for pairing a phone or managing alerts, so the console command was the only path.

@@ -485,5 +485,36 @@ class PlansTest(unittest.TestCase):
             self.m.dismiss_untracked("nonsense")
 
 
+class PlansStateDir(unittest.TestCase):
+    """With only the state directory set (issue 326 item 11), the plans folder is <state>/plans, not ~/.opscenter/state/plans."""
+
+    def test_plans_follow_the_state_directory_and_plans_dir_still_wins(self):
+        import subprocess
+        import tempfile
+
+        here = str(Path(__file__).resolve().parent)
+        code = f"import sys; sys.path.insert(0, {here!r}); import plans; print(plans.PLANS)"
+        with tempfile.TemporaryDirectory() as d:
+            env = {
+                k: v
+                for k, v in os.environ.items()
+                if k not in ("PLANS_DIR", "OPSCENTER_ROOT", "OPSCENTER_STATE_DIR")
+            }
+            out = subprocess.run(
+                [sys.executable, "-c", code],
+                env={**env, "OPSCENTER_STATE_DIR": d},
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(out.stdout.strip(), str(Path(d) / "plans"), out.stderr)
+            out = subprocess.run(
+                [sys.executable, "-c", code],
+                env={**env, "OPSCENTER_STATE_DIR": d, "PLANS_DIR": d + "/other"},
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(out.stdout.strip(), d + "/other", out.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
