@@ -19,6 +19,7 @@ import Github from './infra/Github'
 import Jobs from './infra/Jobs'
 import LiveJobs from './infra/LiveJobs'
 import Spend from './infra/Spend'
+import { navFor } from '../shell/nav'
 import BuildTab from './operations/Builds'
 import { LIVE_AUTOMATION, OPERATIONS_BASE, operationsSections } from './operations/sections'
 import './Infrastructure.css'
@@ -122,8 +123,8 @@ export default function Operations() {
   return (
     <div className="hub infra operations">
       <HubHeader
-        eyebrow="Operate"
         title={pageTitle('/platform', 'Platform')}
+        icon={navFor('/platform')?.icon}
         subtitle="Builds, scheduled jobs, CI and backup, spend and the core: what we run and whether it is healthy."
         base={OPERATIONS_BASE}
         sections={sections}

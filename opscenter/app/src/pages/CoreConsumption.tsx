@@ -373,7 +373,6 @@ export default function CoreConsumptionPage() {
   return (
     <>
       <HubHeader
-        eyebrow="Platform"
         title="Core consumption"
         subtitle="Where each app stands on the shared core, and the approvals that move it"
         status={
