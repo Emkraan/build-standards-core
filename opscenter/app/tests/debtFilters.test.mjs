@@ -78,3 +78,11 @@ test('the options a filter offers are counted, most common first, with blanks le
     { value: 'G1', n: 1 },
   ])
 })
+
+test('the kind filter keeps only debt or only improvements, and counts as an active filter', () => {
+  const rows = [row({ kind: 'TD' }), row({ kind: 'IMP' }), row({ kind: 'IMP' })]
+  assert.equal(applyDebtFilters(rows, { ...NO_DEBT_FILTERS, kind: 'IMP' }).length, 2)
+  assert.equal(applyDebtFilters(rows, { ...NO_DEBT_FILTERS, kind: 'TD' }).length, 1)
+  assert.equal(applyDebtFilters(rows, NO_DEBT_FILTERS).length, 3)
+  assert.equal(activeFilterCount({ ...NO_DEBT_FILTERS, kind: 'TD' }), 1)
+})
