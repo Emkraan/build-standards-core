@@ -8,6 +8,15 @@ A consumer that set only `OPSCENTER_STATE_DIR` got an empty Plans page, because 
 - Adoption risk: none for a consumer that set `PLANS_DIR` or kept the default state directory.
 
 Refs #326.
+## 2026-11-21 (v2.29.0, ops-center: pair and manage phone alerts from Platform, Host and access)
+
+The ops center had no screen for pairing a phone or managing alerts, so the console command was the only path.
+
+- Added: Device access under Platform, Host and access: five status checks, a pairing QR shown for 60 seconds on the host only (never as text, logged or cached; a proxied request gets 403), the paired devices with a confirmed Test notification and Remove, and an empty state with the setup steps when no plugin is connected. `OPSCENTER_PHONE_PROVIDER` is the provider slot (`opscenter/DESIGN.md` 12.77).
+- Added: `qrcode-generator`, loaded in its own chunk when the QR is requested.
+- Adoption risk: none, the slot is off by default and the page shows the setup steps.
+
+Refs #327.
 
 ## 2026-11-21 (v2.28.0, ops-center: Platform has five tabs)
 

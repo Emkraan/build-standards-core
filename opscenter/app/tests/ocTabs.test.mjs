@@ -259,6 +259,21 @@ function fakeBackend(fx) {
       })
       return true
     }
+    if (path === '/api/phone-access/pair' && req.method === 'POST') {
+      fx.posts.push('pair')
+      return json(res, 200, { link: 'app://pair?code=SECRETCODE123', expires_in: 60 }), true
+    }
+    if ((path === '/api/phone-access/remove' || path === '/api/phone-access/test') && req.method === 'POST') {
+      let raw = ''
+      req.on('data', (c) => {
+        raw += c
+      })
+      req.on('end', () => {
+        fx.posts.push(`${path.split('/').pop()} ${JSON.stringify(JSON.parse(raw || '{}'))}`)
+        json(res, 200, { ok: true })
+      })
+      return true
+    }
     const ext = path.match(/^\/api\/extensions\/([a-z0-9-]+)$/)
     if (ext && fx.extRows) {
       const out = typeof fx.extRows === 'function' ? fx.extRows(ext[1]) : fx.extRows[ext[1]]
@@ -267,6 +282,7 @@ function fakeBackend(fx) {
     }
     const table = {
       '/api/extensions': fx.extensions,
+      '/api/phone-access': fx.phone,
       '/api/dark-launches': fx.launches,
       '/api/badges': fx.badges,
       '/api/active-builds': fx.agentBuilds,
@@ -571,6 +587,46 @@ test('every hub page has the accent chip and the header names a trail, and at ph
     assert.ok(tabs.includes('Action Center'), JSON.stringify(tabs))
     assert.deepEqual(await axeFindings(s), [], 'no axe violation at phone width')
     await s.send('Emulation.clearDeviceMetricsOverride')
+  })
+})
+
+const PHONE = {
+  fetched_utc: '2026-11-21T12:00:00Z',
+  status: { api_reachable: true, edge_covers_host: true, plugin_pinned: true, plugin_matches_pin: false, only_api_connected: null },
+  devices: [{ id: 'dev-1', name: 'Phone A', paired_at: '2026-11-01T00:00:00Z', last_seen: '2026-11-21T11:00:00Z' }],
+  truncated: 0,
+  error: null,
+}
+
+test('Device access shows the setup steps while no phone provider is configured, in both themes', { skip, timeout: 120000 }, async () => {
+  await withApp({ ...fixtures(), phone: null }, async (s, origin) => {
+    for (const theme of ['light', 'dark']) {
+      await visit(s, origin, '/platform/host/device-access', theme, hasText('Device pairing is not set up'), 'the setup steps')
+      assert.equal(await s.evaluate(hasText('hermes/phone_access.py plugin')), true, 'the steps name the installer')
+      assert.deepEqual(await axeFindings(s), [], `${theme}: no axe violation`)
+    }
+  })
+})
+
+test('Device access pairs with a QR that is never text, lists devices, and confirms Remove', { skip, timeout: 150000 }, async () => {
+  const fx = { ...fixtures(), phone: PHONE }
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/platform/host/device-access', 'light', hasText('Paired devices') && hasText('Phone A'), 'the page')
+    assert.equal(await s.evaluate(hasText('Not OK')), true, 'a failing check reads Not OK')
+    assert.equal(await s.evaluate(hasText('Unknown')), true, 'an unknown check reads Unknown')
+    await s.evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Show pairing QR').click(); true`)
+    await s.waitFor(`!!document.querySelector('.pair-qr-img svg')`, 'the QR')
+    assert.equal(await s.evaluate(`document.documentElement.outerHTML.includes('SECRETCODE123')`), false, 'the link is nowhere in the page')
+    assert.equal(await s.evaluate(hasText('clears in')), true, 'the countdown shows')
+    assert.deepEqual(await axeFindings(s), [], 'no axe violation with the QR up')
+    await s.evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Hide now').click(); true`)
+    await s.waitFor(`!document.querySelector('.pair-qr-img')`, 'the QR clears')
+    await s.evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Remove').click(); true`)
+    await s.waitFor(hasText('Remove Phone A?'), 'the confirmation')
+    assert.equal(fx.posts.some((p) => p.startsWith('remove')), false, 'nothing is removed before the confirmation')
+    await s.evaluate(`[...document.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'Remove').pop().click(); true`)
+    await s.waitFor(hasText('Device removed.'), 'the removal')
+    assert.ok(fx.posts.includes('remove {"id":"dev-1","confirm":true}'), JSON.stringify(fx.posts))
   })
 })
 

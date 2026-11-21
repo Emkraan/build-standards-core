@@ -16,7 +16,10 @@ const AUTOMATION = [
   { key: 'ci', label: 'CI, backup and GitHub' },
 ]
 // Host and access: the engine the agents run on. The pairing and device screens join it as items of this section.
-const HOST = [{ key: 'hermes', label: 'Hermes' }]
+const HOST = [
+  { key: 'hermes', label: 'Hermes' },
+  { key: 'device-access', label: 'Device access' },
+]
 const COST = [
   { key: 'spend', label: 'LLM spend' },
   { key: 'core', label: 'Core consumption' },
