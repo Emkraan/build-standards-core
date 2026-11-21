@@ -676,13 +676,11 @@ test('the Action Center counters row shows each source with its number and link,
     for (const theme of ['light', 'dark']) {
       await visit(s, origin, '/action', theme, `document.querySelectorAll('.ac-counter').length > 0`, 'the counters row')
       const want = {
-        'Actions open': '2 Actions open > #/action',
-        'Alerts': '1 Alerts > #/action/alerts',
-        'Platform problems': '1 Platform problems > #/platform',
-        'Debt entries': '3 Debt entries > #/debt',
-        'Builds waiting': '1 Builds waiting > #/platform/builds',
+        'Action items': '2 Action items > #/action',
+        'Platform': '1 Platform > #/platform',
+        'Improvements': '3 Improvements > #/debt',
         // The configured tracker answers with nothing waiting, so its tile shows an honest zero.
-        'Work waiting': '0 Work waiting > #/work',
+        'Work': '0 Work > #/work',
       }
       for (const [label, line] of Object.entries(want)) {
         assert.equal(await s.evaluate(tileText(label)), line, `${theme}: ${label}`)
@@ -711,9 +709,8 @@ test('the counters row leaves out the work tile when the tracker slot is off and
   }
   await withApp(fx, async (s, origin) => {
     await visit(s, origin, '/action', 'light', `document.querySelectorAll('.ac-counter').length > 0 && !!document.querySelector('.ac-counters-calm')`, 'the counters row and its calm line')
-    assert.equal(await s.evaluate(tileText('Work waiting')), null, 'no work tile while the slot is off')
-    assert.equal(await s.evaluate(tileText('Builds waiting')), null, 'no builds tile when the feed is not served')
-    assert.equal(await s.evaluate(tileText('Debt entries')), '40 Debt entries > #/debt', 'debt still counts')
+    assert.equal(await s.evaluate(tileText('Work')), null, 'no work tile while the slot is off')
+    assert.equal(await s.evaluate(tileText('Improvements')), '40 Improvements > #/debt', 'debt still counts')
     assert.ok(await s.evaluate(`!!document.querySelector('.ac-counters-calm')`), 'debt alone is not waiting, so the calm line shows')
   })
 })

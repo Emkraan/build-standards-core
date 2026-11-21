@@ -27,11 +27,10 @@ export default function ActionHub() {
   return (
     <div className="hub">
       <HubHeader
-        eyebrow="Operate"
         title="Action Center"
-        subtitle="What needs me now, what is acting right now, and what my jobs reported."
+        subtitle="What needs my decision now, what is running, and what already handled itself."
         tabs={[
-          { to: '/action', label: 'Now', n: c.actions, end: true },
+          { to: '/action', label: 'Needs me', n: c.actions, end: true },
           { to: '/action/live', label: 'Live', n: live || undefined },
           { to: '/action/alerts', label: 'Alerts', n: c.alerts },
           { to: '/action/completed', label: 'Completed' },

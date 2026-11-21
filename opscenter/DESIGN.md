@@ -2036,6 +2036,15 @@ the page shows an empty state with the setup steps (install the pinned plugin, s
   connected. An unknown check reads Unknown, never OK. A source that fails shows an error and never an empty list.
 - The QR is drawn with `qrcode-generator` in a chunk loaded when the button is pressed, so it costs the first load nothing.
 
+### 12.78 Action Center: Needs me and the stat row (issue 327, parity spec section 5.1)
+
+The first Action Center tab is Needs me (it was Now) and the page subtitle is the reference sentence. The counters row is the reference stat
+row: tiles of 81px with the label over the value, in this order: Action items, Pull requests, Work (while the tracker slot is on), Platform,
+Improvements, 1:1 topics (while the people slot is on). Each is a link to the page that holds it, and a source that is off leaves its tile out
+instead of showing zero. Alerts and Knowledge have their own tab and rail badge, and Builds waiting is on Platform, so none of them is a tile
+any more. The reference also shows a Stuck plans tile; it needs a count of plans that stopped moving, which the core does not serve, so it is
+not drawn.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

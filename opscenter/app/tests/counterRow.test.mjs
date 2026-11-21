@@ -8,17 +8,18 @@ const counts = (over = {}) => ({
   alerts: 0, platform: 0, team: 0, reviews: 0, other: 0, myPrs: 0, myPrsWorking: 0, platformMine: 0, platformWorking: 0,
   teamMine: 0, teamWorking: 0, ...over,
 })
-const tiles = (over = {}, extra = {}) => counterTiles({ counts: counts(over), trackerWaiting: null, builds: null, ...extra })
+const tiles = (over = {}, extra = {}) => counterTiles({ counts: counts(over), trackerWaiting: null, oneOnOneTopics: null, ...extra })
 const keys = (t) => t.map((x) => x.key)
 
-test('the base row has the six tiles every consumer has, in reading order', () => {
-  assert.deepEqual(keys(tiles()), ['actions', 'reviews', 'alerts', 'operations', 'knowledge', 'debt'])
+test('the base row has the four tiles every consumer has, in the reference reading order', () => {
+  assert.deepEqual(keys(tiles()), ['actions', 'reviews', 'operations', 'debt'])
+  assert.deepEqual(tiles().map((t) => t.label), ['Action items', 'Pull requests', 'Platform', 'Improvements'])
 })
 
 test('the work tile appears only while the tracker slot supplies a number, and sits after reviews', () => {
   assert.equal(keys(tiles()).includes('work'), false)
   const t = tiles({}, { trackerWaiting: 4 })
-  assert.deepEqual(keys(t).slice(0, 4), ['actions', 'reviews', 'work', 'alerts'])
+  assert.deepEqual(keys(t).slice(0, 4), ['actions', 'reviews', 'work', 'operations'])
   assert.equal(t.find((x) => x.key === 'work').count, 4)
 })
 
@@ -27,12 +28,12 @@ test('a tracker slot that is on with nothing waiting still shows a zero, and an 
   assert.equal(tiles({}, { trackerWaiting: null }).find((x) => x.key === 'work'), undefined)
 })
 
-test('the builds tile appears only when the feed is served and turns to warn while a run waits', () => {
-  assert.equal(tiles().find((x) => x.key === 'builds'), undefined)
-  const calm = tiles({}, { builds: { running: 3, waiting: 0 } }).find((x) => x.key === 'builds')
-  assert.equal(calm.tone, 'calm')
-  assert.equal(calm.count, 0)
-  assert.equal(tiles({}, { builds: { running: 0, waiting: 2 } }).find((x) => x.key === 'builds').tone, 'warn')
+test('the 1:1 topics tile comes last and appears only while the people slot supplies a number', () => {
+  assert.equal(keys(tiles()).includes('oneonone'), false)
+  const t = tiles({}, { oneOnOneTopics: 3 })
+  assert.equal(keys(t).at(-1), 'oneonone')
+  assert.equal(t.at(-1).count, 3)
+  assert.equal(tiles({}, { oneOnOneTopics: 0 }).at(-1).count, 0)
 })
 
 test('reviews links to the platform lane first and the team lane when only that has items', () => {
@@ -43,7 +44,7 @@ test('reviews links to the platform lane first and the team lane when only that 
 
 test('debt is information only, so a pile of debt alone is not something waiting on me', () => {
   assert.equal(anythingWaiting(tiles({ debt: 40 })), false)
-  assert.equal(anythingWaiting(tiles({ debt: 40, alerts: 1 })), true)
+  assert.equal(anythingWaiting(tiles({ debt: 40, operations: 1 })), true)
   assert.equal(anythingWaiting(tiles({ actions: 1 })), true)
 })
 
@@ -60,7 +61,7 @@ test('every tile points at a route that App.tsx serves and is not a legacy redir
   const all = counterTiles({
     counts: counts(),
     trackerWaiting: 1,
-    builds: { running: 1, waiting: 1 },
+    oneOnOneTopics: 1,
   })
   for (const tile of all) {
     const hit = routes.filter((r) => matches(r.path, tile.to))
