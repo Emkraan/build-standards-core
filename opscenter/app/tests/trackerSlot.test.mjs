@@ -1,6 +1,6 @@
 // Date: 2026-11-18
 // Purpose: the Jira pages sit behind a null tracker slot (DESIGN 12.67). Off, the rail item, the badge reads, the shortcut and
-// the pages are gone and the old links leave for the home route. On, nothing changes. An unreachable server never hides
+// the pages are gone and the an old link shows the page that names the slot it needs. On, nothing changes. An unreachable server never hides
 // the pages by itself. Also pins the two Jira tabs to the paths the server registers (they called two that it did not).
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -16,11 +16,11 @@ test('the slot is off only when the server marked it, on when an answer came, un
   assert.equal(trackerSlot({ items: [] }), 'on')
 })
 
-test('a tracker route waits for the first answer, leaves when off and shows when on or when the server is unreachable', () => {
+test('a tracker route waits for the first answer, reports off when off and shows when on or when the server is unreachable', () => {
   assert.equal(trackerRoute('unknown', false), 'wait')
   assert.equal(trackerRoute('unknown', true), 'show')
-  assert.equal(trackerRoute('off', false), 'leave')
-  assert.equal(trackerRoute('off', true), 'leave')
+  assert.equal(trackerRoute('off', false), 'off')
+  assert.equal(trackerRoute('off', true), 'off')
   assert.equal(trackerRoute('on', false), 'show')
 })
 
@@ -48,7 +48,7 @@ test('the backlog and changes tabs call the paths the server registers', () => {
 test('the rail item, the shortcuts, the palette and the Jira routes follow the slot', () => {
   const nav = read('../src/shell/nav.tsx')
   assert.match(nav, /slot: 'tracker'/)
-  assert.match(nav, /export function groupsFor\(people: boolean, tracker = true, extra: ExtensionPage\[\] = \[\]\)/)
+  assert.match(nav, /export function groupsFor\(people: boolean, tracker = true, extra: ExtensionPage\[\] = \[\], layout: NavLayout = NAV_LAYOUT\)/)
   const app = read('../src/App.tsx')
   assert.match(app, /TrackerGate/)
   assert.match(app, /groupsFor\(people, tracker, extraPages\)/)

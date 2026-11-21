@@ -1,6 +1,6 @@
 // Date: 2026-11-18
 // Purpose: the people pages sit behind a null slot. Off, the rail group, the badge and the pages are gone and the
-// old links leave for the home route. On, nothing changes. An unreachable server never hides the pages by itself.
+// an old link shows the page that names the slot it needs. On, nothing changes. An unreachable server never hides the pages by itself.
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
@@ -15,11 +15,11 @@ test('the slot is off only when the server marked it, on when a board answered, 
   assert.equal(peopleSlot({ people: [] }), 'on')
 })
 
-test('a people route waits for the first answer, leaves when off and shows when on or when the server is unreachable', () => {
+test('a people route waits for the first answer, reports off when off and shows when on or when the server is unreachable', () => {
   assert.equal(peopleRoute('unknown', false), 'wait')
   assert.equal(peopleRoute('unknown', true), 'show')
-  assert.equal(peopleRoute('off', false), 'leave')
-  assert.equal(peopleRoute('off', true), 'leave')
+  assert.equal(peopleRoute('off', false), 'off')
+  assert.equal(peopleRoute('off', true), 'off')
   assert.equal(peopleRoute('on', false), 'show')
 })
 

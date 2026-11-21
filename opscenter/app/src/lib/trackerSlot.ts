@@ -6,8 +6,8 @@
 /** on: the slot answered. off: the server has no tracker routes. unknown: not answered yet, or the server is unreachable. */
 export type TrackerSlot = 'on' | 'off' | 'unknown'
 
-/** What a tracker route does: show the page, wait for the first answer, or leave for the home route. */
-export type TrackerRoute = 'show' | 'wait' | 'leave'
+/** What a tracker route does: show the page, wait for the first answer, or say the slot is off (the page names the slot it needs, opscenter/DESIGN.md 12.72). */
+export type TrackerRoute = 'show' | 'wait' | 'off'
 
 export interface TrackerFlag {
   slot?: 'off'
@@ -28,7 +28,7 @@ export function trackerSlot(data: TrackerFlag | null | undefined): TrackerSlot {
 
 /** An unreachable server (an error and no answer) still shows the page, which reports its own failure. */
 export function trackerRoute(slot: TrackerSlot, failed: boolean): TrackerRoute {
-  if (slot === 'off') return 'leave'
+  if (slot === 'off') return 'off'
   if (slot === 'on' || failed) return 'show'
   return 'wait'
 }

@@ -13,6 +13,7 @@ import { PlatformSection } from './PlatformReviews'
 import RepoSection from './RepoReviews'
 import { StateLegend } from './reviews/parts'
 import './ReviewsHub.css'
+import { pageTitle } from '../lib/config'
 
 // Repos with their own tab beside platform and team, slug -> label (repo_reviews.py LABELS).
 const OTHER = [
@@ -53,7 +54,7 @@ export default function Reviews() {
     <div className="hub">
       <HubHeader
         eyebrow="Operate"
-        title="Reviews"
+        title={pageTitle('/reviews', 'Pull requests')}
         subtitle="Everything waiting on my review or merge, one tab per repo"
         tabs={[
           { to: '/reviews/platform', label: 'platform', n: platformLane?.counts.needs_me, live: counts.platformWorking > 0 },

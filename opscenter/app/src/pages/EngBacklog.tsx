@@ -32,6 +32,7 @@ import {
 } from '../lib/debtFilters'
 import { hermesSessionUrl, postEngDecide, postEngHandle, postEngTackle, useEngBacklog, useTackleSessions } from '../lib/data'
 import './EngBacklog.css'
+import { pageTitle } from '../lib/config'
 
 // Debt and improvements: every TD and IMP entry ops_center logs, in one place, so I can decide and
 // tackle them as time permits. Source of truth stays the markdown files (technical-debt.md,
@@ -363,7 +364,7 @@ export default function EngBacklog() {
     <div className="hub">
       <HubHeader
         eyebrow="Operate"
-        title="Debt and improvements"
+        title={pageTitle('/debt', 'Debt and improvements')}
         subtitle="Every technical debt entry and improvement, and the ones waiting on my decision."
         tabs={[
           { to: '/debt/decide', label: 'Needs decision', n: n('decide') },

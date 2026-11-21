@@ -31,6 +31,7 @@ import {
 } from '../lib/data'
 import { depConfirm, unblocks } from '../lib/deps'
 import { platformPrState, PR_STATE_LABEL, type PrState, type PrStateView } from '../lib/ownPrs'
+import { gateFailures, policyFoot } from '../lib/reviewsFoot'
 import type { Tone } from './reviews/parts'
 import {
   actedNow,
@@ -1138,8 +1139,9 @@ export function PlatformSection({ tab }: { tab?: string }) {
   const { data } = usePlatformReviews()
   const c = data?.counts
   const { platformWorking } = useActionCounts()
-  const gateBad = (data?.gate.failures || 0) >= 3
+  const gateBad = gateFailures(data?.gate) >= 3
   const privBad = (data?.privileged_health?.failures || 0) >= 3
+  const foot = policyFoot(data?.policy)
   return (
     <>
       <Tabs
@@ -1168,7 +1170,7 @@ export function PlatformSection({ tab }: { tab?: string }) {
       />
       {(gateBad || privBad) && (
         <div className="rh-alerts">
-          {gateBad && <AlertBanner title={`Review gate failing (${data?.gate.failures} in a row)`}>{data?.gate.last_error}</AlertBanner>}
+          {gateBad && <AlertBanner title={`Review gate failing (${gateFailures(data?.gate)} in a row)`}>{data?.gate?.last_error}</AlertBanner>}
           {privBad && (
             <AlertBanner title={`Privileged-environment lane failing (${data?.privileged_health?.failures} in a row)`}>
               {data?.privileged_health?.last_error}
@@ -1181,8 +1183,13 @@ export function PlatformSection({ tab }: { tab?: string }) {
       </div>
       {data && (
         <p className="rh-foot">
-          queue updated {data.queue_updated ? relTime(data.queue_updated) : 'never'} &middot; policy v{data.policy.version} &middot;{' '}
-          <code>{data.policy.path.replace(/^\/Users\/[^/]+/, '~')}</code>
+          queue updated {data.queue_updated ? relTime(data.queue_updated) : 'never'}
+          {foot && (
+            <>
+              {' '}
+              &middot; policy v{foot.version} &middot; <code>{foot.path}</code>
+            </>
+          )}
         </p>
       )}
     </>

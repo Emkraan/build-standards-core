@@ -22,6 +22,7 @@ import Spend from './infra/Spend'
 import BuildTab from './operations/Builds'
 import { LIVE_AUTOMATION, OPERATIONS_BASE, operationsSections } from './operations/sections'
 import './Infrastructure.css'
+import { pageTitle } from '../lib/config'
 
 const PlatformAreas = lazy(() => import('../components/PlatformAreas'))
 const ActiveBuilds = lazy(() => import('../components/ActiveBuilds'))
@@ -122,7 +123,7 @@ export default function Operations() {
     <div className="hub infra operations">
       <HubHeader
         eyebrow="Operate"
-        title="Operations"
+        title={pageTitle('/operations', 'Platform')}
         subtitle="Builds, scheduled jobs, CI and backup, spend and the core: what we run and whether it is healthy."
         base={OPERATIONS_BASE}
         sections={sections}

@@ -40,6 +40,7 @@ import type { Availability, OneOnOnes as Board, BusyBlock, Report, ScheduleResul
 import { fetchAvailability, postSchedule, postTopicAdd, postTopicRemove, postTopicState, relTime, useNow, useOneOnOnes } from '../lib/data'
 import { Meter, PersonCard, PersonRail } from './people/PersonCard'
 import './OneOnOnes.css'
+import { pageTitle } from '../lib/config'
 
 const GROUPS: { key: 'report' | 'partner'; label: string }[] = [
   { key: 'report', label: 'Direct reports' },
@@ -151,7 +152,7 @@ export default function OneOnOnes() {
   const header = (
     <HubHeader
       eyebrow="People"
-      title="1:1 Board"
+      title={pageTitle('/people', '1:1s')}
       subtitle={HEAD_SUB}
       status={
         <span className="oo-live">
