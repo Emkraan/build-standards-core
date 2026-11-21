@@ -46,7 +46,7 @@ RESERVED_IDS = frozenset(
     {
         # Every first path segment the app serves today. extensions_test.py reads App.tsx and fails if one is missing here.
         "action", "backlog", "builds", "core", "debt", "drafts", "history", "infra", "jira", "knowledge", "links", "operations",
-        "people", "planning", "plans", "platform", "reviews", "search", "team",
+        "people", "planning", "plans", "platform", "reviews", "search", "team", "work",
         # The page prefix of this feature, and the paths the server and the static files use.
         "extensions", "api", "assets", "static", "login", "infrastructure",
     }
