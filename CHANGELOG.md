@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-21 (v2.34.0, ops-center: Alerts and Completed stat rows)
+
+- Changed: the Alerts and Completed tabs open with the shared stat row and the reference labels, replacing the hero KPI strip. The shell measurements of the parity spec were checked and already match.
+- Adoption risk: none.
+
+Refs #327.
+
 ## 2026-11-21 (v2.33.0, ops-center: Debt lists draw 100 rows at a time)
 
 - Changed: every Debt and improvements tab draws 100 rows and loads the next 100 on request; the long Done list no longer draws every row at once. A search still shows every match.

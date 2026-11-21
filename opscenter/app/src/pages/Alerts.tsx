@@ -4,7 +4,8 @@
 // item on Now until a later run succeeds (alerts.py raises and closes it on the data refresh).
 // Same day-grouped disclosure log as Completed (cmp- recipe in Action.css).
 import type { SegmentedOption, StatusTone } from '@kit'
-import { Badge, Button, Card, CardHead, EmptyState, IconChevronRight, Pill, Segmented, Skeleton, StatTile, Toolbar, useToast } from '@kit'
+import { StatRow } from '../components/StatRow'
+import { Badge, Button, Card, CardHead, EmptyState, IconAlert, IconChevronRight, IconClock, IconInfo, IconWarning, Pill, Segmented, Skeleton, Toolbar, useToast } from '@kit'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Markdown } from '../components/Markdown'
@@ -92,13 +93,15 @@ export default function Alerts() {
 
   return (
     <div className="cmp">
-      <div className="cmp-stats kpi-strip">
-        <StatTile value={fresh.length} label="need ack" tone={fresh.length ? 'info' : 'accent'} />
-        <StatTile value={reports.length} label="reports" />
-        <StatTile value={failing} label="failing now" tone={failing ? 'danger' : 'success'} />
-        <StatTile value={acked.length} label="acknowledged" />
-        <StatTile value={data?.sources || 0} label="jobs watched" hue="violet" />
-      </div>
+      <StatRow
+        label="Alerts summary"
+        stats={[
+          { key: 'ack', label: 'Need ack', value: fresh.length, icon: <IconAlert /> },
+          { key: 'rep', label: 'Reports', value: reports.length, icon: <IconInfo /> },
+          { key: 'fail', label: 'Failing now', value: failing, icon: <IconWarning /> },
+          { key: 'jobs', label: 'Jobs watched', value: data?.sources || 0, icon: <IconClock /> },
+        ]}
+      />
 
       <Toolbar label="Alerts controls">
         <Segmented label="New or acknowledged" options={views} value={view} onChange={setView} />
