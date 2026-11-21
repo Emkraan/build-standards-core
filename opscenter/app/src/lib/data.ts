@@ -1043,6 +1043,12 @@ export function useExtensionRows(id: string): LiveState<ExtensionRows> {
   }, 60_000)
   return extensionRowStores[id]()
 }
+/** The next window of a long list page: 200 rows from `offset`. A failure is an error the page shows, never an end of the list. */
+export async function fetchExtensionRows(id: string, offset: number): Promise<ExtensionRows> {
+  const res = await fetch(`${BASE}api/extensions/${encodeURIComponent(id)}?offset=${offset}`, { cache: 'no-cache' })
+  if (!res.ok && res.status !== 502) throw new Error(`api/extensions/${id} -> ${res.status}`)
+  return (await res.json()) as ExtensionRows
+}
 /** Check again (refresh) or start a run (run). A refusal carries its reason. */
 export async function postDocsDrift(act: 'refresh' | 'run'): Promise<{ started?: boolean }> {
   const res = await fetch(`${BASE}api/docs-drift/${act}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })

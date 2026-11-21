@@ -21,9 +21,10 @@ Page:    {id, title, group, kind, url?, lede?}
          url     required for a link page, http or https only
 Row:     {id, title, detail?, state?, url?, at?}          state is plain text drawn as a pill, url is http or https only
 Routes:  GET /api/extensions                              {fetched_utc, pages (at most 12), truncated, error}
-         GET /api/extensions/<id>                         {fetched_utc, page, rows (at most 200), truncated, error}, 404 for a page the
+         GET /api/extensions/<id>?offset=&limit=          {fetched_utc, page, rows (a window of at most 200), total (at most 5000), offset, truncated, error}, 404 for a page the
                                                           manifest does not name, 502 when the source failed
-API:     summarize(pages, now=None)  read(provider, now=None)  read_rows(provider, page_id, now=None)  register(registry, provider)
+API:     summarize(pages, now=None)  read(provider, now=None)  read_rows(provider, page_id, now=None, offset=0, limit=200)  register(registry, provider)
+         FileProvider(path)                               the data-only form: a JSON file `{pages: [...], rows: {<page id>: [...]}}`, read on every request
 """
 
 from __future__ import annotations
@@ -31,11 +32,13 @@ from __future__ import annotations
 import datetime as dt
 import re
 import threading
+from pathlib import Path
 
 import optional_provider as op
 
 MAX_PAGES = 12
 MAX_ROWS = 200
+MAX_TOTAL = 5000
 MAX_TEXT = 200
 TIMEOUT_SECONDS = 8
 GROUPS = ("Operate", "People", "Knowledge", "Platform")
@@ -164,14 +167,16 @@ def read(provider, now=None):
     return summarize(value, now)
 
 
-def read_rows(provider, page_id, now=None):
-    """The rows of one `list` page. The page must be one the manifest names, so an id typed into the address bar asks the provider nothing."""
+def read_rows(provider, page_id, now=None, offset=0, limit=MAX_ROWS):
+    """The rows of one `list` page, one window of at most 200 (`offset`, `limit`) of at most 5000 the source may hold. The page must be one the manifest names, so an id typed into the address bar asks the provider nothing."""
     manifest = read(provider, now)
     out = {
         "fetched_utc": manifest["fetched_utc"],
         "page": None,
         "rows": [],
         "truncated": 0,
+        "total": 0,
+        "offset": 0,
         "error": manifest["error"],
     }
     if manifest["error"]:
@@ -194,9 +199,13 @@ def read_rows(provider, page_id, now=None):
     if not isinstance(value, list):
         out["error"] = "the source did not return a list"
         return out, 502
-    rows = [r for r in (_row(x) for x in value) if r]
-    out["rows"] = rows[:MAX_ROWS]
-    out["truncated"] = max(0, len(rows) - MAX_ROWS)
+    rows = [r for r in (_row(x) for x in value[:MAX_TOTAL]) if r]
+    offset = max(0, min(int(offset), len(rows)))
+    window = rows[offset : offset + max(1, min(int(limit), MAX_ROWS))]
+    out["rows"] = window
+    out["total"] = len(rows)
+    out["offset"] = offset
+    out["truncated"] = max(0, len(rows) - offset - len(window))
     return out, 200
 
 
@@ -207,7 +216,11 @@ def register(r, provider):
 
     def page(q):
         op.actor_of(q.headers, provider, "extensions.read")
-        body, status = read_rows(provider, q.groups[0])
+        try:
+            offset, limit = int(q.arg("offset") or 0), int(q.arg("limit") or MAX_ROWS)
+        except ValueError:
+            raise ValueError("offset and limit must be whole numbers") from None
+        body, status = read_rows(provider, q.groups[0], offset=offset, limit=limit)
         return body if status == 200 else (status, body)
 
     r.add("GET", "/api/extensions", manifest, name="extensions.get")
@@ -218,3 +231,36 @@ def register(r, provider):
         page,
         name="extensions.page",
     )
+
+
+class FileProvider:
+    """The data-only form of the provider slot (`OPSCENTER_EXTENSIONS_FILE=<path>`): a consumer declares its pages and rows in one JSON file and
+    writes no code. The file is `{"pages": [<page>], "rows": {"<page id>": [<row>]}}` with the same page and row shapes as above, read on every
+    request so an edit shows at once. A missing or malformed file is an error the page shows, never an empty manifest. The server answers on the
+    loopback only, so reading is allowed to the one who can reach it."""
+
+    def __init__(self, path):
+        self.path = path
+
+    def _data(self):
+        import json
+
+        d = json.loads(Path(self.path).read_text(encoding="utf-8"))
+        if not isinstance(d, dict):
+            raise ValueError("the manifest file must be a JSON object")
+        return d
+
+    def authorize(self, headers, action, key=None):
+        return "file"
+
+    def extensions(self, now):
+        pages = self._data().get("pages")
+        if not isinstance(pages, list):
+            raise ValueError("pages must be a list")
+        return pages
+
+    def extension_rows(self, page_id, now):
+        rows = (self._data().get("rows") or {}).get(page_id) or []
+        if not isinstance(rows, list):
+            raise ValueError("rows must be a list")
+        return rows

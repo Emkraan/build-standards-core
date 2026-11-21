@@ -37,6 +37,9 @@ export interface ExtensionRows {
   page: ExtensionPage | null
   rows: ExtensionRow[]
   truncated: number
+  /** All rows the source holds (at most 5000) and where this window starts; absent from an older server. */
+  total?: number
+  offset?: number
   error: string | null
 }
 

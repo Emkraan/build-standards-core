@@ -276,7 +276,7 @@ function fakeBackend(fx) {
     }
     const ext = path.match(/^\/api\/extensions\/([a-z0-9-]+)$/)
     if (ext && fx.extRows) {
-      const out = typeof fx.extRows === 'function' ? fx.extRows(ext[1]) : fx.extRows[ext[1]]
+      const out = typeof fx.extRows === 'function' ? fx.extRows(ext[1], Number(url.searchParams.get('offset') || 0)) : fx.extRows[ext[1]]
       if (!out) return json(res, 404, extRows(null, [], 'no such page')), true
       return json(res, out.error ? 502 : 200, out), true
     }
@@ -627,6 +627,24 @@ test('Device access pairs with a QR that is never text, lists devices, and confi
     await s.evaluate(`[...document.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'Remove').pop().click(); true`)
     await s.waitFor(hasText('Device removed.'), 'the removal')
     assert.ok(fx.posts.includes('remove {"id":"dev-1","confirm":true}'), JSON.stringify(fx.posts))
+  })
+})
+
+test('a long extension list shows its first window and loads the next on request', { skip, timeout: 120000 }, async () => {
+  const all = Array.from({ length: 450 }, (_, i) => ({ id: `r${i}`, title: `Row number ${i}`, detail: null, state: null, url: null, at: null }))
+  const fx = fixtures()
+  fx.extensions = extManifest()
+  fx.extRows = (id, offset) => {
+    if (id !== 'reports') return null
+    const win = all.slice(offset, offset + 200)
+    return { ...extRows(extPages()[0], win), total: all.length, offset, truncated: Math.max(0, all.length - offset - win.length) }
+  }
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/extensions/reports', 'light', hasText('Row number 199') && hasText('250 more rows'), 'the first window')
+    assert.equal(await s.evaluate(hasText('Row number 200')), false, 'the second window is not loaded yet')
+    await s.evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Show more').click(); true`)
+    await s.waitFor(`${hasText('Row number 399')} && ${hasText('50 more rows')}`, 'the second window')
+    assert.deepEqual(await axeFindings(s), [], 'no axe violation')
   })
 })
 

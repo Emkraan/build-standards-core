@@ -388,5 +388,79 @@ class Route(unittest.TestCase):
             self.assertNotIn(word, body, word)
 
 
+class WindowAndFile(unittest.TestCase):
+    def rows(self, n):
+        return [{"id": f"r{i}", "title": f"Row {i}"} for i in range(n)]
+
+    def test_rows_come_in_windows_with_a_total_and_a_remainder(self):
+        src = Source(
+            pages=[{"id": "hist", "title": "History", "group": "Platform", "kind": "list"}],
+            rows=self.rows(450),
+        )
+        out, status = ex.read_rows(src, "hist")
+        self.assertEqual(
+            (status, len(out["rows"]), out["total"], out["truncated"]), (200, 200, 450, 250)
+        )
+        out, _ = ex.read_rows(src, "hist", offset=200)
+        self.assertEqual((out["rows"][0]["id"], out["offset"], out["truncated"]), ("r200", 200, 50))
+        out, _ = ex.read_rows(src, "hist", offset=400, limit=500)
+        self.assertEqual((len(out["rows"]), out["truncated"]), (50, 0))
+        out, _ = ex.read_rows(src, "hist", offset=9999)
+        self.assertEqual((out["rows"], out["truncated"]), ([], 0))
+
+    def test_a_source_over_the_total_cap_is_cut_at_it(self):
+        src = Source(
+            pages=[{"id": "hist", "title": "History", "group": "Platform", "kind": "list"}],
+            rows=self.rows(ex.MAX_TOTAL + 10),
+        )
+        out, _ = ex.read_rows(src, "hist")
+        self.assertEqual(out["total"], ex.MAX_TOTAL)
+
+    def test_the_route_reads_offset_and_limit_and_refuses_a_bad_number(self):
+        r = reg.Registry()
+        src = Source(
+            pages=[{"id": "hist", "title": "History", "group": "Platform", "kind": "list"}],
+            rows=self.rows(30),
+        )
+        src.authorize = lambda headers, action, key=None: "me"
+        ex.register(r, src)
+        h = next(x.handler for x in r.routes if x.name == "extensions.page")
+        body = h(
+            reg.Request(
+                "GET", "/", query={"offset": ["10"], "limit": ["5"]}, headers={}, groups=("hist",)
+            )
+        )
+        self.assertEqual([x["id"] for x in body["rows"]], ["r10", "r11", "r12", "r13", "r14"])
+        with self.assertRaises(ValueError):
+            h(reg.Request("GET", "/", query={"offset": ["x"]}, headers={}, groups=("hist",)))
+
+    def test_the_file_provider_serves_pages_and_rows_from_one_json_file(self):
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "m.json"
+            f.write_text(
+                json.dumps(
+                    {
+                        "pages": [
+                            {"id": "hist", "title": "History", "group": "Platform", "kind": "list"}
+                        ],
+                        "rows": {"hist": self.rows(3)},
+                    }
+                )
+            )
+            p = ex.FileProvider(str(f))
+            self.assertEqual([x["id"] for x in ex.read(p)["pages"]], ["hist"])
+            self.assertEqual(len(ex.read_rows(p, "hist")[0]["rows"]), 3)
+            self.assertTrue(p.authorize({}, "extensions.read"))
+            f.write_text("[1]")
+            out = ex.read(p)
+            self.assertTrue(out["error"])
+            self.assertEqual(out["pages"], [])
+            f.unlink()
+            self.assertTrue(ex.read(p)["error"])
+
+
 if __name__ == "__main__":
     unittest.main()
