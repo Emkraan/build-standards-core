@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-21 (v2.30.0, ops-center: Action Center Needs me and the reference stat row)
+
+- Changed: the first Action Center tab is Needs me, with the reference subtitle and no eyebrow. The counters row has the reference tiles and order (Action items, Pull requests, Work, Platform, Improvements, 1:1 topics) in the 81px tile look. The Alerts, Knowledge to decide and Builds waiting tiles are gone from the row; each has its own tab, rail badge or Platform page.
+- Added: a 1:1 topics tile while the people slot is on.
+- Adoption risk: a consumer test that read the old tile labels reads the new ones.
+
+Refs #327.
+
 ## 2026-11-21 (v2.29.2, ops-center: a Kind filter on Debt and improvements)
 
 The reference Debt page narrows by Kind, Severity, Goal and Effort. The core had no Kind filter.

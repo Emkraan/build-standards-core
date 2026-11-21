@@ -16,26 +16,27 @@ export interface CounterInputs {
   counts: ActionCounts
   // Jira work I owe (needs me plus approvals) is only known while the tracker slot is on, so it is null when off.
   trackerWaiting: number | null
-  // Builds in flight and runs waiting on an environment approval (badges.builds), null when the feed is not served.
-  builds: { running: number; waiting: number } | null
+  // Open 1:1 topics, only known while the people slot is on, so it is null when off.
+  oneOnOneTopics: number | null
 }
 
-/** The tiles to show, in the order I read them. A tile whose source is off is left out, not shown as zero. */
+/**
+ * The tiles to show, in the order the reference reads them: Action items, Pull requests, Work, Platform, Improvements, 1:1 topics. A tile whose
+ * source is off is left out, not shown as zero. Alerts, Knowledge and Builds have their own tab or rail badge and are not tiles.
+ */
 export function counterTiles(i: CounterInputs): CounterTile[] {
   const c = i.counts
   const tiles: CounterTile[] = [
-    { key: 'actions', label: 'Actions open', count: c.actions, to: '/action', tone: 'warn' },
-    { key: 'reviews', label: 'Reviews waiting', count: c.reviews, to: c.platform > 0 || c.team === 0 ? '/reviews/platform' : '/reviews/team', tone: 'warn' },
-    { key: 'alerts', label: 'Alerts', count: c.alerts, to: '/action/alerts', tone: 'alert' },
-    { key: 'operations', label: 'Platform problems', count: c.operations, to: '/platform', tone: 'alert' },
-    { key: 'knowledge', label: 'Knowledge to decide', count: c.knowledge, to: '/knowledge', tone: 'warn' },
-    { key: 'debt', label: 'Debt entries', count: c.debt, to: '/debt', tone: 'calm' },
+    { key: 'actions', label: 'Action items', count: c.actions, to: '/action', tone: 'warn' },
+    { key: 'reviews', label: 'Pull requests', count: c.reviews, to: c.platform > 0 || c.team === 0 ? '/reviews/platform' : '/reviews/team', tone: 'warn' },
+    { key: 'operations', label: 'Platform', count: c.operations, to: '/platform', tone: 'alert' },
+    { key: 'debt', label: 'Improvements', count: c.debt, to: '/debt', tone: 'calm' },
   ]
   if (i.trackerWaiting !== null) {
-    tiles.splice(2, 0, { key: 'work', label: 'Work waiting', count: i.trackerWaiting, to: '/work', tone: 'warn' })
+    tiles.splice(2, 0, { key: 'work', label: 'Work', count: i.trackerWaiting, to: '/work', tone: 'warn' })
   }
-  if (i.builds !== null) {
-    tiles.push({ key: 'builds', label: 'Builds waiting', count: i.builds.waiting, to: '/platform/builds', tone: i.builds.waiting > 0 ? 'warn' : 'calm' })
+  if (i.oneOnOneTopics !== null) {
+    tiles.push({ key: 'oneonone', label: '1:1 topics', count: i.oneOnOneTopics, to: '/people', tone: 'warn' })
   }
   return tiles
 }
