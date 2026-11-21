@@ -9,6 +9,8 @@ import {
   hasFoldedEntries,
   isFoldedInto,
   optionsFor,
+  pageDebtRows,
+  DEBT_WINDOW,
 } from '../src/lib/debtFilters.ts'
 
 const row = (over = {}) => ({ kind: 'TD', severity: 'medium', goals: [], effort: 'small', status: 'open', ...over })
@@ -85,4 +87,12 @@ test('the kind filter keeps only debt or only improvements, and counts as an act
   assert.equal(applyDebtFilters(rows, { ...NO_DEBT_FILTERS, kind: 'TD' }).length, 1)
   assert.equal(applyDebtFilters(rows, NO_DEBT_FILTERS).length, 3)
   assert.equal(activeFilterCount({ ...NO_DEBT_FILTERS, kind: 'TD' }), 1)
+})
+
+test('a long list shows one window and the count left, and a search shows every match', () => {
+  const rows = Array.from({ length: 250 }, (_, i) => i)
+  assert.equal(DEBT_WINDOW, 100)
+  assert.deepEqual([pageDebtRows(rows, 100, false).shown.length, pageDebtRows(rows, 100, false).left], [100, 150])
+  assert.deepEqual([pageDebtRows(rows, 300, false).shown.length, pageDebtRows(rows, 300, false).left], [250, 0])
+  assert.deepEqual([pageDebtRows(rows, 100, true).shown.length, pageDebtRows(rows, 100, true).left], [250, 0])
 })

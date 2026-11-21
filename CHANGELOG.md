@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-21 (v2.33.0, ops-center: Debt lists draw 100 rows at a time)
+
+- Changed: every Debt and improvements tab draws 100 rows and loads the next 100 on request; the long Done list no longer draws every row at once. A search still shows every match.
+- Adoption risk: none.
+
+Refs #327.
+
 ## 2026-11-21 (v2.32.0, ops-center: extension pages from a data file, and windows past 200 rows)
 
 - Added: `OPSCENTER_EXTENSIONS_FILE` declares extension pages and their rows in one JSON file with no provider code (`opscenter/DESIGN.md` 12.80).
