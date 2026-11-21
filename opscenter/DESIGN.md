@@ -2052,6 +2052,19 @@ The Sprint, Needs me and Backlog tabs open with the shared `StatRow` instead of 
 now; Backlog has Backlog items, High and highest, In progress outside the sprint and Active sprint. The Mine or team scope control, the sprint
 selector and the board were already as specified. Column widths of the Backlog and Changes tables follow in the table width slice.
 
+### 12.80 Extension pages: a data-only manifest file and windows of rows (issue 326 items 7 and 9)
+
+A consumer declares extension pages as data with `OPSCENTER_EXTENSIONS_FILE=<path>`, a JSON file `{"pages": [...], "rows": {"<page id>": [...]}}`
+with the page and row shapes of 12.69, and writes no code (`extensions.FileProvider`). It is read on every request, so an edit shows at once, and
+a missing or malformed file is an error the page shows, never an empty manifest. It is the same slot as `OPSCENTER_EXTENSIONS_PROVIDER`, which
+wins when both are set.
+
+A list page is no longer cut at 200 rows. The route takes `offset` and `limit` (at most 200 a window) and answers `total` (at most 5000),
+`offset` and `truncated` (the rows after this window). The page shows the first window and a Show more button that loads the next, which is a
+read and the only control an extension page has. Actions on rows (approve, deny, change a state), filters, tabs by state, search, a detail
+drawer and a row link to a local document are not built: an action is a write through a provider and needs its own safety design (recorded on
+issue 327 with a recommended default).
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

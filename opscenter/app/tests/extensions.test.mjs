@@ -77,7 +77,7 @@ test('a page is an error when its source failed, a link for a link page, and oth
 
 // The pages read and link. A button that changes something is a separate decision with its own confirmation (standards/automation-safety.md),
 // so a regression that adds a write path here would quietly create it without that design.
-test('the extension pages have no write path: no post function, no fetch, no button, no raw html', () => {
+test('the extension pages have no write path: no post function, no request but the read-only paging helper, no raw button, no raw html', () => {
   for (const f of ['../src/lib/extensions.ts', '../src/components/ExtensionPage.tsx']) {
     let src
     try {
@@ -87,7 +87,10 @@ test('the extension pages have no write path: no post function, no fetch, no but
     }
     assert.equal(/\bpost[A-Z]\w*/.test(src), false, `${f} must not call a post function`)
     assert.equal(/fetch\(|method:\s*'(POST|DELETE|PUT)'/.test(src), false, `${f} must not send a request`)
-    assert.equal(/<button|onClick=/.test(src), false, `${f} must not draw a button`)
+    // The one control is the Show more button of the paging window: a kit Button whose handler only reads the next window.
+    assert.equal(/<button/.test(src), false, `${f} must not draw a raw button`)
+    assert.ok((src.match(/onClick=/g) || []).length <= 1, `${f} has at most the paging control`)
+    if (/onClick=/.test(src)) assert.ok(/fetchExtensionRows\(/.test(src) && !/post|method/.test(src.slice(src.indexOf('onClick='))), `${f}: the only handler reads the next window`)
     assert.equal(/dangerouslySetInnerHTML|innerHTML/.test(src), false, `${f} must not draw raw markup`)
   }
 })

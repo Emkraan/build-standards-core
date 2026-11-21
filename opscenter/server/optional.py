@@ -8,6 +8,7 @@ Settings: OPSCENTER_LOG_INTAKE   any non empty value other than 0, false or off 
           OPSCENTER_DOCS_DRIFT_PROVIDER   a provider (path/to/file.py:ClassName) is the opt in for the docs drift feed (docs_drift.py)
           OPSCENTER_BUILDS_PROVIDER       the same for the active builds feed (active_builds.py), read only
           OPSCENTER_EXTENSIONS_PROVIDER   the same for the extension manifest (extensions.py): pages a consumer adds to the rail, read only
+          OPSCENTER_EXTENSIONS_FILE       the data-only form: a JSON file of pages and rows instead of a provider class
           OPSCENTER_PHONE_PROVIDER        the same for phone pairing and alerts (phone_pairing.py): pair, devices, test, remove
           OPSCENTER_REPORTS      the same for the reports routes
 Providers: OPSCENTER_LOG_INTAKE_PROVIDER and OPSCENTER_REPORTS_PROVIDER (`path/to/file.py:ClassName`), see each module's http_routes.py.
@@ -35,6 +36,7 @@ def register(r):
         or os.environ.get("OPSCENTER_BUILDS_PROVIDER", "").strip()
         or os.environ.get("OPSCENTER_EXTENSIONS_PROVIDER", "").strip()
         or os.environ.get("OPSCENTER_PHONE_PROVIDER", "").strip()
+        or os.environ.get("OPSCENTER_EXTENSIONS_FILE", "").strip()
     ):
         if str(MODULES) not in sys.path:
             sys.path.insert(0, str(MODULES))
@@ -66,6 +68,17 @@ def register(r):
         import extensions
 
         extensions.register(r, op.load("OPSCENTER_EXTENSIONS_PROVIDER"))
+        on.append("extensions")
+    if (
+        os.environ.get("OPSCENTER_EXTENSIONS_FILE", "").strip()
+        and not os.environ.get("OPSCENTER_EXTENSIONS_PROVIDER", "").strip()
+    ):
+        # The data-only form of the same slot: a JSON file, no code (extensions.FileProvider).
+        import extensions
+
+        extensions.register(
+            r, extensions.FileProvider(os.environ["OPSCENTER_EXTENSIONS_FILE"].strip())
+        )
         on.append("extensions")
     if os.environ.get("OPSCENTER_PHONE_PROVIDER", "").strip():
         # The provider is the opt in: with none there is no route and the page shows the setup steps. Pair is loopback only (12.77).

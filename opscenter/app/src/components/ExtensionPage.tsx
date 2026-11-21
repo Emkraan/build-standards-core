@@ -2,16 +2,21 @@
 // page points at a tool the consumer runs. It reads and links only, with no button that changes anything, and all text is drawn as text
 // (issue 308, item 22). The decisions live in lib/extensions.ts so a test can load them without the browser.
 
-import { EmptyState, Pill, Skeleton } from '@kit'
+import { Button, EmptyState, Pill, Skeleton } from '@kit'
+import { useState } from 'react'
 import { HubHeader } from '../components/HubHeader'
 import { LoadError } from '../components/StateBlocks'
-import { useExtensionRows, useExtensions } from '../lib/data'
+import { fetchExtensionRows, useExtensionRows, useExtensions } from '../lib/data'
+import type { ExtensionRow } from '../lib/extensions'
 import { pageMode, safeHref } from '../lib/extensions'
 import './ExtensionPage.css'
 
 export default function ExtensionPage({ id }: { id: string }) {
   const { data: manifest } = useExtensions()
   const { data: rows, error } = useExtensionRows(id)
+  // Windows after the first, loaded on request; the first window is the live store, so a refresh replaces it and drops these.
+  const [more, setMore] = useState<{ id: string; rows: ExtensionRow[]; left: number; err: string; busy: boolean }>({ id, rows: [], left: -1, err: '', busy: false })
+  const extra = more.id === id ? more : { id, rows: [], left: -1, err: '', busy: false }
   const page = rows?.page ?? (manifest && manifest.configured ? (manifest.pages.find((p) => p.id === id) ?? null) : null)
   const title = page?.title ?? 'Extension'
   const header = <HubHeader title={title} subtitle={page?.lede ?? undefined} />
@@ -42,7 +47,7 @@ export default function ExtensionPage({ id }: { id: string }) {
     <>
       {header}
       <ul className="ext-rows" aria-label={title}>
-        {rows.rows.map((r) => {
+        {[...rows.rows, ...extra.rows].map((r) => {
           const href = safeHref(r.url)
           return (
             <li key={r.id}>
@@ -62,7 +67,25 @@ export default function ExtensionPage({ id }: { id: string }) {
           )
         })}
       </ul>
-      {rows.truncated > 0 && <p className="muted">{rows.truncated} more rows are not shown.</p>}
+      {(extra.left < 0 ? rows.truncated : extra.left) > 0 && (
+        <p className="muted">
+          {extra.left < 0 ? rows.truncated : extra.left} more rows.{' '}
+          <Button
+            size="sm"
+            variant="secondary"
+            loading={extra.busy}
+            onClick={() => {
+              setMore({ ...extra, busy: true, err: '' })
+              fetchExtensionRows(id, (rows.offset ?? 0) + rows.rows.length + extra.rows.length)
+                .then((r) => setMore({ id, rows: [...extra.rows, ...r.rows], left: r.truncated, err: r.error || '', busy: false }))
+                .catch((e) => setMore({ ...extra, busy: false, err: String(e).replace(/^Error: /, '') }))
+            }}
+          >
+            Show more
+          </Button>
+          {extra.err && ` ${extra.err}`}
+        </p>
+      )}
     </>
   )
 }

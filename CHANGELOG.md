@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-21 (v2.32.0, ops-center: extension pages from a data file, and windows past 200 rows)
+
+- Added: `OPSCENTER_EXTENSIONS_FILE` declares extension pages and their rows in one JSON file with no provider code (`opscenter/DESIGN.md` 12.80).
+- Added: a list page loads in windows of 200 rows up to 5000 (`offset`, `limit`, `total`) with a Show more button, instead of cutting at 200.
+- Changed: the test that kept extension pages read-only now allows exactly that one paging control.
+- Adoption risk: none, an older server answers without `total` and the page keeps its old behaviour.
+
+Refs #326.
+
 ## 2026-11-21 (v2.31.0, ops-center: Work tracking stat rows)
 
 - Changed: the Sprint, Needs me and Backlog tabs of Work tracking open with the shared stat row and the reference labels, replacing the hero KPI strip.
