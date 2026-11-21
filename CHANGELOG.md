@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-21 (v2.28.0, ops-center: Platform has five tabs)
+
+Platform now has the tabs of the reference: Overview, Releases, Automation, Host and access, Cost and standards.
+
+- Changed: the Builds and releases section is labelled Releases, a Host and access section holds the Hermes engine card (moved from the Overview), and the Overview opens with a stat row (Needs me, Worth a look, Healthy). Routes and section keys are unchanged, so old links and counts keep working.
+- Changed: the Knowledge tab is labelled Doc drift, and the restart banner links to Host and access.
+- Adoption risk: a consumer test that looked for the engine card on the Platform overview looks at `/platform/host/hermes`.
+
+Refs #327.
+
 ## 2026-11-21 (v2.27.0, ops-center: page chip, header trail, notice tray, mobile tab bar and the stat row)
 
 The page chrome of the reference ops center: every hub page opens with the accent chip, the header says where I am as a trail, system notices are one tray, a phone gets a bottom tab bar, and the stat row is a shared piece.

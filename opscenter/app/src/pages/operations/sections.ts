@@ -15,6 +15,8 @@ const AUTOMATION = [
   { key: 'jobs', label: 'Scheduled jobs' },
   { key: 'ci', label: 'CI, backup and GitHub' },
 ]
+// Host and access: the engine the agents run on. The pairing and device screens join it as items of this section.
+const HOST = [{ key: 'hermes', label: 'Hermes' }]
 const COST = [
   { key: 'spend', label: 'LLM spend' },
   { key: 'core', label: 'Core consumption' },
@@ -48,8 +50,9 @@ export function operationsSections(
   })
   const builds_ = buildItems(builds, problems)
   return [
-    ...(builds_.length ? [make('builds', 'Builds and releases', builds_)] : []),
+    ...(builds_.length ? [make('builds', 'Releases', builds_)] : []),
     make('automation', 'Automation', liveAutomation ? [...AUTOMATION, LIVE_AUTOMATION] : AUTOMATION),
+    make('host', 'Host and access', HOST),
     make('cost', 'Cost and standards', COST),
   ]
 }

@@ -416,7 +416,7 @@ test('the Docs drift tab shows the newest drift report and has no axe violation 
       await visit(s, origin, '/knowledge/drift', theme, hasText('Runbook 1'), 'the drift rows')
       assert.ok(await s.evaluate(hasText('Pages behind the code')), `${theme}: the behind table has its heading`)
       assert.ok(await s.evaluate(hasText('Pages with no verdict')), `${theme}: the no verdict table is shown`)
-      assert.ok(await s.evaluate(hasTab('Docs drift')), `${theme}: the tab is in the hub`)
+      assert.ok(await s.evaluate(hasTab('Doc drift')), `${theme}: the tab is in the hub`)
       const found = await axeFindings(s)
       assert.deepEqual(found, [], `${theme} theme: ${JSON.stringify(found)}`)
     }
@@ -426,7 +426,7 @@ test('the Docs drift tab shows the newest drift report and has no axe violation 
 test('the Docs drift tab is hidden when no provider is configured, and its route lands on Proposals', { skip, timeout: 60000 }, async () => {
   await withApp({ ...fixtures(), drift: null }, async (s, origin) => {
     await visit(s, origin, '/knowledge/drift', 'light', `location.hash === '#/knowledge' && ${hasTab('Proposals')}`, 'the redirect to Proposals')
-    assert.equal(await s.evaluate(hasTab('Docs drift')), false, 'no Docs drift tab without a provider')
+    assert.equal(await s.evaluate(hasTab('Doc drift')), false, 'no Docs drift tab without a provider')
   })
 })
 
@@ -521,7 +521,7 @@ test('the Disable switch asks first, sets the launch back and returns it to the 
 
 test('the Live automation tab is hidden when no dark launch is registered', { skip, timeout: 60000 }, async () => {
   await withApp({ ...fixtures(), launches: { launches: [], error: null } }, async (s, origin) => {
-    await visit(s, origin, '/platform', 'light', hasText('what we run and whether it is healthy'), 'the Operations hub')
+    await visit(s, origin, '/platform', 'light', hasText('keep our platform running'), 'the Operations hub')
     await sleep(500)
     assert.equal(await s.evaluate(hasTab('Live automation')), false, 'no Live automation tab without a registry')
     await visit(s, origin, '/platform/automation/live-automation', 'light', `!location.hash.includes('live-automation')`, 'the redirect to the Overview')
@@ -964,19 +964,22 @@ test('the restart banner offers its two timings and a link to the engine card on
     const text = flat(await s.evaluate(`document.body.textContent`))
     assert.match(text, /Restart when idle/)
     assert.match(text, /After 5 quiet minutes/)
-    assert.equal(await s.evaluate(`[...document.querySelectorAll('a')].find((a) => a.textContent.trim() === 'More restart options').getAttribute('href')`), '#/platform', 'the link goes to the page that holds the engine card')
+    assert.equal(await s.evaluate(`[...document.querySelectorAll('a')].find((a) => a.textContent.trim() === 'More restart options').getAttribute('href')`), '#/platform/host/hermes', 'the link goes to the page that holds the engine card')
     const found = await axeFindings(s)
     assert.deepEqual(found, [], JSON.stringify(found))
   })
 })
 
-test('the engine card the restart link points at is on the Operations overview', { skip, timeout: 120000 }, async () => {
+test('the engine card the restart link points at is on Host and access, not on the overview', { skip, timeout: 120000 }, async () => {
   const fx = fixtures()
   fx.restart = RESTART_STALE
   await withApp(fx, async (s, origin) => {
-    await visit(s, origin, '/platform', 'light', `!!document.querySelector('.ac-none, .hub-body, .infra-stack')`, 'the Operations overview')
+    await visit(s, origin, '/platform', 'light', `!!document.querySelector('.ac-none, .hub-body, .infra-stack')`, 'the Platform overview')
     await new Promise((r) => setTimeout(r, 800))
-    assert.equal(await s.evaluate(`document.querySelectorAll('.hermes-engine').length`), 1, 'exactly one Hermes engine card is on the overview')
+    assert.equal(await s.evaluate(`document.querySelectorAll('.hermes-engine').length`), 0, 'the overview no longer holds the engine card')
+    assert.equal(await s.evaluate(`[...document.querySelectorAll('[role=tab]')].map((t) => t.textContent.trim().replace(/\\d+$/, '')).join('|')`).then((t) => /Releases|Automation/.test(t) && /Host and access/.test(t) && /Cost and standards/.test(t)), true, 'the five tabs')
+    await visit(s, origin, '/platform/host/hermes', 'light', `!!document.querySelector('.hermes-engine')`, 'the engine card on Host and access')
+    assert.equal(await s.evaluate(`document.querySelectorAll('.hermes-engine').length`), 1, 'exactly one Hermes engine card')
     assert.match(flat(await s.evaluate(`document.querySelector('.hermes-engine').textContent`)), /Hermes engine/)
   })
 })
@@ -986,7 +989,7 @@ test('a server that sends no areas shows no rollup, and an empty areas list show
     const fx = fixtures()
     fx.badges = withAreas(areas)
     await withApp(fx, async (s, origin) => {
-      await visit(s, origin, '/platform', 'light', hasText('what we run and whether it is healthy'), 'the Operations hub')
+      await visit(s, origin, '/platform', 'light', hasText('keep our platform running'), 'the Operations hub')
       await new Promise((r) => setTimeout(r, 400))
       assert.equal(await s.evaluate(`document.querySelectorAll('.pa').length`), 0)
     })

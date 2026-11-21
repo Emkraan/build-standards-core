@@ -447,7 +447,7 @@ export default function Knowledge() {
         tabs={[
           { to: '/knowledge', label: 'Proposals', n: cur ? pending.length : undefined, end: true },
           { to: '/knowledge/coverage', label: 'Doc coverage', n: docs?.open_count },
-          ...(driftOn ? [{ to: '/knowledge/drift', label: 'Docs drift' }] : []),
+          ...(driftOn ? [{ to: '/knowledge/drift', label: 'Doc drift' }] : []),
           { to: '/knowledge/history', label: 'History' },
         ]}
       />

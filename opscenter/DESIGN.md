@@ -2006,6 +2006,15 @@ is part of the header trail instead.
 - **Bundle budget.** The first load budget goes from 150 to 160 KB gzip: the kit chrome (page chip, notice row) and the tab bar load with the shell
   on every route.
 
+### 12.76 Platform has five tabs (issue 327, parity spec section 5.4)
+
+Platform is Overview, Releases, Automation, Host and access and Cost and standards. The section keys stay as they were (`builds`, `automation`,
+`cost`, plus `host`) because the server's problem list names them, so old deep links and counts keep working; only the labels changed
+(`builds` is Releases) and `host` is new. Overview opens with a three tile stat row (Needs me, Worth a look, Healthy, counted from the area
+rows) and no longer holds the Hermes engine card: that is Host and access, item Hermes (`/platform/host/hermes`), and the restart banner
+links there. The pairing and device screens are further items of Host and access. The Knowledge tab is labelled Doc drift, and the Team
+yearly tab already carries its year.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.
