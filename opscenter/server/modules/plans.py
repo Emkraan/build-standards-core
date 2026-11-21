@@ -31,7 +31,7 @@ import paths
 import swr
 
 ROOT = Path(os.environ.get("OPSCENTER_ROOT", paths.root()))
-PLANS = Path(os.environ.get("PLANS_DIR") or (ROOT / "state" / "plans"))
+PLANS = Path(os.environ.get("PLANS_DIR") or (paths.state_dir() / "plans"))
 SECTIONS = ("projects", "library")
 ARCHIVE = "archive"
 TRACKER = "tracker.md"
