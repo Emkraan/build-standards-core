@@ -62,6 +62,23 @@ async function cdpSession(port) {
   return { send, evaluate, close: () => ws.close() }
 }
 
+// Resolves true once no CSS transition is still running on the page. Flipping the theme starts colour
+// transitions and axe reads the colour it sees at that instant, so a scan taken mid transition measures
+// a blend of the two themes (a settled light chip is 5.67 to 1, mid blend it is 1.4 to 3.7). A fixed
+// sleep only guesses how long that takes. Looping animations such as the status dots never end, so
+// only CSSTransition counts. False means it gave up after about 5 seconds, which a caller must fail on.
+const SETTLED_JS = `(async () => {
+  const live = () => document.getAnimations().filter((a) => a instanceof CSSTransition && (a.playState === 'running' || a.playState === 'pending'))
+  for (let i = 0; i < 100; i++) {
+    if (live().length === 0) {
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+      if (live().length === 0) return true
+    }
+    await new Promise((r) => setTimeout(r, 50))
+  }
+  return false
+})()`
+
 const skip = browserGate({ chrome: CHROME, dist: DIST })
 
 test('axe finds no critical or serious violation in the light and dark theme', { skip, timeout: 120000 }, async () => {
@@ -78,7 +95,7 @@ test('axe finds no critical or serious violation in the light and dark theme', {
       await s.send('Page.navigate', { url: `http://127.0.0.1:${srv.address().port}/index.html#/` })
       await sleep(2500)
       await s.evaluate(`localStorage.setItem('shell.theme', '${theme}'); document.documentElement.setAttribute('data-theme', '${theme}'); true`)
-      await sleep(300)
+      assert.equal(await s.evaluate(SETTLED_JS), true, `${theme} theme: the page did not stop transitioning`)
       const rendered = await s.evaluate(`document.querySelectorAll('#root *').length`)
       assert.ok(rendered > 20, `${theme} theme: the shell did not render (${rendered} elements)`)
       await s.evaluate(AXE_SRC + '; true')

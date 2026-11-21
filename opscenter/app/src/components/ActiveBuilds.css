@@ -1,0 +1,74 @@
+/* the active builds panel: agent work that is running, stuck, failed or finished. It is imported by the component, so it is styled wherever it mounts (the Action Center and the Operations overview) */
+.ac-builds {
+  margin: 0 0 18px;
+}
+.ac-builds h2 {
+  margin: 0 0 8px;
+  font-size: var(--fs-body);
+}
+.ac-builds ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ac-builds li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--surface);
+}
+.ac-builds li[data-state='stuck'],
+.ac-builds li[data-state='failed'] {
+  border-color: var(--alert);
+}
+.ac-builds-state {
+  flex-shrink: 0;
+  min-width: 4.5rem;
+  font-weight: 600;
+}
+.ac-builds li[data-state='stuck'] .ac-builds-state,
+.ac-builds li[data-state='failed'] .ac-builds-state {
+  color: var(--alert);
+}
+.ac-builds-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ac-builds-age {
+  flex-shrink: 0;
+  font-size: var(--fs-label);
+}
+.ac-builds-note {
+  margin: 4px 0;
+}
+.ac-builds li {
+  flex-wrap: wrap;
+}
+.ac-builds-detail {
+  flex-basis: 100%;
+  margin: 0;
+  padding-left: calc(4.5rem + 10px);
+  font-size: var(--fs-label);
+}
+.ac-builds-pr {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--fs-label);
+}
+.ac-builds-pr-link {
+  font-weight: 600;
+  text-decoration: underline;
+}
+.ac-builds-pr-num {
+  font-weight: 600;
+}

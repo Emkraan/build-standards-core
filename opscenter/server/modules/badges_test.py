@@ -171,6 +171,26 @@ class Badges(unittest.TestCase):
         self.assertEqual(got["infra"]["count"], 1)
         self.assertIn("down", got["infra"]["items"][0])
 
+    def test_a_problem_list_that_cannot_be_built_still_carries_an_empty_areas_list(self):
+        import problems
+
+        saved = problems.collect
+
+        def boom():
+            raise RuntimeError("list down")
+
+        problems.collect = boom
+        try:
+            got = b.get()["problems"]
+        finally:
+            problems.collect = saved
+        self.assertEqual(
+            got["areas"],
+            [],
+            "the key is present and empty, never missing, so the page can tell an empty answer from a broken one",
+        )
+        self.assertEqual(got["counts"]["total"], 0)
+
     def test_an_unreadable_board_is_empty(self):
         d = self.state / "public-data"
         d.mkdir(parents=True, exist_ok=True)

@@ -1796,10 +1796,9 @@ contract (12.15), not a code change in the core.
 **Extension points for pages a consumer adds.** Server: a module that registers its own routes with the route registry
 through the optional module switch (`server/optional.py`), each behind its own environment variable and with its own
 provider (`path/to/file.py:ClassName`, every method optional, a missing one is the null default). A consumer never
-edits a core file for this. App: the route list and the rail are core files in this release, so a consumer page that
-needs a rail item is filed upward as a pull request to the core, as rule 1 of section 0 says. A slot UI mount (section
-5.1) is not built. This is the honest gap: a consumer can add server routes and data today and cannot add a rail item
-or a page without a core change.
+edits a core file for this. App: a consumer adds a rail item and a page by describing them as data through the extension
+manifest, which 12.69 defines (`OPSCENTER_EXTENSIONS_PROVIDER`), so a page no longer needs a core change. A slot UI mount
+(section 5.1) is not built, and the manifest is the way a consumer reaches the rail.
 
 **What the scheduled jobs card includes.** `server/modules/cron_pulse.py` reads the agent runtime's job file and shows
 a job on a Reviews page card only when it maps to that card. A job maps in three ways: its monitor script or prompt
@@ -1823,30 +1822,30 @@ running, total, lines, by section and by item). The core builds items for the ar
 jobs, CI and backup, spend, core approvals). A consumer adds areas or live facts without a fork through
 `OPSCENTER_PROBLEMS_PROVIDER` (`path/to/file.py:ClassName`, every method optional: `headlines`, `healthy`, `running`,
 `needs_me`, `worth_a_look`) and places an item by `OPSCENTER_PROBLEM_MAP` (a JSON file, default
-`<state>/problem-map.json`, which sets the hub, section, item and label of each source key). The contract holds no
-owner field today. An owner per area is a provider detail line until the item shape gains one. A page that groups the
-list by area with those counts is the next change in this program.
+`<state>/problem-map.json`, which sets the hub, section, item and label of each source key). The list also carries
+`areas`, one row per section with a status, the counts and an owner from the problem map, and the Operations overview shows
+them as a table. 12.69 defines both.
 
 **Where the parity items live.** Issue 308 lists 24 things a consumer's running ops center has that core lacked. This is the
-record of where each is in core, checked against the code in v2.21.0.
+record of where each is in core, checked against the code in v2.22.0.
 
 | Items | Where |
 |---|---|
 | 1 flat rail | A layout choice. Core groups the same destinations under Operate, People, Knowledge and Platform, each with its need me badge |
 | 2 work tracking page | A layout choice. `/jira` holds the same sprint, backlog and changes content, behind the tracker slot (v2.18.0) |
-| 3 Platform page | The Operations overview, with one card per area over the problem list (`problems.py`). Grouping the cards by area is open, see 24 |
+| 3 Platform page | The Operations overview, with one card per area over the problem list (`problems.py`) and, above them, the areas rollup table with an owner per area (12.69, v2.22.0) |
 | 4 header strip | The feed in `shell/HeaderBits.tsx` (live data line, synced chip, improvements waiting, and a warning when the Enterprise fallback is billing) and `HermesRestartBanner.tsx`, which links to the engine card on the Operations overview (v2.21.0) |
 | 5 Action Center tabs | Now, Live (v2.21.0), Alerts, Completed and Routing |
 | 6, 8 counters and waiting on me | The Now tab (v2.20.0). The waiting panel only links to the Reviews card, so there is no second path around the typed confirmation |
-| 7 active builds | The Now tab panel and the Live tab, over the provider slot in 12.68 (v2.20.0, v2.21.0), read only |
+| 7, 26 active builds | The Now tab panel, the Live tab and the Operations overview, over the provider slot in 12.68 (v2.20.0, v2.21.0, v2.23.0), read only. A row can name its pull request with the failing checks and carries a plain sentence on what happened or what to do (12.68) |
 | 9, 10, 11 views, columns, Routing | The Action Center and its Routing tab |
 | 12, 13 Reviews | One tab per repo with a working state, the Needs me, In progress, My PRs and Recently shipped sections, the Stuck state, and the blocking, high, medium and low rollup |
 | 14, 17 Debt filters, Knowledge endpoints | v2.19.0 |
 | 15 1:1 cards | The shared person card with the avatar and the coverage meter, in Direct reports and Director and product owner groups |
 | 16, 18, 19 Team, Plans, Links | Already in core |
 | 20, 21, 23 | v2.18.0 and the 12.67 text above (layout, tracker slot, what the jobs card includes) |
-| 22 extension point | Server side is built (`optional.py`). The app side is open: a consumer cannot add a rail item or a page without a core change |
-| 24 Platform areas contract | The problem list shape is documented above. The page that groups it by area, and an owner field, are open |
+| 22 extension point | The server manifest and the rail, palette and route in the app, read only (12.69, v2.22.0). A consumer adds a page as data and never edits a core file |
+| 24 Platform areas contract | The problem list carries `areas` with an owner and label from the problem map, and the Operations overview draws them (12.69, v2.22.0) |
 
 Two items are layout choices and not defects, 1 and 2. Two things are left out of core on purpose. A Stop action on a
 running build is a side effect with no existing route and needs its own design under `standards/automation-safety.md`.
@@ -1854,11 +1853,80 @@ running build is a side effect with no existing route and needs its own design u
 
 ### 12.68 The active builds feed (provider slot, read only)
 
-`server/modules/active_builds.py` reports agent work that is running, stuck, failed or finished, for the Active builds panel on the Now tab. It is a provider slot like 12.65: the consumer supplies where sessions come from and how it knows one is alive, and the core owns the row shape, the four states, the limits and the route. The contract (provider methods, the build shape, the summary shape) is in the module header and is the document the consumer builds against. The provider is the opt in (`OPSCENTER_BUILDS_PROVIDER`), with none no route exists and the panel is hidden.
+`server/modules/active_builds.py` reports agent work that is running, stuck, failed or finished, for the Active builds panel on the Now tab and on the Operations overview. It is a provider slot like 12.65: the consumer supplies where sessions come from and how it knows one is alive, and the core owns the row shape, the four states, the limits and the route. The contract (provider methods, the build shape, the summary shape) is in the module header and is the document the consumer builds against. The provider is the opt in (`OPSCENTER_BUILDS_PROVIDER`), with none no route exists and the panel is hidden.
 
 Three rules differ from 12.65 on purpose. The route is read only and closed until the provider authorises `active-builds.read`, and the module has no way to start or stop anything. Nothing is cached, because a build shown as running after it died is worse than showing nothing, so every request asks the provider again under an 8 second limit. A source that fails, is slow or returns something that is not a list is reported as an error and drawn as "I could not read the build source", never as an empty board, since nothing running and unable to tell are different answers. This is the agent work feed. The Builds tab of the Operations hub is the release pipeline, a different thing, and the counters row tile "Builds waiting" counts that pipeline.
 
 A Stop action is held back. It is a side effect with no existing route, so it needs its own design under `standards/automation-safety.md` (live re-verification and a typed confirmation) before the panel gets a button.
+
+A build row may carry an optional `pr` block (issue 308, item 26): `{number, url?, state?, red?}`. The number must be a positive whole number or the whole block is dropped. The state is open, merged or closed and anything else is left unset, never read as open. The failing check count `red` is a whole number from zero up to 999, and a source that sends no count leaves it unset, so the row never says "none red" for a count nobody sent. The link follows the same http or https rule as the row link. A row with no block carries `pr: null`, so a client does not have to guess, and an older source that never sends one keeps working. The row reads "Pull request open, 1 red" for an open request, and a merged or closed request reports no check count because there is nothing left to fix.
+
+Each row also gets one plain sentence from `rowNote` in `lib/activeBuilds.ts`, from times the source really sent. A stuck row says "No output for 25 minutes, check the log before waiting longer", where the span is measured from the last output (or from the start when it never produced any) and the client holds no fixed threshold of its own, because the server already decided the row is stuck. A finished row says "Took about 59 minutes, finished 2 min ago" and a failed one "Ran about 9 minutes, failed 1 min ago". A missing start leaves out the duration, a missing end leaves out the "ago", and a span that runs backwards is no span. A running row gets no sentence. The panel has its own stylesheet, imported by the component, so it is styled on every page that mounts it.
+
+### 12.69 Pages a consumer adds, and the Platform areas rollup (issue 308, items 22 and 24)
+
+This section supersedes two statements in 12.67. 12.67 says a consumer cannot add a rail item or a page without a core
+change, and that the problem list holds no owner field. Both are now false, and this is the contract that replaces them.
+
+**Extension pages (item 22).** A consumer adds a page and a rail item without a core change by describing the page as data.
+The core serves nothing of its own here. A module `server/modules/extensions.py` registers two read only routes when the
+optional switch `OPSCENTER_EXTENSIONS_PROVIDER` (`path/to/file.py:ClassName`) is set, and with it unset there are no routes
+and the rail shows nothing extra. The provider has two methods, both optional. `extensions(now)` returns the manifest, a list
+of pages `{id, title, group, kind, url, lede}`, and `extension_rows(page_id, now)` returns the rows of one list page,
+`{id, title, detail, state, url, at}`.
+
+| Part | Rule |
+|---|---|
+| `GET /api/extensions` | `{fetched_utc, pages, truncated, error}`. At most 12 pages. 404 when no provider is set. |
+| `GET /api/extensions/<id>` | `{fetched_utc, page, rows, truncated, error}`. At most 200 rows. 404 for an id the manifest does not name. 502 when the source failed, with the same body and the reason in `error`. |
+| `kind` | `list` draws the rows. `link` draws one link to a tool the consumer runs and has no rows. |
+| `id` | `^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$`. It cannot be a path the core serves (the list is checked against the real route table by a test), so a consumer page can never shadow `/builds`, `/people` or another core page. |
+| `group` | One of the four rail groups the core has. Any other value is forced to Platform, so a consumer cannot invent a rail group. |
+| Links | `http` or `https` only. Any other scheme is dropped, so a row link is never a `javascript:` address. |
+| Text | Carries no markup. The client draws every field as text, so a title with markup shows as characters and runs nothing. |
+| Caching | None. Every answer is fresh, so a page the consumer removed leaves the rail at once. |
+| A failing source | Is an error and never an empty manifest. The rail adds no page while the source fails, and an open page shows that the source could not be read, which is not the same as nothing to show. |
+
+The rail puts a consumer page after the core items of its group, so it never moves a core item, and it takes no keyboard
+shortcut and no badge. The command palette lists it. A route for a page the manifest does not name goes to the home page,
+so a removed page or a typed address never shows a broken one. The page is read only: no button, no request that changes
+anything, and a test fails if one is added. The page component is a lazy chunk, so the first load budget is not spent on a
+page most consumers never open.
+
+**Platform areas (item 24).** The problem list now carries `areas`, one row per section that has an item:
+`{section, label, owner, status, needs_me, worth_a_look, healthy, lines}`. `status` is the worst tone among the section's
+items. The three counts are items by tone and `lines` is the same unit as every other count in the list, so the rows add up
+to `counts.lines` and cannot disagree with the badge. The rows are worst first, then by section. The owner and the label come
+from an optional `areas` block of the problem map, keyed by section: `{"areas": {"<section>": {"label": "...", "owner":
+"..."}}}`. With no entry the label is the section name and the owner is null, because the core never invents an owner, and
+the page then says "No owner named" in words and never leaves a blank. An entry for a section with no item adds no row, and a
+malformed entry is ignored. Text from the map is collapsed to one line and clipped to 60 characters. A problem list that
+cannot be built still carries `areas: []`, so a page can tell an empty answer from a broken one, and a server older than
+this field sends no `areas` at all, which the client treats as no rollup and not as an empty one.
+
+The Operations overview shows the rollup above the area cards, as a read only table with one row per area (status, owner,
+problem lines) and a line that counts areas needing me. It is on the overview only, not on a tab, and it is a lazy chunk.
+
+### 12.71 Two test rules: wait for transitions, and run a class alone
+
+Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.
+
+**A scan waits for transitions, it does not sleep.** The theme flip starts colour transitions (the header chip has a 120 ms one), and axe reads whatever colour the element has at that instant. A settled light chip measures 5.67 to 1 and a dark one 6.79 to 1, against 4.5, but halfway through the flip the text is a blend of both themes and measures between 1.4 and 3.7. The old helper flipped the theme and slept a guessed 400 ms, so a slow runner could scan mid blend and report a contrast failure on a component that was fine. The tests now call one step, `SETTLED_JS`, that resolves true once no `CSSTransition` is running (two animation frames apart, so a transition that starts late is seen) and returns false after about 5 seconds, which the caller must fail on. Only transitions count. The status dots and the logo loop forever by design, so waiting on every animation would never finish. `axe.test.mjs` and `ocTabs.test.mjs` both use it, and a browser test slows the chip to 1.5 s, flips the theme and proves the wait lasts as long as the transition and ends on the settled colour. CPU load alone could not reproduce the failure, because Chrome stops starting well before the chip is late, so the proof forces the slow transition directly.
+
+**Every server test class passes alone.** `tests/test_opscenter_lanes.py` loads the server test modules into one process, so a class that works only because an earlier class imported something first is invisible there. `optional_test.py` had two such classes (`Builds` and `Extensions`) that imported a provider module before `routes`, and `routes` is what puts `server/modules` on the path. Run alone, as a person does when chasing a failure, they errored with `No module named 'optional_provider'` in 0.07 s and read as a code fault. The order is fixed, and `EachClassRunsAlone` runs every test class of `optional_test` in its own process and fails by class name. It reads the class list from the source and fails if it finds fewer than six, so it cannot pass by looking at nothing.
+
+### 12.70 The follow-up items 25 to 28 on issue 308
+
+The issue body lists items 1 to 24. A follow-up comment on it adds 25 to 28, and the 12.67 table above stops at 24, so this section records them. Each was checked against the code on main and not from the issue text.
+
+| Item | State | Where |
+|---|---|---|
+| 25 work tracking tabs | In core | Sprint has the mine or team scope, Hide done and the Synced stamp (`pages/Sprint.tsx`). Backlog has the issue type filter and Move To Current Sprint (`pages/Backlog.tsx`). Changes lists change requests where the owner is the approver (`pages/JiraHub.tsx`). Needs me carries its counters and empty state |
+| 26 derived build state | Closed in v2.23.0 | The stuck and finished sentences, the pull request on a row and the panel on the Operations overview (12.68). Before this release a row had no field for a pull request, so it could not say "Pull request open, 1 red" |
+| 27 Knowledge | In core | Proposals has the publish mode switch (`components/PublishMode.tsx`). Doc coverage is the registry of what runs, joined with the daily audit, with a tier, a responsible and accountable owner per row (`owner_r` and `owner_a`), gap counts by priority and a filter. Docs drift is report only. History has Page history and Revert to previous version |
+| 28 scope sub-lines | Closed in v2.23.0 | Every core page draws a `HubHeader` with a subtitle, which is its scope line, and the Action Center tab body sits under the Action hub header. v2.21.0 added the line to the four pages that had none. `tests/scopeLines.test.mjs` now reads every page file that draws a header and fails by name when one has no subtitle or a literal line is too short or holds a semicolon or an em dash |
+
+The Stop action and `POST /api/automation/approve` stay out of the core for the reasons in 12.68 and 12.67.
 
 ### 12.66 The sprint trend and the closed sprint view
 

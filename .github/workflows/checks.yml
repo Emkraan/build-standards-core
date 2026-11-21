@@ -20,7 +20,7 @@ concurrency:
 jobs:
   secret-scan-main:
     if: github.event_name == 'push'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -33,7 +33,7 @@ jobs:
 
   ci:
     if: github.event_name != 'push'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -78,7 +78,7 @@ jobs:
           HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         run: python3 templates/overlay/scripts/core-ci.py secret-scan "$BASE" "$HEAD" --gitleaks "$RUNNER_TEMP/bin/gitleaks"
       # Ruff, pinned, both commands, against [tool.ruff] in pyproject.toml.
-      - run: python3 -m pip install --quiet ruff==0.17.5
+      - run: python3 -m pip install --quiet ruff==0.17.6
       - run: ruff check .
       - run: ruff format --check .
       # The people module's .docx export test runs here instead of skipping.

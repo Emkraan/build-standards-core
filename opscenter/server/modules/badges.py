@@ -129,6 +129,7 @@ def _problems():
                 "by_section": {},
                 "by_item": {},
             },
+            "areas": [],
         },
     )
 

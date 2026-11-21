@@ -1,5 +1,62 @@
 # Changelog
 
+## 2026-11-20 (v2.24.0, standards: the operator's standing sign-off on their own work)
+
+An operator who builds a change and then clicks to approve it adds nothing, and an adopting repo that ran a standing rule for exactly that had no place in the standards for it. Rule 10 allowed one standing exception and rule 16 said a destroy or replace always needs a fresh click. This adds a second, operator-recorded exception for the operator's own pull requests, off by default, with the stops that stay and the stops the operator may waive written down.
+
+- Added: `standards/automation-safety.md` section 9, the operator's standing sign-off on their own work. It covers only pull requests the operator authored and the runs that come from them. The switch has three parts: on (exactly true, missing is off), dry run (the default when missing, logs what it would do and holds) and floor (on unless the operator sets an explicit false). With the floor on it never covers a data-bearing delete, a high-risk or unnamed permission grant, a guard file or a classifier at its highest. With the floor waived it covers them and writes each waived stop into the log line. Facts always stop it: a plan with errors or unreadable, a failed guard, a red check, an automated review block, a freeze, the head and plan pins and the guard on objects other open pull requests own. Where the operator's click starts a deploy or a delete, it presses the app's own operator action. Any error leaves the item held.
+- Changed: `automation-safety` 1.10 now names two standing exceptions, the bounded own-PR lane and this one, each logged.
+- Changed: `automation-safety` 1.16 says a destroy or replace needs a fresh click unless this standing sign-off is on and the pull request is the operator's own. With it off, which is the default, nothing changes.
+- Changed: `standards/rules.json` carries the new text for both rules and `hermes/skills/core-practices/SKILL.md` is regenerated from it.
+- Adoption risk: none for an adopting repo that does not turn it on. An adopting repo that does must keep the stops that are facts.
+- Not changed: the own-PR merge lane's code and its tests. They keep asserting that a destroy or a replace is never covered while the standing sign-off is off.
+
+## 2026-11-20 (v2.23.1, ops-center: theme scans wait for transitions and server test classes run alone)
+
+Two defects in the core's own tests, found while building v2.23.0 (issue 308). No product code changes.
+
+- Fixed: an accessibility scan taken just after a theme flip could read a colour halfway between the two themes. The helper flipped the theme and slept a guessed 400 ms, so on a slow runner axe measured the header chip at 1.4 to 3.7 against a 4.5 limit when it measures 5.67 (light) and 6.79 (dark) once settled. Both browser scanners now call `SETTLED_JS`, which resolves true when no CSS transition is running and false after about 5 seconds, and the caller fails on false. Looping animations are ignored because they never end. This removes a fixed 400 ms sleep from every `ocTabs` page visit, and the browser suite (38 tests with the one added here) passes on three consecutive runs without it.
+- Added: a browser test that slows the chip's transition to 1.5 s, flips the theme, and asserts the wait lasts as long as the transition and ends on the settled colour with no finding. Two mutants are caught, a wait that returns at once and a wait that counts every animation.
+- Fixed: `Builds` and `Extensions` in `opscenter/server/optional_test.py` imported `optional_provider` before `routes`, and `routes` is what puts `server/modules` on the path. They passed only when an earlier class had already imported `routes`, and errored with `No module named 'optional_provider'` when run alone. The import order is fixed in both base classes.
+- Added: `EachClassRunsAlone` in `tests/test_opscenter_lanes.py`, which runs each of the 10 test classes in `optional_test.py` in its own process and fails by class name. It reads the class list from the source and fails on fewer than six, so it cannot pass by finding nothing. With the old import order restored in one base class it fails and names `Builds` and `BuildsSourceDown`.
+- Changed: `opscenter/DESIGN.md` 12.71 records both rules with the contrast numbers.
+- Known: the rule covers `optional_test` only. `server_test.py` and the module tests are not yet checked class by class, and `MODULES` in the new test is the place to add them.
+
+## 2026-11-20 (v2.23.0, ops-center: pull request and plain sentence on Active builds rows, the panel on Operations)
+
+The follow-up items on the consumer parity issue (issue 308, items 25 to 28). The issue body lists items 1 to 24 and a follow-up comment adds 25 to 28, which the earlier releases of this series did not account for. Each was checked against the code. Items 25 and 27 were already in core, item 28 was in core but guarded only on four pages, and item 26 had two real gaps that this release closes. The panel stays read only.
+
+- Added: an optional `pr` block on an Active builds row, item 26. `{number, url?, state?, red?}` from the provider, validated in `server/modules/active_builds.py`. The number must be a positive whole number or the block is dropped. A state other than open, merged or closed is left unset and never read as open. The failing check count is a whole number from zero to 999, and a source that sends none leaves it unset, so a row never says "none red" for a count nobody sent. The link follows the http or https rule of the row link. A row with no block carries `pr: null`, and an older source keeps working unchanged.
+- Added: the row reads "Pull request open, 1 red" with the number as a link. A merged or closed request reports no check count. The decisions are in `prLine` in `lib/activeBuilds.ts` so a test loads them without a browser.
+- Added: one plain sentence under a row from `rowNote`, built only from times the source sent. A stuck row says "No output for 25 minutes, check the log before waiting longer", measured from the last output (from the start when it never produced any), with no fixed threshold in the client because the server already decided the row is stuck. A finished row says "Took about 59 minutes, finished 2 min ago" and a failed one "Ran about 9 minutes, failed 1 min ago". A missing start drops the duration, a missing end drops the "ago", and a span that runs backwards is no span.
+- Added: the Active builds panel on the Operations overview, below the engine card and above the areas table, lazy loaded. With no provider there is no panel there either, and a failing source is drawn as an error and never as a calm board.
+- Added: `tests/scopeLines.test.mjs`, item 28. It reads every page file that draws a `HubHeader` and fails by name when one has no subtitle, or when a literal line is too short or holds a semicolon or an em dash. Until now only four pages were read by a browser test, so a page that lost its scope line went unnoticed.
+- Changed: the panel's rules moved from `pages/Action.css` to `components/ActiveBuilds.css`, imported by the component. The Action Center stylesheet loaded only with that page, so the panel would have drawn unstyled on Operations. A browser test asserts the row is a flex box on that page.
+- Changed: `opscenter/DESIGN.md` 12.68 describes the `pr` block and the row sentence, the parity table row for item 7 names item 26 and v2.23.0, and the new 12.70 records items 25 to 28 with where each lives.
+- Added: 9 server tests for the `pr` block in `active_builds_test.py` and 1 in `optional_test.py` that reads it through the real HTTP route, 6 unit tests for the sentence and the pull request line, 3 for the scope lines, and 2 browser tests with an accessibility scan in both themes. A mutation check on each guard (a boolean as a number, a zero number, an unknown state read as open, a missing count read as zero, an uncapped count, an unfiltered link, a fixed stuck threshold, a missing subtitle) is caught by a test.
+- Fixed: the browser test found two real accessibility defects in the first draft of the pull request link, a contrast failure in the dark theme and a link that was told apart from the text around it only by colour. The link is now its own element beside its words.
+- Not built here: a Stop action on a running build, which stays held under `standards/automation-safety.md`, and `POST /api/automation/approve`, which is a consumer contract about what approving a row means.
+- Known: first load is 148.9 of 150 KB, the same as main, because the panel and its stylesheet are in the lazy chunk. 1.1 KB is still left, so the next additions must stay lazy.
+
+## 2026-11-20 (v2.22.1, overlay: create-github-app-token pinned to v3.4.0)
+
+Renovate's update of the GitHub App token action in the consumer overlay template.
+
+- Changed: `actions/create-github-app-token` v3.4.0 in `templates/overlay/.github/workflows/core-update.yml`, so a consumer gets the same pin on its next sync.
+
+## 2026-11-19 (v2.22.0, ops-center: pages a consumer adds as data and the Platform areas rollup)
+
+The last two items of the consumer parity issue (issue 308, items 22 and 24). A consumer can now add a page and a rail item without a core change, and the Operations overview rolls the problem list up by area with an owner. Both are read only and both are lazy chunks, so the first load stays inside its budget.
+
+- Added: extension pages, item 22. A consumer describes pages as data through `OPSCENTER_EXTENSIONS_PROVIDER` (`path/to/file.py:ClassName`, methods `extensions` and `extension_rows`, both optional). `server/modules/extensions.py` serves `GET /api/extensions` (the manifest, at most 12 pages) and `GET /api/extensions/<id>` (one page, at most 200 rows). With no provider there are no routes and the rail shows nothing extra.
+- Added: a page is a `list` (rows drawn as text) or a `link` (one link to a tool the consumer runs). An id cannot be a path the core serves, and a test reads the app route table to keep that list from drifting. A group the core does not have is forced to Platform. A link must be http or https. Text carries no markup and is drawn as text, so a title with markup runs nothing.
+- Added: the rail lists a consumer page after the core items of its group and the command palette finds it. A page the manifest does not name goes to the home page. A failing source adds no page and an open page says the source could not be read, which is not the same as nothing to show.
+- Added: the Platform areas rollup, item 24. The problem list carries `areas`, one row per section with a status (the worst tone in it), the counts by tone, the problem lines and an owner and label from an optional `areas` block of the problem map. The core never invents an owner and says "No owner named" when none is set. The rows add up to the list's own line count, so they cannot disagree with the rail badge.
+- Added: the rollup table on the Operations overview, above the area cards and on the overview only. A server that sends no `areas` shows no rollup, and a problem list that cannot be built still carries an empty `areas` so the two are told apart.
+- Added: 36 server tests for the extension module, 7 in `optional_test.py` for the opt in, the read only routes and a failing source, 10 for the areas rows and 1 for the guarded fallback, 11 and 7 unit tests for the client decisions, and 8 browser tests with an accessibility scan in both themes. Each guard was proven by a mutant that its test catches.
+- Not built here: a control on an extension page or on the rollup. Both read and show only, and a test fails if a button or a request that changes anything is added.
+- Known: first load is 148.9 of 150 KB, up 1.7 KB from 147.2 on main. Only 1.1 KB is left, so the next additions must stay lazy.
+
 ## 2026-11-19 (v2.21.0, ops-center: Live tab, scope lines, restart options link, parity audit)
 
 This is the second to last change for issue 308, which lists 24 items. I read each remaining item against the code before building anything, and most of what I had carried as open already existed, so this release adds only what was missing and records where each item lives. Two items are still open and are named at the end.
