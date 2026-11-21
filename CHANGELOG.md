@@ -10,6 +10,14 @@ The rail and page titles took the reference names in v2.25.0 but the addresses w
 
 Refs #327.
 
+## 2026-11-21 (v2.25.1, ops-center: a test fails when a design token or an accent drifts)
+
+The ops center must carry the reference design tokens and the full accent ladder, and nothing checked either. A new test reads the dark root block of `opscenter/tokens/tokens.css` and fails on any difference in the surfaces, borders, text, status colours, hue channels, radii, type scale, layout, motion and font stack. It also checks that every one of the 13 named accents defines the six per-theme variables in both the light and the dark theme and that light and dark differ.
+
+- Added: `tests/test_ops_token_parity.py`, run with the rest of the unit tests in `checks.yml`.
+- Adoption risk: none, a test only.
+
+Refs #327.
 ## 2026-11-21 (v2.25.0, ops-center: a flat rail you can configure, disabled pages that say so, and an empty state that no longer blanks the app)
 
 The rail was a fixed set of four groups, a disabled slot sent the page to the Action Center with no message, and a server with no review configuration blanked the whole app.
