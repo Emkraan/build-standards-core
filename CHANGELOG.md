@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-21 (v2.26.0, ops-center: Work tracking, 1:1s and Team from plain data files)
+
+A consumer with no Jira and no people provider could not turn the Work tracking, 1:1s and Team pages on without writing a driver or a provider.
+
+- Added: `OPSCENTER_TRACKER_FILES=1` serves the Sprint, Backlog, Changes and Needs me reads from `<state>/slots/tracker/*.json`, and `OPSCENTER_PEOPLE_FILES=1` serves the 1:1 board from `<state>/slots/people/board.json` and turns the people gate on for Team. Read only. A missing file is the empty page and a malformed file is a visible error. `opscenter/DESIGN.md` 12.74 has the file contract.
+- Adoption risk: none, both switches are off by default and the provider and driver forms are unchanged.
+
+Refs #326.
+
 ## 2026-11-21 (v2.25.2, ops-center: Work tracking is /work and Platform is /platform)
 
 The rail and page titles took the reference names in v2.25.0 but the addresses were still /jira and /operations, and /platform redirected into one review lane.

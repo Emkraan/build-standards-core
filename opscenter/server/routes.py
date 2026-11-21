@@ -738,8 +738,14 @@ def build(registry=None):
         return {"queued": stores.queue_decisions(decisions)}
 
     r.post("/api/approve", approve, "approve")
-    people_on = optional.enabled("OPSCENTER_PEOPLE")
-    tracker_on = optional.enabled("OPSCENTER_TRACKER")
+    ds = load("data_slots")
+    people_files = ds is not None and ds.files("OPSCENTER_PEOPLE")
+    tracker_files = ds is not None and ds.files("OPSCENTER_TRACKER")
+    # The data file form (modules/data_slots.py, DESIGN.md 12.74): the slot is on for the pages, read only, with no provider or driver.
+    people_on = optional.enabled("OPSCENTER_PEOPLE") and not people_files
+    tracker_on = optional.enabled("OPSCENTER_TRACKER") and not tracker_files
+    if people_files or tracker_files:
+        ds.register(r, tracker=tracker_files, people=people_files)
     for method, path, mod, fn, adapter in _table():
         if mod in PEOPLE_MODULES and not people_on:
             continue  # the people slot is off: no route, and the people pages hide themselves (DESIGN.md 12.14)
