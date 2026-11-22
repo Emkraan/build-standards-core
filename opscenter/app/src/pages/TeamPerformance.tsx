@@ -20,9 +20,9 @@ type OpenItem = TP['metrics'][string]['not_done'][number]
 type SprintRow = { sprint: string; done: number; assigned: number; delivered: number; committed: number }
 
 const SPRINT_COLS: TableColumn<SprintRow>[] = [
-  { key: 'sprint', header: 'Sprint' },
-  { key: 'done', header: 'Done', numeric: true, render: (r) => `${r.done}/${r.assigned}` },
-  { key: 'delivered', header: 'Points', numeric: true, render: (r) => `${r.delivered}/${r.committed}` },
+  { key: 'sprint', header: 'Sprint', width: '223px' },
+  { key: 'done', header: 'Done', width: '188px', numeric: true, render: (r) => `${r.done}/${r.assigned}` },
+  { key: 'delivered', header: 'Points', width: '216px', numeric: true, render: (r) => `${r.delivered}/${r.committed}` },
 ]
 
 const OPEN_COLS: TableColumn<OpenItem>[] = [

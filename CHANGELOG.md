@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-21 (v2.38.0, ops-center: reference column widths on the jobs, ledger and routing tables)
+
+- Changed: the Scheduled jobs, Team run ledger, sprint throughput and Routing Considered tables take the reference column widths.
+- Adoption risk: none.
+
+Refs #327.
+
 ## 2026-11-21 (v2.37.0, ops-center: the Enterprise chip in the header)
 
 - Added: a header chip while an Enterprise billing incident is open, with the time left until the watch closes it ("Enterprise on, 0 h 41 min left"), opening LLM spend. The fallback feed's open incident carries `closes_utc` for it.
