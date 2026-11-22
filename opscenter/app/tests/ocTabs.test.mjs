@@ -700,6 +700,24 @@ test('My PRs filters by status, and Stuck keeps only the PRs the lane says nothi
   })
 })
 
+test('the Live tab has a Lane select and one titled list per kind of work when the builds name lanes', { skip, timeout: 120000 }, async () => {
+  const fx = fixtures()
+  const pr = { number: 5, url: null, state: 'open', red: 0 }
+  fx.agentBuilds = buildsFeed([
+    BUILD('b1', 'Fix the importer', 'running', { lane: 'infra', pr, activity_at: nowS() - 60 }),
+    BUILD('b2', 'Nightly sweep', 'running', { lane: 'infra', activity_at: nowS() - 90 }),
+    BUILD('b3', 'Docs pass', 'running', { lane: 'apps', pr, activity_at: nowS() - 120 }),
+  ])
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/action/live', 'light', hasText('Engineer PRs') && hasText('Scheduled jobs'), 'the sections')
+    assert.equal(await s.evaluate(`!!document.querySelector('select[aria-label="Lane"]')`), true, 'the Lane select')
+    assert.equal(await s.evaluate(`document.querySelectorAll('.ac-live-sec').length >= 2`), true, 'titled lists')
+    await s.evaluate(`(() => { const sel = document.querySelector('select[aria-label="Lane"]'); const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; set.call(sel, 'apps'); sel.dispatchEvent(new Event('change', { bubbles: true })) })()`)
+    await s.waitFor(`${hasText('Docs pass')} && !${hasText('Fix the importer')}`, 'only the apps lane')
+    assert.deepEqual(await axeFindings(s), [], 'no axe violation')
+  })
+})
+
 // ---- issue 308: Debt page filters ----
 test('the Debt page filters narrow the list and have no axe violation in either theme', { skip, timeout: 120000 }, async () => {
   await withApp(fixtures(), async (s, origin) => {
@@ -874,7 +892,7 @@ test('the Live tab lists what is acting, stuck first, counts it on the tab, and 
       await visit(s, origin, '/action/live', theme, `document.querySelectorAll('.ac-live li').length > 0`, 'the Live list')
       const pick = (name) => s.evaluate(`[...document.querySelectorAll('[role=radio], [role=tab], button')].find((b) => b.textContent.trim().startsWith(${JSON.stringify(name)})).click(); true`)
       // The control opens on the first state that has rows; here nothing failed, so it is Running.
-      assert.deepEqual(await s.evaluate(liveRows), ['session | running | Tighten the importer', 'build | running | Fix the importer'], `${theme}: running first`)
+      assert.deepEqual(await s.evaluate(liveRows), ['build | running | Fix the importer', 'session | running | Tighten the importer'], `${theme}: builds then sessions, each in its own list`)
       await pick('Stuck')
       await s.waitFor(`document.querySelectorAll('.ac-live li').length === 1`, 'the stuck row')
       assert.deepEqual(await s.evaluate(liveRows), ['build | stuck | Docs pass'], `${theme}: stuck`)

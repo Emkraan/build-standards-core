@@ -13,7 +13,8 @@ Notes:   Opt in: with no provider (`OPSCENTER_BUILDS_PROVIDER` unset) there is n
 Provider (`path/to/file.py:ClassName`):
          active_builds(now) -> [<build>]                            the sessions as the consumer sees them, any order
          authorize(headers, action, key) -> actor | falsy           action active-builds.read; the null default refuses everything
-Build:   {id, title, state, started, finished?, activity?, activity_at?, outcome?, url?, kind?, pr?}
+Build:   {id, title, state, started, finished?, activity?, activity_at?, outcome?, url?, kind?, lane?, pr?}
+         lane: the repo lane or area the work belongs to (up to 40 characters), for the Lane select of the Live tab. Absent is null, never guessed.
          state: running | stuck | failed | finished     An unknown state is kept and drawn neutral. `started` and the other times are epoch
          seconds or an ISO string with an offset. `url` is shown only when it is an http or https link.
          pr: {number, url?, state?, red?}   the pull request that carries the work. number is a positive whole number, state is open,
@@ -114,6 +115,7 @@ def _build(raw):
         "outcome": _clip(raw.get("outcome")) or None,
         "url": _safe_url(raw.get("url")),
         "kind": _clip(raw.get("kind"), 40) or None,
+        "lane": _clip(raw.get("lane"), 40) or None,
         "pr": _pr(raw.get("pr")),
     }
 

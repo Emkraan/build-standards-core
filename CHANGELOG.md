@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-21 (v2.41.0, ops-center: a lane on active builds and the Live tab Lane select)
+
+- Added: an active builds row may carry `lane`; the Live tab gets a Lane select and titled sections (Engineer PRs, Scheduled jobs, Sessions).
+- Adoption risk: none, a source that sends no lane draws no select.
+
+Refs #327.
+
 ## 2026-11-21 (v2.40.0, ops-center: a status filter on My PRs)
 
 - Added: My PRs opens with a Status control (All, Needs you, In progress, Waiting, Stuck, Ready) with a count each. Stuck is the lane's own state, not a client threshold.

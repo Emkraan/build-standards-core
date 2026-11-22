@@ -18,6 +18,10 @@ export interface LiveRow {
   ticket: string | null
   /** An http or https address only, never anything else. */
   url: string | null
+  /** The lane the source named, for the Lane select; null for a session and for a source that names none. */
+  lane?: string | null
+  /** True for a build that carries a pull request (the Engineer PRs section); a build without one is a scheduled job. */
+  hasPr?: boolean
 }
 
 export type LiveMode = 'loading' | 'error' | 'list' | 'quiet'
@@ -56,6 +60,8 @@ export function liveBuilds(feed: ActiveBuildsState | null | undefined): LiveRow[
       since: b.activity_at ?? b.started,
       ticket: null,
       url: b.url !== null && /^https?:\/\//.test(b.url) ? b.url : null,
+      lane: b.lane ?? null,
+      hasPr: !!b.pr,
     }))
 }
 
@@ -122,6 +128,8 @@ export function liveByState(
         since: b.activity_at ?? b.finished ?? b.started,
         ticket: null,
         url: b.url !== null && /^https?:\/\//.test(b.url) ? b.url : null,
+        lane: b.lane ?? null,
+        hasPr: !!b.pr,
       })
     }
   }
@@ -131,4 +139,19 @@ export function liveByState(
 /** The state the control opens on: the first one that has rows, in reading order. */
 export function firstLiveState(by: Record<LiveState, LiveRow[]>): LiveState {
   return LIVE_STATES.find((k) => by[k].length > 0) ?? 'running'
+}
+
+/** The lanes the rows name, sorted, for the Lane select. No row names one, no select. */
+export function liveLanes(rows: LiveRow[]): string[] {
+  return [...new Set(rows.map((r) => r.lane).filter((l): l is string => !!l))].sort()
+}
+
+/** The rows of one lane (all lanes when `lane` is empty), grouped for the sections: builds with a pull request, builds without one (scheduled jobs), sessions. */
+export function liveSections(rows: LiveRow[], lane: string): { prs: LiveRow[]; jobs: LiveRow[]; sessions: LiveRow[] } {
+  const kept = lane ? rows.filter((r) => r.lane === lane) : rows
+  return {
+    prs: kept.filter((r) => r.kind === 'build' && r.hasPr),
+    jobs: kept.filter((r) => r.kind === 'build' && !r.hasPr),
+    sessions: kept.filter((r) => r.kind === 'session'),
+  }
 }

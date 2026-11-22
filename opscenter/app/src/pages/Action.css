@@ -444,3 +444,24 @@
 .hermes-more:focus-visible {
   color: var(--text);
 }
+
+/* the Live tab: the state control with the Lane select beside it, and one titled list per kind of work */
+.ac-live-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.ac-live-sec {
+  margin-bottom: var(--space-4);
+}
+.ac-live-h {
+  margin: 0 0 var(--space-2);
+  font-size: var(--fs-h3);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.ac-live-lane {
+  font-size: var(--fs-micro);
+}

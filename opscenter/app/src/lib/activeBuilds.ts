@@ -15,6 +15,8 @@ export interface ActiveBuild {
   outcome: string | null
   url: string | null
   kind: string | null
+  /** The repo lane or area the work belongs to, when the source names one. */
+  lane?: string | null
   /** The pull request that carries the work, when the source names one. A count that was not sent stays null and is never read as zero. */
   pr?: BuildPr | null
 }

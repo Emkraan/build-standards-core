@@ -2123,6 +2123,12 @@ My PRs opens with a Status control: All, Needs you, In progress, Waiting, Stuck 
 (every branch reads a field the server set), so Stuck is the lane's own answer that nothing will move the PR on its own (a draft with no gate to clear, an auto-fix that
 gave up), and the client adds no age threshold of its own. The findings rollup per PR (blocking, high, medium and low counts) was already on each card.
 
+### 12.89 A lane on active builds, and the Live tab Lane select (issue 327)
+
+An active builds row may carry `lane` (up to 40 characters, the repo lane or area the work belongs to); absent is null and is never guessed. The Live tab then shows a Lane select
+beside the Work by state control (only when some row names a lane) and lists the chosen state as titled sections: Engineer PRs (builds that carry a pull request), Scheduled
+jobs (builds without one) and Sessions. A source that names no lane gets no select and the same sections.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.
