@@ -3024,3 +3024,28 @@ export const useApprovalQueue = createLiveStore(() => fetchApi<ApprovalQueue>('a
 export const postApprovalDecide = (key: string, decision: 'approve' | 'decline', note: string) =>
   jiraPost<ApprovalDecision>('api/approvals/decide', { key, decision, note, confirm: true })
 export const postApprovalSwitch = (live: boolean) => jiraPost<{ live: boolean }>('api/approvals/switch', { live, confirm: true })
+
+// ---- The document pipeline (server/modules/doc_pipeline.py, DESIGN.md 12.97) ----
+export interface PipelineDoc {
+  id: string
+  title: string
+  source: string | null
+  state: 'queued' | 'drafted' | 'suggested' | 'approved' | 'rejected' | 'published'
+  version: string | null
+  suggestion?: string | null
+}
+export type DocPipeline = { configured: false } | { configured: true; fetched_utc: string; docs: PipelineDoc[]; error: string | null }
+// A 404 means the consumer has no pipeline provider, so the Knowledge tab is hidden.
+export const useDocPipeline = createLiveStore<DocPipeline>(async () => {
+  const res = await fetch(`${BASE}api/doc-pipeline`, { cache: 'no-cache' })
+  if (res.status === 404) return { configured: false }
+  if (!res.ok) throw new Error(`api/doc-pipeline -> ${res.status}`)
+  return { configured: true, ...((await res.json()) as { fetched_utc: string; docs: PipelineDoc[]; error: string | null }) }
+}, 60_000)
+export const fetchDocPreview = (id: string) => fetchApi<{ id: string; version: string; text: string }>(`api/doc-pipeline/preview?id=${encodeURIComponent(id)}`)
+export const postDocDraft = (id: string) => jiraPost<{ state: string; version: string }>('api/doc-pipeline/draft', { id })
+export const postDocSuggest = (id: string, text: string) => jiraPost<{ state: string }>('api/doc-pipeline/suggest', { id, text })
+export const postDocDecide = (id: string, decision: 'approve' | 'reject', version: string) =>
+  jiraPost<{ state: string }>('api/doc-pipeline/decide', { id, decision, version, confirm: true })
+export const postDocRestore = (id: string) => jiraPost<{ state: string }>('api/doc-pipeline/restore', { id, confirm: true })
+export const postDocPublish = (id: string, version: string) => jiraPost<{ ok: boolean; detail: string }>('api/doc-pipeline/publish', { id, version, confirm: true })

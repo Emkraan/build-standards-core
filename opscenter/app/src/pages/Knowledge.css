@@ -323,3 +323,37 @@
   grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
   gap: var(--space-3);
 }
+
+/* the Documents tab: rows with their state and actions, and the Word style preview page */
+.dp-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+}
+.dp-rows li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.dp-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+.dp-page {
+  max-width: 70ch;
+  margin: 0 auto var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  line-height: 1.6;
+}
+.dp-suggest {
+  display: grid;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}

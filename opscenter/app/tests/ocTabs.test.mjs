@@ -285,6 +285,10 @@ function fakeBackend(fx) {
       })
       return true
     }
+    if (path === '/api/doc-pipeline/draft' && req.method === 'POST') {
+      fx.posts.push('doc-draft')
+      return json(res, 200, { id: 'd1', state: 'drafted', version: 'v1' }), true
+    }
     const extAct = path.match(/^\/api\/extensions\/([a-z0-9-]+)\/action$/)
     if (extAct && req.method === 'POST') {
       let raw = ''
@@ -307,6 +311,7 @@ function fakeBackend(fx) {
       '/api/llm-fallback': fx.fallback,
       '/api/extensions': fx.extensions,
       '/api/phone-access': fx.phone,
+      '/api/doc-pipeline': fx.docPipeline,
       '/api/approvals/queue': fx.approvalQueue,
       '/api/dark-launches': fx.launches,
       '/api/badges': fx.badges,
@@ -790,6 +795,20 @@ test('a change can be approved from the Changes tab, as a logged dry run until t
     await click('Approve')
     await s.waitFor(hasText('Dry run: would approve'), 'the dry run result')
     assert.ok(fx.posts.some((p) => p.startsWith('decide') && p.includes('"decision":"approve"') && p.includes('"confirm":true')), JSON.stringify(fx.posts))
+  })
+})
+
+test('the Knowledge Documents tab appears with a pipeline provider, lists the queue and drafts on request', { skip, timeout: 120000 }, async () => {
+  const fx = fixtures()
+  fx.docPipeline = { fetched_utc: '2026-11-21T12:00:00Z', error: null, docs: [{ id: 'd1', title: 'Runbook for the gateway', source: 'meeting', state: 'queued', version: null }] }
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/knowledge/documents', 'light', hasText('Runbook for the gateway') && hasText('from meeting'), 'the queue')
+    await s.evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Draft').click(); true`)
+    await s.waitFor(hasText('Drafted.'), 'the draft result')
+    assert.ok(fx.posts.includes('doc-draft'), JSON.stringify(fx.posts))
+  })
+  await withApp({ ...fixtures(), docPipeline: null }, async (s, origin) => {
+    await visit(s, origin, '/knowledge/documents', 'light', `location.hash === '#/knowledge'`, 'the redirect when there is no provider')
   })
 })
 
