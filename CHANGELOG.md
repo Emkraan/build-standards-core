@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-21 (v2.51.0, ops-center: go-live notices beside the freeze strip)
+
+- Added: a change window of kind `go-live` is listed apart from freezes (`go_live` in `freeze.json`) and shown in the header as an awareness notice that says it is not a freeze; it never moves `in_freeze`, `current` or `next`. `opscenter/DESIGN.md` 12.98.
+- Adoption risk: none, a window with no kind is a freeze as before.
+
+Refs #327.
+
 ## 2026-11-21 (v2.50.0, ops-center: the document pipeline)
 
 - Added: a Documents tab in Knowledge and a provider slot (`OPSCENTER_DOCS_PIPELINE_PROVIDER`): a queue of what needs writing, draft, a Word-style preview, suggested changes in place, approve or reject, restore, and a guarded publish that refuses a draft that changed after its approval. `opscenter/DESIGN.md` 12.97.

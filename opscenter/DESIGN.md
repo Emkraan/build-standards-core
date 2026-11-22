@@ -2207,6 +2207,13 @@ suggested, approved, rejected, published, kept in `<state>/dashboard/doc-pipelin
 Authorisation is the provider's `authorize(headers, action, key)` with `docs.read` and `docs.write` (the null default refuses all). With no provider there is no route and the Documents tab is hidden. A queue that cannot be
 read is an error the tab shows, never an empty queue.
 
+### 12.98 The freeze strip and go-live notices (cutover comment capability 8)
+
+The header already shows the change freeze from `change-freeze.json` (the change system's windows, mirrored by the consumer): red inside a window, amber inside seven days. A window may now carry `kind: "go-live"`.
+`freeze_status` (`engine/board_build.py`) keeps such a window out of `in_freeze`, `current` and `next` and lists the current and upcoming ones as `go_live` (at most five, with `days_out`) in `freeze.json`. The header
+shows the nearest one as an info notice, "Go-live in 2 days: <name>. For awareness. This is not a change freeze.", beside the freeze status and never as a freeze: a go-live never turns the strip red and never blocks
+the freeze gate. Windows with no kind are freezes as before.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

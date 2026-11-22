@@ -70,7 +70,8 @@ def load_json(p, default=None):
 
 def freeze_status(p):
     """Current and next change-freeze window from the freeze file ({"timezone", "windows": [{name, start, end,
-    exception}], "synced"}). Window times are wall clock in the file's zone (default UTC)."""
+    exception, kind?}], "synced"}). Window times are wall clock in the file's zone (default UTC). A window of kind
+    go-live is not a freeze: it goes to `go_live` (awareness) and never moves in_freeze, current or next."""
     cf = load_json(p, {})
     try:
         zone = ZoneInfo(cf.get("timezone") or "UTC")
@@ -78,10 +79,23 @@ def freeze_status(p):
         zone = ZoneInfo("UTC")
     now = dt.datetime.now(zone).replace(tzinfo=None)
     current, upcoming = None, None
+    go_live = []
     for w in sorted(cf.get("windows") or [], key=lambda w: w.get("start") or ""):
         try:
             start, end = dt.datetime.fromisoformat(w["start"]), dt.datetime.fromisoformat(w["end"])
         except (KeyError, TypeError, ValueError):
+            continue
+        # A go-live is awareness, never a freeze: it is listed on its own and takes no part in current, next or in_freeze.
+        if str(w.get("kind") or "").lower().replace("_", "-") == "go-live":
+            if end >= now:
+                go_live.append(
+                    {
+                        "name": w.get("name"),
+                        "start": w["start"],
+                        "end": w["end"],
+                        "days_out": max(0, (start.date() - now.date()).days),
+                    }
+                )
             continue
         rec = {
             "name": w.get("name"),
@@ -97,6 +111,7 @@ def freeze_status(p):
         "in_freeze": current is not None,
         "current": current,
         "next": upcoming,
+        "go_live": go_live[:5],
         "synced": cf.get("synced") or (cf.get("source_workbook") or {}).get("last_synced"),
     }
 

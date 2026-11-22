@@ -101,6 +101,40 @@ class Board(unittest.TestCase):
         self.assertEqual(fp({"title": "Day 14 unshipped"}), fp({"title": "day 15 unshipped"}))
         self.assertTrue(fp({"title": "t"}).startswith("ac_"))
 
+    def test_a_go_live_is_awareness_and_never_a_freeze(self):
+        now = dt.datetime.now(ZoneInfo("UTC")).replace(tzinfo=None)
+        f = self.d / "freeze2.json"
+        f.write_text(
+            json.dumps(
+                {
+                    "windows": [
+                        {
+                            "name": "Launch",
+                            "kind": "go-live",
+                            "start": (now - dt.timedelta(hours=1)).isoformat(),
+                            "end": (now + dt.timedelta(hours=2)).isoformat(),
+                        },
+                        {
+                            "name": "Next launch",
+                            "kind": "go_live",
+                            "start": (now + dt.timedelta(days=2)).isoformat(),
+                            "end": (now + dt.timedelta(days=2, hours=3)).isoformat(),
+                        },
+                        {
+                            "name": "Old launch",
+                            "kind": "go-live",
+                            "start": (now - dt.timedelta(days=5)).isoformat(),
+                            "end": (now - dt.timedelta(days=5) + dt.timedelta(hours=1)).isoformat(),
+                        },
+                    ]
+                }
+            )
+        )
+        out = self.B.freeze_status(f)
+        self.assertEqual((out["in_freeze"], out["current"], out["next"]), (False, None, None))
+        self.assertEqual([g["name"] for g in out["go_live"]], ["Launch", "Next launch"])
+        self.assertEqual(out["go_live"][1]["days_out"], 2)
+
     def test_freeze_status_reads_the_file_zone(self):
         zone = ZoneInfo("Pacific/Auckland")
         now = dt.datetime.now(zone).replace(tzinfo=None)
