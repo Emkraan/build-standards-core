@@ -832,6 +832,7 @@ def items():
     live_projects = [p for p in plist if not p["archived"]]
     _freshness(live_projects)
     live_library = [r for r in library if not r["archived"]]
+    stuck = _mark_stuck(live_projects, live_library)
     return {
         "generated_utc": _iso(time.time()),
         "root": str(PLANS.resolve()),
@@ -847,6 +848,8 @@ def items():
             "library": sum(1 for r in live_library if r["status"] != "done"),
             "archived": sum(1 for p in plist if p["archived"])
             + sum(1 for r in library if r["archived"]),
+            # Plans that stopped moving (the Action Center Stuck plans tile): see _mark_stuck.
+            "stuck": stuck,
         },
         "jira": {
             "state": js["state"] if keys else "none",
@@ -854,6 +857,30 @@ def items():
             "errors": js.get("errors") or [],
         },
     }
+
+
+def stuck_days():
+    """Days without a change after which an open plan counts as stuck (OPSCENTER_PLAN_STUCK_DAYS, default 14). The server decides, never the client."""
+    try:
+        return max(1, int(os.environ.get("OPSCENTER_PLAN_STUCK_DAYS") or 14))
+    except ValueError:
+        return 14
+
+
+def _mark_stuck(projects, library, now=None):
+    """Set `stuck` on every open project (its tracker) and every in-progress library plan whose file has not changed for `stuck_days()`.
+    A done, parked or proposed plan is waiting by design and is never stuck. Returns how many are."""
+    limit = (now if now is not None else time.time()) - stuck_days() * 86400
+    n = 0
+    for row in projects:
+        mt = int(row["version"]) / 1e9 if row.get("version") else 0
+        row["stuck"] = row["status"] == "active" and 0 < mt < limit
+        n += row["stuck"]
+    for r in library:
+        mt = int(r["version"]) / 1e9
+        r["stuck"] = r["status"] == "in-progress" and mt < limit
+        n += r["stuck"]
+    return n
 
 
 # ---- reads and the two writes (archive, restore), all jailed to the plans folder ----

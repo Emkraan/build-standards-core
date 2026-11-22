@@ -18,10 +18,12 @@ export interface CounterInputs {
   trackerWaiting: number | null
   // Open 1:1 topics, only known while the people slot is on, so it is null when off.
   oneOnOneTopics: number | null
+  // Open plans that stopped moving, counted by the server; null when the plans feed is not served or an older server does not count them.
+  stuckPlans?: number | null
 }
 
 /**
- * The tiles to show, in the order the reference reads them: Action items, Pull requests, Work, Platform, Improvements, 1:1 topics. A tile whose
+ * The tiles to show, in the order the reference reads them: Action items, Pull requests, Work, Platform, Stuck plans, Improvements, 1:1 topics. A tile whose
  * source is off is left out, not shown as zero. Alerts, Knowledge and Builds have their own tab or rail badge and are not tiles.
  */
 export function counterTiles(i: CounterInputs): CounterTile[] {
@@ -34,6 +36,10 @@ export function counterTiles(i: CounterInputs): CounterTile[] {
   ]
   if (i.trackerWaiting !== null) {
     tiles.splice(2, 0, { key: 'work', label: 'Work', count: i.trackerWaiting, to: '/work', tone: 'warn' })
+  }
+  if (i.stuckPlans !== null && i.stuckPlans !== undefined) {
+    // Reads in the reference order: after Platform, before Improvements.
+    tiles.splice(tiles.findIndex((t) => t.key === 'debt'), 0, { key: 'plans', label: 'Stuck plans', count: i.stuckPlans, to: '/plans', tone: 'warn' })
   }
   if (i.oneOnOneTopics !== null) {
     tiles.push({ key: 'oneonone', label: '1:1 topics', count: i.oneOnOneTopics, to: '/people', tone: 'warn' })

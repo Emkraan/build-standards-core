@@ -134,7 +134,7 @@ class PlansTest(unittest.TestCase):
         self.assertEqual(names, ["synthetic-plan.md", "old-plan.md"])
         self.assertTrue(d["library"][0]["sbar"])
         self.assertFalse(d["library"][1]["sbar"])
-        self.assertEqual(d["counts"], {"projects": 1, "library": 1, "archived": 0})
+        self.assertEqual(d["counts"], {"projects": 1, "library": 1, "archived": 0, "stuck": 0})
         ids = [r["id"] for r in d["library"]] + [x["id"] for x in pr["docs"]]
         self.assertNotIn(".format.md", ids)
 
@@ -514,6 +514,43 @@ class PlansStateDir(unittest.TestCase):
                 text=True,
             )
             self.assertEqual(out.stdout.strip(), d + "/other", out.stderr)
+
+
+class PlansStuck(unittest.TestCase):
+    def test_only_an_open_plan_untouched_past_the_limit_is_stuck(self):
+        import importlib
+
+        import plans
+
+        importlib.reload(plans)
+        day = 86400
+        now = 1_800_000_000.0
+        ns = lambda age_days: str(int((now - age_days * day) * 1e9))  # noqa: E731
+        projects = [
+            {"status": "active", "version": ns(30)},
+            {"status": "active", "version": ns(2)},
+            {"status": "done", "version": ns(90)},
+        ]
+        library = [
+            {"status": "in-progress", "version": ns(20)},
+            {"status": "parked", "version": ns(200)},
+            {"status": "proposed", "version": ns(200)},
+        ]
+        n = plans._mark_stuck(projects, library, now=now)
+        self.assertEqual([p["stuck"] for p in projects], [True, False, False])
+        self.assertEqual([r["stuck"] for r in library], [True, False, False])
+        self.assertEqual(n, 2)
+
+    def test_the_limit_is_a_parameter_with_a_default_of_two_weeks(self):
+        import plans
+
+        os.environ.pop("OPSCENTER_PLAN_STUCK_DAYS", None)
+        self.assertEqual(plans.stuck_days(), 14)
+        os.environ["OPSCENTER_PLAN_STUCK_DAYS"] = "3"
+        self.assertEqual(plans.stuck_days(), 3)
+        os.environ["OPSCENTER_PLAN_STUCK_DAYS"] = "x"
+        self.assertEqual(plans.stuck_days(), 14)
+        os.environ.pop("OPSCENTER_PLAN_STUCK_DAYS", None)
 
 
 if __name__ == "__main__":

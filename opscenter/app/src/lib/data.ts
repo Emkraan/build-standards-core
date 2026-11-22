@@ -2680,7 +2680,7 @@ export interface PlansData {
   projects: PlanProject[]
   library: PlanItem[]
   archived: { projects: PlanProject[]; library: PlanItem[] }
-  counts: { projects: number; library: number; archived: number }
+  counts: { projects: number; library: number; archived: number; /** Open plans untouched past the server's stuck limit; absent from an older server. */ stuck?: number }
   untracked?: PlanUntracked
   jira: { state: 'ok' | 'loading' | 'stale' | 'error' | 'none'; checked_utc: string; errors: string[] }
 }

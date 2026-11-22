@@ -2129,6 +2129,12 @@ An active builds row may carry `lane` (up to 40 characters, the repo lane or are
 beside the Work by state control (only when some row names a lane) and lists the chosen state as titled sections: Engineer PRs (builds that carry a pull request), Scheduled
 jobs (builds without one) and Sessions. A source that names no lane gets no select and the same sections.
 
+### 12.90 The Stuck plans tile (issue 327)
+
+The Plans feed counts open plans that stopped moving: an active project whose newest file has not changed for the stuck limit, and an in-progress library plan the same way (`counts.stuck`,
+`stuck` on each row). The limit is `OPSCENTER_PLAN_STUCK_DAYS` (default 14), decided on the server like every other threshold (ops-center-layout rule 4). A done, parked or proposed plan is
+waiting by design and is never stuck. The Action Center row shows Stuck plans between Platform and Improvements while the feed answers with a count, linking to Plans.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

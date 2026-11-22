@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-21 (v2.42.0, ops-center: the Stuck plans tile)
+
+- Added: the Plans feed counts open plans untouched past `OPSCENTER_PLAN_STUCK_DAYS` (default 14) and marks each; the Action Center row shows a Stuck plans tile that links to Plans.
+- Adoption risk: none, an older server sends no count and the tile is not drawn.
+
+Refs #327.
+
 ## 2026-11-21 (v2.41.0, ops-center: a lane on active builds and the Live tab Lane select)
 
 - Added: an active builds row may carry `lane`; the Live tab gets a Lane select and titled sections (Engineer PRs, Scheduled jobs, Sessions).
