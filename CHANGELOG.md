@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-21 (v2.39.0, ops-center: the Auto-curated line on Debt, and no eyebrows)
+
+- Added: Debt and improvements shows how many entries the curate job changed on its own in the last 7 days, from the job's own log (`GET /api/eng-backlog/curation`).
+- Changed: no hub page draws an eyebrow line above its title; the Debt subtitle is the reference sentence.
+- Adoption risk: none, a server without the route draws no line.
+
+Refs #326.
+
 ## 2026-11-21 (v2.38.0, ops-center: reference column widths on the jobs, ledger and routing tables)
 
 - Changed: the Scheduled jobs, Team run ledger, sprint throughput and Routing Considered tables take the reference column widths.

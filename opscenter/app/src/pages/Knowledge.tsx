@@ -441,7 +441,6 @@ export default function Knowledge() {
   return (
     <div className="hub">
       <HubHeader
-        eyebrow="Knowledge"
         title="Knowledge"
         subtitle="The documentation changes proposed and published, and where our docs fall behind the code."
         tabs={[

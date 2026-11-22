@@ -31,7 +31,7 @@ test('the mobile tab bar offers Action, Pull requests, Work and Platform in that
 
 test('a page header takes the rail icon as its chip, no page passes an eyebrow, and a notice is the kit row', () => {
   assert.match(read('../src/components/HubHeader.tsx'), /icon=\{icon\}/)
-  for (const f of ['Operations', 'Plans', 'CoreConsumption']) assert.doesNotMatch(read(`../src/pages/${f}.tsx`), /eyebrow=/, f)
+  for (const f of ['Operations', 'Plans', 'CoreConsumption', 'JiraHub', 'Knowledge', 'Links', 'OneOnOnes', 'Reviews', 'Search', 'TeamHub', 'EngBacklog', 'ActionHub']) assert.doesNotMatch(read(`../src/pages/${f}.tsx`), /eyebrow=/, f)
   assert.match(read('../src/components/AlertBanner.tsx'), /<Notice tone=/)
   assert.match(read('../src/App.tsx'), /<section className="notice-tray oc-alerts" aria-label="Notices">/)
 })

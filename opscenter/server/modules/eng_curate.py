@@ -659,6 +659,8 @@ def summary():
     return {
         "generated_utc": s.get("generated_utc"),
         "auto_week": [e for e in s["log"] if e.get("at", "") >= week][:30],
+        # The whole count of the week, not the 30 shown, for the page's Auto-curated line.
+        "auto_week_count": sum(1 for e in s["log"] if e.get("at", "") >= week),
         "hints": s["hints"],
     }
 

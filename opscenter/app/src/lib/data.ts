@@ -2607,6 +2607,8 @@ export interface Badges {
   problems?: Problems
 }
 export const useBadges = createLiveStore(() => fetchApi<Badges>('api/badges'), 30_000)
+/** What the curate job changed on its own in the last 7 days, from its own log (GET api/eng-backlog/curation). */
+export const useEngCuration = createLiveStore(() => fetchApi<{ auto_week_count: number }>('api/eng-backlog/curation'), 300_000)
 export const useEngBacklog = createLiveStore(() => fetchApi<EngBacklogData>('api/eng-backlog'), 60_000)
 
 // ---- Plans: project trackers and the SBAR plan library in state/plans, read live ----

@@ -32,7 +32,7 @@ import {
   effortBand,
   optionsFor,
 } from '../lib/debtFilters'
-import { hermesSessionUrl, postEngDecide, postEngHandle, postEngTackle, useEngBacklog, useTackleSessions } from '../lib/data'
+import { hermesSessionUrl, postEngDecide, postEngHandle, postEngTackle, useEngBacklog, useEngCuration, useTackleSessions } from '../lib/data'
 import './EngBacklog.css'
 import { pageTitle } from '../lib/config'
 
@@ -270,6 +270,7 @@ export default function EngBacklog() {
   const { tab: rawTab } = useParams()
   const { data: d, error, reload } = useEngBacklog()
   const { data: sessions } = useTackleSessions()
+  const { data: cur } = useEngCuration()
   const [openUid, setOpenUid] = useState<string | null>(null)
   const [kind, setKind] = useState<Kind>('all')
   const [q, setQ] = useState('')
@@ -370,9 +371,9 @@ export default function EngBacklog() {
   return (
     <div className="hub">
       <HubHeader
-        eyebrow="Operate"
         title={pageTitle('/debt', 'Debt and improvements')}
-        subtitle="Every technical debt entry and improvement, and the ones waiting on my decision."
+        subtitle="Technical debt and improvement ideas, each waiting for my decision or my time."
+        status={cur ? <Pill tone="neutral">Auto-curated this week: {cur.auto_week_count}</Pill> : undefined}
         tabs={[
           { to: '/debt/decide', label: 'Needs decision', n: n('decide') },
           { to: '/debt/todo', label: 'To do', n: n('todo') },

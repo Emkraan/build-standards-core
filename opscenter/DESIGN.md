@@ -2111,6 +2111,12 @@ Completion 153, Pts deliv. 133, Done 101, Carry 103, Intake 110), the sprint thr
 (Input 42 percent, What happened 58 percent, the reference 488 and 674 pixels at the capture width). Widths the spec gives for the Changes and Doc coverage tables are
 not set: their tables are drawn by consumer data shapes that vary, and a fixed width there would clip the longer text.
 
+### 12.87 The Auto-curated line on Debt, and no eyebrows (issues 326 item 6 and 327)
+
+Debt and improvements shows "Auto-curated this week: N" in its header, N being how many entries the curate job changed on its own in the last 7 days, counted from the job's own
+log (`GET /api/eng-backlog/curation`, `auto_week_count`, the whole week and not the 30 rows `auto_week` lists). A server without the route draws no line. The subtitle is the
+reference sentence. No hub page passes an eyebrow any more (ops-center-layout rule 17): the header trail carries the group.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

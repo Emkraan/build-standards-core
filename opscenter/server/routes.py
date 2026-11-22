@@ -320,6 +320,8 @@ def _table():
         ),
         # debt and improvements (server/modules/eng_backlog.py)
         (G, "/api/eng-backlog", "eng_backlog", "items", None),
+        # what the curate job changed on its own this week (its own 7 day log), for the Auto-curated line
+        (G, "/api/eng-backlog/curation", "eng_curate", "summary", None),
         (
             P,
             "/api/eng-backlog/decide",

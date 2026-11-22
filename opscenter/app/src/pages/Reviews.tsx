@@ -53,7 +53,6 @@ export default function Reviews() {
   return (
     <div className="hub">
       <HubHeader
-        eyebrow="Operate"
         title={pageTitle('/reviews', 'Pull requests')}
         subtitle="Everything waiting on my review or merge, one tab per repo"
         tabs={[
