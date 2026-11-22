@@ -348,6 +348,8 @@ def _table():
                 )
             ),
         ),
+        # the status files and freshness view (server/modules/status_files.py, DESIGN.md 12.101)
+        (G, "/api/status-files", "status_files", "get", None),
         # change approvals with a live write switch (server/modules/change_approvals.py, DESIGN.md 12.96)
         (G, "/api/approvals/queue", "change_approvals", "queue", None),
         (P, "/api/approvals/decide", "change_approvals", "decide", None),

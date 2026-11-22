@@ -19,6 +19,7 @@ const AUTOMATION = [
 const HOST = [
   { key: 'hermes', label: 'Hermes' },
   { key: 'device-access', label: 'Device access' },
+  { key: 'status-files', label: 'Status files' },
 ]
 const COST = [
   { key: 'spend', label: 'LLM spend' },

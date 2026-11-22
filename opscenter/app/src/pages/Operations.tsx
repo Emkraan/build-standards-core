@@ -9,6 +9,7 @@ import type { ComponentType } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import HermesEngineCard from '../components/HermesEngineCard'
 import PhoneAccess from '../components/PhoneAccess'
+import StatusFilesView from '../components/StatusFilesView'
 import LiveAutomation from '../components/LiveAutomation'
 import { useBadges, useBuilds, useDarkLaunches } from '../lib/data'
 import { splitLaunches } from '../lib/darkLaunches'
@@ -48,6 +49,7 @@ const BODY: Record<string, ComponentType> = {
   'live-automation': LiveAutomation,
   hermes: HermesEngineCard,
   'device-access': PhoneAccess,
+  'status-files': StatusFilesView,
 }
 
 const TONE: Record<ProblemTone, AreaTone> = { needs_me: 'alert', worth_a_look: 'warn', healthy: 'good' }
