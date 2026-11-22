@@ -2096,6 +2096,13 @@ control: Needs me (failed builds), Running (running builds and sessions), Waitin
 count, opening on the first state that has rows. The tab badge still counts only what is acting. The reference Lane select and its Engineer PRs and Scheduled jobs
 sections need a repo lane on each row, which neither feed carries, so they are not drawn.
 
+### 12.85 The Enterprise chip in the header (issue 327, parity spec section 2.2)
+
+While a fallback watch incident is open (`GET /api/llm-fallback`), the header carries a warning chip between the sync chip and the theme
+toggle: "Enterprise on, 0 h 41 min left" on a wide header and "Ent on" on a narrow one, opening LLM spend. The time left counts to `closes_utc`, which the server adds to
+the open incident (one quiet period after the last leak call, the moment the watch closes it by itself), so the client holds no threshold. A missing or past
+close time leaves out the time left rather than guessing. No incident draws no chip.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

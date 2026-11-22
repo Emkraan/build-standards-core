@@ -230,10 +230,15 @@ def stale_host():
 def get():
     """Server read: the state file plus a ready to render active flag."""
     st = load_state()
+    active = st.get("active")
+    if isinstance(active, dict) and active.get("last_call_utc"):
+        # When the incident clears by itself if no more leak calls arrive: the time left the header chip counts down to.
+        last = ma._epoch(active["last_call_utc"])
+        active = dict(active, closes_utc=ma._iso(last + QUIET_S) if last else None)
     return {
         "checked_utc": st.get("checked_utc"),
         "team": st.get("team"),
-        "active": st.get("active"),
+        "active": active,
         "history": (st.get("history") or [])[:5],
         "stale_host": stale_host(),
     }

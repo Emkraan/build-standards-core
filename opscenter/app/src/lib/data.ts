@@ -2498,6 +2498,8 @@ export interface FallbackIncident {
   sessions: Record<string, FallbackSession>
   team_session_pct: number | null
   team_weekly_pct: number | null
+  /** When the incident clears by itself if no more leak calls arrive (the server adds it to the open incident only). */
+  closes_utc?: string | null
   closed_utc?: string
 }
 export interface FallbackData {

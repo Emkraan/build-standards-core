@@ -31,7 +31,7 @@ import { breadcrumb, groupOf } from './lib/navLayout'
 import ActionHub from './pages/ActionHub'
 import { movedTo, platformTarget } from './lib/legacyRoutes'
 import { redirectOld } from './pages/operations/routes'
-import { NextOneOnOne, SyncChip, useFeed } from './shell/HeaderBits'
+import { EntChip, NextOneOnOne, SyncChip, useFeed } from './shell/HeaderBits'
 import type { BadgeKey, NavDef } from './shell/nav'
 import { peopleRoute, peopleSlot } from './lib/peopleSlot'
 import { trackerRoute, trackerSlot } from './lib/trackerSlot'
@@ -311,6 +311,7 @@ export default function App() {
         <>
           <NextOneOnOne />
           <SyncChip />
+          <EntChip />
           <ThemeToggle />
         </>
       }

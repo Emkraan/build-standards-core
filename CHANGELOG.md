@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-21 (v2.37.0, ops-center: the Enterprise chip in the header)
+
+- Added: a header chip while an Enterprise billing incident is open, with the time left until the watch closes it ("Enterprise on, 0 h 41 min left"), opening LLM spend. The fallback feed's open incident carries `closes_utc` for it.
+- Adoption risk: none, no incident draws no chip.
+
+Refs #327.
+
 ## 2026-11-21 (v2.36.0, ops-center: the Live tab Work by state control and the why table widths)
 
 - Added: the Live tab of the Action Center opens with the Work by state control (Needs me, Running, Waiting, Stuck, Just finished) with a count each, from the two feeds it already read.

@@ -1,5 +1,6 @@
 // Header facts that ride on every page: the next 1:1 chip and the sync indicator, plus the live
 // feed strip items built from the same counts the rail badges use.
+import { entChip } from '../lib/entChip'
 import type { FeedItem, HealthLine } from '@kit'
 import { Link, useNavigate } from 'react-router-dom'
 import { awayAnnouncement, type TeamAwayData } from '../components/TeamAway'
@@ -194,4 +195,20 @@ export function useFeed(refreshedEt: string | undefined): { health: HealthLine; 
   // Most severe first so a freeze or someone out today is the first thing the presenter says.
   items.sort((a, b) => SEVERITY[a.tone] - SEVERITY[b.tone])
   return { health, items }
+}
+
+// The Enterprise chip: a warning button that opens LLM spend while an incident is open, and draws nothing otherwise.
+export function EntChip() {
+  const { data: fb } = useLlmFallback()
+  const nav = useNavigate()
+  const now = useNow(30_000)
+  const chip = entChip(fb, now)
+  if (!chip) return null
+  return (
+    <button type="button" className="btn ent-chip" data-variant="secondary" data-size="sm" onClick={() => nav('/platform/cost/spend')} data-tip="Enterprise is billing Hermes while Team has headroom. Open LLM spend.">
+      <span className="status-dot is-still" aria-hidden="true" />
+      <span className="ent-chip-full">{chip.text}</span>
+      <span className="ent-chip-short" aria-hidden="true">{chip.short}</span>
+    </button>
+  )
 }

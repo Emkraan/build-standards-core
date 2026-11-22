@@ -363,3 +363,28 @@ button.ds-stat:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
+
+/* ---- the Enterprise chip in the header: a warning pill, 28px, full text on a wide header and the short text on a narrow one ---- */
+.ent-chip {
+  min-height: 28px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  background: var(--warning-dim);
+  border: 1px solid var(--warning-border);
+}
+.ent-chip .status-dot {
+  background: var(--warning);
+}
+.ent-chip-short {
+  display: none;
+}
+@media (max-width: 900px) {
+  .ent-chip-full {
+    display: none;
+  }
+  .ent-chip-short {
+    display: inline;
+  }
+}
