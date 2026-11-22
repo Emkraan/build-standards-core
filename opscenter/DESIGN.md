@@ -2242,6 +2242,22 @@ Platform, Host and access has a Status files item with a fresh and stale stat ro
 items, sessions, 1:1 topics, state files and Jira is the Search page (`/search`, `ops_search.py`); **plan limits** and **spend** are Platform, Cost and standards, LLM spend; **runner pool health** is the host pool view on the Destroy
 approval card and Platform, Automation (`desktop_pool.py`, `pool_view.py`); the **core consumption view** (version and drift) is Platform, Cost and standards, Core.
 
+### 12.102 Collectors and the analyzer: meetings, priority sender rules, and what stays the consumer's (cutover comment capability 10)
+
+The collector (`engine/collect.py`) already reads mail, chat, the tracker snapshot, the state files and the documentation gaps with no model, routes every candidate by data (`ac-routing.json`) and hands the analyzer only what belongs
+on the board; the analyzer is cost gated by the wake gate (a bundle whose content hash is unchanged does not wake it, 12.9 and `analysis_bundle.py`). This adds the two parts that were missing.
+
+- **Meetings, without a model.** `from_meetings` reads `meetings_feed` (default `<agent home>/feeds/meetings.json`, `{"items": [{id, subject, start, organizer, attendees, summary, action_items: [{owner, text}], web_link}]}`, written
+  by the consumer's own meeting collector) and makes one candidate per meeting that has a summary or an action item, source `meetings.transcript` (register it in `ac-routing.json` like any source: until then it is reported as
+  unregistered, never silently routed). An action item that names the owner reads as addressed to the owner (direct); a meeting whose actions are all for others is context (none). Only the summary and the extracted action lines
+  go in; the transcript's own words never do. The meeting digest is this: one candidate per meeting, which the analyzer folds into an item like any other.
+- **Priority sender rules.** The routing file may carry `priority_floor: {"roles": {"leader": "high"}, "senders": {"Name": "critical"}}` (the contract priorities; a role or lower cased sender name picks the least priority). A candidate from
+  such a sender gets `priority_floor` in the bundle, and `contract.validate(..., floors)` refuses an item that covers it below the floor (`floors_of(bundle)` builds the map; the wake gate saves it as `floors` beside `must_cids`, and
+  `wake_floors_for` reads it under the same rule as the cids: only for the run that wrote the file; with no floors saved the check is skipped and says so, never guessed). So "a director or a manager is at least P1" is a rule in data, set by the
+  consumer's own word for P1, with no client threshold.
+
+What stays the consumer's, by the posted default: auth heal and heartbeat sync (scripts of the consumer's own sign-in and scheduler), and the collectors that talk to its mail, chat and calendar services, which write the feeds above.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

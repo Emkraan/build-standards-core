@@ -65,6 +65,7 @@ def config():
       chat_feeds          [{"prefix", "label", "path", "team_posts"}]: one entry per chat platform; prefix names the
                           source ids (`<prefix>.1on1`, `<prefix>.mention`, ...), team_posts true makes a top level
                           channel post from a report, partner or leader read as addressed to the owner
+      meetings_feed       path of the meetings feed file ({"items": [...]}, default <agent home>/feeds/meetings.json): see from_meetings
       tracker_snapshot    path of the tracker snapshot ({"tickets": {KEY: {status, priority, duedate}}, "last_check_utc"})
       tracker_base_url    browse URL prefix for a ticket link (default none)
       state_files         {"current", "risk", "unplanned", "decisions"}: the markdown state files (default <state>/*.md names)
@@ -96,6 +97,7 @@ def config():
             for f in (cfg.get("chat_feeds") if isinstance(cfg.get("chat_feeds"), list) else [])
             if isinstance(f, dict) and f.get("prefix") and f.get("path")
         ],
+        "meetings_feed": Path(cfg.get("meetings_feed") or feeds / "meetings.json"),
         "tracker_snapshot": Path(cfg.get("tracker_snapshot") or STATE / "tracker-snapshot.json"),
         "tracker_base_url": str(cfg.get("tracker_base_url") or ""),
         "state_files": {
@@ -359,6 +361,56 @@ def from_chat(roles, cut, feed_path, prefix, label, team_posts=False):
     return out
 
 
+def from_meetings(roles, cut):
+    """Meeting transcripts collected without a model: the consumer's collector writes `meetings.json` ({"items": [{id, subject, start, organizer, attendees, summary,
+    action_items: [{owner, text}], web_link}]}) and this adapter turns each meeting that has a summary or action items into one candidate, source `meetings.transcript`.
+    A meeting with an action item that names the owner reads as addressed to the owner (direct); one with action items for others is context (none). A meeting with
+    neither a summary nor an action item is not a candidate, and one older than the cut is skipped. The words of the transcript are never sent: only the summary and the
+    action item lines the collector already extracted."""
+    feed = B._load_json(cfg()["meetings_feed"]).get("items", [])
+    me = cfg()["owner_name"].lower()
+    out = []
+    for m in feed:
+        if not isinstance(m, dict) or (m.get("start") or "") < cut:
+            continue
+        acts = [a for a in (m.get("action_items") or []) if isinstance(a, dict) and a.get("text")]
+        summary = str(m.get("summary") or "").strip()
+        if not acts and not summary:
+            continue
+        mine = any(str(a.get("owner") or "").strip().lower() == me for a in acts)
+        lines = [summary] if summary else []
+        lines += ["- %s: %s" % (a.get("owner") or "someone", a["text"]) for a in acts]  # noqa: UP031
+        body = "\n".join(lines)
+        out.append(
+            {
+                "cid": "meeting:%s" % m.get("id"),  # noqa: UP031
+                "source": "meetings.transcript",
+                "actor": m.get("organizer") or "",
+                "actor_role": role_of(m.get("organizer"), roles),
+                "addressed": "direct" if mine else "none",
+                "received": m.get("start"),
+                "title": m.get("subject") or "(meeting)",
+                "text": body[:TEXT_CAP],
+                "refs": _refs(m.get("subject"), body),
+                "link": m.get("web_link"),
+                "extra": {"attendees": m.get("attendees"), "action_items": len(acts), "mine": mine},
+            }
+        )
+    return out
+
+
+def priority_floor(c, rules):
+    """The least priority a candidate may end as, from the routing file's `priority_floor` block ({"roles": {"leader": "high"}, "senders": {"name": "high"}}), or None.
+    A role or a sender (lower case name) names one of the contract priorities. The analyzer is told it in the bundle and the contract refuses an item below it."""
+    block = (rules or {}).get("priority_floor") or {}
+    ranks = ("critical", "high", "medium", "low")
+    by_sender = {str(k).lower(): v for k, v in (block.get("senders") or {}).items()}
+    pick = by_sender.get(str(c.get("actor") or "").lower()) or (block.get("roles") or {}).get(
+        c.get("actor_role")
+    )
+    return pick if pick in ranks else None
+
+
 def from_tracker():
     snap = B._load_json(cfg()["tracker_snapshot"])
     out = []
@@ -483,6 +535,7 @@ def on_board_items():
 ADAPTERS = (
     ("mail", lambda roles, cut: from_mail(roles, cut)),
     ("chat", lambda roles, cut: from_chats(roles, cut)),
+    ("meetings", lambda roles, cut: from_meetings(roles, cut)),
     ("tracker", lambda roles, cut: from_tracker()),
     ("state", lambda roles, cut: from_state()),
     ("doc", lambda roles, cut: from_doc_gaps()),
@@ -508,7 +561,11 @@ def collect(rules=None, now=None):
     routed = []
     for c in cands:
         r = routing.route(c, rules)
-        routed.append(dict(c, route=r["route"], rule=r["rule"], where=r.get("where", "")))
+        row = dict(c, route=r["route"], rule=r["rule"], where=r.get("where", ""))
+        floor = priority_floor(c, rules)
+        if floor:
+            row["priority_floor"] = floor
+        routed.append(row)
     return {
         "candidates": routed,
         "unregistered": unregistered,
