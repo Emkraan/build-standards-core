@@ -2072,6 +2072,15 @@ button grows the window. The window starts over when the tab, the kind or any fi
 every match, so a search never hides a hit behind the window. The Kind filter of 12.76's neighbour (`Kind` select) duplicates the All, Tech debt
 and Improvements segmented control above it; both stay because the segmented control is the reference and the select keeps an old link working.
 
+### 12.82 Alerts and Completed stat rows, and the shell values checked (issue 327, parity spec sections 2 and 5.1)
+
+Alerts opens with Need ack, Reports, Failing now and Jobs watched, and Completed with Completed, Last 7 days, Critical or high and Via Hermes, in the shared
+`StatRow` (the Acknowledged tile is gone, the Acknowledged view of the segmented control holds that list). The Alerts and Completed segmented views and
+the Links status line already matched. Shell values were measured in a real browser at 1314 by 998 against section 2: rail 58px collapsed on the surface-1
+background, items 41 by 38 at 14px and weight 600, version pill 25 by 18 at 9px, hub strip padding 12px 24px 0, presenter 56px, header 54px, search
+button 32px: all equal to the spec, and the rail pin, the glider and the version pill are kit parts already in the shell, so no shell code changed. The
+ent-chip ("Enterprise on, n h n min left") needs the end time of an Enterprise window, which the core does not serve, so it is not drawn.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

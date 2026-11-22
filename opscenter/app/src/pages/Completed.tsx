@@ -7,22 +7,9 @@
 // Built on the kit: StatTile hero numbers, Segmented view switch, Toolbar filter, day Cards with a
 // disclosure row each (the log is chronological, so it is a list, not a sortable table).
 import type { SegmentedOption, StatusTone } from '@kit'
-import {
-  Badge,
-  Button,
-  Card,
-  CardHead,
-  EmptyState,
-  IconChevronRight,
-  IconSearch,
-  Input,
-  Pill,
-  Segmented,
-  Skeleton,
-  StatTile,
-  Toolbar,
-  useToast,
-} from '@kit'
+import { IconZap } from '../components/icons'
+import { StatRow } from '../components/StatRow'
+import { Badge, Button, Card, CardHead, EmptyState, IconAlert, IconCheck, IconChevronRight, IconClock, IconSearch, Input, Pill, Segmented, Skeleton, Toolbar, useToast } from '@kit'
 import { useEffect, useMemo, useState } from 'react'
 import { LinkButton, LoadError } from '../components/StateBlocks'
 import { Tkt } from '../components/ui'
@@ -144,12 +131,15 @@ export default function Completed() {
 
   return (
     <div className="cmp">
-      <div className="cmp-stats kpi-strip">
-        <StatTile value={completed.length} label="completed" tone="success" />
-        <StatTile value={thisWeek} label="last 7 days" tone="info" />
-        <StatTile value={highClosed} label="critical / high" tone={highClosed ? 'warning' : 'accent'} />
-        <StatTile value={viaHermes} label="via Hermes" hue="violet" />
-      </div>
+      <StatRow
+        label="Completed summary"
+        stats={[
+          { key: 'done', label: 'Completed', value: completed.length, icon: <IconCheck /> },
+          { key: 'week', label: 'Last 7 days', value: thisWeek, icon: <IconClock /> },
+          { key: 'high', label: 'Critical or high', value: highClosed, icon: <IconAlert /> },
+          { key: 'herm', label: 'Via Hermes', value: viaHermes, icon: <IconZap /> },
+        ]}
+      />
 
       <Toolbar label="Completed log controls">
         <Segmented label="Completed or dismissed" options={views} value={view} onChange={setView} />

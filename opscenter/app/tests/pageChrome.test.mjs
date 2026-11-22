@@ -55,3 +55,16 @@ test('the Work tracking tabs open with the reference stat rows and labels', () =
     for (const l of labels) assert.ok(src.includes(`'${l}'`), `${page}: ${l}`)
   }
 })
+
+test('the Alerts and Completed tabs open with the reference stat rows and labels', () => {
+  const want = {
+    Alerts: ['Need ack', 'Reports', 'Failing now', 'Jobs watched'],
+    Completed: ['Completed', 'Last 7 days', 'Critical or high', 'Via Hermes'],
+  }
+  for (const [page, labels] of Object.entries(want)) {
+    const src = read(`../src/pages/${page}.tsx`)
+    assert.match(src, /<StatRow/, page)
+    assert.doesNotMatch(src, /<StatTile/, page)
+    for (const l of labels) assert.ok(src.includes(`'${l}'`), `${page}: ${l}`)
+  }
+})
