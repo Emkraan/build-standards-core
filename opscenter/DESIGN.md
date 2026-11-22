@@ -2081,6 +2081,13 @@ background, items 41 by 38 at 14px and weight 600, version pill 25 by 18 at 9px,
 button 32px: all equal to the spec, and the rail pin, the glider and the version pill are kit parts already in the shell, so no shell code changed. The
 ent-chip ("Enterprise on, n h n min left") needs the end time of an Enterprise window, which the core does not serve, so it is not drawn.
 
+### 12.83 Team stat rows (issue 327, parity spec section 5.7)
+
+This cycle (per person: completion with done of assigned, Points delivered, High and highest, Open with its carryover), Member reviews (Datapoints drawn on,
+Months on record, Trajectory) and Yearly review (Work items completed, High priority closed, Median turnaround, Long-standing cleared, Open now, Items raised)
+open with the shared `StatRow`. Their labels already matched the spec except High and highest. The Knowledge tabs carry no stat row in the spec and keep
+theirs (the Docs drift tab's own tiles).
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

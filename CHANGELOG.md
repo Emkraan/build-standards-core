@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-21 (v2.35.0, ops-center: Team stat rows)
+
+- Changed: the Team This cycle, Member reviews and Yearly review tabs open with the shared stat row; the High/Highest tile reads High and highest.
+- Adoption risk: none.
+
+Refs #327.
+
 ## 2026-11-21 (v2.34.0, ops-center: Alerts and Completed stat rows)
 
 - Changed: the Alerts and Completed tabs open with the shared stat row and the reference labels, replacing the hero KPI strip. The shell measurements of the parity spec were checked and already match.
