@@ -2168,6 +2168,19 @@ standards/automation-safety.md: a provider method `stop_build(id)` behind its ow
 re-read of the build at click time that refuses anything that is no longer running, a typed confirmation of the build's title, one audit line per stop, and no Stop on a build the source did
 not mark stoppable. It lands as its own pull request when the provider contract is agreed; until then the Live tab and the Active builds panel stay read only.
 
+### 12.95 The item bound build loop: claim token, report, bind, prompt and one launch at a time (cutover comment capability 1)
+
+The runtime slot (`server/runtime_slot.py`, `OPSCENTER_RUNTIME_CMD`) already started a session for an item and resolved it. It now carries the rest of the loop the cutover comment asked for.
+
+- **Claim token.** Every start makes a random claim token, tells it to the session in its prompt and keeps only its SHA-256 in the store (`claim_hash`, which never leaves the server). `POST /api/tackle/resolve` and
+  `POST /api/tackle/report` need that token (compared in constant time) or `owner: true`, which only the app sends, so a session can resolve and report only the item it was started for (403 otherwise).
+- **Report.** `POST /api/tackle/report {fp, text, claim, pct?}` keeps the session's last five progress lines (`reports`, newest first, text cut at 300 characters, `pct` only when a whole number 0 to 100). The Live tab shows the newest as a note on the session row.
+- **Bind.** `POST /api/tackle/bind {fp, session_id, surface?}` attaches a session the runtime opened on its own (a desktop session the owner started from the item) to the item; the row becomes running.
+- **Prompt.** `POST /api/tackle/prompt {fp, text}` sends the owner's line into a live session through the runtime's optional `prompt` verb (`prompt '<json>'` in `{fp, session_id, text}`, out `{}`); a runtime without it, or a failing one, answers 501, and a session that is not live answers 404.
+- **One launch at a time.** A start waits up to `OPSCENTER_LAUNCH_HOLD_S` (default 90 seconds) for the launch in flight, then answers 429 and starts nothing, so two clicks never open two sessions.
+
+Resolving with the archive of the chat scheduled after is the runtime's to do on the resolve it receives; the core does not see the chat.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

@@ -20,6 +20,8 @@ export interface LiveRow {
   url: string | null
   /** The lane the source named, for the Lane select; null for a session and for a source that names none. */
   lane?: string | null
+  /** The newest progress line a session reported, when it reported one. */
+  note?: string | null
   /** True for a build that carries a pull request (the Engineer PRs section); a build without one is a scheduled job. */
   hasPr?: boolean
 }
@@ -44,6 +46,7 @@ export function liveSessions(sessions: Record<string, TackleSession> | null | un
       since: SECONDS(s.last_active) ?? SECONDS(s.started),
       ticket: s.ticket ?? null,
       url: null,
+      note: s.reports?.[0]?.text ?? null,
     }))
 }
 

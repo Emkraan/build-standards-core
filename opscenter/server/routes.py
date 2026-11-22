@@ -781,6 +781,14 @@ def build(registry=None):
         name="runtime_slot.post_resolve",
     )
     r.post("/api/jira/tackle", lambda q: rt.post_jira(q.payload()), name="runtime_slot.post_jira")
+    # The rest of the item bound loop (DESIGN.md 12.95): bind a desktop session, send it a line, take its progress reports.
+    r.post("/api/tackle/bind", lambda q: rt.post_bind(q.payload()), name="runtime_slot.post_bind")
+    r.post(
+        "/api/tackle/prompt", lambda q: rt.post_prompt(q.payload()), name="runtime_slot.post_prompt"
+    )
+    r.post(
+        "/api/tackle/report", lambda q: rt.post_report(q.payload()), name="runtime_slot.post_report"
+    )
     r.post(
         "/api/pr/discuss", lambda q: rt.post_discuss(q.payload()), name="runtime_slot.post_discuss"
     )
