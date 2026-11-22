@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-21 (v2.43.0, ops-center: the browser tests share one headless browser and skip locally)
+
+Each of about 50 browser tests launched its own Chrome, which on a desktop opened and closed windows all day and took the keyboard focus.
+
+- Changed: `npm run test:browser` runs one process with one shared headless browser (a tab per test), and one `after()` hook kills it and deletes its profile. The browser runs with `--no-first-run --no-default-browser-check --disable-extensions`.
+- Changed: off CI the browser tests skip unless `OPSCENTER_BROWSER_TESTS=1` is set; CI always runs them and never skips.
+- Adoption risk: none for CI; a consumer that ran them locally sets the flag.
+
+Refs #327.
+
 ## 2026-11-21 (v2.42.0, ops-center: the Stuck plans tile)
 
 - Added: the Plans feed counts open plans untouched past `OPSCENTER_PLAN_STUCK_DAYS` (default 14) and marks each; the Action Center row shows a Stuck plans tile that links to Plans.

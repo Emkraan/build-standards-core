@@ -4,14 +4,13 @@
 // backend. Own Chrome port and profile dir. Skips with a stated reason when dist/ or Chrome is missing on a machine with no browser provided.
 // In CI, or with CHROME_BIN set, it fails instead (tests/browserGate.mjs).
 import assert from 'node:assert/strict'
-import { spawn } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { createServer } from 'node:http'
-import { tmpdir } from 'node:os'
 import { dirname, extname, join, normalize } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
-import { browserGate, chromeArgs } from './browserGate.mjs'
+import { browserGate } from './browserGate.mjs'
+import { closeTab, openTab, sharedBrowser } from './sharedBrowser.mjs'
 
 const APP = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DIST = join(APP, 'dist')
@@ -85,8 +84,8 @@ function serve(backend) {
   return new Promise((resolve) => srv.listen(0, '127.0.0.1', () => resolve(srv)))
 }
 
-async function cdpSession(port) {
-  let wsUrl
+async function cdpSession(port, tabUrl) {
+  let wsUrl = tabUrl
   for (let i = 0; i < 60 && !wsUrl; i++) {
     try {
       const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()
@@ -142,33 +141,18 @@ const PAGE = `(() => {
 
 async function withApp(state, body) {
   const srv = await serve(fakeBackend(state))
-  const profile = mkdtempSync(join(tmpdir(), 'live-actions-chrome-'))
-  const port = 9800 + Math.floor(Math.random() * 400)
-  // Own process group, so the cleanup can stop the browser's helper processes too, not only the parent.
-  const chrome = spawn(CHROME, chromeArgs({ port, profile }), { stdio: 'ignore', detached: true })
-  const exited = new Promise((r) => chrome.once('exit', r))
+  const browser = await sharedBrowser(CHROME)
+  const tab = await openTab(browser)
   try {
-    const s = await cdpSession(port)
+    const s = await cdpSession(browser.port, tab.wsUrl)
     await s.send('Page.enable')
     await s.send('Page.navigate', { url: `http://127.0.0.1:${srv.address().port}/index.html#/reviews/team/needs` })
     await s.waitFor(`document.querySelectorAll('article.rh-item').length > 0`, 'the team rows to render')
     await body(s)
     s.close()
   } finally {
-    try {
-      process.kill(-chrome.pid, 'SIGKILL')
-    } catch {
-      chrome.kill('SIGKILL')
-    }
-    await Promise.race([exited, new Promise((r) => setTimeout(r, 5000))])
+    await closeTab(browser, tab.id)
     srv.close()
-    // A helper process can still be flushing the profile for a moment. A leftover temp folder is not a
-    // failure of the behaviour under test, so it is reported and the test result stands.
-    try {
-      rmSync(profile, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 })
-    } catch (e) {
-      console.warn(`could not remove the browser profile ${profile}: ${e.code || e.message}`)
-    }
   }
 }
 
