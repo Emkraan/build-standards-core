@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-21 (v2.45.0, ops-center: document backed entries in the plan library)
+
+- Added: `library/<name>.link.json` lists a document that lives elsewhere (title, url, status, summary, owner, updated) in the plan library; the row opens the document in a new tab and has no preview or Archive (`opscenter/DESIGN.md` 12.92).
+- Adoption risk: none, no link file means no change.
+
+Refs #327.
+
 ## 2026-11-21 (v2.44.0, ops-center: extension rows with actions, state tabs and a detail drawer)
 
 - Added: extension rows may declare `actions` and `fields`; rows with two or more states get a State control; a Details drawer shows the fields and the row's actions. An action runs after a confirmation through `POST /api/extensions/<id>/action`, gated by `extensions.act` and the provider's `extension_action`, and only if the row declares it.
