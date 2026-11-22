@@ -20,6 +20,7 @@ Matching (all present fields must match, case-insensitive):
   key          exact item key                    key_prefix  item key prefix (oo-, doc-, ...)
   ref_prefix   first-ref prefix (for example ABC-123)
   refs         any of these refs                 owner       exact owner name
+  thread       exact conversation id (a mail conversation or a chat): ignore a whole thread, now and later
   text         regex searched in the fields named by "fields" (default key, title, action)
   sources_any  any of these item source labels
 
@@ -58,6 +59,7 @@ MATCH_KEYS = (
     "ref_prefix",
     "refs",
     "owner",
+    "thread",
     "text",
     "fields",
     "sources_any",
@@ -132,6 +134,11 @@ def matches(match: dict, obj: dict) -> bool:
     if "actor_role" in match and _lc(obj.get("actor_role")) != _lc(match["actor_role"]):
         return False
     if "owner" in match and _lc(obj.get("owner")) != _lc(match["owner"]):
+        return False
+    # A whole mail conversation or chat: every message of the thread, now and later, not one message.
+    if "thread" in match and (
+        not obj.get("thread") or _lc(obj.get("thread")) != _lc(match["thread"])
+    ):
         return False
     if "key" in match and _lc(obj.get("key")) != _lc(match["key"]):
         return False

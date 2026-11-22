@@ -237,6 +237,7 @@ def from_mail(roles, cut):
                 else ("cc" if m.get("direct_to_me") is False else "none"),
                 "received": m.get("received"),
                 "title": m.get("subject") or "(no subject)",
+                "thread": m.get("conversation_id") or None,
                 "text": body[:TEXT_CAP],
                 "refs": _refs(m.get("subject"), body),
                 "link": m.get("web_link"),
@@ -275,6 +276,7 @@ def from_chat(roles, cut, feed_path, prefix, label, team_posts=False):
         out.append(
             {
                 "cid": "%s.1on1:%s" % (prefix, chat_id),  # noqa: UP031
+                "thread": "chat:%s" % chat_id,  # noqa: UP031
                 "source": "%s.1on1" % prefix,  # noqa: UP031
                 "actor": last.get("from_name"),
                 "actor_role": role_of(last.get("from_name"), roles),
@@ -352,6 +354,7 @@ def from_chat(roles, cut, feed_path, prefix, label, team_posts=False):
                 "addressed": addressed,
                 "received": m.get("created"),
                 "title": "%s in %s" % (m.get("from_name"), where),  # noqa: UP031
+                "thread": "%s:%s" % thread_of(m) if thread_of(m)[1] else None,  # noqa: UP031
                 "text": body[:TEXT_CAP],
                 "refs": _refs(body),
                 "link": m.get("web_url"),

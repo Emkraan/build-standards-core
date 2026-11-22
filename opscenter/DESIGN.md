@@ -2258,6 +2258,19 @@ on the board; the analyzer is cost gated by the wake gate (a bundle whose conten
 
 What stays the consumer's, by the posted default: auth heal and heartbeat sync (scripts of the consumer's own sign-in and scheduler), and the collectors that talk to its mail, chat and calendar services, which write the feeds above.
 
+### 12.103 Ignore a whole thread (capability 6), and what the core already does for capabilities 4 and 6 (cutover comment)
+
+**Ignore always by whole thread.** A routing rule may match `thread`, the exact conversation id of a mail conversation or a chat (case-insensitive), and the collector now puts `thread` on its candidates: a mail conversation id, `chat:<chat id>`
+for a chat, `channel:<id>` for a channel thread. A rule `{match: {thread: "chat:abc"}, route: "nowhere"}` therefore drops every message of that thread, now and later, not only the one clicked. The rule is data in `ac-routing.json`, so Restore is
+deleting or disabling the rule, and the Routing tab's Rules view lists who made it and when. A candidate with no thread never matches a thread rule.
+
+**Awareness.** The rest of the Awareness capability is the routing model that was already here: the routes are `action_center` (must be considered), `analysis` (context the analyzer may fold in, which is where an unsure item goes: it is
+never a board item on its own), `elsewhere` and `nowhere`; Ignore, Ignore always, Snooze and Restore are click rules inserted at the top so a newer call wins; and the Dismissed view lists each handled item with the act, when and by whom
+(`via`), keyed by fingerprint (`action-handled.json`).
+
+**Ideas (capability 4).** Debt and improvements already decides ideas: an improvement in Needs decision is approved, parked or declined, reopened, shipped or withdrawn (`ACTS` in `eng_backlog.py`, each stored in the entry's Status line and undoable), and
+Approve and tackle sends it to a build through the runtime slot (12.95). The digest the ideas come from is configurable (`ENGBL_IMP` and `ENGBL_TD` name the files). The consumer's accept, reject and defer are approve, decline and park.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.
