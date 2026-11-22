@@ -89,3 +89,16 @@ test('the approval brief draws the why table with the reference column widths an
   for (const w of ['9%', '42%', '11%', '38%']) assert.ok(src.includes(`width: '${w}'`), w)
   assert.match(read('../src/pages/ReviewsHub.css'), /\.rh-grants-why th \{\s*text-transform: uppercase/)
 })
+
+test('the Jobs, Team ledger, throughput and Routing tables carry the reference column widths', () => {
+  const want = {
+    'infra/Jobs.tsx': [['Type', '117px'], ['Schedule', '133px'], ['Last run', '88px'], ['Next', '78px'], ['Logs 7d', '86px'], ['Health', '103px']],
+    'TeamHistory.tsx': [['Period', '152px'], ['Sprints', '208px'], ['Engineer', '201px'], ['Completion', '153px'], ['Pts deliv.', '133px'], ['Done', '101px'], ['Carry', '103px'], ['Intake', '110px']],
+    'TeamPerformance.tsx': [['Sprint', '223px'], ['Done', '188px'], ['Points', '216px']],
+    'ActionRouting.tsx': [['Input', '42%'], ['What happened', '58%']],
+  }
+  for (const [file, cols] of Object.entries(want)) {
+    const src = read(`../src/pages/${file}`)
+    for (const [header, w] of cols) assert.match(src, new RegExp(`header: '${header.replace('.', '\\.')}',\\s*width: '${w}'`), `${file}: ${header}`)
+  }
+})

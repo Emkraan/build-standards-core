@@ -33,7 +33,7 @@ interface LedgerRow {
 const LEDGER_COLS: TableColumn<LedgerRow>[] = [
   {
     key: 'period',
-    header: 'Period',
+    header: 'Period', width: '152px',
     render: (r) => (
       <span className="th-period">
         <b>{r.period}</b>
@@ -41,11 +41,11 @@ const LEDGER_COLS: TableColumn<LedgerRow>[] = [
       </span>
     ),
   },
-  { key: 'sprints', header: 'Sprints' },
-  { key: 'name', header: 'Engineer' },
+  { key: 'sprints', header: 'Sprints', width: '208px' },
+  { key: 'name', header: 'Engineer', width: '201px' },
   {
     key: 'completion',
-    header: 'Completion',
+    header: 'Completion', width: '153px',
     numeric: true,
     render: (r) => (
       <Badge tone={r.completion >= 90 ? 'success' : r.completion >= 75 ? 'warning' : 'danger'} dot>
@@ -53,10 +53,10 @@ const LEDGER_COLS: TableColumn<LedgerRow>[] = [
       </Badge>
     ),
   },
-  { key: 'delivered', header: 'Pts deliv.', numeric: true, render: (r) => `${r.delivered}/${r.committed}` },
-  { key: 'done', header: 'Done', numeric: true, render: (r) => `${r.done}/${r.assigned}` },
-  { key: 'carryover', header: 'Carry', numeric: true },
-  { key: 'intake', header: 'Intake', numeric: true },
+  { key: 'delivered', header: 'Pts deliv.', width: '133px', numeric: true, render: (r) => `${r.delivered}/${r.committed}` },
+  { key: 'done', header: 'Done', width: '101px', numeric: true, render: (r) => `${r.done}/${r.assigned}` },
+  { key: 'carryover', header: 'Carry', width: '103px', numeric: true },
+  { key: 'intake', header: 'Intake', width: '110px', numeric: true },
 ]
 
 export default function TeamHistory() {

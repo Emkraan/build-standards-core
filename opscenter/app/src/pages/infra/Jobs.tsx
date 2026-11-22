@@ -33,12 +33,12 @@ export default function JobsTab() {
         </div>
       ),
     },
-    { key: 'kind', header: 'Type', render: (j) => <StatePill tone={kindTone(j.kind)}>{j.kind}</StatePill> },
-    { key: 'schedule', header: 'Schedule', render: (j) => <code>{j.schedule}</code> },
-    { key: 'last', header: 'Last run', value: (j) => ts(j.last_run_at), render: (j) => (j.last_run_at ? relTime(j.last_run_at) : 'never') },
-    { key: 'next', header: 'Next', value: (j) => ts(j.next_run_at), render: (j) => nextIn(j.next_run_at) },
-    { key: 'outputs_d7', header: 'Logs 7d', numeric: true },
-    { key: 'health', header: 'Health', value: (j) => HEALTH_RANK[j.health] ?? 9, render: (j) => <HealthPill j={j} /> },
+    { key: 'kind', header: 'Type', width: '117px', render: (j) => <StatePill tone={kindTone(j.kind)}>{j.kind}</StatePill> },
+    { key: 'schedule', header: 'Schedule', width: '133px', render: (j) => <code>{j.schedule}</code> },
+    { key: 'last', header: 'Last run', width: '88px', value: (j) => ts(j.last_run_at), render: (j) => (j.last_run_at ? relTime(j.last_run_at) : 'never') },
+    { key: 'next', header: 'Next', width: '78px', value: (j) => ts(j.next_run_at), render: (j) => nextIn(j.next_run_at) },
+    { key: 'outputs_d7', header: 'Logs 7d', width: '86px', numeric: true },
+    { key: 'health', header: 'Health', width: '103px', value: (j) => HEALTH_RANK[j.health] ?? 9, render: (j) => <HealthPill j={j} /> },
     {
       key: 'run',
       header: '',

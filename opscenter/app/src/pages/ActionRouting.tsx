@@ -163,6 +163,7 @@ export default function ActionRouting() {
     {
       key: 'title',
       header: 'Input',
+      width: '42%',
       value: (c) => `${c.title} ${c.actor || ''}`,
       render: (c) => (
         <span className="ar-rule">
@@ -180,7 +181,7 @@ export default function ActionRouting() {
         </span>
       ),
     },
-    { key: 'fate', header: 'What happened', value: (c) => c.fate, render: (c) => <Pill tone={c.tone}>{c.fate}</Pill> },
+    { key: 'fate', header: 'What happened', width: '58%', value: (c) => c.fate, render: (c) => <Pill tone={c.tone}>{c.fate}</Pill> },
   ]
   const awayCols: TableColumn<AcAway>[] = [
     {

@@ -2103,6 +2103,14 @@ toggle: "Enterprise on, 0 h 41 min left" on a wide header and "Ent on" on a narr
 the open incident (one quiet period after the last leak call, the moment the watch closes it by itself), so the client holds no threshold. A missing or past
 close time leaves out the time left rather than guessing. No incident draws no chip.
 
+### 12.86 Table column widths (issue 327, parity spec section 4 and 5)
+
+The Action table, the Backlog, Debt, Doc history and the Team throughput tables already carried the spec widths. This adds the rest the spec measures: Scheduled jobs
+(Type 117, Schedule 133, Last run 88, Next 78, Logs 7d 86, Health 103, the Job column takes the rest), the Team run ledger (Period 152, Sprints 208, Engineer 201,
+Completion 153, Pts deliv. 133, Done 101, Carry 103, Intake 110), the sprint throughput (Sprint 223, Done 188, Points 216) and the Routing Considered table
+(Input 42 percent, What happened 58 percent, the reference 488 and 674 pixels at the capture width). Widths the spec gives for the Changes and Doc coverage tables are
+not set: their tables are drawn by consumer data shapes that vary, and a fixed width there would clip the longer text.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.
