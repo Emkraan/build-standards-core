@@ -277,5 +277,20 @@ class Route(unittest.TestCase):
             self.assertNotIn(word, body, word)
 
 
+class Lane(unittest.TestCase):
+    def test_a_lane_is_kept_clipped_and_never_guessed(self):
+        out = ab.summarize(
+            [
+                {"id": "a", "title": "A", "state": "running", "lane": "  infra  "},
+                {"id": "b", "title": "B", "state": "running"},
+                {"id": "c", "title": "C", "state": "running", "lane": "x" * 90},
+            ]
+        )
+        by = {r["id"]: r["lane"] for r in out["builds"]}
+        self.assertEqual(by["a"], "infra")
+        self.assertIsNone(by["b"])
+        self.assertEqual(len(by["c"]), 40)
+
+
 if __name__ == "__main__":
     unittest.main()

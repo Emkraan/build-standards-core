@@ -124,3 +124,17 @@ test('a failed builds source files nothing, so a broken feed never reads as calm
   const feed = { configured: true, fetched_utc: 'x', counts: {}, builds: [{ id: 'f', title: 'f', state: 'failed' }], truncated: 0, error: 'boom' }
   assert.equal(liveByState({}, feed).needs.length, 0)
 })
+
+test('the lanes the rows name feed the Lane select, and a lane keeps its rows in the Engineer PRs, Scheduled jobs and Sessions sections', async () => {
+  const { liveByState, liveLanes, liveSections } = await import('../src/lib/liveWork.ts')
+  const b = (id, lane, pr) => ({ id, title: id, state: 'running', started: 1000, activity_at: null, finished: null, url: null, kind: null, outcome: null, activity: null, lane, pr: pr ? { number: 1, url: null, state: 'open', red: 0 } : null })
+  const feed = { configured: true, fetched_utc: 'x', counts: {}, builds: [b('a', 'infra', true), b('c', 'infra', false), b('d', 'apps', true), b('e', null, false)], truncated: 0, error: null }
+  const sessions = { fp: { state: 'running', live: true, title: 'S', started: '2026-11-21T00:00:00Z' } }
+  const rows = liveByState(sessions, feed).running
+  assert.deepEqual(liveLanes(rows), ['apps', 'infra'])
+  const all = liveSections(rows, '')
+  assert.deepEqual([all.prs.length, all.jobs.length, all.sessions.length], [2, 2, 1])
+  const infra = liveSections(rows, 'infra')
+  assert.deepEqual([infra.prs.map((r) => r.id), infra.jobs.map((r) => r.id), infra.sessions.length], [['build:a'], ['build:c'], 0])
+  assert.deepEqual(liveLanes(liveByState({}, { ...feed, builds: [b('e', null, false)] }).running), [])
+})
