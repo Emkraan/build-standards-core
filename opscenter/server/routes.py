@@ -318,6 +318,10 @@ def _table():
                 )
             ),
         ),
+        # change approvals with a live write switch (server/modules/change_approvals.py, DESIGN.md 12.96)
+        (G, "/api/approvals/queue", "change_approvals", "queue", None),
+        (P, "/api/approvals/decide", "change_approvals", "decide", None),
+        (P, "/api/approvals/switch", "change_approvals", "switch", None),
         # debt and improvements (server/modules/eng_backlog.py)
         (G, "/api/eng-backlog", "eng_backlog", "items", None),
         # what the curate job changed on its own this week (its own 7 day log), for the Auto-curated line
