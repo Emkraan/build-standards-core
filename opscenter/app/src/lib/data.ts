@@ -779,6 +779,8 @@ export interface TackleSession {
   ticket?: string
   last_active?: string
   live?: boolean
+  /** The last five progress lines the session reported (newest first). */
+  reports?: { at: string; text: string; pct?: number }[]
 }
 export async function fetchTackle(): Promise<Record<string, TackleSession>> {
   const res = await fetch(`${BASE}api/tackle`)

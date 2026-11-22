@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-21 (v2.48.0, ops-center: the item bound build loop)
+
+- Added: a claim token binds a session's resolve and progress reports to the item it was started for; `POST /api/tackle/report`, `/api/tackle/bind` and `/api/tackle/prompt`; the last five reports show as a note on the Live row; launches go one at a time with a hold timeout (`OPSCENTER_LAUNCH_HOLD_S`, 429 when busy). `opscenter/DESIGN.md` 12.95.
+- Changed: resolving a started session needs its claim token or `owner: true` (the app sends it).
+- Adoption risk: a runtime whose sessions resolve by `fp` alone must send the `claim` its prompt now carries.
+
+Refs #327.
+
 ## 2026-11-21 (v2.47.0, ops-center: a rail count badge for consumer pages)
 
 - Added: an extension page may carry `count` (0 to 999) and the rail shows it as the badge beside the page. `opscenter/DESIGN.md` 12.94 also records how the held back Stop action will be built.

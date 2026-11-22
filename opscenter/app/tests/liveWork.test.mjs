@@ -138,3 +138,11 @@ test('the lanes the rows name feed the Lane select, and a lane keeps its rows in
   assert.deepEqual([infra.prs.map((r) => r.id), infra.jobs.map((r) => r.id), infra.sessions.length], [['build:a'], ['build:c'], 0])
   assert.deepEqual(liveLanes(liveByState({}, { ...feed, builds: [b('e', null, false)] }).running), [])
 })
+
+test('a session row carries its newest progress report as a note, and none when it has not reported', async () => {
+  const { liveSessions } = await import('../src/lib/liveWork.ts')
+  const s = (reports) => ({ fp: { state: 'running', live: true, title: 'S', started: '2026-11-21T00:00:00Z', reports } })
+  assert.equal(liveSessions(s([{ at: 'a', text: 'halfway' }, { at: 'b', text: 'older' }]))[0].note, 'halfway')
+  assert.equal(liveSessions(s(undefined))[0].note, null)
+  assert.equal(liveSessions(s([]))[0].note, null)
+})

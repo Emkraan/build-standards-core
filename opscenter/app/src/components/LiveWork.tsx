@@ -46,6 +46,7 @@ export default function LiveWork() {
         )}
       </span>
       {r.ticket && <span className="ac-live-ticket">{r.ticket}</span>}
+      {r.note && <span className="ac-live-note muted">{r.note}</span>}
       {r.lane && <span className="ac-live-lane muted">{r.lane}</span>}
       <span className="ac-live-age muted">
         {r.kind === 'build' ? 'build' : 'session'}
