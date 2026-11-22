@@ -102,3 +102,9 @@ test('the Jobs, Team ledger, throughput and Routing tables carry the reference c
     for (const [header, w] of cols) assert.match(src, new RegExp(`header: '${header.replace('.', '\\.')}',\\s*width: '${w}'`), `${file}: ${header}`)
   }
 })
+
+test('a document backed plan row opens the document in a new tab through the safe address and offers no Archive', () => {
+  const src = read('../src/pages/Plans.tsx')
+  assert.match(src, /d\.link \? \(\s*<a className="pl-row-main" href=\{safeHref\(d\.link\) \?\? undefined\} target="_blank" rel="noreferrer noopener">/)
+  assert.match(src, /\{!d\.link && \(\s*<Button size="sm" variant="ghost" loading=\{busy\} onClick=\{onAction\}>/)
+})

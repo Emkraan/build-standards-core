@@ -484,6 +484,46 @@ class PlansTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.m.dismiss_untracked("nonsense")
 
+    def test_a_link_file_is_a_library_entry_with_a_link_and_a_bad_one_is_left_out(self):
+        lib = self.root / "library"
+        lib.mkdir(exist_ok=True)
+        (lib / "board-paper.link.json").write_text(
+            json.dumps(
+                {
+                    "title": "Board paper",
+                    "url": "https://docs.example.test/d/1",
+                    "status": "Current",
+                    "owner": "Sam",
+                    "updated": "2026-11-01",
+                }
+            )
+        )
+        (lib / "no-title.link.json").write_text(
+            json.dumps({"url": "https://docs.example.test/d/2"})
+        )
+        (lib / "bad-url.link.json").write_text(
+            json.dumps({"title": "Bad", "url": "javascript:alert(1)"})
+        )
+        (lib / "broken.link.json").write_text("{nope")
+        d = self.m.items()
+        row = next(r for r in d["library"] if r["name"] == "board-paper.link.json")
+        self.assertEqual(
+            (row["title"], row["link"], row["status"], row["owner"], row["updated"]),
+            ("Board paper", "https://docs.example.test/d/1", "current", "Sam", "2026-11-01"),
+        )
+        names = {r["name"] for r in d["library"]}
+        self.assertTrue(
+            names.isdisjoint({"no-title.link.json", "bad-url.link.json", "broken.link.json"})
+        )
+
+    def test_a_link_file_inside_a_project_is_not_listed(self):
+        proj = self.root / "projects" / "alpha"
+        proj.mkdir(parents=True, exist_ok=True)
+        (proj / "x.link.json").write_text(
+            json.dumps({"title": "X", "url": "https://docs.example.test/x"})
+        )
+        self.assertTrue(all(r["name"] != "x.link.json" for r in self.m.items()["library"]))
+
 
 class PlansStateDir(unittest.TestCase):
     """With only the state directory set (issue 326 item 11), the plans folder is <state>/plans, not ~/.opscenter/state/plans."""

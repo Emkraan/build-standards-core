@@ -203,7 +203,55 @@ def _place(rel):
     return archived, section, project
 
 
+def _link_item(p):
+    """A document backed library entry: `library/<name>.link.json` = {title, url, status?, summary?, owner?, updated?}. It lists a document that lives
+    elsewhere (a word processor file, a wiki page) next to the markdown plans, with a link and a title and nothing else of the document read. A file that
+    does not parse, names no title or carries a url that is not http or https is left out."""
+    try:
+        d = json.loads(p.read_text(encoding="utf-8")[:MAX_READ_BYTES])
+    except (OSError, ValueError):
+        return None
+    url = str(d.get("url", "")).strip() if isinstance(d, dict) else ""
+    if (
+        not isinstance(d, dict)
+        or not url.startswith(("https://", "http://"))
+        or not str(d.get("title", "")).strip()
+    ):
+        return None
+    st = p.stat()
+    updated = str(d.get("updated", ""))[:10]
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", updated):
+        updated = _iso(st.st_mtime)[:10]
+    rel = _rel(p)
+    archived, section, project = _place(rel)
+    return {
+        "id": rel,
+        "name": p.name,
+        "path": str(p),
+        "section": section,
+        "project": project,
+        "archived": archived,
+        "type": "plan",
+        "type_label": TYPE_LABEL["plan"],
+        "title": _clean(str(d["title"]))[:200],
+        "status": (str(d.get("status") or "current")).lower()[:30],
+        "summary": _clean(str(d.get("summary", "")))[:400],
+        "next": "",
+        "owner": _clean(str(d.get("owner", "")))[:80],
+        "updated": updated,
+        "tickets": [],
+        "front_matter": True,
+        "sbar": False,
+        "version": str(st.st_mtime_ns),
+        "mtime": _iso(st.st_mtime),
+        "size": st.st_size,
+        "link": url[:600],
+    }
+
+
 def _item(p):
+    if p.name.endswith(".link.json"):
+        return _link_item(p)
     st = p.stat()
     rel = _rel(p)
     with open(p, "rb") as fh:
@@ -299,6 +347,12 @@ def _files():
         if any(part.startswith(".") for part in rel) or len(rel) > 5 or not p.is_file():
             continue
         out.append(p)
+    # Document backed library entries sit directly in library/ (and its archive twin), never inside a project.
+    for p in sorted(root.glob("library/*.link.json")) + sorted(
+        root.glob(f"{ARCHIVE}/library/*.link.json")
+    ):
+        if p.is_file() and not p.name.startswith("."):
+            out.append(p)
     return out
 
 
@@ -773,7 +827,7 @@ def dismiss_untracked(key, what_if=False):
 
 
 def items():
-    rows = [_item(p) for p in _files()]
+    rows = [r for r in (_item(p) for p in _files()) if r]
     usnap, ucand = _untracked_candidates(rows)
     # One Jira lookup for both the trackers and the untracked strip, so neither evicts the other's cache.
     keys = sorted({k for r in rows for k in r["tickets"]} | {r["key"] for r in ucand})

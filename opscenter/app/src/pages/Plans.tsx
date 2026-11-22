@@ -1,3 +1,4 @@
+import { safeHref } from '../lib/extensions'
 import type { SegmentedOption, StatusTone } from '@kit'
 import {
   Button,
@@ -347,21 +348,35 @@ function PlanRow({
 }) {
   return (
     <li className="pl-row">
-      <button type="button" className="pl-row-main" onClick={onOpen}>
-        <span className="pl-row-top">
-          <span className="pl-row-title">{d.title}</span>
-          <StatusPill status={d.status} />
-          {d.type !== 'plan' && <Pill tone="neutral">{d.type_label}</Pill>}
-          {d.type === 'plan' && !d.sbar && <Pill tone="warning">Not SBAR</Pill>}
-        </span>
-        {d.summary && <span className="pl-row-sum">{d.summary}</span>}
-      </button>
+      {/* A document backed entry (library/*.link.json) opens the document where it lives; nothing of it is read here, so it has no Archive. */}
+      {d.link ? (
+        <a className="pl-row-main" href={safeHref(d.link) ?? undefined} target="_blank" rel="noreferrer noopener">
+          <span className="pl-row-top">
+            <span className="pl-row-title">{d.title}</span>
+            <StatusPill status={d.status} />
+            <Pill tone="info">Document</Pill>
+          </span>
+          {d.summary && <span className="pl-row-sum">{d.summary}</span>}
+        </a>
+      ) : (
+        <button type="button" className="pl-row-main" onClick={onOpen}>
+          <span className="pl-row-top">
+            <span className="pl-row-title">{d.title}</span>
+            <StatusPill status={d.status} />
+            {d.type !== 'plan' && <Pill tone="neutral">{d.type_label}</Pill>}
+            {d.type === 'plan' && !d.sbar && <Pill tone="warning">Not SBAR</Pill>}
+          </span>
+          {d.summary && <span className="pl-row-sum">{d.summary}</span>}
+        </button>
+      )}
       <span className="pl-row-side">
         <Tickets d={d} />
         <span className="pl-faint">{fmtDay(d.updated)}</span>
-        <Button size="sm" variant="ghost" loading={busy} onClick={onAction}>
-          {action}
-        </Button>
+        {!d.link && (
+          <Button size="sm" variant="ghost" loading={busy} onClick={onAction}>
+            {action}
+          </Button>
+        )}
       </span>
     </li>
   )

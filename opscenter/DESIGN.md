@@ -2142,6 +2142,13 @@ action the row itself does not declare (404, searched through every window of ro
 (the null default refuses). The provider's optional `extension_action(page_id, row_id, action_id) -> {ok, detail?}` does the work; a provider without it answers 501, and the data-only
 file form (12.80) has none, so a file page shows actions only if a provider also supplies the method. The browser only ever sees the declared menu, never the provider.
 
+### 12.92 Document backed plan library entries (cutover comment item 11)
+
+The plan library reads markdown, and a consumer whose plans are word processor documents or wiki pages can still list them: `library/<name>.link.json` is
+`{"title": ..., "url": ..., "status"?, "summary"?, "owner"?, "updated"?}` (a library folder file, or its archive twin; never inside a project). The row shows the title, the
+status, a Document pill and the summary, and opens the url in a new tab (http or https only); nothing of the document is read, so the row has no preview and no Archive.
+A file that does not parse, has no title or carries another kind of url is left out, never drawn half. The plan counts include these entries.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

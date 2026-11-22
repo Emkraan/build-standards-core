@@ -2647,6 +2647,8 @@ export interface PlanItem {
   mtime: string
   size: number
   progress?: { done: number; total: number }
+  /** A document backed library entry: the address of the document where it lives (http or https only). It has no file here to open or archive. */
+  link?: string
 }
 export interface PlanProject {
   id: string
