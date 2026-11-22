@@ -2226,6 +2226,14 @@ The tracker slot's write form (the reference tracker, 12.15; not the data file f
 **Complete is not a new route.** Closing an item already has a process: the sprint close-out asks the owner (needs me), the owner decides and the close-out writes the closure comment and the transition (12.15, `transition` refuses done targets).
 A second way to close from the backlog would bypass that comment, so completing stays on the existing path; this is recorded as the default on issue 327.
 
+### 12.100 Drafts: archive, restore and threaded reply drafts, never sent (cutover comment capability 5)
+
+A provider slot (`server/modules/drafts.py`, `OPSCENTER_DRAFTS_PROVIDER=path/to/file.py:ClassName`, every method optional) for the drafts the owner keeps in a mailbox. The provider lists them (`drafts()`),
+archives and restores one, and creates a reply draft threaded under a conversation (`reply(thread, text)`, which makes a draft in the mailbox and sends nothing). **The core has no send route and no delete route**: a draft can be archived
+and brought back and nothing more, and `drafts_test.py` asserts the route table and that the module has no send or delete call. Every write needs `confirm: true` and the provider's `drafts.write` authorisation (`drafts.read` for the
+list; the null default refuses all). The Action Center has a Drafts tab (the old `/action/drafts` address leaves for the home tab when there is no provider) with Archive, Restore and a show archived toggle, each behind a confirmation.
+A source that cannot be read is an error the tab shows, never an empty list.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

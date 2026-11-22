@@ -3052,3 +3052,22 @@ export const postDocDecide = (id: string, decision: 'approve' | 'reject', versio
   jiraPost<{ state: string }>('api/doc-pipeline/decide', { id, decision, version, confirm: true })
 export const postDocRestore = (id: string) => jiraPost<{ state: string }>('api/doc-pipeline/restore', { id, confirm: true })
 export const postDocPublish = (id: string, version: string) => jiraPost<{ ok: boolean; detail: string }>('api/doc-pipeline/publish', { id, version, confirm: true })
+
+// ---- Drafts (server/modules/drafts.py, DESIGN.md 12.100): archived, never deleted, never sent from here ----
+export interface DraftRow {
+  id: string
+  title: string
+  kind: 'reply' | 'doc'
+  thread: string | null
+  updated: string | null
+  archived: boolean
+}
+export type DraftsState = { configured: false } | { configured: true; fetched_utc: string; drafts: DraftRow[]; error: string | null }
+// A 404 means the consumer has no drafts provider, so the Action Center Drafts tab is hidden.
+export const useDrafts = createLiveStore<DraftsState>(async () => {
+  const res = await fetch(`${BASE}api/drafts`, { cache: 'no-cache' })
+  if (res.status === 404) return { configured: false }
+  if (!res.ok) throw new Error(`api/drafts -> ${res.status}`)
+  return { configured: true, ...((await res.json()) as { fetched_utc: string; drafts: DraftRow[]; error: string | null }) }
+}, 60_000)
+export const postDraftArchive = (id: string, restore = false) => jiraPost<{ id: string; ok: boolean }>(restore ? 'api/drafts/restore' : 'api/drafts/archive', { id, confirm: true })

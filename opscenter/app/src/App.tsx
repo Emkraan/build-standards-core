@@ -350,7 +350,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Navigate to="/action" replace />} />
               <Route path="/action" element={<ActionHub />} />
-              <Route path="/action/drafts" element={<Navigate to="/action" replace />} />
+              <Route path="/action/drafts" element={<ActionHub fixedTab="drafts" />} />
               <Route path="/action/plans" element={<Navigate to="/action" replace />} />
               <Route path="/action/:tab" element={<ActionHub />} />
               <Route path="/people" element={<PeopleGate><OneOnOnes /></PeopleGate>} />

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-21 (v2.53.0, ops-center: drafts you can archive, and reply drafts that are never sent)
+
+- Added: a Drafts tab in the Action Center and a provider slot (`OPSCENTER_DRAFTS_PROVIDER`): list, archive, restore and a threaded reply draft. There is no send route and no delete route; `opscenter/DESIGN.md` 12.100.
+- Changed: `/action/drafts` shows the Drafts tab when a provider is set and still leaves for the home tab when none is.
+- Adoption risk: none, no provider means no route and no tab.
+
+Refs #327.
+
 ## 2026-11-21 (v2.52.0, ops-center: add and update backlog items)
 
 - Added: `POST /api/jira/issue` creates a backlog item (planned, BAU or unplanned, the class setting the label) and `POST /api/jira/issue/update` changes the summary, priority or description of the owner's own item, both with `what_if` and a read back; the Backlog tab has an Add an item form. New tracker parameters `issue_type`, `bau_label`, `unplanned_label`. Completing an item stays on the closure process (`opscenter/DESIGN.md` 12.99).
