@@ -6,13 +6,13 @@
 import { IconKanban } from '../components/icons'
 import { StatRow } from '../components/StatRow'
 import type { SegmentedOption, StatusTone, TableColumn } from '@kit'
-import { Badge, Button, Card, CardHead, EmptyState, IconAlert, IconCheck, IconClock, Input, Pill, Segmented, Skeleton, StatusDot, Table, Toolbar, useToast } from '@kit'
+import { Badge, Button, Card, CardHead, EmptyState, Field, IconAlert, IconCheck, IconClock, Input, Modal, Pill, Segmented, Select, Skeleton, StatusDot, Table, Toolbar, useToast } from '@kit'
 import { useMemo, useState } from 'react'
 import { InHermes } from '../components/InHermes'
 import { LoadError } from '../components/StateBlocks'
 import { TackleJira } from '../components/TackleJira'
 import type { BacklogItem } from '../lib/data'
-import { postSprintMove, useBacklog, useJiraSprint } from '../lib/data'
+import { postJiraIssue, postSprintMove, useBacklog, useJiraSprint } from '../lib/data'
 
 export function priorityTone(p: string): StatusTone {
   const s = p.toLowerCase()
@@ -53,6 +53,7 @@ export default function Backlog() {
   const [moving, setMoving] = useState<Record<string, boolean>>({})
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [q, setQ] = useState('')
+  const [adding, setAdding] = useState<{ summary: string; cls: 'planned' | 'bau' | 'unplanned'; busy: boolean } | null>(null)
 
   const sprint = data?.active_sprint
 
@@ -244,6 +245,11 @@ export default function Backlog() {
             onRefresh={() => refresh()}
             refreshing={loading}
             updatedAt={Date.parse(data.generated_utc) || null}
+            actions={
+              <Button size="sm" onClick={() => setAdding({ summary: '', cls: 'planned', busy: false })}>
+                Add an item
+              </Button>
+            }
           >
             <Segmented label="Issue type" options={typeOptions} value={typeFilter} onChange={setTypeFilter} />
             <Input
@@ -255,6 +261,40 @@ export default function Backlog() {
               onChange={(e) => setQ(e.target.value)}
             />
           </Toolbar>
+
+          <Modal open={!!adding} onClose={() => setAdding(null)} size="md" title="Add a backlog item">
+            {adding && (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault()
+                  setAdding({ ...adding, busy: true })
+                  try {
+                    const r = await postJiraIssue(adding.summary, adding.cls)
+                    toast('success', `${r.key} added to my backlog`)
+                    setAdding(null)
+                    refresh()
+                  } catch (err) {
+                    toast('error', err instanceof Error ? err.message : String(err), { persistent: true })
+                    setAdding({ ...adding, busy: false })
+                  }
+                }}
+              >
+                <Field label="What needs doing">
+                  <Input value={adding.summary} onChange={(e) => setAdding({ ...adding, summary: e.target.value })} maxLength={200} required />
+                </Field>
+                <Field label="Kind of work">
+                  <Select value={adding.cls} onChange={(e) => setAdding({ ...adding, cls: e.target.value as 'planned' | 'bau' | 'unplanned' })}>
+                    <option value="planned">Planned</option>
+                    <option value="bau">BAU</option>
+                    <option value="unplanned">Unplanned</option>
+                  </Select>
+                </Field>
+                <Button type="submit" loading={adding.busy} disabled={adding.busy || !adding.summary.trim()}>
+                  Add it
+                </Button>
+              </form>
+            )}
+          </Modal>
 
           {planned.length > 0 && (
             <>

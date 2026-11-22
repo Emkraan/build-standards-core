@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-21 (v2.52.0, ops-center: add and update backlog items)
+
+- Added: `POST /api/jira/issue` creates a backlog item (planned, BAU or unplanned, the class setting the label) and `POST /api/jira/issue/update` changes the summary, priority or description of the owner's own item, both with `what_if` and a read back; the Backlog tab has an Add an item form. New tracker parameters `issue_type`, `bau_label`, `unplanned_label`. Completing an item stays on the closure process (`opscenter/DESIGN.md` 12.99).
+- Adoption risk: none, a tracker slot that is off or in data file form has no write route.
+
+Refs #327.
+
 ## 2026-11-21 (v2.51.0, ops-center: go-live notices beside the freeze strip)
 
 - Added: a change window of kind `go-live` is listed apart from freezes (`go_live` in `freeze.json`) and shown in the header as an awareness notice that says it is not a freeze; it never moves `in_freeze`, `current` or `next`. `opscenter/DESIGN.md` 12.98.

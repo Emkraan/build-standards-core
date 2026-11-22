@@ -116,3 +116,10 @@ test('the header feed adds the go-live notice beside the freeze status, as info,
   assert.match(src, /For awareness\. This is not a change freeze\./)
   assert.match(src, /items\.push\(\{ id: 'go-live', \.\.\.live \}\)/)
 })
+
+test('the Backlog tab adds an item through a form that posts the class, and the post function reads the class not a label', () => {
+  const page = read('../src/pages/Backlog.tsx')
+  assert.match(page, /Add an item/)
+  assert.match(page, /postJiraIssue\(adding\.summary, adding\.cls\)/)
+  assert.match(read('../src/lib/data.ts'), /jiraPost<\{ key: string; url: string; summary: string \}>\('api\/jira\/issue', \{ summary, class: workClass, description \}\)/)
+})
