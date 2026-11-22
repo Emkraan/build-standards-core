@@ -22,8 +22,20 @@ interface FeedFreeze {
   in_freeze: boolean
   current: { name: string; start: string; end: string; exception?: string } | null
   next: { name: string; start: string; end: string; days_out: number } | null
+  /** Upcoming and current go-lives: awareness, never a freeze. */
+  go_live?: { name: string; start: string; end: string; days_out: number }[]
 }
 const md = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+/** A go-live as awareness: a notice that something launches, in the feed beside the freeze status and never mistaken for it. */
+export function goLiveAnnouncement(f: FeedFreeze | null): Omit<FeedItem, 'id'> | null {
+  const g = f?.go_live?.[0]
+  if (!g) return null
+  return {
+    tone: 'info',
+    title: g.days_out === 0 ? `Go-live today: ${g.name}.` : `Go-live in ${g.days_out} day${g.days_out === 1 ? '' : 's'}: ${g.name}.`,
+    body: 'For awareness. This is not a change freeze.',
+  }
+}
 const SEVERITY: Record<FeedItem['tone'], number> = { critical: 0, warning: 1, info: 2, success: 3 }
 
 /** Change-freeze status as a feed announcement (CAB workbook mirror, freeze.json). Red in a window, amber inside 7 days. */
@@ -190,6 +202,8 @@ export function useFeed(refreshedEt: string | undefined): { health: HealthLine; 
   }
   const frz = freezeAnnouncement(freeze)
   if (frz) items.push({ id: 'freeze', ...frz })
+  const live = goLiveAnnouncement(freeze)
+  if (live) items.push({ id: 'go-live', ...live })
   const away = awayAnnouncement(ac?.team_away, new Date(now))
   if (away) items.push({ id: 'team-away', ...away, onOpen: () => nav('/people') })
   // Most severe first so a freeze or someone out today is the first thing the presenter says.

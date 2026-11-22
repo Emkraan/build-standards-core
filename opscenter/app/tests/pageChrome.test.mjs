@@ -108,3 +108,11 @@ test('a document backed plan row opens the document in a new tab through the saf
   assert.match(src, /d\.link \? \(\s*<a className="pl-row-main" href=\{safeHref\(d\.link\) \?\? undefined\} target="_blank" rel="noreferrer noopener">/)
   assert.match(src, /\{!d\.link && \(\s*<Button size="sm" variant="ghost" loading=\{busy\} onClick=\{onAction\}>/)
 })
+
+test('the header feed adds the go-live notice beside the freeze status, as info, never as a freeze', () => {
+  const src = read('../src/shell/HeaderBits.tsx')
+  assert.match(src, /export function goLiveAnnouncement/)
+  assert.match(src, /tone: 'info',\s*title: g\.days_out === 0/)
+  assert.match(src, /For awareness\. This is not a change freeze\./)
+  assert.match(src, /items\.push\(\{ id: 'go-live', \.\.\.live \}\)/)
+})
