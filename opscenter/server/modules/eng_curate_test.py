@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import importlib
+import datetime as dt
 import json
 import os
 import sys
@@ -279,6 +280,20 @@ class Curation(Base):
         self.assertIn(
             "stale:", json.loads((self.dir / "cur.json").read_text())["dismissed"][r["uid"]]
         )
+
+
+class AutoWeek(Base):
+    def test_the_week_count_is_the_job_own_log_of_the_last_seven_days(self):
+        now = self.ec._now()
+        fmt = "%Y-%m-%dT%H:%M:%SZ"
+        log = [{"at": (now - dt.timedelta(days=d)).strftime(fmt), "what": "close"} for d in (0, 1, 6, 8, 30)]
+        (self.dir / "cur.json").write_text(json.dumps({"log": log}), encoding="utf-8")
+        out = self.ec.summary()
+        self.assertEqual(out["auto_week_count"], 3)
+        self.assertEqual(len(out["auto_week"]), 3)
+
+    def test_no_log_is_a_zero_not_a_failure(self):
+        self.assertEqual(self.ec.summary()["auto_week_count"], 0)
 
 
 if __name__ == "__main__":

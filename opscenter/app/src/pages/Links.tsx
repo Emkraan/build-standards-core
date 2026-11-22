@@ -70,7 +70,7 @@ export default function Links() {
 
   return (
     <div className="lk-page">
-      <HubHeader eyebrow="Knowledge" title="Links" subtitle="The admin consoles and references we use. Every link opens in a new tab." />
+      <HubHeader title="Links" subtitle="The admin consoles and references we use. Every link opens in a new tab." />
       <Toolbar label="Filter links">
         <SearchInput value={q} onChange={setQ} placeholder="Filter by name or host" aria-label="Filter links" focusHotkey="f" />
         <span className="lk-count">

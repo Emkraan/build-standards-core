@@ -151,7 +151,6 @@ export default function OneOnOnes() {
 
   const header = (
     <HubHeader
-      eyebrow="People"
       title={pageTitle('/people', '1:1s')}
       subtitle={HEAD_SUB}
       status={

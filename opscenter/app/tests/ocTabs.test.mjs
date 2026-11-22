@@ -293,6 +293,7 @@ function fakeBackend(fx) {
       '/api/team-reviews': fx.team,
       '/api/repo-reviews': fx.repos,
       '/api/eng-backlog': fx.eng,
+      '/api/eng-backlog/curation': fx.curation,
       '/api/docs-drift': fx.drift,
       '/api/jira/sprint-trend': fx.trend,
       '/api/jira/sprints': fx.closed,
@@ -673,6 +674,16 @@ test('the header shows the Enterprise chip with the time left while an incident 
   await withApp({ ...fixtures(), fallback: { ...fb, active: null } }, async (s, origin) => {
     await visit(s, origin, '/action', 'light', `document.querySelectorAll('.ac-counter').length > 0`, 'the page')
     assert.equal(await s.evaluate(`!!document.querySelector('.ent-chip')`), false, 'no incident, no chip')
+  })
+})
+
+test('Debt and improvements shows how many entries the curate job changed this week, and nothing when the job has no log route', { skip, timeout: 120000 }, async () => {
+  await withApp({ ...fixtures(), curation: { auto_week_count: 4 } }, async (s, origin) => {
+    await visit(s, origin, '/debt/todo', 'light', hasText('Auto-curated this week: 4'), 'the curated line')
+  })
+  await withApp({ ...fixtures(), curation: null }, async (s, origin) => {
+    await visit(s, origin, '/debt/todo', 'light', hasText('Debt entry 3'), 'the rows')
+    assert.equal(await s.evaluate(hasText('Auto-curated')), false, 'no route, no line')
   })
 })
 

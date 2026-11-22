@@ -59,7 +59,6 @@ export default function JiraHub() {
   return (
     <div className="hub">
       <HubHeader
-        eyebrow="Operate"
         title={pageTitle('/work', 'Work tracking')}
         subtitle="My sprint, the tickets waiting on my call, my backlog and the changes waiting on my approval, live from Jira."
         tabs={[

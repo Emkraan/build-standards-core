@@ -24,7 +24,6 @@ export default function TeamHub() {
   return (
     <div className="hub">
       <HubHeader
-        eyebrow="People"
         title={pageTitle('/team', 'Team')}
         subtitle="How the team did this cycle, each member's review, the yearly review and the trends."
         tabs={[

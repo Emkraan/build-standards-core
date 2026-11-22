@@ -158,7 +158,7 @@ export default function Search() {
 
   return (
     <div className="hub">
-      <HubHeader eyebrow="Find" title="Search" subtitle="One box across action items, Hermes sessions, 1:1 topics, state files and Jira." />
+      <HubHeader title="Search" subtitle="One box across action items, Hermes sessions, 1:1 topics, state files and Jira." />
       <div className="hub-body">
         <form
           className="srch-form"
