@@ -91,3 +91,18 @@ test('state: a policy hold Needs you, a fixer that gave up is Stuck, a draft wit
 test('state: all green with no hold is Ready', () => {
   assert.equal(platformPrState({ ...pr(undefined), verdict: 'success' }).state, 'ready')
 })
+
+test('the My PRs status filter counts every state and keeps only the chosen one', async () => {
+  const { filterByPrState, prStateCounts, PR_FILTER_STATES } = await import('../src/lib/ownPrs.ts')
+  const rows = [
+    pr({ kind: 'waiting', summary: 's', parked: 'nogate', next: 'Mark it ready' }, { pr: 1 }),
+    pr({ kind: 'waiting', summary: 's', parked: 'nogate' }, { pr: 2 }),
+    pr(undefined, { pr: 3 }),
+  ]
+  const counts = prStateCounts(rows)
+  assert.deepEqual(PR_FILTER_STATES, ['needs_you', 'in_progress', 'waiting', 'stuck', 'ready'])
+  assert.equal(counts.stuck, 2)
+  assert.equal(Object.values(counts).reduce((a, b) => a + b, 0), 3)
+  assert.deepEqual(filterByPrState(rows, 'stuck').map((r) => r.pr), [1, 2])
+  assert.equal(filterByPrState(rows, 'all').length, 3)
+})

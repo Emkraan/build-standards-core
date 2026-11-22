@@ -687,6 +687,19 @@ test('Debt and improvements shows how many entries the curate job changed this w
   })
 })
 
+test('My PRs filters by status, and Stuck keeps only the PRs the lane says nothing will move', { skip, timeout: 120000 }, async () => {
+  const mk = (pr, hold) => ({ pr, title: `Change ${pr}`, url: `https://example.test/pull/${pr}`, head_sha: 'a'.repeat(40), labels: [], verdict: 'clean', ai_result: 'SUCCESS', counts: { blocking: 0, high: 1, medium: 2, low: 3 }, blocking: [], findings: [], pending: [], waiting: [], red: [], hold })
+  const fx = fixtures()
+  fx.platform = { ...PLATFORM, my_prs: [mk(11, { kind: 'waiting', summary: 'A draft with no gate.', parked: 'nogate' }), mk(12, null), mk(13, { kind: 'waiting', summary: 'Another draft with no gate.', parked: 'nogate' })] }
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/reviews/platform/mine', 'light', hasText('Change 11') && hasText('Change 12'), 'the three PRs')
+    assert.equal(await s.evaluate(hasText('Stuck 2')), true, 'the Stuck count')
+    await s.evaluate(`[...document.querySelectorAll('[role=radio], [role=tab], button')].find((b) => b.textContent.trim() === 'Stuck 2').click(); true`)
+    await s.waitFor(`${hasText('Change 11')} && ${hasText('Change 13')} && !${hasText('Change 12')}`, 'only the stuck ones')
+    assert.deepEqual(await axeFindings(s), [], 'no axe violation')
+  })
+})
+
 // ---- issue 308: Debt page filters ----
 test('the Debt page filters narrow the list and have no axe violation in either theme', { skip, timeout: 120000 }, async () => {
   await withApp(fixtures(), async (s, origin) => {

@@ -2,7 +2,7 @@
 // to me, held terraform-plan runs, what the automation is iterating on, and
 // what shipped in the last 14 days. Actions go through server.py as github_user.
 import type { TableColumn } from '@kit'
-import { Button, Card, CardHead, EmptyState, Field, Input, StatusDot, Table, Textarea, useConfirm, useToast } from '@kit'
+import { Button, Card, CardHead, EmptyState, Field, Input, Segmented, StatusDot, Table, Textarea, useConfirm, useToast } from '@kit'
 import { useState } from 'react'
 import AlertBanner from '../components/AlertBanner'
 import { ApprovalBriefView } from '../components/ApprovalBrief'
@@ -30,7 +30,7 @@ import {
   usePlatformReviews,
 } from '../lib/data'
 import { depConfirm, unblocks } from '../lib/deps'
-import { platformPrState, PR_STATE_LABEL, type PrState, type PrStateView } from '../lib/ownPrs'
+import { filterByPrState, platformPrState, PR_FILTER_STATES, PR_STATE_LABEL, prStateCounts, type PrState, type PrStateView } from '../lib/ownPrs'
 import { gateFailures, policyFoot } from '../lib/reviewsFoot'
 import type { Tone } from './reviews/parts'
 import {
@@ -992,9 +992,12 @@ function MyPrRow({ p }: { p: PlatformMyPr }) {
 
 function MyPrs() {
   const { data, error } = usePlatformReviews()
+  const [pick, setPick] = useState<PrState | 'all'>('all')
   if (error && !data) return <ErrorCard title="Could not load platform reviews" error={error} />
   if (!data) return <LoadingCard label="Loading my PRs" />
   const mine = data.my_prs || []
+  const counts = prStateCounts(mine)
+  const shown = filterByPrState(mine, pick)
   return (
     <Card as="section">
       <CardHead
@@ -1005,11 +1008,23 @@ function MyPrs() {
       {mine.length === 0 ? (
         <EmptyState compact title="No open PRs of mine." />
       ) : (
-        <div className="rh-list">
-          {mine.map((p) => (
-            <MyPrRow key={p.pr} p={p} />
-          ))}
-        </div>
+        <>
+          <Segmented
+            label="Status"
+            value={pick}
+            onChange={setPick}
+            options={[
+              { value: 'all' as const, label: `All ${mine.length}` },
+              ...PR_FILTER_STATES.map((k) => ({ value: k, label: `${PR_STATE_LABEL[k]} ${counts[k]}` })),
+            ]}
+          />
+          {shown.length === 0 && <EmptyState compact title={`No PR is ${pick === 'all' ? '' : PR_STATE_LABEL[pick].toLowerCase()}.`} />}
+          <div className="rh-list">
+            {shown.map((p) => (
+              <MyPrRow key={p.pr} p={p} />
+            ))}
+          </div>
+        </>
       )}
     </Card>
   )

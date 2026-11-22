@@ -2117,6 +2117,12 @@ Debt and improvements shows "Auto-curated this week: N" in its header, N being h
 log (`GET /api/eng-backlog/curation`, `auto_week_count`, the whole week and not the 30 rows `auto_week` lists). A server without the route draws no line. The subtitle is the
 reference sentence. No hub page passes an eyebrow any more (ops-center-layout rule 17): the header trail carries the group.
 
+### 12.88 The status filter on My PRs (issue 326 item 5)
+
+My PRs opens with a Status control: All, Needs you, In progress, Waiting, Stuck and Ready, each with its count. A row's state is the one `platformPrState` already gives
+(every branch reads a field the server set), so Stuck is the lane's own answer that nothing will move the PR on its own (a draft with no gate to clear, an auto-fix that
+gave up), and the client adds no age threshold of its own. The findings rollup per PR (blocking, high, medium and low counts) was already on each card.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.
