@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-22 (v2.55.0, ops-center: meetings in the collector and priority sender rules)
+
+- Added: `from_meetings` turns a meetings feed (summary and action items the consumer's collector extracted, no model, no transcript text) into candidates; routing may carry `priority_floor` rules by role or sender, candidates carry the floor into the bundle, and the contract refuses an item below it when the wake gate saved the floors. `opscenter/DESIGN.md` 12.102.
+- Adoption risk: none, no meetings feed and no `priority_floor` block means no change; register `meetings.transcript` in the routing file to route it.
+
+Refs #327.
+
 ## 2026-11-22 (v2.54.0, ops-center: a status files and freshness view)
 
 - Added: Platform, Host and access, Status files: every state file the pages read with its size and age and a server decided fresh or stale (`OPSCENTER_STATUS_FRESH_MIN`), names and times only. `opscenter/DESIGN.md` 12.101 also lists where search, plan limits, runner pool health and the core consumption view already live.

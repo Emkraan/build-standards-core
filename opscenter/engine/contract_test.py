@@ -89,6 +89,46 @@ class Validate(unittest.TestCase):
         )
 
 
+class Floors(unittest.TestCase):
+    def test_an_item_below_the_floor_of_a_candidate_it_covers_is_refused(self):
+        errs = c.validate(doc([item(priority="medium", cids=["c1"])]), floors={"c1": "high"})
+        self.assertEqual(len(errs), 1)
+        self.assertIn("below the high floor of c1", errs[0])
+
+    def test_at_or_above_the_floor_and_unknown_floors_pass(self):
+        self.assertEqual(c.validate(doc([item(priority="high")]), floors={"c1": "high"}), [])
+        self.assertEqual(c.validate(doc([item(priority="critical")]), floors={"c1": "high"}), [])
+        self.assertEqual(c.validate(doc([item(priority="low")]), floors=None), [])
+        self.assertEqual(
+            c.validate(doc([item(priority="low", cids=["other"])]), floors={"c1": "high"}), []
+        )
+
+    def test_the_bundle_gives_the_floors_and_ignores_a_bad_one(self):
+        bundle = {
+            "candidates_must": [
+                {"cid": "a", "priority_floor": "high"},
+                {"cid": "b", "priority_floor": "weird"},
+            ],
+            "candidates_context": [{"cid": "c", "priority_floor": "critical"}],
+        }
+        self.assertEqual(c.floors_of(bundle), {"a": "high", "c": "critical"})
+        self.assertEqual(c.floors_of(None), {})
+
+    def test_the_wake_file_floors_are_read_only_for_the_run_that_wrote_the_file(self):
+        import json
+        import tempfile
+        from pathlib import Path
+
+        p = Path(tempfile.mkdtemp()) / "wake.json"
+        p.write_text(
+            json.dumps({"woke_at": 100, "must_cids": ["a"], "floors": {"a": "high", "b": "weird"}})
+        )
+        self.assertEqual(c.wake_floors_for(200, p), {"a": "high"})
+        self.assertIsNone(c.wake_floors_for(50, p))
+        p.write_text(json.dumps({"woke_at": 100, "must_cids": ["a"]}))
+        self.assertIsNone(c.wake_floors_for(200, p))
+
+
 class Settle(unittest.TestCase):
     def setUp(self):
         self._d = tempfile.TemporaryDirectory()

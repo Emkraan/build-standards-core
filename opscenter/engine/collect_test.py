@@ -234,6 +234,117 @@ class Adapters(Scratch):
         self.assertTrue(any("boom adapter failed" in e for e in res["errors"]))
 
 
+class Meetings(Scratch):
+    def meeting(self, **kw):
+        base = {
+            "id": "mt1",
+            "subject": "Planning",
+            "start": NOW,
+            "organizer": "Pat",
+            "attendees": ["Pat", "Owen Owner"],
+            "summary": "We agreed the plan.",
+        }
+        base.update(kw)
+        return base
+
+    def test_a_meeting_with_a_summary_or_actions_is_a_candidate_without_a_model(self):
+        self.cfg()
+        self.write(
+            "agent/feeds/meetings.json",
+            {
+                "items": [
+                    self.meeting(
+                        action_items=[
+                            {"owner": "Owen Owner", "text": "Send ABC-123 update"},
+                            {"owner": "Pat", "text": "Book room"},
+                        ]
+                    ),
+                    self.meeting(id="mt2", summary="", action_items=[]),
+                    self.meeting(id="mt3", start="2000-01-01T00:00:00Z"),
+                    self.meeting(id="mt4", summary="Just notes"),
+                    "junk",
+                ]
+            },
+        )
+        got = {c["cid"]: c for c in self.C.from_meetings({}, CUT)}
+        self.assertEqual(sorted(got), ["meeting:mt1", "meeting:mt4"])
+        mine = got["meeting:mt1"]
+        self.assertEqual(
+            (
+                mine["source"],
+                mine["addressed"],
+                mine["extra"]["mine"],
+                mine["extra"]["action_items"],
+            ),
+            ("meetings.transcript", "direct", True, 2),
+        )
+        self.assertIn("- Owen Owner: Send ABC-123 update", mine["text"])
+        self.assertEqual(mine["refs"], ["ABC-123"])
+        self.assertEqual(got["meeting:mt4"]["addressed"], "none")
+
+    def test_an_actions_list_for_others_is_context_and_a_missing_feed_is_none(self):
+        self.cfg()
+        self.assertEqual(self.C.from_meetings({}, CUT), [])
+        self.write(
+            "agent/feeds/meetings.json",
+            {"items": [self.meeting(action_items=[{"owner": "Pat", "text": "Do it"}])]},
+        )
+        self.assertEqual(self.C.from_meetings({}, CUT)[0]["addressed"], "none")
+
+    def test_meetings_are_one_of_the_adapters_and_an_unregistered_source_is_reported(self):
+        self.cfg()
+        self.write("agent/feeds/meetings.json", {"items": [self.meeting()]})
+        out = self.C.collect(
+            rules=self.R.load(),
+            now=self.C.dt.datetime(2099, 1, 2, 12, tzinfo=self.C.dt.timezone.utc),
+        )
+        self.assertIn("meeting:mt1", [c["cid"] for c in out["candidates"]])
+        self.assertIn("meetings.transcript", out["unregistered"])
+
+
+class Floors(Scratch):
+    RULES = {
+        "priority_floor": {
+            "roles": {"leader": "high"},
+            "senders": {"Pat Boss": "critical", "x": "weird"},
+        }
+    }
+
+    def test_a_role_or_a_named_sender_sets_the_least_priority(self):
+        f = self.C.priority_floor
+        self.assertEqual(f({"actor": "Someone", "actor_role": "leader"}, self.RULES), "high")
+        self.assertEqual(f({"actor": "pat boss", "actor_role": "other"}, self.RULES), "critical")
+        self.assertIsNone(f({"actor": "Someone", "actor_role": "report"}, self.RULES))
+        self.assertIsNone(f({"actor": "x", "actor_role": "other"}, self.RULES))
+        self.assertIsNone(f({"actor": "Someone", "actor_role": "leader"}, {}))
+
+    def test_a_routed_candidate_carries_its_floor(self):
+        self.cfg()
+        self.write(
+            "agent/feeds/mail.json",
+            {
+                "items": [
+                    {
+                        "id": "m1",
+                        "received": NOW,
+                        "direct_ask": True,
+                        "from_name": "Pat Boss",
+                        "subject": "Need it",
+                        "body_text": "now",
+                    }
+                ]
+            },
+        )
+        rules = dict(self.R.load(), **self.RULES)
+        out = self.C.collect(
+            rules=rules, now=self.C.dt.datetime(2099, 1, 2, 12, tzinfo=self.C.dt.timezone.utc)
+        )
+        self.assertEqual(
+            next(c for c in out["candidates"] if c["cid"] == "mail:m1")["priority_floor"],
+            "critical",
+        )
+
+
 class Plugins(Scratch):
     def test_roster_plugin_classifies_people_and_a_missing_one_is_reported(self):
         self.cfg()

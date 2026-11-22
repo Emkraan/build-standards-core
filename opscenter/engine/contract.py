@@ -68,11 +68,23 @@ def must_cids(bundle):
     return out
 
 
-def validate(data, must=None):
+def floors_of(bundle):
+    """cid -> the least priority its candidate may end as, for every candidate that carries a `priority_floor` (priority sender rules, collect.priority_floor)."""
+    out = {}
+    for k in ("candidates_must", "candidates_context"):
+        for c in (bundle or {}).get(k) or []:
+            if isinstance(c, dict) and c.get("cid") and c.get("priority_floor") in PRIORITIES:
+                out[str(c["cid"])] = c["priority_floor"]
+    return out
+
+
+def validate(data, must=None, floors=None):
     """Return a list of error strings, empty when data meets the contract.
 
     must: the candidates_must cids the run had to consider, or None when they are not known
-    (the structural checks still run, coverage does not)."""
+    (the structural checks still run, coverage does not).
+    floors: cid -> least priority (floors_of), or None when unknown (the floor check is skipped, never guessed). An item that covers a candidate with a floor
+    must not rank below it (critical above high above medium above low)."""
     errs = []
     if not isinstance(data, dict):
         return ["the file is not a JSON object"]
@@ -130,6 +142,13 @@ def validate(data, must=None):
                 )
         if isinstance(it.get("cids"), list):
             covered.update(str(c) for c in it["cids"])
+            if floors and it.get("priority") in PRIORITIES:
+                for c in it["cids"]:
+                    f = floors.get(str(c))
+                    if f and PRIORITIES.index(it["priority"]) > PRIORITIES.index(f):
+                        errs.append(
+                            f"{tag}: priority {it['priority']} is below the {f} floor of {c}"
+                        )
     for n, d in enumerate(dropped or []):
         if not isinstance(d, dict):
             errs.append("dropped[%d] is not an object" % n)  # noqa: UP031
@@ -168,6 +187,14 @@ def _write_json(path, data):
 
 def _sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()[:16]
+
+
+def wake_floors_for(file_mtime, wake_path=None):
+    """The priority floors the wake gate saved with the must cids (`floors`: {cid: priority}), under the same run rule; None when unknown."""
+    snap = _read_json(wake_path or WAKE_PATH, None)
+    if wake_cids_for(file_mtime, wake_path) is None or not isinstance(snap.get("floors"), dict):
+        return None
+    return {str(k): v for k, v in snap["floors"].items() if v in PRIORITIES}
 
 
 def wake_cids_for(file_mtime, wake_path=None):
@@ -230,7 +257,7 @@ def settle(dash, now=None, wake_path=None):
     except (OSError, ValueError) as e:
         data, parse_err = None, f"not valid JSON: {e}"
     must = wake_cids_for(mtime, wake_path)
-    errs = [parse_err] if parse_err else validate(data, must)
+    errs = [parse_err] if parse_err else validate(data, must, wake_floors_for(mtime, wake_path))
     st.update({"checked_at": now, "coverage_checked": must is not None})
     if not errs:
         shutil.copy2(f, good)
@@ -278,7 +305,7 @@ def main(argv):
         print(f"rejected: {e}")
         return 1
     must = wake_cids_for(path.stat().st_mtime)
-    errs = validate(data, must)
+    errs = validate(data, must, wake_floors_for(path.stat().st_mtime))
     print(
         "ok (coverage %s)" % ("checked" if must is not None else "not checked")
         if not errs
