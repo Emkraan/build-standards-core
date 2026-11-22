@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-22 (v2.54.0, ops-center: a status files and freshness view)
+
+- Added: Platform, Host and access, Status files: every state file the pages read with its size and age and a server decided fresh or stale (`OPSCENTER_STATUS_FRESH_MIN`), names and times only. `opscenter/DESIGN.md` 12.101 also lists where search, plan limits, runner pool health and the core consumption view already live.
+- Adoption risk: none.
+
+Refs #327.
+
 ## 2026-11-21 (v2.53.0, ops-center: drafts you can archive, and reply drafts that are never sent)
 
 - Added: a Drafts tab in the Action Center and a provider slot (`OPSCENTER_DRAFTS_PROVIDER`): list, archive, restore and a threaded reply draft. There is no send route and no delete route; `opscenter/DESIGN.md` 12.100.

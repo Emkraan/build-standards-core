@@ -315,6 +315,7 @@ function fakeBackend(fx) {
       '/api/llm-fallback': fx.fallback,
       '/api/extensions': fx.extensions,
       '/api/phone-access': fx.phone,
+      '/api/status-files': fx.statusFiles,
       '/api/drafts': fx.drafts,
       '/api/doc-pipeline': fx.docPipeline,
       '/api/approvals/queue': fx.approvalQueue,
@@ -832,6 +833,24 @@ test('the Action Center Drafts tab lists drafts, archives one after a confirmati
   })
   await withApp({ ...fixtures(), drafts: null }, async (s, origin) => {
     await visit(s, origin, '/action/drafts', 'light', `location.hash === '#/action'`, 'the redirect without a provider')
+  })
+})
+
+test('Status files lists the data files oldest first with the server decided state, and no contents', { skip, timeout: 120000 }, async () => {
+  const fx = fixtures()
+  fx.statusFiles = {
+    generated_utc: '2026-11-22T12:00:00Z',
+    stale_after_min: 1440,
+    counts: { fresh: 1, stale: 1 },
+    files: [
+      { name: 'old-feed.json', size: 2048, updated_utc: '2026-11-19T00:00:00Z', age_min: 4000, state: 'stale' },
+      { name: 'action-center.json', size: 120, updated_utc: '2026-11-22T11:55:00Z', age_min: 5, state: 'fresh' },
+    ],
+  }
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/platform/host/status-files', 'light', hasText('old-feed.json') && hasText('action-center.json'), 'the files')
+    assert.equal(await s.evaluate(hasText('Stale')), true, 'the stale state')
+    assert.deepEqual(await axeFindings(s), [], 'no axe violation')
   })
 })
 

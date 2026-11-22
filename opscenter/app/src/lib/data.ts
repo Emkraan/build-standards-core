@@ -3071,3 +3071,19 @@ export const useDrafts = createLiveStore<DraftsState>(async () => {
   return { configured: true, ...((await res.json()) as { fetched_utc: string; drafts: DraftRow[]; error: string | null }) }
 }, 60_000)
 export const postDraftArchive = (id: string, restore = false) => jiraPost<{ id: string; ok: boolean }>(restore ? 'api/drafts/restore' : 'api/drafts/archive', { id, confirm: true })
+
+// ---- Status files and freshness (server/modules/status_files.py, DESIGN.md 12.101) ----
+export interface StatusFile {
+  name: string
+  size: number
+  updated_utc: string
+  age_min: number
+  state: 'fresh' | 'stale'
+}
+export interface StatusFiles {
+  generated_utc: string
+  stale_after_min: number
+  files: StatusFile[]
+  counts: { fresh: number; stale: number }
+}
+export const useStatusFiles = createLiveStore(() => fetchApi<StatusFiles>('api/status-files'), 60_000)

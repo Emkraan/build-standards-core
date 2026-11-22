@@ -2234,6 +2234,14 @@ and brought back and nothing more, and `drafts_test.py` asserts the route table 
 list; the null default refuses all). The Action Center has a Drafts tab (the old `/action/drafts` address leaves for the home tab when there is no provider) with Archive, Restore and a show archived toggle, each behind a confirmation.
 A source that cannot be read is an error the tab shows, never an empty list.
 
+### 12.101 Status files and freshness; what else of capability 9 the core already has (cutover comment capability 9)
+
+`GET /api/status-files` (`server/modules/status_files.py`) lists the `*.json` files directly inside the dashboard dataset folder with name, size, last write time and age, oldest first, and the server decides which are stale
+(`OPSCENTER_STATUS_FRESH_MIN`, default 1440 minutes, a bad value falls back): ops-center-layout rule 4, the client holds no threshold. It never reads a file's contents, skips dot files, folders and symlinks, and lists at most 200.
+Platform, Host and access has a Status files item with a fresh and stale stat row and the table. The rest of the capability is already in the core and is recorded here so a consumer does not look for it twice: **search** across action
+items, sessions, 1:1 topics, state files and Jira is the Search page (`/search`, `ops_search.py`); **plan limits** and **spend** are Platform, Cost and standards, LLM spend; **runner pool health** is the host pool view on the Destroy
+approval card and Platform, Automation (`desktop_pool.py`, `pool_view.py`); the **core consumption view** (version and drift) is Platform, Cost and standards, Core.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.
