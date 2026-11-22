@@ -1,0 +1,6 @@
+#!/bin/sh
+# Runs the CI ruff lint (pinned version) before a push; the diff decides whether it has work.
+# Enabled by the same once-per-clone setting as pre-commit: git config core.hooksPath checks/hooks
+top=$(git rev-parse --show-toplevel) || exit 0
+[ -x "$top/scripts/preflight.sh" ] || exit 0
+exec "$top/scripts/preflight.sh" --pre-push
