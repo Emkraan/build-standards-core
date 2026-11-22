@@ -28,9 +28,10 @@ Live automation each hide when their provider is not configured.
 npm ci && npm run typecheck && npm test && npm run build   # then: npm run test:browser
 ```
 
-CI runs typecheck, the unit tests and the build in `.github/workflows/opscenter-app.yml`. The accessibility and live
-action tests drive Chrome and run with `npm run test:browser` after a build (set `CHROME_BIN`; they skip on a machine
-with no browser and never skip when `CI` is set); a consumer runs them in its own CI.
+CI runs typecheck, the unit tests, the build and the browser tests in `.github/workflows/opscenter-app.yml`. The browser tests
+(`npm run test:browser`, one process, ONE shared headless browser and one tab per test, killed and its profile deleted when the run ends)
+run on CI and never skip there. On a developer machine they skip unless `OPSCENTER_BROWSER_TESTS=1` is set with `CHROME_BIN` pointing at a headless
+capable Chrome or Chromium, so a local `npm run check` never opens a window or takes the keyboard focus. A consumer runs them in its own CI.
 
 ## Notes
 

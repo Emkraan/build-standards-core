@@ -7,15 +7,14 @@
 // Skips with a stated reason when dist/ or Chrome is missing on a machine with no browser provided; in CI, or with
 // CHROME_BIN set, it fails instead (tests/browserGate.mjs).
 import assert from 'node:assert/strict'
-import { spawn } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { createRequire } from 'node:module'
-import { tmpdir } from 'node:os'
 import { dirname, extname, join, normalize } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
-import { browserGate, chromeArgs } from './browserGate.mjs'
+import { browserGate } from './browserGate.mjs'
+import { closeTab, openTab, sharedBrowser } from './sharedBrowser.mjs'
 
 const APP = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DIST = join(APP, 'dist')
@@ -319,8 +318,8 @@ function serve(backend) {
   return new Promise((resolve) => srv.listen(0, '127.0.0.1', () => resolve(srv)))
 }
 
-async function cdpSession(port) {
-  let wsUrl
+async function cdpSession(port, tabUrl) {
+  let wsUrl = tabUrl
   for (let i = 0; i < 60 && !wsUrl; i++) {
     try {
       const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()
@@ -383,29 +382,17 @@ const skip = browserGate({ chrome: CHROME, dist: DIST })
 
 async function withApp(fx, body) {
   const srv = await serve(fakeBackend(fx))
-  const profile = mkdtempSync(join(tmpdir(), 'oc-tabs-chrome-'))
-  const port = 9300 + Math.floor(Math.random() * 400)
-  const chrome = spawn(CHROME, chromeArgs({ port, profile }), { stdio: 'ignore', detached: true })
-  const exited = new Promise((r) => chrome.once('exit', r))
+  const browser = await sharedBrowser(CHROME)
+  const tab = await openTab(browser)
   try {
-    const s = await cdpSession(port)
+    const s = await cdpSession(browser.port, tab.wsUrl)
     await s.send('Page.enable')
     const origin = `http://127.0.0.1:${srv.address().port}/index.html`
     await body(s, origin)
     s.close()
   } finally {
-    try {
-      process.kill(-chrome.pid, 'SIGKILL')
-    } catch {
-      chrome.kill('SIGKILL')
-    }
-    await Promise.race([exited, new Promise((r) => setTimeout(r, 5000))])
+    await closeTab(browser, tab.id)
     srv.close()
-    try {
-      rmSync(profile, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 })
-    } catch (e) {
-      console.warn(`could not remove the browser profile ${profile}: ${e.code || e.message}`)
-    }
   }
 }
 
