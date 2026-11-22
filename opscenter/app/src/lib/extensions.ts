@@ -12,6 +12,8 @@ export interface ExtensionPage {
   kind: ExtensionKind
   url: string | null
   lede: string | null
+  /** The badge the rail shows beside the page; absent from an older server. */
+  count?: number | null
 }
 
 export interface ExtensionRow {

@@ -15,7 +15,8 @@ Provider (`path/to/file.py:ClassName`):
          extension_rows(page_id, now) -> [<row>]          the rows of a `list` page, asked only for a page the manifest named
          extension_action(page_id, row_id, action_id) -> {ok, detail?}   one action a row declared; optional, a missing method is a 501
          authorize(headers, action, key) -> actor | falsy actions extensions.read and extensions.act, the null default refuses everything
-Page:    {id, title, group, kind, url?, lede?}
+Page:    {id, title, group, kind, url?, lede?, count?}
+         count   a whole number 0 to 999: the badge the rail shows beside the page (zero draws none); anything else is dropped
          id      lower case letters, digits and hyphens, 2 to 40 characters, and not a name the core already uses
          group   Operate | People | Knowledge | Platform, anything else becomes Platform
          kind    list | link. An unknown kind drops the page, because the core cannot draw it
@@ -78,6 +79,11 @@ def _stamp(now):
     return dt.datetime.fromtimestamp(_now(now), dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _count(v):
+    """The number the rail shows beside a page: a whole number from 0 to 999, else none. A bool, a float and a string are not counts."""
+    return v if isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 999 else None
+
+
 def _page(raw):
     """One declared page as the client draws it, or None when the core cannot draw it safely."""
     if not isinstance(raw, dict):
@@ -100,6 +106,7 @@ def _page(raw):
         "kind": kind,
         "url": url if kind == "link" else None,
         "lede": _clip(raw.get("lede")) or None,
+        "count": _count(raw.get("count")),
     }
 
 
