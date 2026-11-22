@@ -289,6 +289,10 @@ function fakeBackend(fx) {
       fx.posts.push('doc-draft')
       return json(res, 200, { id: 'd1', state: 'drafted', version: 'v1' }), true
     }
+    if ((path === '/api/drafts/archive' || path === '/api/drafts/restore') && req.method === 'POST') {
+      fx.posts.push(`drafts ${path.split('/').pop()}`)
+      return json(res, 200, { id: 'm1', ok: true }), true
+    }
     const extAct = path.match(/^\/api\/extensions\/([a-z0-9-]+)\/action$/)
     if (extAct && req.method === 'POST') {
       let raw = ''
@@ -311,6 +315,7 @@ function fakeBackend(fx) {
       '/api/llm-fallback': fx.fallback,
       '/api/extensions': fx.extensions,
       '/api/phone-access': fx.phone,
+      '/api/drafts': fx.drafts,
       '/api/doc-pipeline': fx.docPipeline,
       '/api/approvals/queue': fx.approvalQueue,
       '/api/dark-launches': fx.launches,
@@ -809,6 +814,24 @@ test('the Knowledge Documents tab appears with a pipeline provider, lists the qu
   })
   await withApp({ ...fixtures(), docPipeline: null }, async (s, origin) => {
     await visit(s, origin, '/knowledge/documents', 'light', `location.hash === '#/knowledge'`, 'the redirect when there is no provider')
+  })
+})
+
+test('the Action Center Drafts tab lists drafts, archives one after a confirmation, and redirects home with no provider', { skip, timeout: 120000 }, async () => {
+  const fx = fixtures()
+  fx.drafts = { fetched_utc: '2026-11-21T12:00:00Z', error: null, drafts: [{ id: 'm1', title: 'Re: budget', kind: 'reply', thread: 't1', updated: '2026-11-20', archived: false }] }
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/action/drafts', 'light', hasText('Re: budget') && hasText('never deleted'), 'the drafts')
+    const click = (text) => s.evaluate(`[...document.querySelectorAll('button')].filter((b) => b.textContent.trim() === ${JSON.stringify(text)}).pop().click(); true`)
+    await click('Archive')
+    await s.waitFor(hasText('Archive this draft?'), 'the confirmation')
+    assert.equal(fx.posts.some((p) => p.startsWith('drafts')), false, 'nothing is archived before the confirmation')
+    await click('Archive')
+    await s.waitFor(hasText('Archived.'), 'the result')
+    assert.ok(fx.posts.includes('drafts archive'), JSON.stringify(fx.posts))
+  })
+  await withApp({ ...fixtures(), drafts: null }, async (s, origin) => {
+    await visit(s, origin, '/action/drafts', 'light', `location.hash === '#/action'`, 'the redirect without a provider')
   })
 })
 

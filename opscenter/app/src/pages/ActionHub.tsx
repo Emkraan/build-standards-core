@@ -4,10 +4,10 @@
 // (the chat replacement, 2026-10-16), Live = what is acting right now (live sessions and the builds feed).
 // Drafts and Plans were retired 2026-10-06 (unused).
 import { lazy, Suspense } from 'react'
-import { useParams } from 'react-router-dom'
+import { Navigate, useParams } from 'react-router-dom'
 import { HubHeader } from '../components/HubHeader'
 import { useActionCounts } from '../lib/counts'
-import { useActiveBuilds, useTackleSessions } from '../lib/data'
+import { useActiveBuilds, useDrafts, useTackleSessions } from '../lib/data'
 import { liveCount } from '../lib/liveWork'
 import ActionCenter from './ActionCenter'
 import ActionRouting from './ActionRouting'
@@ -17,6 +17,7 @@ import './Action.css'
 
 // The Live tab loads after first paint so the Now tab keeps its first load budget.
 const LiveWork = lazy(() => import('../components/LiveWork'))
+const Drafts = lazy(() => import('../components/Drafts'))
 
 export default function ActionHub() {
   const { tab } = useParams()
@@ -24,6 +25,11 @@ export default function ActionHub() {
   const { data: sessions } = useTackleSessions()
   const { data: builds } = useActiveBuilds()
   const live = liveCount(sessions, builds)
+  // The Drafts tab exists only when the server has a drafts provider (a 404 on /api/drafts hides it).
+  const { data: drafts } = useDrafts()
+  const draftsOn = !!drafts?.configured
+  // With no drafts provider the old address leaves for the home tab, as it did when drafts were retired.
+  if (tab === 'drafts' && drafts && !drafts.configured) return <Navigate to="/action" replace />
   return (
     <div className="hub">
       <HubHeader
@@ -34,6 +40,7 @@ export default function ActionHub() {
           { to: '/action/live', label: 'Live', n: live || undefined },
           { to: '/action/alerts', label: 'Alerts', n: c.alerts },
           { to: '/action/completed', label: 'Completed' },
+          ...(draftsOn ? [{ to: '/action/drafts', label: 'Drafts', n: drafts.drafts.filter((d) => !d.archived).length }] : []),
           { to: '/action/routing', label: 'Routing' },
         ]}
       />
@@ -41,6 +48,10 @@ export default function ActionHub() {
         {tab === 'live' ? (
           <Suspense fallback={null}>
             <LiveWork />
+          </Suspense>
+        ) : tab === 'drafts' && draftsOn ? (
+          <Suspense fallback={null}>
+            <Drafts />
           </Suspense>
         ) : tab === 'alerts' ? (
           <Alerts />
