@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-22 (v2.57.0, pr preflight script)
+
+- Added: `scripts/preflight.sh` runs the CI ruff lint at the CI-pinned version and the PR-body declaration check before a push, and `checks/hooks/pre-push` runs it. `scripts/preflight.sh`
+- Adoption risk: none, repo tooling only; consumers are unaffected.
+
+No issue: operator-requested guard against ruff-format and PR-body CI reds.
+
 ## 2026-11-22 (v2.56.0, ops-center: ignore a whole thread)
 
 - Added: a routing rule may match `thread` (a mail conversation id, `chat:<id>` or `channel:<id>`), and mail and chat candidates carry it, so one rule drops every message of a thread, now and later. `opscenter/DESIGN.md` 12.103 also records where ideas decisions and Awareness already live.
