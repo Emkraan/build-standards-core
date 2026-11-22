@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-21 (v2.49.0, ops-center: approve or decline a change, with a live write switch)
+
+- Added: Approve and Decline on the Changes tab, behind a confirmation. A decision is a logged dry run until the owner turns on the live switch (off by default, and it cannot go live without `OPSCENTER_APPROVALS_CMD`); live, it re-checks that the change still waits on the owner and runs the command. `opscenter/DESIGN.md` 12.96.
+- Adoption risk: none, a server with no approvals command logs only.
+
+Refs #327.
+
 ## 2026-11-21 (v2.48.0, ops-center: the item bound build loop)
 
 - Added: a claim token binds a session's resolve and progress reports to the item it was started for; `POST /api/tackle/report`, `/api/tackle/bind` and `/api/tackle/prompt`; the last five reports show as a note on the Live row; launches go one at a time with a hold timeout (`OPSCENTER_LAUNCH_HOLD_S`, 429 when busy). `opscenter/DESIGN.md` 12.95.

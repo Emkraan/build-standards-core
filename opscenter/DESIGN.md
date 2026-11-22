@@ -2181,6 +2181,16 @@ The runtime slot (`server/runtime_slot.py`, `OPSCENTER_RUNTIME_CMD`) already sta
 
 Resolving with the archive of the chat scheduled after is the runtime's to do on the resolve it receives; the core does not see the chat.
 
+### 12.96 Change approvals with a live write switch (cutover comment capability 2)
+
+The Changes tab lists the changes waiting on the owner (12.15). It now also lets the owner approve or decline one (`server/modules/change_approvals.py`). The core owns the decision
+log (`<state>/dashboard/change-approvals.json`, the last 200 decisions) and the switch; the consumer owns the write, as `OPSCENTER_APPROVALS_CMD` (`decide '<json {key, decision, note}>'` printing
+`{ok, detail?}`). **The switch starts off and a decision is then only logged as a dry run** ("would approve CHG-12"), which calls nothing. `POST /api/approvals/switch {live, confirm: true}` turns writes
+on, and refuses (409) when no command is configured. With the switch on, a decision (`POST /api/approvals/decide {key, decision, note?, confirm: true}`, a key like ABC-123, approve or decline) first asks
+the tracker, when it is on, whether the change still waits on the owner and refuses (409) when it does not or the tracker cannot be read, so a change decided elsewhere is never decided twice; then it
+runs the command and logs the result, with a failed command logged as not ok and never as done. Every write needs `confirm: true`, and the page asks a confirmation that says whether the click is live or a
+dry run. `GET /api/approvals/queue` gives `{live, can_go_live, decisions}` for the switch and the five most recent decisions under the table.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

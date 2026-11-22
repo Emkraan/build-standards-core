@@ -1,8 +1,8 @@
 import type { StatusTone, TableColumn } from '@kit'
-import { Button, Card, CardHead, EmptyState, Pill, Skeleton, Table, Toolbar } from '@kit'
+import { Button, Card, CardHead, EmptyState, Pill, Skeleton, Switch, Table, Toolbar, useConfirm } from '@kit'
 import { useState } from 'react'
 import type { ChangeRow } from '../lib/data'
-import { useApprovals } from '../lib/data'
+import { postApprovalDecide, postApprovalSwitch, useApprovalQueue, useApprovals } from '../lib/data'
 import { LinkButton, LoadError } from './StateBlocks'
 
 // Live JSM changes where I am the approver (server.py /api/change-approvals, read-only).
@@ -34,7 +34,7 @@ export function hoursUntil(iso: string): number | null {
   return (new Date(iso).getTime() - Date.now()) / 36e5
 }
 
-function columns(primary: boolean): TableColumn<ChangeRow>[] {
+function columns(primary: boolean, decide?: (key: string, decision: 'approve' | 'decline') => void): TableColumn<ChangeRow>[] {
   return [
     {
       key: 'key',
@@ -104,7 +104,7 @@ function columns(primary: boolean): TableColumn<ChangeRow>[] {
       header: 'Actions',
       hideHeader: true,
       sortable: false,
-      width: primary ? '250px' : '90px',
+      width: primary ? '420px' : '90px',
       render: (c) =>
         primary ? (
           <div className="bk-btns">
@@ -114,6 +114,16 @@ function columns(primary: boolean): TableColumn<ChangeRow>[] {
             <LinkButton external href={c.url}>
               Agent view
             </LinkButton>
+            {decide && (
+              <>
+                <Button size="sm" variant="secondary" onClick={() => decide(c.key, 'approve')}>
+                  Approve
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => decide(c.key, 'decline')}>
+                  Decline
+                </Button>
+              </>
+            )}
           </div>
         ) : (
           <div className="bk-btns">
@@ -130,8 +140,47 @@ export default function Approvals() {
   const { data, error, loading, refresh } = useApprovals()
   const [showInflight, setShowInflight] = useState(true)
 
+  const { data: queue, refresh: refreshQueue } = useApprovalQueue()
+  const { confirm, dialog } = useConfirm()
+  const [msg, setMsg] = useState('')
   const pending = data?.pending || []
   const inflight = data?.inflight || []
+  const live = !!queue?.live
+  // The decision buttons exist while the server has the approvals route; with the switch off a click only logs a dry run, and the confirmation says so.
+  const decide = queue
+    ? async (key: string, decision: 'approve' | 'decline') => {
+        const ok = await confirm({
+          title: `${decision === 'approve' ? 'Approve' : 'Decline'} ${key}?`,
+          body: live ? 'This is written to the change system now.' : 'The switch is off: this is only logged as a dry run, nothing is written.',
+          confirmLabel: decision === 'approve' ? 'Approve' : 'Decline',
+          danger: decision === 'decline' && live,
+        })
+        if (!ok) return
+        try {
+          const r = await postApprovalDecide(key, decision, '')
+          setMsg(`${r.mode === 'live' ? '' : 'Dry run: '}${r.detail || (r.ok ? 'done' : 'did not go through')}`)
+          refreshQueue()
+          refresh()
+        } catch (e) {
+          setMsg(String(e).replace(/^Error: /, ''))
+        }
+      }
+    : undefined
+  const flip = async (on: boolean) => {
+    const ok = await confirm({
+      title: on ? 'Write approvals to the change system?' : 'Stop writing approvals?',
+      body: on ? 'Approve and Decline will be written for real until you turn this off.' : 'Approve and Decline will only be logged as a dry run.',
+      confirmLabel: on ? 'Go live' : 'Stop',
+      danger: on,
+    })
+    if (!ok) return
+    try {
+      await postApprovalSwitch(on)
+      refreshQueue()
+    } catch (e) {
+      setMsg(String(e).replace(/^Error: /, ''))
+    }
+  }
 
   return (
     <Card tone={pending.length ? 'red' : undefined}>
@@ -147,13 +196,20 @@ export default function Approvals() {
         refreshing={loading}
         refreshLabel={loading ? 'Checking...' : 'Refresh'}
         actions={
-          inflight.length > 0 ? (
-            <Button size="sm" variant="ghost" aria-pressed={showInflight} onClick={() => setShowInflight((s) => !s)}>
-              {showInflight ? 'Hide' : 'Show'} approved, in flight ({inflight.length})
-            </Button>
-          ) : undefined
+          <>
+            {queue && queue.can_go_live && (
+              <Switch label={live ? 'Live writes on' : 'Live writes off (log only)'} checked={live} onChange={(on) => void flip(on)} />
+            )}
+            {queue && !queue.can_go_live && <Pill tone="neutral">Log only: no approvals command</Pill>}
+            {inflight.length > 0 && (
+              <Button size="sm" variant="ghost" aria-pressed={showInflight} onClick={() => setShowInflight((s) => !s)}>
+                {showInflight ? 'Hide' : 'Show'} approved, in flight ({inflight.length})
+              </Button>
+            )}
+          </>
         }
       />
+      {msg && <p role="status">{msg}</p>}
       {error && !data && (
         <LoadError
           title="Could not load changes from JSM"
@@ -171,7 +227,7 @@ export default function Approvals() {
         <Table
           className="bk-table"
           caption="Changes waiting on my approval"
-          columns={columns(true)}
+          columns={columns(true, decide)}
           rows={pending}
           rowKey={(c) => c.key}
           defaultSort={{ key: 'planned_start', dir: 'asc' }}
@@ -190,6 +246,20 @@ export default function Approvals() {
           />
         </>
       )}
+      {queue && queue.decisions.length > 0 && (
+        <>
+          <h3 className="jr-group">Recent decisions</h3>
+          <ul className="bk-decisions">
+            {queue.decisions.slice(0, 5).map((d) => (
+              <li key={`${d.key}|${d.at}`}>
+                <Pill tone={d.ok ? (d.mode === 'live' ? 'success' : 'neutral') : 'danger'}>{d.mode === 'live' ? 'Live' : 'Dry run'}</Pill> {d.key} {d.decision}d,{' '}
+                {d.detail}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {dialog}
     </Card>
   )
 }

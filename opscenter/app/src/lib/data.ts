@@ -3004,3 +3004,23 @@ export const usePhoneAccess = createLiveStore<PhoneAccess>(async () => {
 export const postPhonePair = () => jiraPost<{ link: string; expires_in: number }>('api/phone-access/pair', {})
 export const postPhoneTest = (id: string) => jiraPost<{ ok: boolean; detail?: string }>('api/phone-access/test', { id, confirm: true })
 export const postPhoneRemove = (id: string) => jiraPost<{ ok: boolean }>('api/phone-access/remove', { id, confirm: true })
+
+// ---- Change approvals with a live write switch (server/modules/change_approvals.py, DESIGN.md 12.96) ----
+export interface ApprovalDecision {
+  key: string
+  decision: 'approve' | 'decline'
+  note: string
+  at: string
+  mode: 'dry_run' | 'live'
+  ok: boolean
+  detail: string
+}
+export interface ApprovalQueue {
+  live: boolean
+  can_go_live: boolean
+  decisions: ApprovalDecision[]
+}
+export const useApprovalQueue = createLiveStore(() => fetchApi<ApprovalQueue>('api/approvals/queue'), 60_000)
+export const postApprovalDecide = (key: string, decision: 'approve' | 'decline', note: string) =>
+  jiraPost<ApprovalDecision>('api/approvals/decide', { key, decision, note, confirm: true })
+export const postApprovalSwitch = (live: boolean) => jiraPost<{ live: boolean }>('api/approvals/switch', { live, confirm: true })

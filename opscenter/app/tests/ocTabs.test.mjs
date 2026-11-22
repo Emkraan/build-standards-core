@@ -273,6 +273,18 @@ function fakeBackend(fx) {
       })
       return true
     }
+    if ((path === '/api/approvals/decide' || path === '/api/approvals/switch') && req.method === 'POST') {
+      let raw = ''
+      req.on('data', (c) => {
+        raw += c
+      })
+      req.on('end', () => {
+        const b = JSON.parse(raw || '{}')
+        fx.posts.push(`${path.split('/').pop()} ${JSON.stringify(b)}`)
+        json(res, 200, path.endsWith('switch') ? { live: b.live } : { key: b.key, decision: b.decision, note: '', at: '2026-11-21T12:00:00Z', mode: 'dry_run', ok: true, detail: `would ${b.decision} ${b.key}` })
+      })
+      return true
+    }
     const extAct = path.match(/^\/api\/extensions\/([a-z0-9-]+)\/action$/)
     if (extAct && req.method === 'POST') {
       let raw = ''
@@ -295,6 +307,7 @@ function fakeBackend(fx) {
       '/api/llm-fallback': fx.fallback,
       '/api/extensions': fx.extensions,
       '/api/phone-access': fx.phone,
+      '/api/approvals/queue': fx.approvalQueue,
       '/api/dark-launches': fx.launches,
       '/api/badges': fx.badges,
       '/api/active-builds': fx.agentBuilds,
@@ -761,6 +774,22 @@ test('a consumer page can ask the rail for a count badge', { skip, timeout: 1200
     await visit(s, origin, '/action', 'light', `!!document.querySelector('a[href="#/extensions/reports"]')`, 'the rail item')
     assert.match(flat(await s.evaluate(`document.querySelector('a[href="#/extensions/reports"]').textContent`)), /5/, 'the count shows')
     assert.doesNotMatch(flat(await s.evaluate(`document.querySelector('a[href="#/extensions/docs"]').textContent`)), /\d/, 'a page with no count shows none')
+  })
+})
+
+test('a change can be approved from the Changes tab, as a logged dry run until the switch is turned on', { skip, timeout: 150000 }, async () => {
+  const fx = fixtures()
+  fx.approvalQueue = { live: false, can_go_live: true, decisions: [] }
+  fx.approvals = { generated_utc: '2026-11-21T12:00:00Z', inflight: [], pending: [{ key: 'CHG-12', summary: 'Patch the gateway', status: 'Awaiting approval', requester: 'Sam', change_type: 'Normal', risk: 'Low', planned_start: '2026-11-22T00:00:00Z', planned_end: '2026-11-22T01:00:00Z', created: '2026-11-20T00:00:00Z', url: 'https://example.test/CHG-12', portal_url: 'https://example.test/portal/CHG-12' }] }
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/work/changes', 'light', hasText('Live writes off'), 'the switch and the buttons')
+    const click = (text) => s.evaluate(`[...document.querySelectorAll('button')].filter((b) => b.textContent.trim() === ${JSON.stringify(text)}).pop().click(); true`)
+    await click('Approve')
+    await s.waitFor(hasText('only logged as a dry run'), 'the dry run confirmation')
+    assert.equal(fx.posts.some((p) => p.startsWith('decide')), false, 'nothing is sent before the confirmation')
+    await click('Approve')
+    await s.waitFor(hasText('Dry run: would approve'), 'the dry run result')
+    assert.ok(fx.posts.some((p) => p.startsWith('decide') && p.includes('"decision":"approve"') && p.includes('"confirm":true')), JSON.stringify(fx.posts))
   })
 })
 
