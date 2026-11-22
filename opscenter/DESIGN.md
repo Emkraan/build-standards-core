@@ -2191,6 +2191,22 @@ the tracker, when it is on, whether the change still waits on the owner and refu
 runs the command and logs the result, with a failed command logged as not ok and never as done. Every write needs `confirm: true`, and the page asks a confirmation that says whether the click is live or a
 dry run. `GET /api/approvals/queue` gives `{live, can_go_live, decisions}` for the switch and the five most recent decisions under the table.
 
+### 12.97 The document pipeline (cutover comment capability 3)
+
+A provider slot (`server/modules/doc_pipeline.py`, `OPSCENTER_DOCS_PIPELINE_PROVIDER=path/to/file.py:ClassName`, every method optional) for documents that need writing. The consumer supplies the queue (exports,
+merged pull requests, meetings, knowledge gaps, each with a plain `source`), the drafting, the preview text and the library write; the core owns the states, the transitions and the guard. States: queued, drafted,
+suggested, approved, rejected, published, kept in `<state>/dashboard/doc-pipeline.json` with a short history per document.
+
+- **Draft and preview.** Draft asks the provider for a draft and its version (the version changes whenever the text does); the Knowledge Documents tab shows the text as a Word-style page.
+- **Suggest changes in place.** A suggestion on a drafted or approved document is recorded, forwarded to the drafter when it has a `suggest` method, and drops any approval.
+- **Decide.** Approve or reject needs `confirm: true` and the version the owner read; a draft that changed since answers 409.
+- **Restore.** A rejected or published document goes back to drafted, with a confirmation.
+- **Guarded publish.** Publish needs `confirm: true`, an approved state and the approved version, then re-reads the draft and refuses (409) when its version moved on after the approval; only then does it call the provider's
+  `publish`. Nothing else in the core reaches the library. A new draft of an approved document drops the approval.
+
+Authorisation is the provider's `authorize(headers, action, key)` with `docs.read` and `docs.write` (the null default refuses all). With no provider there is no route and the Documents tab is hidden. A queue that cannot be
+read is an error the tab shows, never an empty queue.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

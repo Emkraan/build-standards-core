@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-21 (v2.50.0, ops-center: the document pipeline)
+
+- Added: a Documents tab in Knowledge and a provider slot (`OPSCENTER_DOCS_PIPELINE_PROVIDER`): a queue of what needs writing, draft, a Word-style preview, suggested changes in place, approve or reject, restore, and a guarded publish that refuses a draft that changed after its approval. `opscenter/DESIGN.md` 12.97.
+- Adoption risk: none, no provider means no route and no tab.
+
+Refs #327.
+
 ## 2026-11-21 (v2.49.0, ops-center: approve or decline a change, with a live write switch)
 
 - Added: Approve and Decline on the Changes tab, behind a confirmation. A decision is a logged dry run until the owner turns on the live switch (off by default, and it cannot go live without `OPSCENTER_APPROVALS_CMD`); live, it re-checks that the change still waits on the owner and runs the command. `opscenter/DESIGN.md` 12.96.
