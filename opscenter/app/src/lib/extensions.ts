@@ -21,6 +21,10 @@ export interface ExtensionRow {
   state: string | null
   url: string | null
   at: string | null
+  /** Up to four buttons the row declares; each needs a confirmation. Absent from an older server. */
+  actions?: { id: string; label: string; confirm: string | null }[]
+  /** The label and value pairs of the detail drawer. */
+  fields?: { label: string; value: string }[]
 }
 
 export interface ExtensionManifest {
@@ -93,4 +97,16 @@ export function extensionRoute(s: ExtensionsState | null | undefined, id: string
   if (!s) return failed ? 'leave' : 'wait'
   if (!s.configured || s.error) return 'leave'
   return s.pages.some((p) => p.id === id) ? 'show' : 'leave'
+}
+
+/** The states the rows carry, with how many rows each has, most rows first. Fewer than two states means no filter tabs. */
+export function stateTabs(rows: ExtensionRow[]): { state: string; n: number }[] {
+  const n = new Map<string, number>()
+  for (const r of rows) if (r.state) n.set(r.state, (n.get(r.state) || 0) + 1)
+  return n.size < 2 ? [] : [...n.entries()].map(([state, count]) => ({ state, n: count })).sort((a, b) => b.n - a.n || a.state.localeCompare(b.state))
+}
+
+/** The rows of the chosen state; every row when no state is chosen or the state is gone. */
+export function rowsInState(rows: ExtensionRow[], state: string): ExtensionRow[] {
+  return state ? rows.filter((r) => r.state === state) : rows
 }

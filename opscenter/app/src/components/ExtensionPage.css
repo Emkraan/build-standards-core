@@ -25,3 +25,26 @@
 .ext-link {
   margin: 1rem 0;
 }
+
+/* the detail drawer: label and value pairs and the row's own actions */
+.ext-fields {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+}
+.ext-fields div {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: var(--space-3);
+}
+.ext-fields dt {
+  color: var(--text-secondary);
+}
+.ext-fields dd {
+  margin: 0;
+}
+.ext-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

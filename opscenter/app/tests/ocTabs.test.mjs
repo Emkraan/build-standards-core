@@ -273,6 +273,18 @@ function fakeBackend(fx) {
       })
       return true
     }
+    const extAct = path.match(/^\/api\/extensions\/([a-z0-9-]+)\/action$/)
+    if (extAct && req.method === 'POST') {
+      let raw = ''
+      req.on('data', (c) => {
+        raw += c
+      })
+      req.on('end', () => {
+        fx.posts.push(`ext-action ${extAct[1]} ${JSON.stringify(JSON.parse(raw || '{}'))}`)
+        json(res, 200, { ok: true, detail: 'Approved.' })
+      })
+      return true
+    }
     const ext = path.match(/^\/api\/extensions\/([a-z0-9-]+)$/)
     if (ext && fx.extRows) {
       const out = typeof fx.extRows === 'function' ? fx.extRows(ext[1], Number(url.searchParams.get('offset') || 0)) : fx.extRows[ext[1]]
@@ -711,6 +723,33 @@ test('the Action Center row shows Stuck plans with the server count and links to
     await visit(s, origin, '/action', 'light', `document.querySelectorAll('.ac-counter').length > 0`, 'the counters row')
     await s.waitFor(`!!document.querySelector('.ac-counter[href="#/plans"]')`, 'the Stuck plans tile')
     assert.equal(await s.evaluate(tileText('Stuck plans')), '2 Stuck plans > #/plans')
+  })
+})
+
+test('an extension row filters by state, opens a drawer with its fields, and runs a declared action only after a confirmation', { skip, timeout: 150000 }, async () => {
+  const rows = [
+    { id: 'r1', title: 'Change one', detail: 'Waiting', state: 'Open', url: null, at: null, actions: [{ id: 'approve', label: 'Approve', confirm: 'Approve change one?' }], fields: [{ label: 'Owner', value: 'Sam' }] },
+    { id: 'r2', title: 'Change two', detail: null, state: 'Done', url: null, at: null },
+    { id: 'r3', title: 'Change three', detail: null, state: 'Open', url: null, at: null },
+  ]
+  const fx = fixtures()
+  fx.extensions = extManifest()
+  fx.extRows = { reports: extRows(extPages()[0], rows), docs: extRows(extPages()[1], []) }
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/extensions/reports', 'light', hasText('Change one') && hasText('Open 2') && hasText('Done 1'), 'the rows and the state tabs')
+    const click = (text) => s.evaluate(`[...document.querySelectorAll('button')].filter((b) => b.textContent.trim() === ${JSON.stringify(text)}).pop().click(); true`)
+    await click('Done 1')
+    await s.waitFor(`${hasText('Change two')} && !${hasText('Change one')}`, 'only the done row')
+    await click('All 3')
+    await s.waitFor(hasText('Change one'), 'all rows again')
+    await click('Details')
+    await s.waitFor(hasText('Sam'), 'the drawer fields')
+    await click('Approve')
+    await s.waitFor(hasText('Approve change one?'), 'the confirmation')
+    assert.equal(fx.posts.some((p) => p.startsWith('ext-action')), false, 'nothing runs before the confirmation')
+    await click('Approve')
+    await s.waitFor(hasText('Approved.'), 'the result')
+    assert.ok(fx.posts.includes('ext-action reports {"row":"r1","action":"approve","confirm":true}'), JSON.stringify(fx.posts))
   })
 })
 

@@ -13,14 +13,18 @@ Notes:   Opt in: with no provider (`OPSCENTER_EXTENSIONS_PROVIDER` unset) there 
 Provider (`path/to/file.py:ClassName`):
          extensions(now) -> [<page>]                      the pages as the consumer declares them
          extension_rows(page_id, now) -> [<row>]          the rows of a `list` page, asked only for a page the manifest named
-         authorize(headers, action, key) -> actor | falsy action extensions.read, the null default refuses everything
+         extension_action(page_id, row_id, action_id) -> {ok, detail?}   one action a row declared; optional, a missing method is a 501
+         authorize(headers, action, key) -> actor | falsy actions extensions.read and extensions.act, the null default refuses everything
 Page:    {id, title, group, kind, url?, lede?}
          id      lower case letters, digits and hyphens, 2 to 40 characters, and not a name the core already uses
          group   Operate | People | Knowledge | Platform, anything else becomes Platform
          kind    list | link. An unknown kind drops the page, because the core cannot draw it
          url     required for a link page, http or https only
-Row:     {id, title, detail?, state?, url?, at?}          state is plain text drawn as a pill, url is http or https only
-Routes:  GET /api/extensions                              {fetched_utc, pages (at most 12), truncated, error}
+Row:     {id, title, detail?, state?, url?, at?, actions?, fields?}
+         actions  up to four {id, label, confirm?}: the buttons of the row, each needs a confirmation and the extensions.act authorisation
+         fields   up to twelve {label, value}: the detail drawer, plain text          state is plain text drawn as a pill, url is http or https only
+Routes:  POST /api/extensions/<id>/action {row, action, confirm: true} -> {ok, detail?}   404 for an action the row does not declare
+         GET /api/extensions                              {fetched_utc, pages (at most 12), truncated, error}
          GET /api/extensions/<id>?offset=&limit=          {fetched_utc, page, rows (a window of at most 200), total (at most 5000), offset, truncated, error}, 404 for a page the
                                                           manifest does not name, 502 when the source failed
 API:     summarize(pages, now=None)  read(provider, now=None)  read_rows(provider, page_id, now=None, offset=0, limit=200)  register(registry, provider)
@@ -109,7 +113,40 @@ def _row(raw):
         "state": _clip(raw.get("state"), 30) or None,
         "url": _safe_url(raw.get("url")),
         "at": _clip(raw.get("at"), 40) or None,
+        "actions": _actions(raw.get("actions")),
+        "fields": _fields(raw.get("fields")),
     }
+
+
+ACTION_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,28}[a-z0-9]$")
+MAX_ACTIONS = 4
+MAX_FIELDS = 12
+
+
+def _actions(raw):
+    """The buttons a row declares: at most four of {id, label, confirm?}. A bad one is dropped, and a repeated id is kept once. They are only a menu: the provider decides what each does."""
+    out, seen = [], set()
+    for a in raw if isinstance(raw, list) else []:
+        if not isinstance(a, dict) or not ACTION_ID.match(str(a.get("id", ""))) or a["id"] in seen:
+            continue
+        seen.add(a["id"])
+        out.append(
+            {
+                "id": a["id"],
+                "label": _clip(a.get("label"), 40) or a["id"],
+                "confirm": _clip(a.get("confirm"), 200) or None,
+            }
+        )
+    return out[:MAX_ACTIONS]
+
+
+def _fields(raw):
+    """The label and value pairs of the detail drawer, plain text, at most twelve."""
+    out = []
+    for f in raw if isinstance(raw, list) else []:
+        if isinstance(f, dict) and f.get("label"):
+            out.append({"label": _clip(f.get("label"), 40), "value": _clip(f.get("value"), 400)})
+    return out[:MAX_FIELDS]
 
 
 def summarize(pages, now=None):
@@ -146,6 +183,12 @@ def _ask(fn, *args):
     if "error" in box:
         return None, f"the source failed ({box['error']})"
     return box.get("value"), None
+
+
+class Refused(Exception):
+    def __init__(self, message, status):
+        super().__init__(message)
+        self.status = status
 
 
 def _failed(reason, now=None):
@@ -223,7 +266,48 @@ def register(r, provider):
         body, status = read_rows(provider, q.groups[0], offset=offset, limit=limit)
         return body if status == 200 else (status, body)
 
+    def act(q):
+        """One declared action on one row. It needs `confirm: true`, an action the row itself declares, and the provider's `extensions.act` authorisation."""
+        op.actor_of(q.headers, provider, "extensions.act")
+        body = q.payload()
+        row_id, action_id = str(body.get("row", "")), str(body.get("action", ""))
+        if body.get("confirm") is not True:
+            raise ValueError("confirm must be true")
+        if not row_id or not ACTION_ID.match(action_id):
+            raise ValueError("row and action are required")
+        fn = op.method(provider, "extension_action")
+        if fn is None:
+            raise Refused("the provider has no extension_action method", 501)
+        page_id = q.groups[0]
+        data, status = read_rows(provider, page_id, offset=0, limit=MAX_ROWS)
+        if status != 200:
+            raise Refused(data.get("error") or "no such page", status)
+        # The row may sit past the first window, so look through every window before refusing it.
+        found, off = None, 0
+        while found is None:
+            found = next((r for r in data["rows"] if r["id"] == row_id), None)
+            off += len(data["rows"])
+            if found or data["truncated"] <= 0:
+                break
+            data, status = read_rows(provider, page_id, offset=off, limit=MAX_ROWS)
+        if not found or action_id not in {a["id"] for a in found["actions"]}:
+            raise Refused("that row does not declare that action", 404)
+        value, error = _ask(fn, page_id, row_id, action_id)
+        if error:
+            raise Refused(error, 502)
+        ok = bool(value.get("ok")) if isinstance(value, dict) else bool(value)
+        out = {"ok": ok}
+        if isinstance(value, dict) and value.get("detail"):
+            out["detail"] = _clip(value["detail"], 200)
+        return out
+
     r.add("GET", "/api/extensions", manifest, name="extensions.get")
+    r.add(
+        "POST",
+        re.compile(r"/api/extensions/([a-z0-9][a-z0-9-]{0,38}[a-z0-9])/action"),
+        act,
+        name="extensions.act",
+    )
     # The id pattern is in the route, so an address that is not a safe id never reaches the handler or the provider.
     r.add(
         "GET",

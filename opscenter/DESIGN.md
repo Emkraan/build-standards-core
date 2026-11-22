@@ -2061,9 +2061,7 @@ wins when both are set.
 
 A list page is no longer cut at 200 rows. The route takes `offset` and `limit` (at most 200 a window) and answers `total` (at most 5000),
 `offset` and `truncated` (the rows after this window). The page shows the first window and a Show more button that loads the next, which is a
-read and the only control an extension page has. Actions on rows (approve, deny, change a state), filters, tabs by state, search, a detail
-drawer and a row link to a local document are not built: an action is a write through a provider and needs its own safety design (recorded on
-issue 327 with a recommended default).
+read and the only control an extension page has. Row actions, state filter tabs and the detail drawer are 12.91. Search and a row link to a local document are not built.
 
 ### 12.81 Debt lists draw one window at a time (issue 327, parity spec section 5.5)
 
@@ -2134,6 +2132,15 @@ jobs (builds without one) and Sessions. A source that names no lane gets no sele
 The Plans feed counts open plans that stopped moving: an active project whose newest file has not changed for the stuck limit, and an in-progress library plan the same way (`counts.stuck`,
 `stuck` on each row). The limit is `OPSCENTER_PLAN_STUCK_DAYS` (default 14), decided on the server like every other threshold (ops-center-layout rule 4). A done, parked or proposed plan is
 waiting by design and is never stuck. The Action Center row shows Stuck plans between Platform and Improvements while the feed answers with a count, linking to Plans.
+
+### 12.91 Extension rows: actions, state tabs and the detail drawer (issues 326 item 8 and 327)
+
+A row may declare up to four `actions` (`{id, label, confirm?}`) and up to twelve `fields` (`{label, value}`). Rows that carry two or more distinct `state` values get a State control
+(All and each state with its count). A row with fields or actions has a Details button that opens a drawer with its detail, its fields and one button per action. An action runs only
+after a kit confirmation (the action's `confirm` text), by `POST /api/extensions/<id>/action` with `{row, action, confirm: true}`. The server refuses it without `confirm: true`, refuses an
+action the row itself does not declare (404, searched through every window of rows), and asks the provider's `authorize(headers, "extensions.act", key)`, separate from `extensions.read`
+(the null default refuses). The provider's optional `extension_action(page_id, row_id, action_id) -> {ok, detail?}` does the work; a provider without it answers 501, and the data-only
+file form (12.80) has none, so a file page shows actions only if a provider also supplies the method. The browser only ever sees the declared menu, never the provider.
 
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
