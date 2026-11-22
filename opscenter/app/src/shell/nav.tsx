@@ -36,6 +36,8 @@ export interface NavDef {
   slot?: 'tracker' | 'people'
   /** A page a consumer added through the extension manifest (opscenter/DESIGN.md 12.69). It has no badge and no shortcut. */
   extension?: true
+  /** The number a consumer page asks the rail to show beside it. */
+  count?: number
 }
 
 // The rail items in the core's own order (one flat rail, opscenter/DESIGN.md 12.72). The layout parameter (lib/navLayout.ts) relabels,
@@ -150,7 +152,7 @@ export function groupsFor(people: boolean, tracker = true, extra: ExtensionPage[
 
 /** A consumer page as a rail item. It comes after the core items of its group, so it never moves one, and it takes no G shortcut. */
 function extensionItem(p: ExtensionPage): NavDef {
-  return { to: extensionPath(p.id), label: p.title, icon: <IconLink />, hue: 'blue', key: '', extension: true }
+  return { to: extensionPath(p.id), label: p.title, icon: <IconLink />, hue: 'blue', key: '', extension: true, count: p.count ?? 0 }
 }
 
 /** The rail entry that owns a path (for the active marker and the header title). */

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-21 (v2.47.0, ops-center: a rail count badge for consumer pages)
+
+- Added: an extension page may carry `count` (0 to 999) and the rail shows it as the badge beside the page. `opscenter/DESIGN.md` 12.94 also records how the held back Stop action will be built.
+- Adoption risk: none, a page with no count draws none.
+
+Refs #326.
+
 ## 2026-11-21 (v2.46.0, ops-center: the consumer upgrade step)
 
 A consumer's service often cannot read the folder a clone lives in, so the nightly sync copied the built app and server into a runtime directory by hand.

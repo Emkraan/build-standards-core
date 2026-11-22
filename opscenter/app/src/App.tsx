@@ -218,7 +218,14 @@ export default function App() {
   const active = navFor(pathname)
 
   const badgeFor = (n: NavDef): ReactNode => {
-    const count = n.badge ? badges[n.badge] : 0
+    const count = n.badge ? badges[n.badge] : (n.count ?? 0)
+    if (n.extension) {
+      return count > 0 ? (
+        <span className="nb-count" data-tip={`${count} need me`}>
+          {count}
+        </span>
+      ) : undefined
+    }
     // Reviews carries a second, soft count: my open PRs, with a spinner while any has work running.
     const mine = n.badge === 'reviews' && counts.myPrs > 0
     if (!count && !mine) return undefined
@@ -257,7 +264,7 @@ export default function App() {
       {groupsFor(people, tracker, extraPages).map((g) => {
         const items = g.items.map((n) => {
             const badge = badgeFor(n)
-            const count = n.badge ? badges[n.badge] : 0
+            const count = n.badge ? badges[n.badge] : (n.count ?? 0)
             // The collapsed rail hides the kit badge, so the count rides on the icon itself.
             const icon = count ? (
               <span className="nav-ic">

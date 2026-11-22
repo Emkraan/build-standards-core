@@ -544,5 +544,24 @@ class RowActions(unittest.TestCase):
         self.assertEqual(e.exception.status, 501)
 
 
+class PageCount(unittest.TestCase):
+    def test_only_a_whole_number_in_range_is_a_count(self):
+        for good in (0, 7, 999):
+            self.assertEqual(ex._count(good), good)
+        for bad in (-1, 1000, 2.5, "3", True, None, [1]):
+            self.assertIsNone(ex._count(bad), repr(bad))
+
+    def test_a_page_carries_its_count(self):
+        p = ex._page(
+            {"id": "reports", "title": "Reports", "group": "Operate", "kind": "list", "count": 4}
+        )
+        self.assertEqual(p["count"], 4)
+        self.assertIsNone(
+            ex._page({"id": "reports", "title": "Reports", "group": "Operate", "kind": "list"})[
+                "count"
+            ]
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

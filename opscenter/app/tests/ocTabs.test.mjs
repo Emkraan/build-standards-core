@@ -753,6 +753,17 @@ test('an extension row filters by state, opens a drawer with its fields, and run
   })
 })
 
+test('a consumer page can ask the rail for a count badge', { skip, timeout: 120000 }, async () => {
+  const fx = fixtures()
+  fx.extensions = extManifest([{ ...extPages()[0], count: 5 }, extPages()[1]])
+  fx.extRows = { reports: extRows(extPages()[0], []), docs: extRows(extPages()[1], []) }
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/action', 'light', `!!document.querySelector('a[href="#/extensions/reports"]')`, 'the rail item')
+    assert.match(flat(await s.evaluate(`document.querySelector('a[href="#/extensions/reports"]').textContent`)), /5/, 'the count shows')
+    assert.doesNotMatch(flat(await s.evaluate(`document.querySelector('a[href="#/extensions/docs"]').textContent`)), /\d/, 'a page with no count shows none')
+  })
+})
+
 // ---- issue 308: Debt page filters ----
 test('the Debt page filters narrow the list and have no axe violation in either theme', { skip, timeout: 120000 }, async () => {
   await withApp(fixtures(), async (s, origin) => {

@@ -2157,6 +2157,17 @@ modules; build sources, `node_modules`, caches and tests left out) beside the ta
 until it answers 200 with JSON. A failed restart or smoke check puts the previous copy back, restarts again and exits 1, so nothing is left half swapped; exit 2 means there was no built
 app to copy. `--dry-run` stages, counts and removes the staging copy. The restart command is the operator's own and is run as given.
 
+### 12.94 Rail badges for consumer pages, and when the Stop action is designed (issue 326 items 10 and 12)
+
+A consumer page may carry `count` (a whole number from 0 to 999; anything else is dropped), and the rail shows it as the badge beside the page; zero draws none. Ordering inside a group
+is the order the consumer declared (12.69), which a consumer already controls, and a route outside `extensions/` stays out on purpose: an extension page never shadows a core address
+(`RESERVED_IDS`), so the page prefix is the contract.
+
+The Stop action on a running build is still held back, and this says how it will be built so a consumer knows what to expect. It is a write with a side effect, so it follows
+standards/automation-safety.md: a provider method `stop_build(id)` behind its own authorisation `active-builds.stop` (the read route's `active-builds.read` never grants it), a live
+re-read of the build at click time that refuses anything that is no longer running, a typed confirmation of the build's title, one audit line per stop, and no Stop on a build the source did
+not mark stoppable. It lands as its own pull request when the provider contract is agreed; until then the Live tab and the Active builds panel stay read only.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.
