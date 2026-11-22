@@ -19,8 +19,10 @@ import './Action.css'
 const LiveWork = lazy(() => import('../components/LiveWork'))
 const Drafts = lazy(() => import('../components/Drafts'))
 
-export default function ActionHub() {
-  const { tab } = useParams()
+// `fixedTab` is for a route with no :tab segment of its own (/action/drafts); every other tab comes from /action/:tab.
+export default function ActionHub({ fixedTab }: { fixedTab?: string }) {
+  const { tab: routeTab } = useParams()
+  const tab = fixedTab ?? routeTab
   const c = useActionCounts()
   const { data: sessions } = useTackleSessions()
   const { data: builds } = useActiveBuilds()
