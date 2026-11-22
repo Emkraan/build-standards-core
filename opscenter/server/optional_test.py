@@ -603,10 +603,10 @@ class Extensions(ExtensionsBase):
 
     provider_source = EXTENSIONS_PROVIDER
 
-    def test_only_the_two_read_routes_are_added(self):
+    def test_only_the_two_read_routes_and_the_confirmed_action_are_added(self):
         paths = {p for _, p in self.registry.paths()}
         self.assertIn("/api/extensions", paths)
-        self.assertEqual(len([p for p in paths if p.startswith("/api/extensions")]), 2)
+        self.assertEqual(len([p for p in paths if p.startswith("/api/extensions")]), 3)
 
     def test_closed_until_the_provider_authorises_and_a_write_is_405(self):
         self.assertEqual(self.js("GET", "/api/extensions")[0], 403)

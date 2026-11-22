@@ -229,6 +229,8 @@ class Rows(unittest.TestCase):
                 "state": "Open",
                 "url": "https://t.test/1",
                 "at": "2026-11-19",
+                "actions": [],
+                "fields": [],
             },
         )
         self.assertEqual(src.asked, ["reports"])
@@ -314,9 +316,9 @@ class Route(unittest.TestCase):
         self.assertIsNotNone(route, f"{path} is registered")
         return route.handler(reg.Request("GET", path, {}, None, headers or {}, groups))
 
-    def test_the_routes_are_two_reads(self):
+    def test_the_routes_are_two_reads_and_one_confirmed_action(self):
         paths = [p for _, p in self.registry(Source([])).paths()]
-        self.assertEqual(len(paths), 2)
+        self.assertEqual(len(paths), 3)
         self.assertIn("/api/extensions", paths)
 
     def test_it_cannot_be_written_to(self):
@@ -460,6 +462,86 @@ class WindowAndFile(unittest.TestCase):
             self.assertEqual(out["pages"], [])
             f.unlink()
             self.assertTrue(ex.read(p)["error"])
+
+
+class RowActions(unittest.TestCase):
+    PAGE = {"id": "hist", "title": "History", "group": "Platform", "kind": "list"}
+
+    def make(self, rows, can_act=True, acts=None):
+        src = Source(pages=[self.PAGE], rows=rows)
+        src.authorize = lambda headers, action, key=None: (
+            "me" if (can_act or action != "extensions.act") else None
+        )
+        calls = acts if acts is not None else []
+        src.extension_action = lambda page, row, action: (
+            calls.append((page, row, action)) or {"ok": True, "detail": "done"}
+        )
+        r = reg.Registry()
+        ex.register(r, src)
+        return next(x.handler for x in r.routes if x.name == "extensions.act"), calls
+
+    def post(self, h, body):
+        return h(reg.Request("POST", "/x", body=body, headers={}, groups=("hist",)))
+
+    ROW = {
+        "id": "r1",
+        "title": "One",
+        "actions": [
+            {"id": "approve", "label": "Approve", "confirm": "Approve it?"},
+            {"id": "bad id"},
+        ],
+        "fields": [{"label": "Owner", "value": "me"}, {"nolabel": 1}],
+    }
+
+    def test_a_row_keeps_only_well_formed_actions_and_fields(self):
+        row = ex._row(self.ROW)
+        self.assertEqual([a["id"] for a in row["actions"]], ["approve"])
+        self.assertEqual(row["actions"][0]["confirm"], "Approve it?")
+        self.assertEqual(row["fields"], [{"label": "Owner", "value": "me"}])
+        many = ex._row({"id": "x", "title": "t", "actions": [{"id": f"a{i}0"} for i in range(9)]})
+        self.assertEqual(len(many["actions"]), ex.MAX_ACTIONS)
+
+    def test_a_declared_action_runs_once_with_a_confirmation(self):
+        h, calls = self.make([self.ROW])
+        self.assertEqual(
+            self.post(h, {"row": "r1", "action": "approve", "confirm": True}),
+            {"ok": True, "detail": "done"},
+        )
+        self.assertEqual(calls, [("hist", "r1", "approve")])
+
+    def test_no_confirmation_an_undeclared_action_or_an_unknown_row_changes_nothing(self):
+        h, calls = self.make([self.ROW])
+        with self.assertRaises(ValueError):
+            self.post(h, {"row": "r1", "action": "approve"})
+        with self.assertRaises(ValueError):
+            self.post(h, {"row": "r1", "action": "approve", "confirm": "yes"})
+        for body in ({"row": "r1", "action": "delete"}, {"row": "nope", "action": "approve"}):
+            with self.assertRaises(ex.Refused) as e:
+                self.post(h, dict(body, confirm=True))
+            self.assertEqual(e.exception.status, 404)
+        self.assertEqual(calls, [])
+
+    def test_the_act_authorisation_is_separate_from_read(self):
+        h, calls = self.make([self.ROW], can_act=False)
+        with self.assertRaises(PermissionError):
+            self.post(h, {"row": "r1", "action": "approve", "confirm": True})
+        self.assertEqual(calls, [])
+
+    def test_a_row_past_the_first_window_can_be_acted_on(self):
+        rows = [{"id": f"r{i}", "title": "t"} for i in range(250)] + [dict(self.ROW, id="late")]
+        h, calls = self.make(rows)
+        self.assertTrue(self.post(h, {"row": "late", "action": "approve", "confirm": True})["ok"])
+        self.assertEqual(calls[0][1], "late")
+
+    def test_a_provider_without_the_method_is_a_501(self):
+        src = Source(pages=[self.PAGE], rows=[self.ROW])
+        src.authorize = lambda headers, action, key=None: "me"
+        r = reg.Registry()
+        ex.register(r, src)
+        h = next(x.handler for x in r.routes if x.name == "extensions.act")
+        with self.assertRaises(ex.Refused) as e:
+            self.post(h, {"row": "r1", "action": "approve", "confirm": True})
+        self.assertEqual(e.exception.status, 501)
 
 
 if __name__ == "__main__":

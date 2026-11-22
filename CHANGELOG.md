@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-21 (v2.44.0, ops-center: extension rows with actions, state tabs and a detail drawer)
+
+- Added: extension rows may declare `actions` and `fields`; rows with two or more states get a State control; a Details drawer shows the fields and the row's actions. An action runs after a confirmation through `POST /api/extensions/<id>/action`, gated by `extensions.act` and the provider's `extension_action`, and only if the row declares it.
+- Changed: the test that kept extension pages read-only now allows exactly that one confirmed post.
+- Adoption risk: none, a row without actions behaves as before.
+
+Refs #326.
+
 ## 2026-11-21 (v2.43.0, ops-center: the browser tests share one headless browser and skip locally)
 
 Each of about 50 browser tests launched its own Chrome, which on a desktop opened and closed windows all day and took the keyboard focus.

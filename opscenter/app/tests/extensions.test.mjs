@@ -75,9 +75,9 @@ test('a page is an error when its source failed, a link for a link page, and oth
   assert.equal(pageMode(null), 'empty')
 })
 
-// The pages read and link. A button that changes something is a separate decision with its own confirmation (standards/automation-safety.md),
-// so a regression that adds a write path here would quietly create it without that design.
-test('the extension pages have no write path: no post function, no request but the read-only paging helper, no raw button, no raw html', () => {
+// An extension page reads and links, and since 12.91 a row may declare actions. The only write is postExtensionAction, behind a kit confirmation, and
+// the server refuses any action the row does not declare, so nothing else here may send a request or draw a raw control.
+test('the extension pages write only through the confirmed row action: one post function, a confirmation first, no raw button, no raw html', () => {
   for (const f of ['../src/lib/extensions.ts', '../src/components/ExtensionPage.tsx']) {
     let src
     try {
@@ -85,12 +85,23 @@ test('the extension pages have no write path: no post function, no request but t
     } catch {
       continue
     }
-    assert.equal(/\bpost[A-Z]\w*/.test(src), false, `${f} must not call a post function`)
-    assert.equal(/fetch\(|method:\s*'(POST|DELETE|PUT)'/.test(src), false, `${f} must not send a request`)
-    // The one control is the Show more button of the paging window: a kit Button whose handler only reads the next window.
+    const posts = [...src.matchAll(/\bpost[A-Z]\w*/g)].map((m) => m[0])
+    assert.ok(posts.every((p) => p === 'postExtensionAction'), `${f}: the only post function is postExtensionAction (${posts})`)
+    assert.equal(/fetch\(|method:\s*'(POST|DELETE|PUT)'/.test(src), false, `${f} must not send a request itself`)
     assert.equal(/<button/.test(src), false, `${f} must not draw a raw button`)
-    assert.ok((src.match(/onClick=/g) || []).length <= 1, `${f} has at most the paging control`)
-    if (/onClick=/.test(src)) assert.ok(/fetchExtensionRows\(/.test(src) && !/post|method/.test(src.slice(src.indexOf('onClick='))), `${f}: the only handler reads the next window`)
+    if (posts.length) assert.ok(src.indexOf('await confirm(') >= 0 && src.indexOf('await confirm(') < src.indexOf('postExtensionAction('), `${f}: a confirmation comes before the post`)
     assert.equal(/dangerouslySetInnerHTML|innerHTML/.test(src), false, `${f} must not draw raw markup`)
   }
+})
+
+test('state tabs appear only when rows carry two or more states, most rows first, and a state filters the rows', async () => {
+  const { stateTabs, rowsInState } = await import('../src/lib/extensions.ts')
+  const r = (id, state) => ({ id, title: id, detail: null, state, url: null, at: null })
+  assert.deepEqual(stateTabs([r('a', 'Open'), r('b', 'Open')]), [])
+  assert.deepEqual(stateTabs([r('a', null), r('b', null)]), [])
+  const rows = [r('a', 'Open'), r('b', 'Done'), r('c', 'Open'), r('d', null)]
+  assert.deepEqual(stateTabs(rows), [{ state: 'Open', n: 2 }, { state: 'Done', n: 1 }])
+  assert.deepEqual(rowsInState(rows, 'Open').map((x) => x.id), ['a', 'c'])
+  assert.equal(rowsInState(rows, '').length, 4)
+  assert.equal(rowsInState(rows, 'Gone').length, 0)
 })

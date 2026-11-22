@@ -1043,6 +1043,9 @@ export function useExtensionRows(id: string): LiveState<ExtensionRows> {
   }, 60_000)
   return extensionRowStores[id]()
 }
+/** One declared action on one row, after the operator confirmed it. The server refuses an action the row does not declare. */
+export const postExtensionAction = (page: string, row: string, action: string) =>
+  jiraPost<{ ok: boolean; detail?: string }>(`api/extensions/${encodeURIComponent(page)}/action`, { row, action, confirm: true })
 /** The next window of a long list page: 200 rows from `offset`. A failure is an error the page shows, never an end of the list. */
 export async function fetchExtensionRows(id: string, offset: number): Promise<ExtensionRows> {
   const res = await fetch(`${BASE}api/extensions/${encodeURIComponent(id)}?offset=${offset}`, { cache: 'no-cache' })
