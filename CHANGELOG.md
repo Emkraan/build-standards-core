@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-21 (v2.40.0, ops-center: a status filter on My PRs)
+
+- Added: My PRs opens with a Status control (All, Needs you, In progress, Waiting, Stuck, Ready) with a count each. Stuck is the lane's own state, not a client threshold.
+- Adoption risk: none.
+
+Refs #326.
+
 ## 2026-11-21 (v2.39.0, ops-center: the Auto-curated line on Debt, and no eyebrows)
 
 - Added: Debt and improvements shows how many entries the curate job changed on its own in the last 7 days, from the job's own log (`GET /api/eng-backlog/curation`).

@@ -129,3 +129,17 @@ export function platformPrState(p: PlatformMyPr): PrStateView {
   if (h?.kind === 'waiting') return { state: 'waiting', why: h.summary, next: h.next || `The next pass of ${LANE_PASS}.` }
   return { state: 'ready', why: 'Everything is green.', next: `The next pass of ${LANE_PASS} merges it.` }
 }
+
+/** The status filter of My PRs: every state with the rows in it, in the order a PR moves, and the rows a chosen state keeps. The state of a row is
+ *  platformPrState's, which reads only fields the server set, so Stuck here is the lane's own answer that nothing will move the PR. */
+export const PR_FILTER_STATES: PrState[] = ['needs_you', 'in_progress', 'waiting', 'stuck', 'ready']
+
+export function prStateCounts(rows: PlatformMyPr[]): Record<PrState, number> {
+  const out: Record<PrState, number> = { needs_you: 0, in_progress: 0, waiting: 0, stuck: 0, ready: 0 }
+  for (const p of rows) out[platformPrState(p).state] += 1
+  return out
+}
+
+export function filterByPrState(rows: PlatformMyPr[], pick: PrState | 'all'): PlatformMyPr[] {
+  return pick === 'all' ? rows : rows.filter((p) => platformPrState(p).state === pick)
+}
