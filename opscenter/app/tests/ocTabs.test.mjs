@@ -832,11 +832,16 @@ test('the Live tab lists what is acting, stuck first, counts it on the tab, and 
   await withApp(fixtures(), async (s, origin) => {
     for (const theme of ['light', 'dark']) {
       await visit(s, origin, '/action/live', theme, `document.querySelectorAll('.ac-live li').length > 0`, 'the Live list')
-      assert.deepEqual(await s.evaluate(liveRows), [
-        'build | stuck | Docs pass',
-        'session | running | Tighten the importer',
-        'build | running | Fix the importer',
-      ], `${theme}: stuck first, then the freshest sign of life, history left out`)
+      const pick = (name) => s.evaluate(`[...document.querySelectorAll('[role=radio], [role=tab], button')].find((b) => b.textContent.trim().startsWith(${JSON.stringify(name)})).click(); true`)
+      // The control opens on the first state that has rows; here nothing failed, so it is Running.
+      assert.deepEqual(await s.evaluate(liveRows), ['session | running | Tighten the importer', 'build | running | Fix the importer'], `${theme}: running first`)
+      await pick('Stuck')
+      await s.waitFor(`document.querySelectorAll('.ac-live li').length === 1`, 'the stuck row')
+      assert.deepEqual(await s.evaluate(liveRows), ['build | stuck | Docs pass'], `${theme}: stuck`)
+      await pick('Just finished')
+      await s.waitFor(`document.querySelectorAll('.ac-live li').length === 1`, 'the finished row')
+      assert.deepEqual(await s.evaluate(liveRows), ['build | finished | Old cleanup'], `${theme}: history on request`)
+      await pick('Running')
       assert.equal(await s.evaluate(`document.querySelectorAll('.ac-live button').length`), 0, `${theme}: no Stop button`)
       assert.equal(await s.evaluate(`document.querySelector('.ac-live li[data-kind="session"] .ac-live-ticket').textContent`), 'WORK-77', `${theme}: the session carries its ticket`)
       assert.match(flat(await s.evaluate(`document.querySelector('.hub-head').innerText`)), /Live 3\b/, `${theme}: the tab counts three acting`)

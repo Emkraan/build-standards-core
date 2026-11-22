@@ -82,3 +82,10 @@ test('the Team tabs open with the reference stat rows and labels', () => {
     for (const l of labels) assert.ok(src.includes(`'${l}'`), `${page}: ${l}`)
   }
 })
+
+test('the approval brief draws the why table with the reference column widths and upper case headers', () => {
+  const src = read('../src/components/ApprovalBrief.tsx')
+  assert.match(src, /rh-grants rh-grants-why/)
+  for (const w of ['9%', '42%', '11%', '38%']) assert.ok(src.includes(`width: '${w}'`), w)
+  assert.match(read('../src/pages/ReviewsHub.css'), /\.rh-grants-why th \{\s*text-transform: uppercase/)
+})

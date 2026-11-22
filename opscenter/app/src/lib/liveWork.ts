@@ -86,3 +86,49 @@ export function liveMode(
 export function liveCount(sessions: Record<string, TackleSession> | null | undefined, feed: ActiveBuildsState | null | undefined): number {
   return liveRows(sessions, feed).length
 }
+
+/** The states of the Work by state control, in reading order. */
+export const LIVE_STATES = ['needs', 'running', 'waiting', 'stuck', 'finished'] as const
+export type LiveState = (typeof LIVE_STATES)[number]
+export const LIVE_STATE_LABEL: Record<LiveState, string> = {
+  needs: 'Needs me',
+  running: 'Running',
+  waiting: 'Waiting',
+  stuck: 'Stuck',
+  finished: 'Just finished',
+}
+
+/**
+ * Every row of both sources with the state the control files it under: a failed build needs me, a running build or session is running,
+ * a session that is still opening is waiting, a stuck build is stuck, a finished build just finished. The Live tab badge keeps counting
+ * only what is acting (liveCount); the failed and finished rows are history the control can show on request.
+ */
+export function liveByState(
+  sessions: Record<string, TackleSession> | null | undefined,
+  feed: ActiveBuildsState | null | undefined,
+): Record<LiveState, LiveRow[]> {
+  const out: Record<LiveState, LiveRow[]> = { needs: [], running: [], waiting: [], stuck: [], finished: [] }
+  for (const r of liveRows(sessions, feed)) {
+    out[r.state === 'stuck' ? 'stuck' : r.state === 'launching' ? 'waiting' : 'running'].push(r)
+  }
+  if (feed && feed.configured && !feed.error) {
+    for (const b of feed.builds) {
+      if (b.state !== 'failed' && b.state !== 'finished') continue
+      out[b.state === 'failed' ? 'needs' : 'finished'].push({
+        id: `build:${b.id}`,
+        kind: 'build',
+        title: b.title,
+        state: b.state,
+        since: b.activity_at ?? b.finished ?? b.started,
+        ticket: null,
+        url: b.url !== null && /^https?:\/\//.test(b.url) ? b.url : null,
+      })
+    }
+  }
+  return out
+}
+
+/** The state the control opens on: the first one that has rows, in reading order. */
+export function firstLiveState(by: Record<LiveState, LiveRow[]>): LiveState {
+  return LIVE_STATES.find((k) => by[k].length > 0) ?? 'running'
+}

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-21 (v2.36.0, ops-center: the Live tab Work by state control and the why table widths)
+
+- Added: the Live tab of the Action Center opens with the Work by state control (Needs me, Running, Waiting, Stuck, Just finished) with a count each, from the two feeds it already read.
+- Changed: the why table of an approval brief takes the reference column widths and upper case headers.
+- Adoption risk: none, the Live tab badge still counts only what is acting.
+
+Refs #327.
+
 ## 2026-11-21 (v2.35.0, ops-center: Team stat rows)
 
 - Changed: the Team This cycle, Member reviews and Yearly review tabs open with the shared stat row; the High/Highest tile reads High and highest.

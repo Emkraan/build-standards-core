@@ -102,3 +102,25 @@ test('the Live tab has no write path: no post function, no fetch, no button', ()
     assert.equal(/<button\b|<Button\b/.test(src), false, `${f} must not draw a button`)
   }
 })
+
+test('the Work by state control files every row under needs me, running, waiting, stuck or just finished', async () => {
+  const { liveByState, firstLiveState, LIVE_STATES } = await import('../src/lib/liveWork.ts')
+  const b = (id, state) => ({ id, title: id, state, started: 1000, activity_at: null, finished: state === 'finished' || state === 'failed' ? 2000 : null, url: null, kind: null, outcome: null, activity: null })
+  const feed = { configured: true, fetched_utc: 'x', counts: {}, builds: [b('r', 'running'), b('s', 'stuck'), b('f', 'failed'), b('d', 'finished')], truncated: 0, error: null }
+  const sessions = { fp1: { state: 'launching', live: true, title: 'Opening one', started: '2026-11-21T00:00:00Z' }, fp2: { state: 'running', live: true, title: 'Running one', started: '2026-11-21T00:00:00Z' } }
+  const by = liveByState(sessions, feed)
+  assert.deepEqual(LIVE_STATES, ['needs', 'running', 'waiting', 'stuck', 'finished'])
+  assert.deepEqual(by.needs.map((r) => r.id), ['build:f'])
+  assert.deepEqual(by.running.map((r) => r.id).sort(), ['build:r', 'session:fp2'])
+  assert.deepEqual(by.waiting.map((r) => r.id), ['session:fp1'])
+  assert.deepEqual(by.stuck.map((r) => r.id), ['build:s'])
+  assert.deepEqual(by.finished.map((r) => r.id), ['build:d'])
+  assert.equal(firstLiveState(by), 'needs')
+  assert.equal(firstLiveState({ needs: [], running: [], waiting: [], stuck: [], finished: [] }), 'running')
+})
+
+test('a failed builds source files nothing, so a broken feed never reads as calm', async () => {
+  const { liveByState } = await import('../src/lib/liveWork.ts')
+  const feed = { configured: true, fetched_utc: 'x', counts: {}, builds: [{ id: 'f', title: 'f', state: 'failed' }], truncated: 0, error: 'boom' }
+  assert.equal(liveByState({}, feed).needs.length, 0)
+})

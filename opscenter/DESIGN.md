@@ -2088,6 +2088,14 @@ Months on record, Trajectory) and Yearly review (Work items completed, High prio
 open with the shared `StatRow`. Their labels already matched the spec except High and highest. The Knowledge tabs carry no stat row in the spec and keep
 theirs (the Docs drift tab's own tiles).
 
+### 12.84 Pull requests grants table and the Live tab control (issue 327, parity spec sections 5.1 and 5.3)
+
+The per-repo Pull requests tabs (a working dot and a count per repo, Needs me, In progress, My PRs, Recently shipped) already matched. The why table of an approval
+brief (Kind, What, Severity, Where) takes the reference column widths (9, 42, 11 and 38 percent) and upper case headers. The Live tab opens with the Work by state
+control: Needs me (failed builds), Running (running builds and sessions), Waiting (sessions still opening), Stuck and Just finished (finished builds), each with its
+count, opening on the first state that has rows. The tab badge still counts only what is acting. The reference Lane select and its Engineer PRs and Scheduled jobs
+sections need a repo lane on each row, which neither feed carries, so they are not drawn.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

@@ -226,7 +226,13 @@ function PrStructuredAsk({ brief }: { brief: ApprovalBrief }) {
       <p>{brief.why_you}</p>
       {why.length > 0 && (
         <div className="rh-grants-wrap">
-          <table className="rh-grants">
+          <table className="rh-grants rh-grants-why">
+            <colgroup>
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '42%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '38%' }} />
+            </colgroup>
             <thead>
               <tr>
                 <th>Kind</th>

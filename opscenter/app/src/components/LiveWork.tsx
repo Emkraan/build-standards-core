@@ -2,16 +2,19 @@
 // into one list. It reads and links only. Stopping something is a side effect with its own design under standards/automation-safety.md
 // (issue 308, item 5). The decisions live in lib/liveWork.ts so a test can load them without the browser.
 
-import type { StatusTone } from '@kit'
-import { EmptyState, Pill, Skeleton } from '@kit'
+import type { SegmentedOption, StatusTone } from '@kit'
+import { EmptyState, Pill, Segmented, Skeleton } from '@kit'
+import { useState } from 'react'
 import { ageText } from '../lib/activeBuilds'
 import { useActiveBuilds, useTackleSessions } from '../lib/data'
-import { liveMode, liveRows } from '../lib/liveWork'
+import type { LiveState } from '../lib/liveWork'
+import { firstLiveState, LIVE_STATE_LABEL, LIVE_STATES, liveByState, liveMode } from '../lib/liveWork'
 import { LoadError } from './StateBlocks'
 
-const STATE_TONE: Record<string, StatusTone> = { stuck: 'warning', running: 'success', launching: 'neutral' }
+const STATE_TONE: Record<string, StatusTone> = { stuck: 'warning', running: 'success', launching: 'neutral', failed: 'danger', finished: 'neutral' }
 
 export default function LiveWork() {
+  const [picked, setPicked] = useState<LiveState | null>(null)
   const { data: sessions, error: sessionsErr } = useTackleSessions()
   const { data: builds, error: buildsErr } = useActiveBuilds()
   // A source that has failed is an error even while its last good copy is still held, so a stale list never reads as current.
@@ -24,9 +27,15 @@ export default function LiveWork() {
   }
   if (mode === 'quiet') return <EmptyState compact pose="idle" title="Nothing is acting right now." />
   const now = Date.now() / 1000
+  const by = liveByState(sessions, builds)
+  const view = picked ?? firstLiveState(by)
+  const options: SegmentedOption<LiveState>[] = LIVE_STATES.map((k) => ({ value: k, label: `${LIVE_STATE_LABEL[k]} ${by[k].length}` }))
   return (
+    <>
+    <Segmented label="Work by state" options={options} value={view} onChange={setPicked} />
+    {by[view].length === 0 && <EmptyState compact pose="idle" title={`Nothing is ${LIVE_STATE_LABEL[view].toLowerCase()}.`} />}
     <ul className="ac-live" aria-label="Acting now">
-      {liveRows(sessions, builds).map((r) => (
+      {by[view].map((r) => (
         <li key={r.id} data-state={r.state} data-kind={r.kind}>
           <Pill tone={STATE_TONE[r.state] ?? 'neutral'}>{r.state[0].toUpperCase() + r.state.slice(1)}</Pill>
           <span className="ac-live-title">
@@ -43,5 +52,6 @@ export default function LiveWork() {
         </li>
       ))}
     </ul>
+    </>
   )
 }
