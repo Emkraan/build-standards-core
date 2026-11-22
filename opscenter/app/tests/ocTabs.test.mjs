@@ -281,6 +281,7 @@ function fakeBackend(fx) {
       return json(res, out.error ? 502 : 200, out), true
     }
     const table = {
+      '/api/llm-fallback': fx.fallback,
       '/api/extensions': fx.extensions,
       '/api/phone-access': fx.phone,
       '/api/dark-launches': fx.launches,
@@ -657,6 +658,21 @@ test('a long Debt list shows 100 rows and loads the next window on request', { s
     await s.evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('more (150 left)')).click(); true`)
     await s.waitFor(`${hasText('Debt entry 200')} && ${hasText('50 left')}`, 'the second window')
     assert.deepEqual(await axeFindings(s), [], 'no axe violation')
+  })
+})
+
+test('the header shows the Enterprise chip with the time left while an incident is open, and not otherwise', { skip, timeout: 120000 }, async () => {
+  const closes = new Date(Date.now() + 41 * 60e3).toISOString()
+  const fb = { checked_utc: null, team: null, history: [], active: { id: 'i1', opened_utc: new Date().toISOString(), last_call_utc: new Date().toISOString(), calls: 2, est_usd: 1, sessions: {}, team_session_pct: 10, team_weekly_pct: 10, closes_utc: closes } }
+  await withApp({ ...fixtures(), fallback: fb }, async (s, origin) => {
+    await s.send('Emulation.setDeviceMetricsOverride', { width: 1300, height: 900, deviceScaleFactor: 1, mobile: false })
+    await visit(s, origin, '/action', 'light', `!!document.querySelector('.ent-chip')`, 'the chip')
+    assert.match(flat(await s.evaluate(`document.querySelector('.ent-chip-full').textContent`)), /^Enterprise on, 0 h (40|41) min left$/)
+    assert.deepEqual(await axeFindings(s), [], 'no axe violation')
+  })
+  await withApp({ ...fixtures(), fallback: { ...fb, active: null } }, async (s, origin) => {
+    await visit(s, origin, '/action', 'light', `document.querySelectorAll('.ac-counter').length > 0`, 'the page')
+    assert.equal(await s.evaluate(`!!document.querySelector('.ent-chip')`), false, 'no incident, no chip')
   })
 })
 

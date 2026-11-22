@@ -437,6 +437,9 @@ class Fallback(Base):
         self.calls(1, at=self.NOW + 100)
         self.assertEqual(self.run_at(200, self.ROOM), "")
         self.assertEqual(mf.get()["active"]["calls"], 3)
+        # The incident says when it clears on its own: one quiet period after the last leak call.
+        act = mf.get()["active"]
+        self.assertEqual(ma._epoch(act["closes_utc"]) - ma._epoch(act["last_call_utc"]), mf.QUIET_S)
 
     def test_no_estimate_without_a_rates_file(self):
         self.calls(1)
