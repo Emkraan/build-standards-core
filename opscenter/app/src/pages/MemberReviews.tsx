@@ -4,7 +4,9 @@
 // the per-sprint numbers live on the This cycle and Trends tabs.
 //
 import type { StatTone } from '@kit'
-import { Badge, Card, CardHead, EmptyState, IconChevronRight, Skeleton, StatTile } from '@kit'
+import { IconChart } from '../components/icons'
+import { StatRow } from '../components/StatRow'
+import { Badge, Card, CardHead, EmptyState, IconChevronRight, IconClock, IconInfo, Skeleton } from '@kit'
 import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Tkt } from '../components/ui'
@@ -190,14 +192,20 @@ export default function MemberReviews() {
               </p>
             </div>
             <div className="mr-hero-stats">
-              <StatTile label="Datapoints drawn on" value={p.evidence.datapoints} tone="info" />
-              <StatTile
-                label="Months on record"
-                value={monthsSpan(p.evidence.first_seen, p.evidence.last_seen)}
-                tone="accent"
-                hint={`${fmtMonth(p.evidence.first_seen)} to ${fmtMonth(p.evidence.last_seen)}`}
+              <StatRow
+                label="Member summary"
+                stats={[
+                  { key: 'dp', label: 'Datapoints drawn on', value: p.evidence.datapoints, icon: <IconInfo /> },
+                  {
+                    key: 'mo',
+                    label: 'Months on record',
+                    value: monthsSpan(p.evidence.first_seen, p.evidence.last_seen),
+                    sub: `${fmtMonth(p.evidence.first_seen)} to ${fmtMonth(p.evidence.last_seen)}`,
+                    icon: <IconClock />,
+                  },
+                  { key: 'tr', label: 'Trajectory', value: `${traj.glyph} ${traj.label}`, icon: <IconChart /> },
+                ]}
               />
-              <StatTile label="Trajectory" value={`${traj.glyph} ${traj.label}`} tone={traj.stat} />
             </div>
           </Card>
 

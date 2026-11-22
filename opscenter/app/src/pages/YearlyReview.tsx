@@ -23,12 +23,16 @@ import {
   Segmented,
   Select,
   Skeleton,
-  StatTile,
+  IconAlert,
+  IconCheck,
+  IconClock,
+  IconInfo,
   Textarea,
   Tone,
   Toolbar,
   useConfirm,
 } from '@kit'
+import { StatRow } from '../components/StatRow'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
@@ -1010,20 +1014,23 @@ function SectionCard({
   )
 }
 
-// The year's hero numbers for the picked person, as kit StatTiles (rule 4: the only KPI primitive).
+// The year's numbers for the picked person, as the shared stat row.
 function YearStats({ metrics, first }: { metrics: ReviewMetrics | null; first: string }) {
   if (!metrics) return null
   const j = metrics.jira
   const highPct = j.high_touched ? Math.round((100 * j.high_closed) / j.high_touched) : 0
   return (
-    <div className="stat-grid kpi-strip pp-stats yr-stats">
-      <StatTile label="Work items completed" value={j.closed} tone="success" />
-      <StatTile label="High priority closed" value={`${j.high_closed}/${j.high_touched}`} tone="accent" hint={`${highPct}%`} />
-      <StatTile label="Median turnaround" value={`${j.median_days_new_work ?? '-'}d`} tone="info" hint="new work" />
-      <StatTile label="Long-standing cleared" value={j.aged_cleared} tone="success" />
-      <StatTile label="Open now" value={j.open_now} tone={j.open_over_90d ? 'warning' : 'info'} hint={`${j.open_over_90d} over 90 days`} />
-      <StatTile label={`Items ${first} raised`} value={j.reported_by_them} tone="info" />
-    </div>
+    <StatRow
+      label="Year summary"
+      stats={[
+        { key: 'closed', label: 'Work items completed', value: j.closed, icon: <IconCheck /> },
+        { key: 'high', label: 'High priority closed', value: `${j.high_closed}/${j.high_touched}`, sub: `${highPct}%`, icon: <IconAlert /> },
+        { key: 'med', label: 'Median turnaround', value: `${j.median_days_new_work ?? '-'}d`, sub: 'new work', icon: <IconClock /> },
+        { key: 'aged', label: 'Long-standing cleared', value: j.aged_cleared, icon: <IconCheck /> },
+        { key: 'open', label: 'Open now', value: j.open_now, sub: `${j.open_over_90d} over 90 days`, icon: <IconClock /> },
+        { key: 'rep', label: `Items ${first} raised`, value: j.reported_by_them, icon: <IconInfo /> },
+      ]}
+    />
   )
 }
 

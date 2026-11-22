@@ -68,3 +68,17 @@ test('the Alerts and Completed tabs open with the reference stat rows and labels
     for (const l of labels) assert.ok(src.includes(`'${l}'`), `${page}: ${l}`)
   }
 })
+
+test('the Team tabs open with the reference stat rows and labels', () => {
+  const want = {
+    TeamPerformance: ['Points delivered', 'High and highest', 'Open'],
+    MemberReviews: ['Datapoints drawn on', 'Months on record', 'Trajectory'],
+    YearlyReview: ['Work items completed', 'High priority closed', 'Median turnaround', 'Long-standing cleared', 'Open now'],
+  }
+  for (const [page, labels] of Object.entries(want)) {
+    const src = read(`../src/pages/${page}.tsx`)
+    assert.match(src, /<StatRow/, page)
+    assert.doesNotMatch(src, /<StatTile/, page)
+    for (const l of labels) assert.ok(src.includes(`'${l}'`), `${page}: ${l}`)
+  }
+})

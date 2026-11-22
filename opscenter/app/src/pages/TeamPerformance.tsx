@@ -1,5 +1,7 @@
 import type { TableColumn } from '@kit'
-import { Badge, Card, CardHead, EmptyState, Input, Skeleton, StatTile, Table } from '@kit'
+import { IconChart } from '../components/icons'
+import { StatRow } from '../components/StatRow'
+import { Badge, Card, CardHead, EmptyState, IconAlert, IconCheck, IconClock, Input, Skeleton, Table } from '@kit'
 import { useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Tkt } from '../components/ui'
@@ -101,32 +103,15 @@ export default function TeamPerformance() {
         })}
       </PersonRail>
 
-      <div className="stat-grid kpi-strip pp-stats">
-        <StatTile
-          label={`${first}: completion`}
-          value={`${m.completion_pct}%`}
-          tone={STAT_TONE[tone]}
-          hint={`${m.done} of ${m.assigned} done`}
-        />
-        <StatTile
-          label="Points delivered"
-          value={`${m.points_delivered}/${m.points_committed}`}
-          tone="info"
-          hint="delivered of committed"
-        />
-        <StatTile
-          label="High/Highest"
-          value={`${m.high_priority.done}/${m.high_priority.assigned}`}
-          tone="accent"
-          hint="done of assigned"
-        />
-        <StatTile
-          label="Open"
-          value={m.not_done.length}
-          tone={m.not_done.length ? 'warning' : 'success'}
-          hint={`Carryover ${m.carryover.length}`}
-        />
-      </div>
+      <StatRow
+        label={`${first} summary`}
+        stats={[
+          { key: 'pct', label: `${first}: completion`, value: `${m.completion_pct}%`, sub: `${m.done} of ${m.assigned} done`, icon: <IconCheck /> },
+          { key: 'pts', label: 'Points delivered', value: `${m.points_delivered}/${m.points_committed}`, sub: 'delivered of committed', icon: <IconChart /> },
+          { key: 'high', label: 'High and highest', value: `${m.high_priority.done}/${m.high_priority.assigned}`, sub: 'done of assigned', icon: <IconAlert /> },
+          { key: 'open', label: 'Open', value: m.not_done.length, sub: `Carryover ${m.carryover.length}`, icon: <IconClock /> },
+        ]}
+      />
 
       <div className="tp-main">
         <Card tone={TONE_HUE[tone]}>
