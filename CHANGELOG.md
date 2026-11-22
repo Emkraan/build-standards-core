@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-21 (v2.46.0, ops-center: the consumer upgrade step)
+
+A consumer's service often cannot read the folder a clone lives in, so the nightly sync copied the built app and server into a runtime directory by hand.
+
+- Added: `opscenter/tools/upgrade.py` copies the built app and the server into a service location, keeps the replaced copy as `opscenter.prev`, restarts the service and runs a smoke check, and puts the old copy back when either fails (`opscenter/DESIGN.md` 12.93).
+- Adoption risk: none, nothing runs it until a consumer calls it.
+
+Refs #327.
+
 ## 2026-11-21 (v2.45.0, ops-center: document backed entries in the plan library)
 
 - Added: `library/<name>.link.json` lists a document that lives elsewhere (title, url, status, summary, owner, updated) in the plan library; the row opens the document in a new tab and has no preview or Archive (`opscenter/DESIGN.md` 12.92).

@@ -2149,6 +2149,14 @@ The plan library reads markdown, and a consumer whose plans are word processor d
 status, a Document pill and the summary, and opens the url in a new tab (http or https only); nothing of the document is read, so the row has no preview and no Archive.
 A file that does not parse, has no title or carries another kind of url is left out, never drawn half. The plan counts include these entries.
 
+### 12.93 The consumer upgrade step (cutover comment, delivery path)
+
+`tools/upgrade.py` is the documented upgrade step a nightly sync runs after it pulls a release: build the app, then `python3 opscenter/tools/upgrade.py --target <service dir>
+--restart-cmd "<restart the service>" --smoke-url http://127.0.0.1:<port>/api/health`. It stages a copy of the opscenter folder (the built `app/dist`, the server and the python
+modules; build sources, `node_modules`, caches and tests left out) beside the target, swaps it in keeping the replaced copy as `opscenter.prev`, restarts, and polls the smoke url
+until it answers 200 with JSON. A failed restart or smoke check puts the previous copy back, restarts again and exits 1, so nothing is left half swapped; exit 2 means there was no built
+app to copy. `--dry-run` stages, counts and removes the staging copy. The restart command is the operator's own and is run as given.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.
