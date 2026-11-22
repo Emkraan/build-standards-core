@@ -750,6 +750,9 @@ export const fetchTransitions = (key: string) =>
   jiraGet<{ key: string; transitions: JiraTransition[] }>(`api/jira/transitions?key=${encodeURIComponent(key)}`)
 // Move one backlog issue into the active sprint (confirmed on read-back).
 export const postSprintMove = (key: string) => jiraPost<{ key: string; moved_to: { id: number; name: string } }>('api/sprint-move', { key })
+// A new backlog item for me (planned, BAU or unplanned), read back before it is reported; DESIGN.md 12.99.
+export const postJiraIssue = (summary: string, workClass: 'planned' | 'bau' | 'unplanned', description = '') =>
+  jiraPost<{ key: string; url: string; summary: string }>('api/jira/issue', { summary, class: workClass, description })
 // Pull one of my sprint issues back to the backlog (confirmed on read-back).
 export const postSprintRemove = (key: string) =>
   jiraPost<{ key: string; removed_from: { id: number; name: string } }>('api/jira/sprint-remove', { key })

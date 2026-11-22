@@ -2214,6 +2214,18 @@ The header already shows the change freeze from `change-freeze.json` (the change
 shows the nearest one as an info notice, "Go-live in 2 days: <name>. For awareness. This is not a change freeze.", beside the freeze status and never as a freeze: a go-live never turns the strip red and never blocks
 the freeze gate. Windows with no kind are freezes as before.
 
+### 12.99 Backlog writes behind the tracker slot (cutover comment capability 7)
+
+The tracker slot's write form (the reference tracker, 12.15; not the data file form of 12.74, which is read only) gains two writes on the owner's own items, both with `what_if` and a read back before they report:
+
+- `POST /api/jira/issue {summary, class, description?, priority?}` creates one item in the configured project, assigned to the owner. `class` is `planned`, `bau` or `unplanned`: the BAU and unplanned defaults are labels set by the
+  tracker parameters `bau_label` and `unplanned_label` (default BAU and Unplanned), the issue type by `issue_type` (default Task). A missing project is a 409, a bad class or an empty summary a 400, and an item whose summary does not read back is an error.
+  The Backlog tab has an Add an item form.
+- `POST /api/jira/issue/update {key, summary?, priority?, description?}` changes one of the owner's own items (403 for anyone else's, 400 for nothing to change).
+
+**Complete is not a new route.** Closing an item already has a process: the sprint close-out asks the owner (needs me), the owner decides and the close-out writes the closure comment and the transition (12.15, `transition` refuses done targets).
+A second way to close from the backlog would bypass that comment, so completing stays on the existing path; this is recorded as the default on issue 327.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

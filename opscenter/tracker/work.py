@@ -35,6 +35,13 @@ CLOUD_ID = params.get("site_id", "")
 BROWSE = params.get("browse_url", "")
 PROJECT = params.get("project", "")
 SPRINT_FIELD = params.get("sprint_field", "customfield_10020")
+# The defaults of a new item: its issue type and the label that marks BAU and unplanned work (parameters, no default names an estate).
+ISSUE_TYPE = params.get("issue_type", "Task")
+CLASS_LABELS = {
+    "planned": None,
+    "bau": params.get("bau_label", "BAU"),
+    "unplanned": params.get("unplanned_label", "Unplanned"),
+}
 POINTS_FIELD = params.get("points_field", "customfield_10016")
 # A JQL clause that scopes a view to the owner's team (params.team_clause), empty for none.
 TEAM_CLAUSE = params.get("team_clause", "")
@@ -487,6 +494,83 @@ def sprint_remove(key, what_if=False):
     after = _issue(key, [SPRINT_FIELD]).get(SPRINT_FIELD) or []
     if any(isinstance(s, dict) and s.get("state") in ("active", "future") for s in after):
         raise TrackerError(f"{key} edit accepted but removal not confirmed on read-back")
+    invalidate("sprint", "backlog")
+    return out
+
+
+def _clean(v, n):
+    return " ".join(str(v if v is not None else "").split())[:n]
+
+
+def create_issue(summary, work_class="planned", description="", priority=None, what_if=False):
+    """Create one backlog item for the owner in the configured project: planned work, BAU or unplanned (the class sets the label). It lands unassigned
+    to any sprint and assigned to the owner, and is read back before it is reported. what_if answers what would be created and calls nothing."""
+    summary = _clean(summary, 200)
+    if not summary:
+        raise TrackerError("a summary is required", 400)
+    if work_class not in CLASS_LABELS:
+        raise TrackerError("class must be planned, bau or unplanned", 400)
+    if not PROJECT:
+        raise TrackerError("no project is configured for new items", 409)
+    label = CLASS_LABELS[work_class]
+    out = {
+        "summary": summary,
+        "class": work_class,
+        "project": PROJECT,
+        "issue_type": ISSUE_TYPE,
+        "label": label,
+    }
+    if what_if:
+        return {**out, "what_if": True}
+    fields = {}
+    if label:
+        fields["labels"] = [label]
+    if priority:
+        fields["priority"] = {"name": _clean(priority, 30)}
+    r = call(
+        "createJiraIssue",
+        {
+            "cloudId": CLOUD_ID,
+            "projectKey": PROJECT,
+            "issueTypeName": ISSUE_TYPE,
+            "summary": summary,
+            "description": str(description or "")[:4000],
+            "assignee_account_id": me(),
+            "additional_fields": fields,
+        },
+    )
+    key = (r.get("key") if isinstance(r, dict) else None) or ""
+    if not KEY_RE.match(str(key)):
+        raise TrackerError("the tracker accepted the item but returned no key")
+    got = _issue(key, ["summary"]).get("summary")
+    if got != summary:
+        raise TrackerError(f"{key} was created but its summary reads {got!r} on read-back")
+    invalidate("backlog")
+    return {**out, "key": key, "url": BROWSE + key}
+
+
+def update_issue(key, summary=None, priority=None, description=None, what_if=False):
+    """Change the summary, priority or description of one of the owner's own items, read back before it is reported. Completing an item is not here:
+    closing runs through the owner's closure process (needs me, DESIGN.md 12.99)."""
+    key = _key(key)
+    fields = {}
+    if summary is not None:
+        fields["summary"] = _clean(summary, 200)
+        if not fields["summary"]:
+            raise TrackerError("a summary cannot be empty", 400)
+    if priority:
+        fields["priority"] = {"name": _clean(priority, 30)}
+    if description is not None:
+        fields["description"] = str(description)[:4000]
+    if not fields:
+        raise TrackerError("nothing to change", 400)
+    _assert_mine(key, ["summary"])
+    out = {"key": key, "changes": sorted(fields)}
+    if what_if:
+        return {**out, "what_if": True}
+    call("editJiraIssue", {"cloudId": CLOUD_ID, "issueIdOrKey": key, "fields": fields})
+    if "summary" in fields and _issue(key, ["summary"]).get("summary") != fields["summary"]:
+        raise TrackerError(f"{key} edit accepted but the summary was not confirmed on read-back")
     invalidate("sprint", "backlog")
     return out
 

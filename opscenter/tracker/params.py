@@ -10,6 +10,8 @@ default names an estate. A missing site or driver makes a call fail with a clear
   team_clause        a JQL clause that scopes a view to the owner's team (empty: none)
   sprint_field       the Sprint custom field id (default customfield_10020)
   points_field       the story points custom field id (default customfield_10016)
+  issue_type         the issue type of a new backlog item (default Task)
+  bau_label, unplanned_label   the labels that mark BAU and unplanned work on a new item (default BAU and Unplanned)
   email_domain       the address domain a roster email must have to be used in a query (empty: any)
   owner_name         the owner's display name (assignee match, tracker owner match, card owner)
   change_jql, change_pending_statuses, change_inflight_statuses, change_fields, portal_url_template

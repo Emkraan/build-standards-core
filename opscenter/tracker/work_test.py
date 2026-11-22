@@ -48,9 +48,16 @@ if tool == "getJiraIssue":
     done({"fields": st["issues"][args["issueIdOrKey"]]})
 if tool == "editJiraIssue":
     f = st["issues"][args["issueIdOrKey"]]
-    sp = args["fields"].get("customfield_10020", "x")
-    f["customfield_10020"] = [] if sp is None else [{"id": sp, "state": "active", "name": "S1"}]
+    if "summary" in args["fields"]:
+        f["summary"] = args["fields"]["summary"]
+    if "customfield_10020" in args["fields"] or "summary" not in args["fields"]:
+        sp = args["fields"].get("customfield_10020", "x")
+        f["customfield_10020"] = [] if sp is None else [{"id": sp, "state": "active", "name": "S1"}]
     done({})
+if tool == "createJiraIssue":
+    st["created"] = args
+    st["issues"]["ABC-100"] = {"summary": args["summary"], "status": {"name": "To Do", "statusCategory": {"key": "new"}}, "assignee": {"accountId": "me-1"}, "customfield_10020": []}
+    done({"key": "ABC-100"})
 if tool == "getTransitionsForJiraIssue":
     done({"transitions": st["transitions"]})
 if tool == "transitionJiraIssue":
@@ -358,6 +365,48 @@ class Work(unittest.TestCase):
             self.assertEqual(work.approvals(fresh=True)["pending"], [])
         finally:
             work.CHANGE_BASE_JQL = saved
+
+
+class WriteBacklog(Work):
+    def test_create_makes_a_labelled_item_for_the_owner_and_reads_it_back(self):
+        out = work.create_issue("  Tidy   the runbook ", "bau", "why", "Low")
+        self.assertEqual(
+            (out["key"], out["summary"], out["label"], out["project"]),
+            ("ABC-100", "Tidy the runbook", "BAU", "ABC"),
+        )
+        sent = json.loads(STATE.read_text())["created"]
+        self.assertEqual(sent["projectKey"], "ABC")
+        self.assertEqual(sent["issueTypeName"], "Task")
+        self.assertEqual(sent["assignee_account_id"], "me-1")
+        self.assertEqual(
+            sent["additional_fields"], {"labels": ["BAU"], "priority": {"name": "Low"}}
+        )
+
+    def test_unplanned_and_planned_labels_and_a_bad_class_or_summary(self):
+        self.assertEqual(work.create_issue("x", "unplanned")["label"], "Unplanned")
+        self.assertIsNone(work.create_issue("x")["label"])
+        for args in (("", "planned"), ("x", "weird")):
+            with self.assertRaises(work.TrackerError) as e:
+                work.create_issue(*args)
+            self.assertEqual(e.exception.code, 400)
+
+    def test_what_if_creates_nothing(self):
+        out = work.create_issue("Plan it", "planned", what_if=True)
+        self.assertTrue(out["what_if"])
+        self.assertNotIn("created", json.loads(STATE.read_text()))
+
+    def test_update_changes_the_summary_of_my_item_and_refuses_someone_elses_or_nothing(self):
+        out = work.update_issue("ABC-1", summary=" New  title ")
+        self.assertEqual(out["changes"], ["summary"])
+        self.assertEqual(json.loads(STATE.read_text())["issues"]["ABC-1"]["summary"], "New title")
+        with self.assertRaises(work.TrackerError) as e:
+            work.update_issue("ABC-2", summary="mine now")
+        self.assertEqual(e.exception.code, 403)
+        with self.assertRaises(work.TrackerError):
+            work.update_issue("ABC-1")
+        with self.assertRaises(work.TrackerError):
+            work.update_issue("ABC-1", summary="   ")
+        self.assertTrue(work.update_issue("ABC-1", summary="x", what_if=True)["what_if"])
 
 
 if __name__ == "__main__":

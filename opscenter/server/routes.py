@@ -285,6 +285,36 @@ def _table():
         ),
         (
             P,
+            "/api/jira/issue",
+            "work",
+            "create_issue",
+            lambda m: (
+                lambda r: m.create_issue(
+                    _payload(r).get("summary"),
+                    _payload(r).get("class") or "planned",
+                    _payload(r).get("description") or "",
+                    _payload(r).get("priority"),
+                    bool(_payload(r).get("what_if")),
+                )
+            ),
+        ),
+        (
+            P,
+            "/api/jira/issue/update",
+            "work",
+            "update_issue",
+            lambda m: (
+                lambda r: m.update_issue(
+                    _payload(r).get("key"),
+                    _payload(r).get("summary"),
+                    _payload(r).get("priority"),
+                    _payload(r).get("description"),
+                    bool(_payload(r).get("what_if")),
+                )
+            ),
+        ),
+        (
+            P,
             "/api/jira/sprint-remove",
             "work",
             "sprint_remove",
