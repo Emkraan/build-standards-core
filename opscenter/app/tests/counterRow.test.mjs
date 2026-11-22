@@ -70,3 +70,13 @@ test('every tile points at a route that App.tsx serves and is not a legacy redir
     assert.ok(!/OldRoute|Navigate/.test(best.element), `${tile.key}: ${tile.to} is a redirect (${best.path})`)
   }
 })
+
+test('the Stuck plans tile sits between Platform and Improvements, and appears only while the server counts stuck plans', () => {
+  assert.equal(keys(tiles()).includes('plans'), false)
+  assert.equal(keys(tiles({}, { stuckPlans: null })).includes('plans'), false)
+  const t = tiles({}, { stuckPlans: 3 })
+  assert.deepEqual(keys(t), ['actions', 'reviews', 'operations', 'plans', 'debt'])
+  assert.equal(t.find((x) => x.key === 'plans').label, 'Stuck plans')
+  assert.equal(t.find((x) => x.key === 'plans').count, 3)
+  assert.equal(tiles({}, { stuckPlans: 0 }).find((x) => x.key === 'plans').count, 0)
+})

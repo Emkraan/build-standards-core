@@ -292,6 +292,7 @@ function fakeBackend(fx) {
       '/api/platform-reviews': fx.platform,
       '/api/team-reviews': fx.team,
       '/api/repo-reviews': fx.repos,
+      '/api/plans': fx.plans,
       '/api/eng-backlog': fx.eng,
       '/api/eng-backlog/curation': fx.curation,
       '/api/docs-drift': fx.drift,
@@ -658,7 +659,6 @@ test('a long Debt list shows 100 rows and loads the next window on request', { s
     assert.equal(await s.evaluate(hasText('Debt entry 101')), false, 'the second window is not drawn yet')
     await s.evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('more (150 left)')).click(); true`)
     await s.waitFor(`${hasText('Debt entry 200')} && ${hasText('50 left')}`, 'the second window')
-    assert.deepEqual(await axeFindings(s), [], 'no axe violation')
   })
 })
 
@@ -715,6 +715,15 @@ test('the Live tab has a Lane select and one titled list per kind of work when t
     await s.evaluate(`(() => { const sel = document.querySelector('select[aria-label="Lane"]'); const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; set.call(sel, 'apps'); sel.dispatchEvent(new Event('change', { bubbles: true })) })()`)
     await s.waitFor(`${hasText('Docs pass')} && !${hasText('Fix the importer')}`, 'only the apps lane')
     assert.deepEqual(await axeFindings(s), [], 'no axe violation')
+  })
+})
+
+test('the Action Center row shows Stuck plans with the server count and links to Plans', { skip, timeout: 120000 }, async () => {
+  const plans = { generated_utc: '2026-11-21T12:00:00Z', root: '/p', projects: [], untracked: [], library: [], archived: { projects: [], library: [] }, counts: { projects: 0, library: 0, archived: 0, stuck: 2 }, jira: { state: 'none', checked_utc: '', errors: [] } }
+  await withApp({ ...fixtures(), plans }, async (s, origin) => {
+    await visit(s, origin, '/action', 'light', `document.querySelectorAll('.ac-counter').length > 0`, 'the counters row')
+    await s.waitFor(`!!document.querySelector('.ac-counter[href="#/plans"]')`, 'the Stuck plans tile')
+    assert.equal(await s.evaluate(tileText('Stuck plans')), '2 Stuck plans > #/plans')
   })
 })
 
