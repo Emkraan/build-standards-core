@@ -339,6 +339,36 @@ class Broken(unittest.TestCase):
             C.collect()
 
 
+class IgnoreThread(unittest.TestCase):
+    """Ignore always by whole thread (cutover comment capability 6): a rule on the conversation id drops every message of it, now and later."""
+
+    RULE = {
+        "id": "ignore-thread-t1",
+        "match": {"thread": "chat:abc"},
+        "route": "nowhere",
+        "reason": "ignored thread",
+        "scope": "candidates",
+    }
+
+    def data(self):
+        return {"rules": [self.RULE], "defaults": {}}
+
+    def test_a_thread_rule_validates_and_matches_only_that_thread_case_insensitively(self):
+        R.validate_rule(self.RULE)
+        self.assertEqual(R.route(cand(thread="chat:abc"), self.data())["route"], "nowhere")
+        self.assertEqual(R.route(cand(thread="CHAT:ABC"), self.data())["rule"], "ignore-thread-t1")
+        self.assertNotEqual(
+            R.route(cand(thread="chat:other"), self.data())["rule"], "ignore-thread-t1"
+        )
+
+    def test_a_candidate_with_no_thread_never_matches_a_thread_rule(self):
+        self.assertNotEqual(R.route(cand(), self.data())["rule"], "ignore-thread-t1")
+        self.assertNotEqual(R.route(cand(thread=None), self.data())["rule"], "ignore-thread-t1")
+
+    def test_a_thread_condition_alone_is_a_valid_match(self):
+        R.validate_rule(dict(self.RULE, match={"thread": "mail:42"}))
+
+
 if __name__ == "__main__":
     try:
         unittest.main(verbosity=1)

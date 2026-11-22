@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-22 (v2.56.0, ops-center: ignore a whole thread)
+
+- Added: a routing rule may match `thread` (a mail conversation id, `chat:<id>` or `channel:<id>`), and mail and chat candidates carry it, so one rule drops every message of a thread, now and later. `opscenter/DESIGN.md` 12.103 also records where ideas decisions and Awareness already live.
+- Adoption risk: none, no thread rule means no change.
+
+Refs #327.
+
 ## 2026-11-22 (v2.55.0, ops-center: meetings in the collector and priority sender rules)
 
 - Added: `from_meetings` turns a meetings feed (summary and action items the consumer's collector extracted, no model, no transcript text) into candidates; routing may carry `priority_floor` rules by role or sender, candidates carry the floor into the bundle, and the contract refuses an item below it when the wake gate saved the floors. `opscenter/DESIGN.md` 12.102.

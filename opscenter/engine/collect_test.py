@@ -234,6 +234,67 @@ class Adapters(Scratch):
         self.assertTrue(any("boom adapter failed" in e for e in res["errors"]))
 
 
+class Threads(Scratch):
+    def test_mail_and_chat_candidates_carry_their_thread(self):
+        self.cfg(
+            chat_feeds=[
+                {
+                    "prefix": "teams",
+                    "label": "Teams",
+                    "path": str(self.d / "agent" / "feeds" / "chat.json"),
+                }
+            ]
+        )
+        self.write(
+            "agent/feeds/mail.json",
+            {
+                "items": [
+                    {
+                        "id": "m1",
+                        "received": NOW,
+                        "direct_ask": True,
+                        "from_name": "Pat",
+                        "subject": "Need",
+                        "body_text": "x",
+                        "conversation_id": "conv-9",
+                    },
+                    {
+                        "id": "m2",
+                        "received": NOW,
+                        "direct_ask": True,
+                        "from_name": "Pat",
+                        "subject": "No thread",
+                        "body_text": "x",
+                    },
+                ]
+            },
+        )
+        self.write(
+            "agent/feeds/chat.json",
+            {
+                "items": [
+                    {
+                        "id": "c1",
+                        "created": NOW,
+                        "surface": "chat",
+                        "chat_type": "oneOnOne",
+                        "chat_id": "chat-7",
+                        "from_name": "Pat",
+                        "text": "hi",
+                        "web_url": "u",
+                    }
+                ]
+            },
+        )
+        got = {
+            c["cid"]: c.get("thread")
+            for c in self.C.from_mail({}, CUT) + self.C.from_chats({}, CUT)
+        }
+        self.assertEqual(got["mail:m1"], "conv-9")
+        self.assertIsNone(got["mail:m2"])
+        self.assertEqual(got["teams.1on1:chat-7"], "chat:chat-7")
+
+
 class Meetings(Scratch):
     def meeting(self, **kw):
         base = {
