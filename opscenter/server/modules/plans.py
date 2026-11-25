@@ -204,17 +204,26 @@ def _place(rel):
 
 
 def _link_item(p):
-    """A document backed library entry: `library/<name>.link.json` = {title, url, status?, summary?, owner?, updated?}. It lists a document that lives
-    elsewhere (a word processor file, a wiki page) next to the markdown plans, with a link and a title and nothing else of the document read. A file that
-    does not parse, names no title or carries a url that is not http or https is left out."""
+    """A document backed library entry: `library/<name>.link.json` = {title, url or path, status?, summary?, owner?, updated?}. It lists a document that
+    lives elsewhere (a word processor file, a wiki page) next to the markdown plans, with a link and a title and nothing else of the document read. `path`
+    names a file on this machine inside OPSCENTER_DOCUMENT_ROOTS (documents.py). A file that does not parse, names no title or carries neither a url that
+    is http or https nor a path the roots allow is left out."""
     try:
         d = json.loads(p.read_text(encoding="utf-8")[:MAX_READ_BYTES])
     except (OSError, ValueError):
         return None
     url = str(d.get("url", "")).strip() if isinstance(d, dict) else ""
+    if isinstance(d, dict) and not url.startswith(("https://", "http://")) and d.get("path"):
+        # A document on this machine: only a file inside the consumer's document roots becomes a link (12.106).
+        try:
+            import documents
+
+            url = documents.link_for(str(d["path"])) or ""
+        except ImportError:
+            url = ""
     if (
         not isinstance(d, dict)
-        or not url.startswith(("https://", "http://"))
+        or not url.startswith(("https://", "http://", "/api/documents/file?"))
         or not str(d.get("title", "")).strip()
     ):
         return None

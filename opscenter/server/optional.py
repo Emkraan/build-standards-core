@@ -12,6 +12,7 @@ Settings: OPSCENTER_LOG_INTAKE   any non empty value other than 0, false or off 
           OPSCENTER_DOCS_PIPELINE_PROVIDER the same for the document pipeline (doc_pipeline.py): queue, draft, preview, suggest, decide, restore, guarded publish
           OPSCENTER_DRAFTS_PROVIDER       the same for drafts (drafts.py): list, archive, restore, reply drafts that are never sent
           OPSCENTER_PHONE_PROVIDER        the same for phone pairing and alerts (phone_pairing.py): pair, devices, test, remove
+          OPSCENTER_DOCUMENT_ROOTS        folders local documents may be served from (documents.py): a row or plan entry can link to a file in them
           OPSCENTER_REPORTS      the same for the reports routes
 Providers: OPSCENTER_LOG_INTAKE_PROVIDER and OPSCENTER_REPORTS_PROVIDER (`path/to/file.py:ClassName`), see each module's http_routes.py.
 API:      enabled(name) -> bool     register(registry) -> [names of the modules registered]
@@ -84,6 +85,14 @@ def register(r):
             r, extensions.FileProvider(os.environ["OPSCENTER_EXTENSIONS_FILE"].strip())
         )
         on.append("extensions")
+    if os.environ.get("OPSCENTER_DOCUMENT_ROOTS", "").strip():
+        # The roots are the opt in: with none there is no route and a document path is never turned into a link (DESIGN.md 12.106).
+        if str(MODULES) not in sys.path:
+            sys.path.insert(0, str(MODULES))
+        import documents
+
+        documents.register(r)
+        on.append("documents")
     if os.environ.get("OPSCENTER_DOCS_PIPELINE_PROVIDER", "").strip():
         # The provider is the opt in: with none there is no route and the Knowledge tab is hidden (DESIGN.md 12.97).
         import doc_pipeline

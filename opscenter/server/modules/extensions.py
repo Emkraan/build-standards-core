@@ -21,7 +21,9 @@ Page:    {id, title, group, kind, url?, lede?, count?}
          group   Operate | People | Knowledge | Platform, anything else becomes Platform
          kind    list | link. An unknown kind drops the page, because the core cannot draw it
          url     required for a link page, http or https only
-Row:     {id, title, detail?, state?, url?, at?, actions?, fields?}
+Row:     {id, title, detail?, state?, url?, doc?, at?, actions?, fields?}
+         doc      a path to a local document, relative to a folder in OPSCENTER_DOCUMENT_ROOTS or absolute inside one: the row links to it when the file is
+                  there and allowed (documents.py), else the row carries doc = "missing". `url` wins when both are given
          actions  up to four {id, label, confirm?}: the buttons of the row, each needs a confirmation and the extensions.act authorisation
          fields   up to twelve {label, value}: the detail drawer, plain text          state is plain text drawn as a pill, url is http or https only
 Routes:  POST /api/extensions/<id>/action {row, action, confirm: true} -> {ok, detail?}   404 for an action the row does not declare
@@ -71,6 +73,15 @@ def _safe_url(value):
     return text if text.startswith(("https://", "http://")) else None
 
 
+def _document_link(path):
+    """The address that serves a local document, or None: the setting is off, the file is not there or it is outside every root."""
+    try:
+        import documents
+    except ImportError:
+        return None
+    return documents.link_for(_clip(path, 400))
+
+
 def _now(now):
     return now if now is not None else dt.datetime.now(dt.timezone.utc).timestamp()
 
@@ -113,16 +124,24 @@ def _page(raw):
 def _row(raw):
     if not isinstance(raw, dict) or raw.get("id") in (None, ""):
         return None
-    return {
+    url, doc = _safe_url(raw.get("url")), None
+    if url is None and raw.get("doc"):
+        # A local document: the path is checked against the consumer's document roots and becomes a link only when it is inside one (12.106).
+        url = _document_link(raw.get("doc"))
+        doc = "ok" if url else "missing"
+    row = {
         "id": _clip(raw.get("id"), 80),
         "title": _clip(raw.get("title")) or "Untitled",
         "detail": _clip(raw.get("detail"), 400) or None,
         "state": _clip(raw.get("state"), 30) or None,
-        "url": _safe_url(raw.get("url")),
+        "url": url,
         "at": _clip(raw.get("at"), 40) or None,
         "actions": _actions(raw.get("actions")),
         "fields": _fields(raw.get("fields")),
     }
+    if doc:  # only a row that names a document carries the key, so every other row keeps the shape it always had
+        row["doc"] = doc
+    return row
 
 
 ACTION_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,28}[a-z0-9]$")
@@ -324,6 +343,9 @@ def register(r, provider):
     )
 
 
+_DECISIONS_LOCK = threading.Lock()
+
+
 class FileProvider:
     """The data-only form of the provider slot (`OPSCENTER_EXTENSIONS_FILE=<path>`): a consumer declares its pages and rows in one JSON file and
     writes no code. The file is `{"pages": [<page>], "rows": {"<page id>": [<row>]}}` with the same page and row shapes as above, read on every
@@ -354,4 +376,66 @@ class FileProvider:
         rows = (self._data().get("rows") or {}).get(page_id) or []
         if not isinstance(rows, list):
             raise ValueError("rows must be a list")
-        return rows
+        decided = self._decisions().get(page_id) or {}
+        out = []
+        for row in rows:
+            d = decided.get(str(row.get("id"))) if isinstance(row, dict) else None
+            if isinstance(d, dict):
+                fields = [f for f in (row.get("fields") or []) if isinstance(f, dict)][
+                    : MAX_FIELDS - 1
+                ]
+                fields.append(
+                    {"label": "Decision", "value": f"{d.get('label', '')} ({d.get('at', '')})"}
+                )
+                row = {**row, "state": d.get("state") or row.get("state"), "fields": fields}
+            out.append(row)
+        return out
+
+    # ---- per row actions in the data-only form: a decision is recorded, nothing is run ----
+
+    @property
+    def decisions_path(self):
+        return Path(str(self.path) + ".decisions.json")
+
+    def _decisions(self):
+        import json
+
+        try:
+            d = json.loads(self.decisions_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+        return d if isinstance(d, dict) else {}
+
+    def extension_action(self, page_id, row_id, action_id):
+        """Record the decision an action stands for (Accept, Reject, Defer): `{action, label, state, at}` per page and row in the file beside the
+        manifest, replacing an earlier decision on the same row. The action may declare `state` (the pill the row shows afterwards, default its label).
+        The manifest file itself is never written, and no command is run, so a data-only page can decide but cannot do."""
+        import json
+        import os
+
+        rows = (self._data().get("rows") or {}).get(page_id) or []
+        row = next((r for r in rows if isinstance(r, dict) and str(r.get("id")) == row_id), None)
+        action = next(
+            (
+                a
+                for a in (row or {}).get("actions") or []
+                if isinstance(a, dict) and a.get("id") == action_id
+            ),
+            None,
+        )
+        if not action:
+            return {"ok": False, "detail": "that row does not declare that action"}
+        label = _clip(action.get("label"), 40) or action_id
+        entry = {
+            "action": action_id,
+            "label": label,
+            "state": _clip(action.get("state"), 30) or label,
+            "at": _stamp(None),
+        }
+        with _DECISIONS_LOCK:
+            data = self._decisions()
+            data.setdefault(page_id, {})[row_id] = entry
+            tmp = Path(str(self.decisions_path) + ".tmp")
+            tmp.write_text(json.dumps(data, indent=1, sort_keys=True), encoding="utf-8")
+            os.replace(tmp, self.decisions_path)
+        return {"ok": True, "detail": f"recorded: {label}"}

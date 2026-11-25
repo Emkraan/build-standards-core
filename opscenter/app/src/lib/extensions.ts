@@ -22,6 +22,8 @@ export interface ExtensionRow {
   detail: string | null
   state: string | null
   url: string | null
+  /** 'missing' when the row names a local document that is not there or not allowed, and absent from an older server. */
+  doc?: 'ok' | 'missing' | null
   at: string | null
   /** Up to four buttons the row declares; each needs a confirmation. Absent from an older server. */
   actions?: { id: string; label: string; confirm: string | null }[]
@@ -72,9 +74,11 @@ export function pagesIn(s: ExtensionsState | null | undefined, group: string): E
   return s.pages.filter((p) => p.group === group)
 }
 
-/** True only for an address safe to put in an href. The server already filters, and the client does not rely on that. */
+/** True only for an address safe to put in an href: a web address, or the one route that serves a local document the server checked.
+ *  The server already filters, and the client does not rely on that. */
 export function safeHref(url: string | null | undefined): string | null {
-  return typeof url === 'string' && /^https?:\/\//i.test(url) ? url : null
+  if (typeof url !== 'string') return null
+  return /^https?:\/\//i.test(url) || /^\/api\/documents\/file\?root=\d&path=[^\s"'<>\\]+$/.test(url) ? url : null
 }
 
 /** What a page does when opened: say the source failed, say there is nothing, or show what it has. A link page never lists rows. */

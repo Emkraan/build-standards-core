@@ -67,6 +67,24 @@ test('only an http or https address is a link, and anything else is dropped', ()
     assert.equal(safeHref(bad), null, String(bad))
 })
 
+test('a local document address is a link only in the exact shape the server makes', () => {
+  const ok = '/api/documents/file?root=0&path=board/paper.pdf'
+  assert.equal(safeHref(ok), ok)
+  assert.equal(safeHref('/api/documents/file?root=3&path=a%20b.pdf'), '/api/documents/file?root=3&path=a%20b.pdf')
+  for (const bad of [
+    '/api/documents/file',
+    '/api/documents/file?root=x&path=a.pdf',
+    '/api/documents/file?root=0&path=a b.pdf',
+    '/api/documents/file?root=0&path=a"onmouseover="x',
+    '/api/documents/file?root=0&path=<script>',
+    '/api/documents/file?root=0&path=a\\b',
+    '/api/other?root=0&path=a.pdf',
+    'api/documents/file?root=0&path=a.pdf',
+    '//t.test/api/documents/file?root=0&path=a.pdf',
+  ])
+    assert.equal(safeHref(bad), null, bad)
+})
+
 test('a page is an error when its source failed, a link for a link page, and otherwise rows or an honest empty', () => {
   assert.equal(pageMode(rows({ error: 'the source failed (OSError)', rows: [row('r1')] })), 'error')
   assert.equal(pageMode(rows({ page: page('docs', 'Knowledge', { kind: 'link', url: 'https://t.test' }) })), 'link')
