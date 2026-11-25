@@ -413,11 +413,42 @@ def pr_issue_findings(
     return []
 
 
+def live_pr_text() -> tuple:
+    """(title, body) of the pull request as it is NOW, or None. The event payload a workflow run
+    carries is frozen when the run starts: editing a PR body and re-running the check re-reads the
+    old text. With a token (GH_TOKEN or GITHUB_TOKEN, pull-requests: read) the check reads the live
+    PR instead, so a body edit plus a re-run of the failed job turns the check green. Any failure
+    falls back to the event payload."""
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN") or ""
+    path = os.environ.get("GITHUB_EVENT_PATH") or ""
+    repo = os.environ.get("GITHUB_REPOSITORY") or ""
+    if not (token and path and repo) or os.environ.get("GITHUB_EVENT_NAME") != "pull_request":
+        return None
+    try:
+        number = json.loads(pathlib.Path(path).read_text()).get("pull_request", {}).get("number")
+        if not number:
+            return None
+        req = urllib.request.Request(
+            f"{os.environ.get('GITHUB_API_URL', 'https://api.github.com')}/repos/{repo}/pulls/{number}",
+            headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
+        )
+        with urllib.request.urlopen(req, timeout=20) as resp:  # noqa: S310
+            data = json.loads(resp.read().decode())
+        return str(data.get("title") or ""), str(data.get("body") or "")
+    except Exception as exc:  # noqa: BLE001
+        say(
+            f"::notice::pr-issue: live PR text unavailable ({type(exc).__name__}), using the event payload"
+        )
+        return None
+
+
 def cmd_pr_issue(argv: list) -> int:
     env = os.environ.get
+    live = live_pr_text()
+    title, body = live if live else (env("PR_TITLE", ""), env("PR_BODY", ""))
     bad = pr_issue_findings(
-        env("PR_TITLE", ""),
-        env("PR_BODY", ""),
+        title,
+        body,
         env("PR_AUTHOR", ""),
         env("PR_BRANCH", ""),
         env("GITHUB_REPOSITORY", ""),

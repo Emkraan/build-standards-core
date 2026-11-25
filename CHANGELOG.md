@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-24 (v2.58.0, pr-issue reads the live PR body)
+
+- Fixed: the `pr-issue` check read the pull request body from the workflow event payload, which is frozen when a run starts, so editing the body and re-running the failed job still failed and sessions pushed empty commits to get a fresh payload. With a token (`GH_TOKEN`, `pull-requests: read`) the check now reads the live title and body from the API and falls back to the payload when it cannot. The template `core-ci.yml` and `core-ci-reusable.yml` pass the token and grant `pull-requests: read`.
+- Adoption risk: low. A consumer that does not pass the token keeps the old behaviour.
+
+No issue: operator-requested fix for a recurring CI red.
+
 ## 2026-11-22 (v2.57.0, pr preflight script)
 
 - Added: `scripts/preflight.sh` runs the CI ruff lint at the CI-pinned version and the PR-body declaration check before a push, and `checks/hooks/pre-push` runs it. `scripts/preflight.sh`

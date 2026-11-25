@@ -45,6 +45,7 @@ on:
         default: ""
 permissions:
   contents: read
+  pull-requests: read
 env:
   OVERLAY: ${{ inputs.overlay }}
   CORE_CI_OVERLAY: ${{ github.workspace }}/${{ inputs.overlay }}
@@ -109,6 +110,7 @@ jobs:
       - name: core-pr-issue
         if: ${{ !cancelled() && github.event_name == 'pull_request' }}
         env:
+          GH_TOKEN: ${{ github.token }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}

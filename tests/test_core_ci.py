@@ -141,6 +141,44 @@ class PrHygiene(Overlay):
         self.assertEqual((rc, "needs a line" in out), (1, True))
         self.assertEqual(run("Remaining: x")[0], 1)
 
+    def test_pr_issue_reads_the_live_body_when_it_can(self):
+        """A re-run of the check re-reads the frozen event payload; with a token it reads the PR."""
+        import http.server
+        import threading
+
+        live = {"title": "feat: x", "body": "No issue: edited after the run started"}
+
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):  # noqa: N802
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(json.dumps(live).encode())
+
+            def log_message(self, *a):
+                pass
+
+        srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        event = str(self.dir / "event.json")
+        with open(event, "w") as f:
+            json.dump({"pull_request": {"number": 7}}, f)
+        base = {
+            "PR_TITLE": "feat: x", "PR_BODY": "no declaration", "PR_AUTHOR": "rp",
+            "PR_BRANCH": "feat/x", "GITHUB_REPOSITORY": "acme/apps",
+        }  # fmt: skip
+        try:
+            self.assertEqual(self.ci("pr-issue", env=base)[0], 1)  # no token: the frozen payload
+            live_env = {
+                **base, "GH_TOKEN": "t", "GITHUB_EVENT_NAME": "pull_request",
+                "GITHUB_EVENT_PATH": event, "GITHUB_API_URL": f"http://127.0.0.1:{srv.server_port}",
+            }  # fmt: skip
+            self.assertEqual(self.ci("pr-issue", env=live_env)[0], 0)  # the live body declares
+            live["body"] = "still nothing"
+            self.assertEqual(self.ci("pr-issue", env=live_env)[0], 1)
+        finally:
+            srv.shutdown()
+            srv.server_close()
+
     def test_pr_issue_exemptions(self):
         def run(body="", **kw):
             env = {"PR_TITLE": "feat: x", "PR_BODY": body, "PR_AUTHOR": "rp", "PR_BRANCH": "feat/x"}
