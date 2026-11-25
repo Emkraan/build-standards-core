@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { EXTENSION_GROUPS, extensionPath, extensionRoute, extensionsMode, pageMode, pagesAll, pagesIn, safeHref } from '../src/lib/extensions.ts'
+import { EXTENSION_GROUPS, extensionPath, extensionRoute, extensionsMode, pageMode, pagesAll, pagesIn, rowLinks, safeHref } from '../src/lib/extensions.ts'
 
 const page = (id, group = 'Operate', over = {}) => ({ id, title: id, group, kind: 'list', url: null, lede: null, ...over })
 const manifest = (pages, over = {}) => ({ configured: true, fetched_utc: 'x', pages, truncated: 0, error: null, ...over })
@@ -83,6 +83,35 @@ test('a local document address is a link only in the exact shape the server make
     '//t.test/api/documents/file?root=0&path=a.pdf',
   ])
     assert.equal(safeHref(bad), null, bad)
+})
+
+test('the drawer draws only the links the client trusts and counts the rest', () => {
+  const doc = '/api/documents/file?root=0&path=board/2026-11-10-paper.pdf'
+  const got = rowLinks({
+    links: [
+      { label: '2026-11-17', url: 'https://t.test/b' },
+      { label: '2026-11-10', url: doc },
+      { label: 'script', url: 'javascript:alert(1)' },
+      { label: 'other route', url: '/api/other?root=0&path=a.pdf' },
+      { label: 'bad', url: 7 },
+    ],
+    links_missing: 2,
+  })
+  assert.deepEqual(got.links, [
+    { label: '2026-11-17', href: 'https://t.test/b' },
+    { label: '2026-11-10', href: doc },
+  ])
+  assert.equal(got.missing, 2 + 3)
+  assert.deepEqual(rowLinks({}), { links: [], missing: 0 })
+  assert.deepEqual(rowLinks({ links: [], links_missing: 'x' }), { links: [], missing: 0 })
+  assert.deepEqual(rowLinks({ links: [null, undefined, 'x'] }).links, [])
+})
+
+test('a row that declares only links still gets the Details button and the drawer lists them', () => {
+  const src = readFileSync(new URL('../src/components/ExtensionPage.tsx', import.meta.url), 'utf8')
+  assert.match(src, /r\.links\?\.length \?\? 0\) > 0 \|\| \(r\.links_missing/)
+  assert.match(src, /rowLinks\(open\)/)
+  assert.match(src, /rel="noopener noreferrer"/)
 })
 
 test('a page is an error when its source failed, a link for a link page, and otherwise rows or an honest empty', () => {

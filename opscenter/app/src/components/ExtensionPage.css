@@ -43,6 +43,18 @@
 .ext-fields dd {
   margin: 0;
 }
+.ext-links {
+  margin: 0 0 var(--space-4);
+}
+.ext-links ul {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-left: var(--space-4);
+}
+.ext-links p {
+  margin: var(--space-2) 0 0;
+}
 .ext-actions {
   display: flex;
   flex-wrap: wrap;

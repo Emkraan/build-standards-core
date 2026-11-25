@@ -29,6 +29,10 @@ export interface ExtensionRow {
   actions?: { id: string; label: string; confirm: string | null }[]
   /** The label and value pairs of the detail drawer. */
   fields?: { label: string; value: string }[]
+  /** Up to 20 links the server already checked (earlier dated versions of a document, for example), shown in the drawer. Absent from an older server. */
+  links?: { label: string; url: string }[]
+  /** How many of the row's declared links the server dropped (not allowed, not there, or past the twentieth). */
+  links_missing?: number
 }
 
 export interface ExtensionManifest {
@@ -72,6 +76,19 @@ export function extensionPath(id: string): string {
 export function pagesIn(s: ExtensionsState | null | undefined, group: string): ExtensionPage[] {
   if (!s || !s.configured || s.error) return []
   return s.pages.filter((p) => p.group === group)
+}
+
+/** The drawer's links for a row: only the entries whose address `safeHref` accepts, and how many were left out (the server's count plus any the
+ *  client refused), so a row never draws an address the client does not trust. */
+export function rowLinks(row: Pick<ExtensionRow, 'links' | 'links_missing'>): { links: { label: string; href: string }[]; missing: number } {
+  const out: { label: string; href: string }[] = []
+  let refused = 0
+  for (const l of row.links ?? []) {
+    const href = l && typeof l.label === 'string' ? safeHref(l.url) : null
+    if (href) out.push({ label: l.label, href })
+    else refused++
+  }
+  return { links: out, missing: Math.max(0, Number(row.links_missing) || 0) + refused }
 }
 
 /** True only for an address safe to put in an href: a web address, or the one route that serves a local document the server checked.

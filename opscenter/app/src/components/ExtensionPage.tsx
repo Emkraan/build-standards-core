@@ -8,7 +8,7 @@ import { HubHeader } from '../components/HubHeader'
 import { LoadError } from '../components/StateBlocks'
 import { fetchExtensionRows, postExtensionAction, useExtensionRows, useExtensions } from '../lib/data'
 import type { ExtensionRow } from '../lib/extensions'
-import { pageMode, rowsInState, safeHref, stateTabs } from '../lib/extensions'
+import { pageMode, rowLinks, rowsInState, safeHref, stateTabs } from '../lib/extensions'
 import './ExtensionPage.css'
 
 export default function ExtensionPage({ id }: { id: string }) {
@@ -90,7 +90,7 @@ export default function ExtensionPage({ id }: { id: string }) {
               </span>
               {r.doc === 'missing' && <span className="ext-detail muted">Document not available</span>}
               {r.detail && <span className="ext-detail muted">{r.detail}</span>}
-              {((r.fields?.length ?? 0) > 0 || (r.actions?.length ?? 0) > 0) && (
+              {((r.fields?.length ?? 0) > 0 || (r.actions?.length ?? 0) > 0 || (r.links?.length ?? 0) > 0 || (r.links_missing ?? 0) > 0) && (
                 <Button size="sm" variant="ghost" onClick={() => setOpenId(r.id)}>
                   Details
                 </Button>
@@ -133,6 +133,25 @@ export default function ExtensionPage({ id }: { id: string }) {
                 ))}
               </dl>
             )}
+            {(() => {
+              const { links, missing } = rowLinks(open)
+              return (
+                (links.length > 0 || missing > 0) && (
+                  <div className="ext-links">
+                    <ul>
+                      {links.map((l) => (
+                        <li key={l.href}>
+                          <a href={l.href} target="_blank" rel="noopener noreferrer">
+                            {l.label}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                    {missing > 0 && <p className="muted">{missing === 1 ? '1 link is not available.' : `${missing} links are not available.`}</p>}
+                  </div>
+                )
+              )
+            })()}
             <div className="ext-actions">
               {open.actions?.map((a) => (
                 <Button key={a.id} variant="secondary" onClick={() => act(open.id, a)}>
