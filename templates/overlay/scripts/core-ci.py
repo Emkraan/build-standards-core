@@ -436,7 +436,9 @@ def live_pr_text() -> tuple:
             data = json.loads(resp.read().decode())
         return str(data.get("title") or ""), str(data.get("body") or "")
     except Exception as exc:  # noqa: BLE001
-        say(f"::notice::pr-issue: live PR text unavailable ({type(exc).__name__}), using the event payload")
+        say(
+            f"::notice::pr-issue: live PR text unavailable ({type(exc).__name__}), using the event payload"
+        )
         return None
 
 
