@@ -88,6 +88,7 @@ export default function ExtensionPage({ id }: { id: string }) {
                   r.title
                 )}
               </span>
+              {r.doc === 'missing' && <span className="ext-detail muted">Document not available</span>}
               {r.detail && <span className="ext-detail muted">{r.detail}</span>}
               {((r.fields?.length ?? 0) > 0 || (r.actions?.length ?? 0) > 0) && (
                 <Button size="sm" variant="ghost" onClick={() => setOpenId(r.id)}>
