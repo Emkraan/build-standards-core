@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-25 (v2.60.0, ops-center: column parity test)
+
+- Added: `opscenter/app/tests/tableColumns.test.mjs` checks the headings, their order and the declared widths of eleven spec tables against the page source, and lists three tables that are known to differ from the spec (Scheduled jobs, Changes and the workflow runs table), failing when one of them starts to match. `opscenter/DESIGN.md` 12.105.
+- Adoption risk: none. A test only, no page changes. A consumer that changes one of those tables on purpose edits the list in the same change.
+
+Refs #376. Remaining: items 2, 3, 4 and 9 of that issue.
+
 ## 2026-11-24 (v2.58.0, pr-issue reads the live PR body)
 
 - Fixed: the `pr-issue` check read the pull request body from the workflow event payload, which is frozen when a run starts, so editing the body and re-running the failed job still failed and sessions pushed empty commits to get a fresh payload. With a token (`GH_TOKEN`, `pull-requests: read`) the check now reads the live title and body from the API and falls back to the payload when it cannot. The template `core-ci.yml` and `core-ci-reusable.yml` pass the token and grant `pull-requests: read`.
