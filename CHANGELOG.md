@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-25 (v2.59.0, ops-center: local document links and decisions on a data-only page)
+
+- Added: `OPSCENTER_DOCUMENT_ROOTS` and `GET /api/documents/file` serve a local document read only from the named folders after a path check on every request (inside the root with links followed, no hidden parts, an allowed type, at most 50 MB). A page row can carry `doc` and a plan library entry can carry `path` instead of `url`, and both link to the document. A data-only page can declare row actions, which record a decision in a file beside the manifest. `opscenter/DESIGN.md` 12.106.
+- Changed: the sentence in 12.91 that said a data-only page cannot have actions now points at 12.106. The client draws a link only for a web address or the exact document address the server makes.
+- Adoption risk: low. With `OPSCENTER_DOCUMENT_ROOTS` unset nothing is served and rows are unchanged. A row only gains a `doc` key when it names a document.
+
+Refs #376. Remaining: item 3 of that issue (the briefing archive, design first).
+
 ## 2026-11-24 (v2.58.0, pr-issue reads the live PR body)
 
 - Fixed: the `pr-issue` check read the pull request body from the workflow event payload, which is frozen when a run starts, so editing the body and re-running the failed job still failed and sessions pushed empty commits to get a fresh payload. With a token (`GH_TOKEN`, `pull-requests: read`) the check now reads the live title and body from the API and falls back to the payload when it cannot. The template `core-ci.yml` and `core-ci-reusable.yml` pass the token and grant `pull-requests: read`.
