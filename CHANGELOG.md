@@ -1,11 +1,18 @@
 # Changelog
 
-## 2026-11-25 (v2.59.0, ops-center: a fuller upgrade smoke check)
+## 2026-11-25 (v2.62.0, ops-center: a fuller upgrade smoke check)
 
 - Added: `upgrade.py --base-url` runs the full smoke check (health, the route count against `--min-routes`, the page render and its assets) and rolls back on any failure with the failed check named. `GET /api/routes` returns the registered route count. `upgrade.py` refuses a `--target` inside a macOS protected folder (Documents, Desktop, Downloads), which a launch agent cannot read, unless `--allow-protected` is given. `opscenter/DESIGN.md` 12.93, `opscenter/tools/README.md`.
 - Adoption risk: low. `--smoke-url` and every existing flag behave as before. A consumer whose service location is inside Documents, Desktop or Downloads on macOS now gets exit 2 and must move it or pass `--allow-protected`.
 
 Refs #376. Remaining: items 2, 3 and 9 of that issue.
+## 2026-11-25 (v2.59.0, ops-center: local document links and decisions on a data-only page)
+
+- Added: `OPSCENTER_DOCUMENT_ROOTS` and `GET /api/documents/file` serve a local document read only from the named folders after a path check on every request (inside the root with links followed, no hidden parts, an allowed type, at most 50 MB). A page row can carry `doc` and a plan library entry can carry `path` instead of `url`, and both link to the document. A data-only page can declare row actions, which record a decision in a file beside the manifest. `opscenter/DESIGN.md` 12.106.
+- Changed: the sentence in 12.91 that said a data-only page cannot have actions now points at 12.106. The client draws a link only for a web address or the exact document address the server makes.
+- Adoption risk: low. With `OPSCENTER_DOCUMENT_ROOTS` unset nothing is served and rows are unchanged. A row only gains a `doc` key when it names a document.
+
+Refs #376. Remaining: item 3 of that issue (the briefing archive, design first).
 
 ## 2026-11-24 (v2.58.0, pr-issue reads the live PR body)
 
