@@ -2287,6 +2287,12 @@ never a board item on its own), `elsewhere` and `nowhere`; Ignore, Ignore always
 **Ideas (capability 4).** Debt and improvements already decides ideas: an improvement in Needs decision is approved, parked or declined, reopened, shipped or withdrawn (`ACTS` in `eng_backlog.py`, each stored in the entry's Status line and undoable), and
 Approve and tackle sends it to a build through the runtime slot (12.95). The digest the ideas come from is configurable (`ENGBL_IMP` and `ENGBL_TD` name the files). The consumer's accept, reject and defer are approve, decline and park.
 
+### 12.105 A column parity test for the spec tables (issue 376 item 10)
+
+`opscenter/app/tests/tableColumns.test.mjs` holds the column list of each table the parity spec (issue 327, section 5) describes and fails when the app drifts from it. It reads the column arrays and the heading cells from the page source, so it needs no browser and no live data, and it runs in `npm test` with the other source tests. It does not render a page: a width that the source does not declare (the column takes what is left) is written `flex` in the test, and the spec's measured number for it is not checked.
+
+Two lists. `SPEC` is the tables that match today: the Action Center table, Routing considered, Backlog, the three Spend tables, Debt and improvements, the two Team tables, the run ledger and the Reviews grants table. For each, the headings, their order and every declared width must equal the spec, so a renamed heading, a moved column or a changed width fails. `DRIFT` is the spec tables the app does not match yet, each with the reason: Scheduled jobs (an extra unlabelled action column after Health), Changes (no Type and status column, the last column is labelled Actions) and the workflow runs table (the first heading reads When (UTC)). The test fails when a `DRIFT` table starts to match, so the entry must move to `SPEC` and the list cannot go stale. A consumer that changes a table on purpose edits the list in the same pull request.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

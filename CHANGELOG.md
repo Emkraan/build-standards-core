@@ -1,11 +1,17 @@
 # Changelog
 
-## 2026-11-25 (v2.66.0, ops-center: a fuller upgrade smoke check)
+## 2026-11-25 (v2.67.0, ops-center: a fuller upgrade smoke check)
 
 - Added: `upgrade.py --base-url` runs the full smoke check (health, the route count against `--min-routes`, the page render and its assets) and rolls back on any failure with the failed check named. `GET /api/routes` returns the registered route count. `upgrade.py` refuses a `--target` inside a macOS protected folder (Documents, Desktop, Downloads), which a launch agent cannot read, unless `--allow-protected` is given. `opscenter/DESIGN.md` 12.93, `opscenter/tools/README.md`.
 - Adoption risk: low. `--smoke-url` and every existing flag behave as before. A consumer whose service location is inside Documents, Desktop or Downloads on macOS now gets exit 2 and must move it or pass `--allow-protected`.
 
 Refs #376. Remaining: items 2, 3 and 9 of that issue.
+## 2026-11-25 (v2.65.0, ops-center: column parity test)
+
+- Added: `opscenter/app/tests/tableColumns.test.mjs` checks the headings, their order and the declared widths of eleven spec tables against the page source, and lists three tables that are known to differ from the spec (Scheduled jobs, Changes and the workflow runs table), failing when one of them starts to match. `opscenter/DESIGN.md` 12.105.
+- Adoption risk: none. A test only, no page changes. A consumer that changes one of those tables on purpose edits the list in the same change.
+
+Refs #376. Remaining: items 2, 3, 4 and 9 of that issue.
 ## 2026-11-25 (v2.63.0, ops-center: a design for the briefing archive)
 
 - Added: a design section in `opscenter/plans/plan-page.md` for a briefing archive on a data-only page. It proposes one additive key, `links` on a row, leaves the manifest writer to the consumer, and asks the core owner three questions. Nothing is built and no behaviour changes.
