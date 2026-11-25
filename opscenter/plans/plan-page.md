@@ -34,7 +34,7 @@ section 3:
 
 ## Design: a briefing archive on a data-only page (issue 376 item 3)
 
-Status: a design, nothing in this section is built. It needs a decision from the core owner before any code.
+Status: built as option A with the cap of 20 and no manifest tool (`links` on a row, DESIGN 12.106, 2026-11-25). Option B stays open until a second consumer asks, and the cap can be revisited.
 
 ### The ask
 

@@ -196,6 +196,118 @@ class Rows(Base):
         self.assertEqual((row["url"], row["doc"]), (None, "missing"))
 
 
+class RowLinks(Base):
+    def test_links_resolve_by_the_same_rules_as_the_row_link(self):
+        row = ex._row(
+            {
+                "id": "a",
+                "title": "Brief",
+                "doc": "board/paper.pdf",
+                "links": [
+                    {"label": "2026-11-20", "doc": "notes.md"},
+                    {"label": "2026-11-10", "url": "https://t.test/old"},
+                ],
+            }
+        )
+        self.assertEqual(
+            row["links"],
+            [
+                {"label": "2026-11-20", "url": "/api/documents/file?root=0&path=notes.md"},
+                {"label": "2026-11-10", "url": "https://t.test/old"},
+            ],
+        )
+        self.assertNotIn("links_missing", row)
+
+    def test_an_entry_that_is_not_allowed_is_dropped_and_counted(self):
+        (self.root / "private-link.pdf").symlink_to(self.outside / "private.pdf")
+        row = ex._row(
+            {
+                "id": "a",
+                "title": "t",
+                "links": [
+                    {"label": "ok", "doc": "notes.md"},
+                    {"label": "outside", "doc": "../outside/private.pdf"},
+                    {"label": "absolute", "doc": str(self.outside / "private.pdf")},
+                    {"label": "link out", "doc": "private-link.pdf"},
+                    {"label": "html", "doc": "page.html"},
+                    {"label": "hidden", "doc": ".secret.pdf"},
+                    {"label": "missing", "doc": "none.pdf"},
+                    {"label": "script", "url": "javascript:alert(1)"},
+                    {"label": "file", "url": "file:///etc/passwd"},
+                    {"label": "own address", "url": "/api/documents/file?root=0&path=notes.md"},
+                    {"url": "https://t.test/no-label"},
+                    {"label": "nothing"},
+                    "text",
+                    None,
+                ],
+            }
+        )
+        self.assertEqual([x["label"] for x in row["links"]], ["ok"])
+        self.assertEqual(row["links_missing"], 13)
+
+    def test_a_row_with_only_bad_links_has_the_count_and_no_list(self):
+        row = ex._row({"id": "a", "title": "t", "links": [{"label": "x", "doc": "none.pdf"}]})
+        self.assertNotIn("links", row)
+        self.assertEqual(row["links_missing"], 1)
+
+    def test_with_the_setting_off_a_document_entry_is_dropped_but_a_web_one_stays(self):
+        os.environ["OPSCENTER_DOCUMENT_ROOTS"] = ""
+        row = ex._row(
+            {
+                "id": "a",
+                "title": "t",
+                "links": [
+                    {"label": "d", "doc": "notes.md"},
+                    {"label": "w", "url": "https://t.test/x"},
+                ],
+            }
+        )
+        self.assertEqual([x["label"] for x in row["links"]], ["w"])
+        self.assertEqual(row["links_missing"], 1)
+
+    def test_at_most_twenty_are_kept_and_the_rest_are_counted(self):
+        entries = [{"label": f"v{i}", "url": f"https://t.test/{i}"} for i in range(25)]
+        row = ex._row({"id": "a", "title": "t", "links": entries})
+        self.assertEqual(len(row["links"]), 20)
+        self.assertEqual(row["links"][0]["label"], "v0")
+        self.assertEqual(row["links_missing"], 5)
+
+    def test_a_row_without_links_keeps_the_shape_it_had(self):
+        for raw in (
+            {"id": "a", "title": "t"},
+            {"id": "a", "title": "t", "links": []},
+            {"id": "a", "title": "t", "links": "nope"},
+        ):
+            row = ex._row(raw)
+            self.assertNotIn("links", row)
+            self.assertNotIn("links_missing", row)
+
+    def test_a_long_label_is_clipped(self):
+        row = ex._row(
+            {"id": "a", "title": "t", "links": [{"label": "x" * 500, "url": "https://t.test/x"}]}
+        )
+        self.assertLessEqual(len(row["links"][0]["label"]), 60)
+
+    def test_an_archive_of_versions_reads_back_newest_first_as_written(self):
+        """The design's example: one row per document, the latest as the row link, the earlier versions as links in the order the writer gave."""
+        (self.root / "board" / "2026-11-10-paper.pdf").write_bytes(b"%PDF a")
+        (self.root / "board" / "2026-11-17-paper.pdf").write_bytes(b"%PDF b")
+        row = ex._row(
+            {
+                "id": "paper",
+                "title": "Board paper",
+                "doc": "board/paper.pdf",
+                "links": [
+                    {"label": "2026-11-17", "doc": "board/2026-11-17-paper.pdf"},
+                    {"label": "2026-11-10", "doc": "board/2026-11-10-paper.pdf"},
+                ],
+            }
+        )
+        self.assertEqual([x["label"] for x in row["links"]], ["2026-11-17", "2026-11-10"])
+        self.assertTrue(all(docs.is_link(x["url"]) for x in row["links"]))
+        self.assertEqual(self.serve(0, "board/2026-11-10-paper.pdf")[1], b"%PDF a")
+
+
 class Decisions(Base):
     def make(self):
         f = self.d / "m.json"

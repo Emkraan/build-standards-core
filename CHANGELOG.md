@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-25 (v2.68.0, ops-center: links on an extension row)
+
+- Added: a row on a data-only or provider extension page may carry `links`, up to 20 `{label, url or doc}` entries checked by the same rules as the row link. The detail drawer lists them and says how many were dropped (`links_missing`). A briefing archive is now a data-only page with one row per document and the earlier versions as links, with no core screen. `opscenter/DESIGN.md` 12.106, `opscenter/plans/plan-page.md`.
+- Changed: 12.101 now names the CI runner capacity view (Platform, Infrastructure, CI and backup), which was already in the core. The briefing archive design is marked built.
+- Adoption risk: low. A row without `links` keeps the shape it has, and an older client ignores the new keys.
+
+Refs #376. Remaining: none from that issue. The core owner may still choose option B (a core tool that builds the manifest from a folder) when a second consumer asks.
+
 ## 2026-11-25 (v2.67.0, ops-center: a fuller upgrade smoke check)
 
 - Added: `upgrade.py --base-url` runs the full smoke check (health, the route count against `--min-routes`, the page render and its assets) and rolls back on any failure with the failed check named. `GET /api/routes` returns the registered route count. `upgrade.py` refuses a `--target` inside a macOS protected folder (Documents, Desktop, Downloads), which a launch agent cannot read, unless `--allow-protected` is given. `opscenter/DESIGN.md` 12.93, `opscenter/tools/README.md`.

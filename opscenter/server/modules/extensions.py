@@ -21,7 +21,9 @@ Page:    {id, title, group, kind, url?, lede?, count?}
          group   Operate | People | Knowledge | Platform, anything else becomes Platform
          kind    list | link. An unknown kind drops the page, because the core cannot draw it
          url     required for a link page, http or https only
-Row:     {id, title, detail?, state?, url?, doc?, at?, actions?, fields?}
+Row:     {id, title, detail?, state?, url?, doc?, at?, actions?, fields?, links?}
+         links    up to 20 {label, url or doc} (earlier dated versions of a document, for example): each is checked like the row's own link and shown in
+                  the drawer. An entry that is not allowed is dropped and counted in links_missing. A row that declares none has neither key
          doc      a path to a local document, relative to a folder in OPSCENTER_DOCUMENT_ROOTS or absolute inside one: the row links to it when the file is
                   there and allowed (documents.py), else the row carries doc = "missing". `url` wins when both are given
          actions  up to four {id, label, confirm?}: the buttons of the row, each needs a confirmation and the extensions.act authorisation
@@ -141,12 +143,19 @@ def _row(raw):
     }
     if doc:  # only a row that names a document carries the key, so every other row keeps the shape it always had
         row["doc"] = doc
+    if isinstance(raw.get("links"), list) and raw["links"]:
+        links, dropped = _links(raw["links"])
+        if links:
+            row["links"] = links
+        if dropped:
+            row["links_missing"] = dropped
     return row
 
 
 ACTION_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,28}[a-z0-9]$")
 MAX_ACTIONS = 4
 MAX_FIELDS = 12
+MAX_LINKS = 20
 
 
 def _actions(raw):
@@ -164,6 +173,24 @@ def _actions(raw):
             }
         )
     return out[:MAX_ACTIONS]
+
+
+def _links(raw):
+    """(links, dropped) for a row's `links`: {label, url} for each entry whose web address or document is allowed, and how many were not (a bad
+    entry, a document outside the roots or not there, and every entry past the twentieth)."""
+    out, dropped = [], 0
+    entries = raw if isinstance(raw, list) else []
+    for e in entries[:MAX_LINKS]:
+        href = None
+        if isinstance(e, dict) and e.get("label"):
+            href = _safe_url(e.get("url")) or (
+                _document_link(e.get("doc")) if e.get("doc") else None
+            )
+        if href:
+            out.append({"label": _clip(e.get("label"), 60), "url": href})
+        else:
+            dropped += 1
+    return out, dropped + max(len(entries) - MAX_LINKS, 0)
 
 
 def _fields(raw):
