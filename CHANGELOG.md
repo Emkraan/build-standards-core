@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-25 (v2.63.0, ops-center: a design for the briefing archive)
+
+- Added: a design section in `opscenter/plans/plan-page.md` for a briefing archive on a data-only page. It proposes one additive key, `links` on a row, leaves the manifest writer to the consumer, and asks the core owner three questions. Nothing is built and no behaviour changes.
+- Adoption risk: none. Documentation only.
+
+Refs #376. Remaining: the build of that item, after the core owner answers.
 ## 2026-11-25 (v2.59.0, ops-center: local document links and decisions on a data-only page)
 
 - Added: `OPSCENTER_DOCUMENT_ROOTS` and `GET /api/documents/file` serve a local document read only from the named folders after a path check on every request (inside the root with links followed, no hidden parts, an allowed type, at most 50 MB). A page row can carry `doc` and a plan library entry can carry `path` instead of `url`, and both link to the document. A data-only page can declare row actions, which record a decision in a file beside the manifest. `opscenter/DESIGN.md` 12.106.
