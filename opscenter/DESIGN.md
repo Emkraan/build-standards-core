@@ -2258,6 +2258,14 @@ on the board; the analyzer is cost gated by the wake gate (a bundle whose conten
 
 What stays the consumer's, by the posted default: auth heal and heartbeat sync (scripts of the consumer's own sign-in and scheduler), and the collectors that talk to its mail, chat and calendar services, which write the feeds above.
 
+### 12.104 One table of every setting, and state paths that follow the state dir (issue 376 item 8)
+
+`opscenter/SETTINGS.md` lists every environment variable the ops center code reads: 342 at the time of writing, with the default as written in the code, whether that default sits under the state dir, and the files that read it. It is generated, never edited. `python3 opscenter/tools/settings_inventory.py --write` rewrites it and `--check` fails when it is stale, and the unit test `settings_inventory_test.py` runs the same comparison, so a setting added without regenerating the table fails the build. The scan reads the source with the syntax tree (`os.environ.get`, `os.environ[...]`, `os.getenv`, the provider loader, the switch reader and the binary finder), so a variable named only in a comment is not counted and a variable built from a string is not found (none is built that way today).
+
+The "Under the state dir" column answers the question a consumer asks when it moves the state tree: yes means the default follows `OPSCENTER_STATE_DIR` (or the dashboard folder inside it), "no, a path" means the default is built from the root, a home or a literal path and the consumer sets it when it uses that feature, and a dash means the value is not a path.
+
+Several defaults sit under the root and not under the state dir (the improvement digest and its handled and curation files, the automation actions store, and the lane state folder `OPSCENTER_LANE_STATE_DIR` among them), so moving `OPSCENTER_STATE_DIR` alone does not move them. This section records that and changes no behaviour: the table marks each of them "no, a path", and a consumer that moves the state dir sets those variables too. Making them follow the state dir is a separate change, because tests that set only the root would then pick up a state dir left by an earlier test.
+
 ### 12.103 Ignore a whole thread (capability 6), and what the core already does for capabilities 4 and 6 (cutover comment)
 
 **Ignore always by whole thread.** A routing rule may match `thread`, the exact conversation id of a mail conversation or a chat (case-insensitive), and the collector now puts `thread` on its candidates: a mail conversation id, `chat:<chat id>`
