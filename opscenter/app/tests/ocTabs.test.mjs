@@ -777,6 +777,72 @@ test('an extension row filters by state, opens a drawer with its fields, and run
   })
 })
 
+// The detail drawer fades in with a one shot animation that SETTLED_JS (transitions only) does not count, and axe reads the colour it sees at that
+// instant (a mid fade heading measured 1.37 to 1). Wait until every animation that has an end has ended. Looping ones never do and are ignored.
+const FINITE_ANIMATIONS_DONE = `document.getAnimations().every((a) => (a.playState !== 'running' && a.playState !== 'pending') || a.effect?.getComputedTiming().iterations === Infinity)`
+
+test('a row with earlier versions lists them in the drawer, and a document that is not there says so', { skip, timeout: 120000 }, async () => {
+  const doc = (n) => `/api/documents/file?root=0&path=board/${n}-paper.pdf`
+  const rows = [
+    {
+      id: 'paper',
+      title: 'Board paper',
+      detail: null,
+      state: 'Latest',
+      url: doc('2026-11-24'),
+      doc: 'board/2026-11-24-paper.pdf',
+      at: null,
+      links: [
+        { label: '2026-11-17', url: doc('2026-11-17') },
+        { label: '2026-11-10', url: doc('2026-11-10') },
+        { label: 'script', url: 'javascript:alert(1)' },
+      ],
+      links_missing: 2,
+    },
+    { id: 'only', title: 'Only versions', detail: null, state: 'Latest', url: null, at: null, links: [{ label: '2026-10-01', url: 'https://tool.example.test/old' }] },
+    { id: 'gone', title: 'Lost paper', detail: null, state: 'Latest', url: null, doc: 'missing', at: null, links_missing: 1 },
+    { id: 'plain', title: 'No versions', detail: null, state: 'Latest', url: null, at: null },
+  ]
+  const fx = fixtures()
+  fx.extensions = extManifest()
+  fx.extRows = { reports: extRows(extPages()[0], rows), docs: extRows(extPages()[1], []) }
+  await withApp(fx, async (s, origin) => {
+    await visit(s, origin, '/extensions/reports', 'light', hasText('Board paper') && hasText('Lost paper'), 'the rows')
+    assert.match(await flatEval(s, `document.querySelector('.ext-rows').textContent`), /Lost paper.*Document not available/, 'a missing document says so beside the title')
+    const detailsButtons = `[...document.querySelectorAll('.ext-rows li')].map((li) => [li.textContent.includes('Details'), li.querySelector('a') ? li.querySelector('a').getAttribute('href') : null])`
+    assert.deepEqual(await s.evaluate(detailsButtons), [[true, doc('2026-11-24')], [true, null], [true, null], [false, null]], 'a row with only links or a dropped count gets Details, a plain row does not')
+    const open = (title) => s.evaluate(`[...document.querySelectorAll('.ext-rows li')].find((li) => li.textContent.includes(${JSON.stringify(title)})).querySelector('button').click() ?? true`)
+    await open('Board paper')
+    await s.waitFor(`!!document.querySelector('.ext-links')`, 'the drawer links')
+    await s.waitFor(FINITE_ANIMATIONS_DONE, 'the drawer to finish opening')
+    assert.deepEqual(
+      await s.evaluate(`[...document.querySelectorAll('.ext-links a')].map((a) => a.textContent + '|' + a.getAttribute('href') + '|' + a.target + '|' + a.rel)`),
+      [`2026-11-17|${doc('2026-11-17')}|_blank|noopener noreferrer`, `2026-11-10|${doc('2026-11-10')}|_blank|noopener noreferrer`],
+      'the safe links in the written order, and the script address is not drawn',
+    )
+    assert.match(await flatEval(s, `document.querySelector('.ext-links').textContent`), /3 links are not available\./, 'the server count plus the one the client refused')
+    assert.equal(await s.evaluate(`document.body.innerHTML.includes('javascript:')`), false, 'no script address anywhere in the page')
+    const light = await axeFindings(s)
+    assert.deepEqual(light, [], `light theme: ${JSON.stringify(light)}`)
+    await visit(s, origin, '/extensions/reports', 'dark', hasText('Board paper'), 'the rows, dark')
+    await open('Board paper')
+    await s.waitFor(`!!document.querySelector('.ext-links')`, 'the drawer links, dark')
+    await s.waitFor(FINITE_ANIMATIONS_DONE, 'the dark drawer to finish opening')
+    const dark = await axeFindings(s)
+    assert.deepEqual(dark, [], `dark theme: ${JSON.stringify(dark)}`)
+    await visit(s, origin, '/extensions/reports', 'light', hasText('Only versions'), 'the rows again')
+    await open('Only versions')
+    await s.waitFor(`!!document.querySelector('.ext-links')`, 'the links-only drawer')
+    assert.deepEqual(await s.evaluate(`[...document.querySelectorAll('.ext-links a')].map((a) => a.getAttribute('href'))`), ['https://tool.example.test/old'])
+    assert.equal(await s.evaluate(`!!document.querySelector('.ext-links p')`), false, 'nothing was dropped, so no count line')
+    await visit(s, origin, '/extensions/reports', 'light', hasText('Lost paper'), 'the rows once more')
+    await open('Lost paper')
+    await s.waitFor(`!!document.querySelector('.ext-links p')`, 'the dropped count')
+    assert.match(await flatEval(s, `document.querySelector('.ext-links').textContent`), /1 link is not available\./)
+    assert.equal(await s.evaluate(`document.querySelectorAll('.ext-links a').length`), 0)
+  })
+})
+
 test('a consumer page can ask the rail for a count badge', { skip, timeout: 120000 }, async () => {
   const fx = fixtures()
   fx.extensions = extManifest([{ ...extPages()[0], count: 5 }, extPages()[1]])
