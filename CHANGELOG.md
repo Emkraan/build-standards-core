@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-25 (v2.59.0, ops-center: a fuller upgrade smoke check)
+
+- Added: `upgrade.py --base-url` runs the full smoke check (health, the route count against `--min-routes`, the page render and its assets) and rolls back on any failure with the failed check named. `GET /api/routes` returns the registered route count. `upgrade.py` refuses a `--target` inside a macOS protected folder (Documents, Desktop, Downloads), which a launch agent cannot read, unless `--allow-protected` is given. `opscenter/DESIGN.md` 12.93, `opscenter/tools/README.md`.
+- Adoption risk: low. `--smoke-url` and every existing flag behave as before. A consumer whose service location is inside Documents, Desktop or Downloads on macOS now gets exit 2 and must move it or pass `--allow-protected`.
+
+Refs #376. Remaining: items 2, 3 and 9 of that issue.
+
 ## 2026-11-24 (v2.58.0, pr-issue reads the live PR body)
 
 - Fixed: the `pr-issue` check read the pull request body from the workflow event payload, which is frozen when a run starts, so editing the body and re-running the failed job still failed and sessions pushed empty commits to get a fresh payload. With a token (`GH_TOKEN`, `pull-requests: read`) the check now reads the live title and body from the API and falls back to the payload when it cannot. The template `core-ci.yml` and `core-ci-reusable.yml` pass the token and grant `pull-requests: read`.

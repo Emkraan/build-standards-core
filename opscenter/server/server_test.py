@@ -268,6 +268,12 @@ class Routes(unittest.TestCase):
             all((r.method == "POST") == (r.kind == "write") for r in self.registry.routes)
         )
 
+    def test_routes_reports_how_many_routes_loaded(self):
+        status, body = self.js("GET", "/api/routes")
+        self.assertEqual(status, 200)
+        self.assertGreater(body["count"], 50)
+        self.assertEqual(set(body), {"count"})
+
     def test_health_and_the_handled_store_round_trip_with_restore(self):
         self.assertEqual(self.js("GET", "/api/health"), (200, {"ok": True}))
         s, body = self.js(
