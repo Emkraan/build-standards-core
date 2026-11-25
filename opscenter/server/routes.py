@@ -761,6 +761,8 @@ def _health(req):
 def build(registry=None):
     r = registry or reg.Registry()
     r.get("/api/health", _health, "health")
+    # the upgrade step reads this count after a restart: a module that failed to load shows as fewer routes (12.93)
+    r.get("/api/routes", lambda q: {"count": len(r.routes)}, "routes")
     # the action handled store and the approvals inbox are the server's own writers
     r.get("/api/action-handled", lambda q: {"handled": stores.load_handled()}, "action-handled")
 
