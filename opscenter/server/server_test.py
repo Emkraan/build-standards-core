@@ -210,6 +210,8 @@ class Routes(unittest.TestCase):
             OPSCENTER_ROOT=str(self.d),
             OPSCENTER_STATE_DIR=str(self.d / "state"),
             OPSCENTER_AGENT_HOME=str(self.d / "agent"),
+            # The consumption feed defaults to a file in the real home, so a machine that has one would add a badge to every zero shape test.
+            CORE_CONSUMPTION_FILE=str(self.d / "no-consumption.json"),
         )
         for k in (
             "OPSCENTER_PEOPLE_PARAMS",

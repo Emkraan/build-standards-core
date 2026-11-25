@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-25 (v2.69.0, ops-center: the spec tables are rendered and the drawer is seen)
+
+- Added: `renderedTables.test.mjs` renders the built app against a fake API and checks the heading cells and the drawn width of the 11 spec tables on 7 pages (issue 376 item 10). The spec moved to `tableSpec.mjs`, shared with the source test.
+- Added: a browser test for the extension row drawer: earlier version links in order, the script address refused, the dropped count, the Details button on a links only row, the missing document label, and an axe scan in both themes.
+- Fixed: `server_test.Routes` no longer reads the real home. It sets `CORE_CONSUMPTION_FILE`, so a machine that has a consumption feed no longer fails `test_badges_answer_the_zero_shape_with_nothing_configured`.
+- Changed: DESIGN 12.104 heading says what the section does (one table of every setting) and its count matches the table (343). 12.105 describes both tests.
+
 ## 2026-11-25 (v2.68.0, ops-center: links on an extension row)
 
 - Added: a row on a data-only or provider extension page may carry `links`, up to 20 `{label, url or doc}` entries checked by the same rules as the row link. The detail drawer lists them and says how many were dropped (`links_missing`). A briefing archive is now a data-only page with one row per document and the earlier versions as links, with no core screen. `opscenter/DESIGN.md` 12.106, `opscenter/plans/plan-page.md`.
