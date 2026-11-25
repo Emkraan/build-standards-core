@@ -2139,15 +2139,27 @@ A row may declare up to four `actions` (`{id, label, confirm?}`) and up to twelv
 (All and each state with its count). A row with fields or actions has a Details button that opens a drawer with its detail, its fields and one button per action. An action runs only
 after a kit confirmation (the action's `confirm` text), by `POST /api/extensions/<id>/action` with `{row, action, confirm: true}`. The server refuses it without `confirm: true`, refuses an
 action the row itself does not declare (404, searched through every window of rows), and asks the provider's `authorize(headers, "extensions.act", key)`, separate from `extensions.read`
-(the null default refuses). The provider's optional `extension_action(page_id, row_id, action_id) -> {ok, detail?}` does the work; a provider without it answers 501, and the data-only
-file form (12.80) has none, so a file page shows actions only if a provider also supplies the method. The browser only ever sees the declared menu, never the provider.
+(the null default refuses). The provider's optional `extension_action(page_id, row_id, action_id) -> {ok, detail?}` does the work; a provider without it answers 501. The data-only
+file form (12.80) records a decision instead of running anything (12.106). The browser only ever sees the declared menu, never the provider.
 
 ### 12.92 Document backed plan library entries (cutover comment item 11)
 
 The plan library reads markdown, and a consumer whose plans are word processor documents or wiki pages can still list them: `library/<name>.link.json` is
 `{"title": ..., "url": ..., "status"?, "summary"?, "owner"?, "updated"?}` (a library folder file, or its archive twin; never inside a project). The row shows the title, the
-status, a Document pill and the summary, and opens the url in a new tab (http or https only); nothing of the document is read, so the row has no preview and no Archive.
+status, a Document pill and the summary, and opens the url in a new tab (http or https only), or the document on this machine when the file names a `path` instead of a url (12.106). Nothing of the document is read here, so the row has no preview and no Archive.
 A file that does not parse, has no title or carries another kind of url is left out, never drawn half. The plan counts include these entries.
+
+### 12.106 Local documents: one safe route, row links, plan entries and decisions on a data-only page (issue 376 items 2 and 9)
+
+A consumer whose documents sit on the machine (word processor files, archived briefings, pdf) names the folders they live in with `OPSCENTER_DOCUMENT_ROOTS` (several, separated by the platform path separator, at most eight). Unset, the feature is off: no route exists and a path is never turned into a link. This is the only way a local file reaches the browser, and it is the same rule for every caller, so a page row and a plan entry cannot differ in what they allow.
+
+`GET /api/documents/file?root=<n>&path=<relative path>` serves one file, read only. The address holds a root number and a path under it, never an absolute path, so the browser never learns where a root lives. Every request is checked again from nothing: the real path (links followed) must be inside the named root, no part of the path under the root may start with a dot, and the file must be a regular file of an allowed type, at most 50 MB. A `..`, an absolute path, a link that points out of the root, a hidden file or folder, a missing file and a root number that is not there all answer 404. A root that is not a number answers 400. The allowed types are pdf, txt, md, csv and the Word, Excel and PowerPoint formats (docx, xlsx, pptx, doc, xls, ppt). Pdf and the plain text types are shown in the browser (text is sent as `text/plain`), every other type is sent as a download, and html, svg and script types are not on the list, so a document can never run in the ops center's own origin. The client draws such an address as a link only in the exact shape the server makes (`safeHref`), so a row cannot smuggle any other address in.
+
+A page row may carry `doc`, a path relative to a root or absolute inside one. The row then links to the document when the file is there and allowed. A named document that is not there or not allowed leaves the row with no link and `doc: "missing"`, and the page says Document not available beside the title. A row without `doc` keeps the shape it always had, and `url` wins when both are given. A library entry (`library/<name>.link.json`, 12.92) may carry `path` instead of `url` on the same rule, and an entry whose path is not allowed is left out like any other bad entry. Pdf and text open as a preview in the browser tab, the Office types download, and no conversion happens.
+
+A data-only page (12.80) can now declare row `actions`. With no provider code there is nothing for an action to run, so it records a decision: `<manifest file>.decisions.json` holds, per page and row, the action, its label, the `state` the action declares (the row's pill afterwards, default the label) and a UTC time. A later decision on the same row replaces the earlier one, the row's detail drawer shows a Decision field, and the manifest file itself is never written. The same confirmation, declared-action and authorisation rules apply as for a provider page, and an action the row does not declare records nothing. This covers an Accept, Reject or Defer list. It does not run commands, call a service or change another file, and a consumer that needs that supplies a provider with `extension_action` (12.91).
+
+What this does not do: it does not list a folder, search documents, convert them, or write to a root. `OPSCENTER_DOCUMENT_ROOTS` has no default and is not under the state dir, so a consumer that moves the state tree sets it on its own (it is listed in `SETTINGS.md`, 12.104).
 
 ### 12.93 The consumer upgrade step (cutover comment, delivery path)
 

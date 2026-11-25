@@ -516,6 +516,40 @@ class PlansTest(unittest.TestCase):
             names.isdisjoint({"no-title.link.json", "bad-url.link.json", "broken.link.json"})
         )
 
+    def test_a_link_file_may_name_a_local_document_inside_the_document_roots(self):
+        docs_root = self.root.parent / "docroot"
+        docs_root.mkdir(exist_ok=True)
+        (docs_root / "sbar.pdf").write_bytes(b"%PDF x")
+        outside = self.root.parent / "elsewhere.pdf"
+        outside.write_bytes(b"%PDF y")
+        lib = self.root / "library"
+        lib.mkdir(exist_ok=True)
+        for name, body in (
+            ("local.link.json", {"title": "Local", "path": "sbar.pdf"}),
+            ("abs.link.json", {"title": "Absolute", "path": str(docs_root / "sbar.pdf")}),
+            ("out.link.json", {"title": "Out", "path": str(outside)}),
+            ("up.link.json", {"title": "Up", "path": "../elsewhere.pdf"}),
+            ("gone.link.json", {"title": "Gone", "path": "none.pdf"}),
+        ):
+            (lib / name).write_text(json.dumps(body))
+        os.environ["OPSCENTER_DOCUMENT_ROOTS"] = str(docs_root)
+        try:
+            names = {r["name"]: r for r in self.m.items()["library"]}
+        finally:
+            os.environ.pop("OPSCENTER_DOCUMENT_ROOTS", None)
+        want = "/api/documents/file?root=0&path=sbar.pdf"
+        self.assertEqual(names["local.link.json"]["link"], want)
+        self.assertEqual(names["abs.link.json"]["link"], want)
+        for left_out in ("out.link.json", "up.link.json", "gone.link.json"):
+            self.assertNotIn(left_out, names)
+
+    def test_a_path_link_is_left_out_when_no_document_root_is_set(self):
+        lib = self.root / "library"
+        lib.mkdir(exist_ok=True)
+        (lib / "nodocs.link.json").write_text(json.dumps({"title": "T", "path": "sbar.pdf"}))
+        os.environ.pop("OPSCENTER_DOCUMENT_ROOTS", None)
+        self.assertNotIn("nodocs.link.json", {r["name"] for r in self.m.items()["library"]})
+
     def test_a_link_file_inside_a_project_is_not_listed(self):
         proj = self.root / "projects" / "alpha"
         proj.mkdir(parents=True, exist_ok=True)
