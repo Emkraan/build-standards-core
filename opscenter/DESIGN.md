@@ -2159,7 +2159,7 @@ A page row may carry `doc`, a path relative to a root or absolute inside one. Th
 
 A data-only page (12.80) can now declare row `actions`. With no provider code there is nothing for an action to run, so it records a decision: `<manifest file>.decisions.json` holds, per page and row, the action, its label, the `state` the action declares (the row's pill afterwards, default the label) and a UTC time. A later decision on the same row replaces the earlier one, the row's detail drawer shows a Decision field, and the manifest file itself is never written. The same confirmation, declared-action and authorisation rules apply as for a provider page, and an action the row does not declare records nothing. This covers an Accept, Reject or Defer list. It does not run commands, call a service or change another file, and a consumer that needs that supplies a provider with `extension_action` (12.91).
 
-What this does not do: it does not list a folder, search documents, convert them, or write to a root. The settings table lists `OPSCENTER_DOCUMENT_ROOTS` as a path outside the state dir, so a consumer that moves the state tree sets it on its own.
+What this does not do: it does not list a folder, search documents, convert them, or write to a root. `OPSCENTER_DOCUMENT_ROOTS` has no default and is not under the state dir, so a consumer that moves the state tree sets it on its own (it is listed in `SETTINGS.md`, 12.104).
 
 ### 12.93 The consumer upgrade step (cutover comment, delivery path)
 
@@ -2269,6 +2269,14 @@ on the board; the analyzer is cost gated by the wake gate (a bundle whose conten
   consumer's own word for P1, with no client threshold.
 
 What stays the consumer's, by the posted default: auth heal and heartbeat sync (scripts of the consumer's own sign-in and scheduler), and the collectors that talk to its mail, chat and calendar services, which write the feeds above.
+
+### 12.104 One table of every setting, and state paths that follow the state dir (issue 376 item 8)
+
+`opscenter/SETTINGS.md` lists every environment variable the ops center code reads: 342 at the time of writing, with the default as written in the code, whether that default sits under the state dir, and the files that read it. It is generated, never edited. `python3 opscenter/tools/settings_inventory.py --write` rewrites it and `--check` fails when it is stale, and the unit test `settings_inventory_test.py` runs the same comparison, so a setting added without regenerating the table fails the build. The scan reads the source with the syntax tree (`os.environ.get`, `os.environ[...]`, `os.getenv`, the provider loader, the switch reader and the binary finder), so a variable named only in a comment is not counted and a variable built from a string is not found (none is built that way today).
+
+The "Under the state dir" column answers the question a consumer asks when it moves the state tree: yes means the default follows `OPSCENTER_STATE_DIR` (or the dashboard folder inside it), "no, a path" means the default is built from the root, a home or a literal path and the consumer sets it when it uses that feature, and a dash means the value is not a path.
+
+Several defaults sit under the root and not under the state dir (the improvement digest and its handled and curation files, the automation actions store, and the lane state folder `OPSCENTER_LANE_STATE_DIR` among them), so moving `OPSCENTER_STATE_DIR` alone does not move them. This section records that and changes no behaviour: the table marks each of them "no, a path", and a consumer that moves the state dir sets those variables too. Making them follow the state dir is a separate change, because tests that set only the root would then pick up a state dir left by an earlier test.
 
 ### 12.103 Ignore a whole thread (capability 6), and what the core already does for capabilities 4 and 6 (cutover comment)
 
