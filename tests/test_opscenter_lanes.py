@@ -27,6 +27,11 @@ def load_tests(loader, tests, pattern):
             sys.path.insert(0, str(folder))
         for path in sorted(folder.glob("*_test.py")):
             tests.addTests(loader.loadTestsFromName(path.stem))
+    # The wrapper tests registered the check scripts they run. Start them all now so the slow ones run while the
+    # in-process tests do (opscenter/lanes/checkrun.py). A run of one module never gets here, so it stays inline.
+    import checkrun
+
+    checkrun.start()
     return tests
 
 
