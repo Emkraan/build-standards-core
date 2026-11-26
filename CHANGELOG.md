@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-25 (v2.70.0, ops-center: the lanes suite starts its slow check scripts together)
+
+- Changed: `opscenter/lanes/checkrun.py` registers the check scripts that the review lane, core merge lane, sync lane, destroy follow-up and auto-fix wrapper tests launch, and `tests/test_opscenter_lanes.py` starts them all once every module is loaded. They run slowest first, beside the in-process tests, and each wrapper reads the finished result of its own command. The full run went from 342.6 to 252.7 seconds on one machine at a similar load. Running one module or one test still runs its script inline.
+- Added: `checkrun_test.py` (11 tests): inline and started give the same answer, a job runs once, jobs overlap, the environment is read at start, longest first, and a timeout reaches the wrapper.
+- Added: DESIGN 12.107 and a `checkrun.py` row in the lanes README.
+- Remaining: the in-process tests still run one after another, and the per-class check in 12.71 runs its classes in sequence.
+
 ## 2026-11-25 (v2.69.0, ops-center: the spec tables are rendered and the drawer is seen)
 
 - Added: `renderedTables.test.mjs` renders the built app against a fake API and checks the heading cells and the drawn width of the 11 spec tables on 7 pages (issue 376 item 10). The spec moved to `tableSpec.mjs`, shared with the source test.

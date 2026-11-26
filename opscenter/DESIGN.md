@@ -2309,6 +2309,16 @@ The rendered test covers the Action Center table, Routing considered, Backlog (w
 
 Two lists. `SPEC` is the tables that match today: the Action Center table, Routing considered, Backlog, the three Spend tables, Debt and improvements, the two Team tables, the run ledger and the Reviews grants table. For each, the headings, their order and every declared width must equal the spec, so a renamed heading, a moved column or a changed width fails. `DRIFT` is the spec tables the app does not match yet, each with the reason: Scheduled jobs (an extra unlabelled action column after Health), Changes (no Type and status column, the last column is labelled Actions) and the workflow runs table (the first heading reads When (UTC)). The test fails when a `DRIFT` table starts to match, so the entry must move to `SPEC` and the list cannot go stale. A consumer that changes a table on purpose edits the list in the same pull request.
 
+### 12.107 The lanes suite starts its slow check scripts together
+
+`tests/test_opscenter_lanes.py` runs every `*_test.py` under the ops center in one process. Several of them are wrappers that launch a separate check script and read its exit code and its FAIL lines: the review lane checks, the core merge lane checks, the sync lane checks, the destroy follow-up checks and the auto-fix checks. They need a process of their own because they patch modules in place or build their own scratch repositories. One of them, the core merge lane check, took about a third of the whole run by itself, and the wrappers together took close to half, all of it one after another.
+
+`opscenter/lanes/checkrun.py` lets them overlap. A wrapper registers the command it will run when its module is imported, and asks the registered job for the result inside its test method. The loader in `tests/test_opscenter_lanes.py` calls `checkrun.start()` once every module is loaded. That launches every registered script at the same moment, slowest first (each registration carries a rough run time in seconds, used for the order only), while the in-process tests go on. The wrapper then reads the finished result of its own command.
+
+These properties are tested in `checkrun_test.py`. A job that was never started runs inline, so running one module or one test by itself behaves exactly as before. A started job runs once however often its result is read, and starting twice never runs a job twice. Two jobs that each wait for a file the other writes both finish, which is true only when they really run together. The environment is read when the batch starts, in the calling thread, so a test that changes `os.environ` a moment later cannot leak into a script that has not spawned yet, and a job that registered its own environment keeps it. A timeout and a non-zero exit reach the wrapper the same way in both modes.
+
+Measured back to back on one machine at a similar load, the full run went from 342.6 to 252.7 seconds. What is left is the in-process tests, which still run one after another (the preflight and server tests are the largest), and the per-class check in 12.71, which runs its classes in sequence.
+
 ### 12.71 Two test rules: wait for transitions, and run a class alone
 
 Two defects in the core's own tests showed up while building 12.70. Neither was a product bug, and each is now a rule the tests enforce.

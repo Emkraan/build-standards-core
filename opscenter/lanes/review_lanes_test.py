@@ -3,10 +3,11 @@ under unittest, one subprocess each, so a failed check fails core CI. Each check
 state tree from fixtures/ and fakes gh, so none touches a real repository. The unittest based files report
 through their exit code; the script style files also print one OK or FAIL line per check."""
 
-import subprocess
 import sys
 import unittest
 from pathlib import Path
+
+import checkrun
 
 HERE = Path(__file__).resolve().parent
 FILES = sorted(p.name for p in HERE.glob("pr_review_*_checks.py")) + [
@@ -22,15 +23,23 @@ class ReviewLaneChecks(unittest.TestCase):
     pass
 
 
+# Rough run times in seconds, only so the full run starts the slowest script first (checkrun.py).
+EXPECT_SECONDS = {
+    "tests/core_pr_lane_checks.py": 120,
+    "destroy_followup_checks.py": 6,
+    "tests/own_sync_lane_checks.py": 4,
+}
+JOBS = {
+    _n: checkrun.register(
+        [sys.executable, str(HERE / _n)], cwd=HERE, timeout=600, expect=EXPECT_SECONDS.get(_n, 1)
+    )
+    for _n in FILES
+}
+
+
 def _make(name):
     def run(self):
-        p = subprocess.run(
-            [sys.executable, str(HERE / name)],
-            capture_output=True,
-            text=True,
-            timeout=600,
-            cwd=str(HERE),
-        )
+        p = JOBS[name].result()
         failed = [line for line in p.stdout.splitlines() if line.startswith("FAIL ")]
         self.assertEqual(failed, [], (p.stdout + p.stderr)[-3000:])
         self.assertEqual(p.returncode, 0, (p.stdout + p.stderr)[-3000:])
