@@ -59,7 +59,7 @@
   },
   "overrides": {
     "@scalar/json-magic": {
-      "undici": "8.13.1"
+      "undici": "8.14.0"
     }
   }
 }
